@@ -7,26 +7,94 @@
    Fensterhöhe. Kopfzeile und Band sind fest, darunter genau eine Ansicht.
    Die Tabellenansichten (.inhalt-fest) geben ihre Höhe an den
    Tabellenrahmen weiter, der dann selbst rollt — waagrecht und senkrecht.
-   Die Seite als Ganzes darf ebenfalls rollen: body hat bewusst kein
-   overflow:hidden (siehe design.css). */
+   Gerollt wird immer INNEN: der Inhaltsbereich (.inhalt), der
+   Tabellenrahmen, der Zeitstrahl. Die Seite selbst rollt nie. */
 
-body.seite { height: 100vh; }
+/* Die Seite füllt genau das Fenster und rollt selbst nicht — weder
+   senkrecht noch waagrecht. Bewusst «overflow: hidden» und nicht nur
+   «overflow-x: hidden»: Letzteres macht aus dem Körper einen zweiten
+   senkrechten Rollbehälter (overflow-y wird dann automatisch zu «auto»),
+   der neben .inhalt liegt und Radereignisse abfangen kann. Alles, was zu
+   gross ist, rollt in seinem eigenen Behälter: .inhalt, .tabelle-rahmen,
+   #zeitstrahl, und die Zustandsflächen weiter unten. */
+body.seite { height: 100vh; overflow: hidden; }
 
 /* Die Ansichten teilen sich den Platz unter der Kopfzeile. */
 .ansicht { flex: 1 1 auto; min-height: 0; }
+
+/* Lade- und Fehlerzustand füllen die Restfläche unter der Kopfzeile und
+   stehen darin waagrecht wie senkrecht in der Mitte. */
+body.seite > .lade,
+body.seite > .fehler {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+}
+
+
+/* ==================================================================
+   Kopfzeile
+   ================================================================== */
+
+/* Das Logo ist ein Link zur Übersicht. Der Hover bleibt dezent: eine
+   leichte Fläche hinter dem Logo, kein Unterstrich. */
+.marke-logo {
+  display: inline-flex; align-items: center;
+  padding: var(--a1) var(--a1);
+  margin: calc(var(--a1) * -1) 0 calc(var(--a1) * -1) calc(var(--a1) * -1);
+  border-radius: var(--r-klein);
+  transition: background .12s;
+}
+.marke-logo:hover { background: var(--flaeche); text-decoration: none; }
+.marke-logo:active { background: var(--flaeche-2); }
+
+/* Marke und Aktionen dürfen umbrechen, statt abgeschnitten zu werden.
+   Bricht die Zeile doch einmal um, stehen die Zeilen eng beieinander
+   statt mit einer halbleeren zweiten Zeile auseinandergezogen. */
+.kopf { align-content: center; row-gap: var(--a2); }
+.kopf-marke { flex: 0 1 auto; }
+.kopf-rechts { flex: 0 0 auto; }
+
+/* Der Daten-Stand ist die längste, aber unwichtigste Angabe der Kopfzeile.
+   Unter 1200 px — dem üblichen Laptop-Fenster — drängt er Marke, Reiter
+   und Aktionen in eine zweite Zeile. Er weicht daher und ist stattdessen
+   als Kurzhinweis am Knopf «Neu laden» zu lesen (app.js setzt den Titel).
+   Ab 1200 px steht er wieder in der Zeile. */
+@media (max-width: 1200px) {
+  .stand { display: none; }
+}
 
 
 /* ==================================================================
    Übersicht
    ================================================================== */
 
-/* Zeitstrahl: die Säulen bekommen ihre Höhe per style-Attribut. */
-#zeitstrahl { padding-bottom: var(--a2); }
+/* Zeitstrahl: die Säulen bekommen ihre Höhe per style-Attribut.
+   Der Behälter rollt waagrecht (design.css), damit die Säulen bei vielen
+   Geschäftsjahren nicht zusammengequetscht werden. */
+#zeitstrahl {
+  padding-bottom: var(--a2);
+  overscroll-behavior-x: contain;
+}
 
 .verteilung-name {
   display: block; font-size: var(--t-s);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* Kennzahl-Kacheln.
+
+   «auto-fit» statt «auto-fill» aus design.css: leere Spuren fallen weg,
+   darum füllt jede Reihe die volle Breite — die Geräte-Reihe mit sechs und
+   die Benutzer-Reihe mit fünf Kacheln schliessen beide bündig ab. Die
+   145 px Mindestbreite sind so gewählt, dass sechs Kacheln samt Abständen
+   (6×145 + 5×12 = 930 px) ab rund 1000 px Fensterbreite in eine Reihe
+   passen; darunter bricht das Raster von selbst um. */
+.kacheln { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
+
+/* Gleiche Höhe, damit Kacheln mit und ohne Unterzeile bündig stehen. */
+.kacheln .kachel { min-height: 92px; }
 
 
 /* ==================================================================
@@ -111,3 +179,68 @@ body.seite { height: 100vh; }
 .sw-zahl { font-variant-numeric: tabular-nums; }
 .sw-zahl b { font-size: var(--t-l); font-weight: 600; display: block; line-height: 1.1; }
 .sw-vorschlaege { font-size: var(--t-xs); color: var(--text-still); }
+
+
+/* ==================================================================
+   Schmale Fenster
+
+   design.css bringt bereits die Grundanpassung unter 760 px (Reiter über
+   die ganze Breite, Kacheln enger, Raster einspaltig). Hier steht nur,
+   was die Hauptseite zusätzlich braucht: Umbruch der Kopfzeile, sichere
+   Fingerflächen und ein Zeitstrahl, der rollt statt zu schrumpfen.
+   ================================================================== */
+
+@media (max-width: 760px) {
+
+  /* Kopfzeile: Marke links, Aktionen rechts, Reiter als eigene Zeile
+     darunter (Reihenfolge kommt aus design.css). Nichts wird
+     abgeschnitten, alles darf umbrechen. */
+  .kopf-marke { flex: 1 1 auto; }
+  .kopf-rechts { flex: 0 0 auto; gap: var(--a2); }
+  .marke-text h1 { font-size: var(--t-m); }
+
+  /* Die Reiter werden zur rollenden Leiste, wenn sie nicht mehr in eine
+     Zeile passen — statt die Beschriftungen abzuschneiden. */
+  .reiter {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .reiter::-webkit-scrollbar { display: none; }
+  .reiter-knopf { flex: 1 0 auto; min-height: 40px; }
+
+  /* Fingerflächen: mindestens 40 px hoch. */
+  .kopf .knopf,
+  .toolbar .knopf,
+  .toolbar .suche { min-height: 40px; }
+
+  /* Kennzahlen: genau zwei Spalten, damit die Zahlen lesbar bleiben. */
+  .kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kacheln .kachel { min-height: 84px; padding: var(--a3); }
+  .kachel-wert { font-size: var(--t-xl); letter-spacing: -.3px; }
+  .kachel-wert.klein { font-size: var(--t-l); }
+
+  /* Zeitstrahl: rollen statt quetschen. */
+  #zeitstrahl .zeitstrahl-tick,
+  #zeitstrahl .zeitstrahl-zelle { min-width: 64px; }
+
+  /* Werkzeugleiste der Tabellen: die Anzahl rutscht in eine eigene Zeile,
+     der Knopf «Neues Gerät» bleibt rechts. */
+  .werkzeug-bereich .anzahl { margin-left: 0; order: 99; flex-basis: 100%; }
+  .toolbar #knopf-neu { margin-left: auto; }
+
+  /* Software: Karten dürfen schmaler werden als 300 px. */
+  .sw-gitter { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+  /* Filter- und Spaltenpanel: einspaltig, damit nichts überläuft. */
+  .filtergitter,
+  .spaltengruppe .liste { grid-template-columns: 1fr; }
+}
+
+/* Sehr schmal (unter 380 px): die Marke behält nur das Logo und den
+   Titel, die Kacheln werden noch etwas kompakter. */
+@media (max-width: 380px) {
+  .marke-text h1 { font-size: var(--t-s); }
+  .kacheln { gap: var(--a2); }
+  .kachel-text { font-size: 11px; }
+}

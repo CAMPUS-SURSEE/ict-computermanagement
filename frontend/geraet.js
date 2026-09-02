@@ -2,9 +2,9 @@
 
    Wird von der Hauptseite mit window.open("geraet.html?id=…", "geraet-<id>")
    geöffnet und zeigt ein einzelnes Gerät der Liste «Computer»: Übersicht mit
-   Lebenszyklus-Zeitstrahl und Hinweisen, Beschaffung, zugeordnete Benutzer,
-   Stammdaten, Software aus SCCM, Hardware, System, Sicherheit, Aktivität,
-   Flottenvergleich und alle Rohdaten.
+   Kennzahlen, kompaktem Lebenszyklus und Hinweisen, Beschaffung, zugeordnete
+   Benutzer, Stammdaten, Software aus SCCM, Hardware, System, Sicherheit,
+   Aktivität, Flottenvergleich und alle Rohdaten.
 
    Bearbeitbar sind genau die von Hand gepflegten Spalten (q = "manuell" in
    spalten.js): Title, Seriennummer, GebaeudeStock, Bemerkung,
@@ -738,16 +738,8 @@ function bereichUebersicht(ziel) {
 
   ziel.appendChild(kacheln);
 
-  /* Zeitstrahl über die Geschäftsjahre. */
-  const bereichZs = el("section", "bereich");
-  bereichZs.appendChild(el("h2", "bereich-titel", "Lebenszyklus"));
-  bereichZs.appendChild(el("p", "bereich-unter",
-    "Geschäftsjahre vom ältesten bekannten Ereignis bis ein Jahr nach dem "
-    + "geplanten Ersatz. Das Geschäftsjahr läuft vom 1. August bis 31. Juli."));
-  const kZeit = karte();
-  zeitstrahlZeichnen(kZeit.inhalt);
-  bereichZs.appendChild(kZeit);
-  ziel.appendChild(bereichZs);
+  /* Lebenszyklus: eine einzige kompakte Zeile. */
+  lebenszyklusZeichnen(ziel);
 
   /* Hinweise. */
   const liste = hinweise();
@@ -774,103 +766,93 @@ function bereichUebersicht(ziel) {
   ziel.appendChild(kHinweise);
 }
 
-/* ---------- Zeitstrahl des Geräts ---------- */
+/* ---------- Lebenszyklus, kompakt ----------
 
-function zeitstrahlZeichnen(ziel) {
+   Früher stand hier ein grosser Zeitstrahl über alle Geschäftsjahre mit
+   Ereignismarken und Legende. Er brauchte viel Platz und sagte wenig, was
+   nicht schon in den Kacheln steht. Geblieben ist eine einzige schmale
+   Zeile: «Beschaffung 2025/2026 · Ersatz geplant 2030/2031», ein dezenter
+   Status-Chip und ein sehr schmaler Balken für den Anteil der bereits
+   verstrichenen Zeit. Fehlt ein Jahr, steht dort «–».
+
+   Das Geschäftsjahr läuft vom 1. August bis 31. Juli; gerechnet wird
+   ausschliesslich mit den GJ-Helfern aus modell.js. */
+function lebenszyklusZeichnen(ziel) {
   const heute = Modell.gjAktuell();
   const beschaffung = textWert("Beschaffungsjahr").trim();
   const geplant = textWert("ErsatzGeplant").trim();
   const vorschlag = Modell.ersatzVorschlag(beschaffung);
-  const adGj = Modell.gjVonDatum(zeile.SCCM_ADCreated);
-  const osGj = Modell.gjVonDatum(zeile.SCCM_OSInstallDate);
+  const ersatz = geplant || vorschlag;
+  const status = ersatzStatus();
 
-  const von = Modell.gjMin([adGj, osGj, beschaffung, heute]);
-  const bis = Modell.gjPlus(Modell.gjMax([geplant || vorschlag, heute, beschaffung, osGj, adGj]), 1);
-  const jahre = Modell.gjListe(von, bis);
+  const block = el("div", "g-lebenszyklus");
+  const kasten = el("div", "g-lz");
 
-  if (!jahre.length) {
-    ziel.appendChild(leerHinweis("Es liegen keine Jahresangaben vor, aus denen sich "
-      + "ein Zeitstrahl bauen liesse."));
-  } else {
-    const status = ersatzStatus();
-    const marken = [];
-    if (Modell.gjGueltig(adGj)) {
-      marken.push({ gj: adGj, text: "AD-Konto erstellt · "
-        + Hilfe.datumText(zeile.SCCM_ADCreated), ton: "" });
-    }
-    if (Modell.gjGueltig(osGj)) {
-      marken.push({ gj: osGj, text: "OS installiert · "
-        + Hilfe.datumText(zeile.SCCM_OSInstallDate), ton: "" });
-    }
-    if (Modell.gjGueltig(beschaffung)) {
-      marken.push({ gj: beschaffung, text: "Beschaffung " + beschaffung, ton: "stark" });
-    }
-    marken.push({ gj: heute, text: "heute (" + heute + ")", ton: "stark" });
-    const ersatzJahr = geplant || vorschlag;
-    if (Modell.gjGueltig(ersatzJahr)) {
-      marken.push({
-        gj: ersatzJahr,
-        text: (geplant ? "Ersatz geplant " : "Ersatz vorgeschlagen ") + ersatzJahr
-          + (status === "ueberfaellig" ? " · überfällig" : ""),
-        ton: status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : "info")
-      });
-    }
+  const zeileOben = el("div", "g-lz-zeile");
+  const daten = el("div", "g-lz-daten");
 
-    const strahl = el("div", "g-zeitstrahl");
-    for (const m of marken) {
-      const reihe = el("div", "zeitstrahl-reihe");
-      const spalte = Math.max(0, jahre.indexOf(m.gj));
-      jahre.forEach(function (jahr, i) {
-        const zelle = el("div", "zeitstrahl-zelle");
-        if (i === spalte) {
-          zelle.appendChild(el("span", "zeitstrahl-marke" + (m.ton ? " " + m.ton : ""), m.text));
-        }
-        reihe.appendChild(zelle);
-      });
-      strahl.appendChild(reihe);
-    }
+  const teil = function (name, jahr) {
+    const t = el("span", "g-lz-teil");
+    t.appendChild(el("span", "g-lz-name", name));
+    t.appendChild(el("span", "g-lz-jahr" + (jahr ? "" : " t-still"), jahr || "–"));
+    return t;
+  };
+  daten.appendChild(teil("Beschaffung", beschaffung));
+  const punkt = el("span", "g-lz-punkt", "·");
+  punkt.setAttribute("aria-hidden", "true");
+  daten.appendChild(punkt);
+  daten.appendChild(teil(geplant ? "Ersatz geplant" : "Ersatz vorgeschlagen", ersatz));
+  zeileOben.appendChild(daten);
 
-    const achse = el("div", "zeitstrahl-achse");
-    for (const jahr of jahre) {
-      const vergleich = Modell.gjVergleich(jahr, heute);
-      const tick = el("div", "zeitstrahl-tick"
-        + (vergleich === 0 ? " aktuell" : "")
-        + (vergleich < 0 ? " vergangen" : ""));
-      tick.appendChild(el("div", "zeitstrahl-linie"));
-      const label = el("div", "zeitstrahl-label", jahr);
-      label.title = "Geschäftsjahr " + jahr
-        + (vergleich === 0 ? " (laufendes Geschäftsjahr)" : "");
-      tick.appendChild(label);
-      achse.appendChild(tick);
-    }
-    strahl.appendChild(achse);
-    ziel.appendChild(strahl);
+  /* Status als Chip. «ok» bleibt bewusst neutral — grün wäre hier eine
+     Auszeichnung für etwas, das schlicht in Ordnung ist. */
+  const CHIPS = {
+    ueberfaellig: { text: "überfällig", ton: "gefahr" },
+    bald:         { text: "im laufenden GJ", ton: "warnung" },
+    ok:           { text: "im Plan", ton: "" },
+    unbekannt:    { text: "nicht erfasst", ton: "leise" }
+  };
+  const c = CHIPS[status] || CHIPS.unbekannt;
+  const statusChip = chip(c.text, c.ton || null);
+  statusChip.title = "Laufendes Geschäftsjahr: " + heute;
+  zeileOben.appendChild(statusChip);
+  kasten.appendChild(zeileOben);
 
-    const legende = el("div", "zeitstrahl-legende");
-    anhaengen(legende, [
-      el("span", null, "Laufendes Geschäftsjahr: " + heute),
-      el("span", "zeitstrahl-marke warnung", "Ersatz im laufenden Geschäftsjahr"),
-      el("span", "zeitstrahl-marke gefahr", "Ersatz überfällig")
-    ]);
-    ziel.appendChild(legende);
+  /* Sehr schmaler Balken: Anteil der Zeit zwischen Beschaffung und Ersatz,
+     der bereits verstrichen ist. Nur wenn beide Jahre bekannt sind. */
+  const vonZahl = Modell.gjZahl(beschaffung);
+  const bisZahl = Modell.gjZahl(ersatz);
+  const heuteZahl = Modell.gjZahl(heute);
+  if (vonZahl !== null && bisZahl !== null && heuteZahl !== null && bisZahl > vonZahl) {
+    const spanne = bisZahl - vonZahl;
+    const verstrichen = Math.min(Math.max(heuteZahl - vonZahl, 0), spanne);
+    const spur = el("div", "g-lz-spur");
+    const fuell = el("div", "g-lz-fuell"
+      + (status === "ueberfaellig" ? " g-lz-gefahr"
+        : (status === "bald" ? " g-lz-warnung" : "")));
+    fuell.style.width = Math.round(verstrichen / spanne * 100) + "%";
+    spur.title = verstrichen + " von " + spanne + " Geschäftsjahren verstrichen";
+    spur.appendChild(fuell);
+    kasten.appendChild(spur);
   }
 
-  /* Fehlt das Beschaffungsjahr, wird es gleich hier erfasst. */
-  if (!beschaffung) {
-    const hinweisZeile = el("div", "datenzeile-hinweis t-warnung");
-    hinweisZeile.textContent = "Ohne Beschaffungsjahr lässt sich weder der "
-      + "Zeitstrahl vollständig zeichnen noch der Ersatz planen. Jetzt erfassen:";
-    ziel.appendChild(hinweisZeile);
+  block.appendChild(kasten);
 
-    const zeileEingabe = el("div", "datenzeile-zeile");
-    zeileEingabe.appendChild(eingabeFuer(SPALTE["Beschaffungsjahr"], {
+  /* Fehlt das Beschaffungsjahr, wird es gleich hier erfasst — sonst fehlt
+     das Gerät in der ganzen Ersatzplanung. */
+  if (!beschaffung) {
+    const erfassen = el("div", "g-lz-erfassen");
+    erfassen.appendChild(el("span", "hinweis t-warnung",
+      "Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen. Jetzt erfassen:"));
+    erfassen.appendChild(eingabeFuer(SPALTE["Beschaffungsjahr"], {
       liste: Modell.gjAuswahl(),
       schmal: true,
       beiAenderung: function () { zeichneBereich(true); }
     }));
-    zeileEingabe.appendChild(el("span", "hinweis", "Geschäftsjahr, z. B. 2023/2024"));
-    ziel.appendChild(zeileEingabe);
+    block.appendChild(erfassen);
   }
+
+  ziel.appendChild(block);
 }
 
 /* ---------- Beschaffung ---------- */
@@ -1171,12 +1153,6 @@ function bereichSoftware(ziel) {
     kSammlungen.inhalt.appendChild(chips);
   }
   gitter.appendChild(kSammlungen);
-
-  const kRechte = karte("Programm-Berechtigungen");
-  kRechte.inhalt.appendChild(leerHinweis(
-    "Berechtigungen für Programme hängen seit dem Umbau an der Person, nicht "
-    + "am Gerät. Sie stehen im Benutzerfenster unter «Berechtigungen»."));
-  gitter.appendChild(kRechte);
 
   ziel.appendChild(gitter);
 }
@@ -1659,7 +1635,12 @@ function kopfZeichnen() {
     if (personen.length) unter.push(personen.map(b => b.__name || b.Title).join(", "));
     if (zeile && zeile.id) unter.push("Listen-ID " + zeile.id);
   }
-  $("g-unter").textContent = unter.join(" · ");
+  /* Der Untertitel wird in einer schmalen Kopfzeile mit «…» gekürzt
+     (design.css). Damit nichts verloren geht, steht der volle Text als
+     Tooltip daran. */
+  const unterText = unter.join(" · ");
+  $("g-unter").textContent = unterText;
+  $("g-unter").title = unterText;
 
   const status = leeren($("g-status"));
   if (!neuModus && zeile) {
@@ -1695,50 +1676,57 @@ function aktionenZeichnen() {
     neuLaden();
   }));
 
-  if (!neuModus && !mockModus && zeile && zeile.id) {
-    const verweis = el("a", "knopf", "In SharePoint öffnen");
-    verweis.href = KONFIG.sharepointElementUrl("computer", zeile.id);
-    verweis.target = "_blank";
-    verweis.rel = "noopener";
-    ziel.appendChild(verweis);
-  }
-
   if (!neuModus) {
     ziel.appendChild(knopf("Duplizieren", "knopf-leise", function () {
       const adresse = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
         + (mockModus ? "&mock=1" : "");
       window.open(adresse, "geraet-neu");
     }));
-  }
 
-  ziel.appendChild(knopf("Link kopieren", "knopf-leise", function () {
-    kopieren(location.href, "Adresse dieses Fensters kopiert.");
-  }));
-
-  ziel.appendChild(knopf("Drucken", "knopf-leise", function () { window.print(); }));
-
-  if (!neuModus) {
     ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
   }
+}
+
+/* Das Logo im Kopf führt zur Übersicht. Im Vorführmodus muss der Parameter
+   mitgehen, sonst landet man dort auf der Anmeldung. */
+function logoZeichnen() {
+  const verweis = $("g-logo");
+  if (!verweis) return;
+  verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
 }
 
 function adresseFuer(id) {
   return "geraet.html?id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
 }
 
+/* Die Seitennavigation. Die Spalte selbst (.fenster-nav) reicht bis zum
+   unteren Fensterrand; die Knöpfe stehen in einem eigenen Behälter
+   (.fenster-nav-menue), der darin klebt beziehungsweise auf schmalen
+   Fenstern zur waagrecht rollenden Reiterleiste wird. */
 function navZeichnen() {
   const nav = leeren($("g-nav"));
   nav.hidden = false;
+  const menue = el("div", "fenster-nav-menue");
   for (const b of sichtbareBereiche()) {
     const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""), b.d);
     k.type = "button";
+    if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
     k.addEventListener("click", function () {
       aktiverBereich = b.k;
       location.hash = "#" + b.k;
       navZeichnen();
       zeichneBereich(false);
     });
-    nav.appendChild(k);
+    menue.appendChild(k);
+  }
+  nav.appendChild(menue);
+
+  /* Auf schmalen Fenstern ist die Navigation eine waagrecht rollende
+     Leiste. Nach dem Neuzeichnen soll der aktive Eintrag sichtbar bleiben.
+     «nearest» rührt nichts an, wenn er ohnehin schon zu sehen ist. */
+  const aktiv = menue.querySelector(".fenster-nav-knopf.aktiv");
+  if (aktiv && aktiv.scrollIntoView) {
+    aktiv.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 }
 
@@ -2231,6 +2219,7 @@ function bandZeichnen() {
 
 async function start() {
   hashLesen();
+  logoZeichnen();
   bandZeichnen();
 
   try {

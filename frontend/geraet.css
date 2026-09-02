@@ -1,12 +1,13 @@
 /* geraet.css — Seitenlayout des Gerätefensters.
 
-   Das gesamte Gerüst kommt aus design.css: Kopf (.kopf), Rumpf mit
-   klebender Seitennavigation (.fenster-rumpf, .fenster-nav,
+   Das gesamte Gerüst kommt aus design.css: Kopf (.kopf, .logo-link), Rumpf
+   mit Seitennavigation (.fenster-rumpf, .fenster-nav, .fenster-nav-menue,
    .fenster-inhalt), Kartenraster (.karten, .karte-breit), Datenzeilen
    (.datenzeilen, .datenzeile), kurze Tabellen (.tabelle-schlicht),
-   Speicherleiste, Toast und Dialog. Hier steht nur noch, was es genau in
-   diesem Fenster gibt — Hinweise, Zeitstrahl-Ränder, Benutzerliste,
-   Rohdaten, Zeitachse und Flottenvergleich.
+   Zustände (.lade, .fehler, .leerzustand), Speicherleiste, Toast und
+   Dialog. Hier steht nur noch, was es genau in diesem Fenster gibt —
+   Hinweise, Lebenszyklus-Zeile, Benutzerliste, Rohdaten, Zeitachse und
+   Flottenvergleich.
 
    Alle eigenen Klassen beginnen mit «g-», damit sie sich nie mit den
    Klassen des Design-Systems oder der Hauptseite beissen.
@@ -14,32 +15,27 @@
    ------------------------------------------------------------------
    SCROLLEN (Spezifikation 3.3)
 
-   body trägt .seite aus design.css: Flex-Spalte, min-height 100vh, KEIN
+   body trägt .seite aus design.css: Flex-Spalte, min-height 100dvh, KEIN
    overflow:hidden. Damit rollt die Seite senkrecht von selbst.
 
-   Waagrecht: dieses Fenster ist ein Arbeitsfenster für den Schreibtisch.
-   Unter --g-mindestbreite wird der Inhalt nicht weiter zusammengedrückt,
-   sondern die Seite wird breiter als das Fenster — und rollt dann
-   waagrecht. Das erledigt die min-width auf body; kein !important, kein
-   overflow-Trick.
+   Waagrecht rollt die SEITE nie — auch nicht bei 375 px. Was zu breit
+   wird, rollt in seinem eigenen Behälter: Tabellen in
+   .tabelle-schlicht-rahmen, die Reiterleiste auf dem Handy in
+   .fenster-nav. Die Raster (.karten, .kacheln) fallen über
+   «minmax(min(…, 100%), 1fr)» von selbst auf eine Spalte zurück.
+   Früher stand hier eine min-width von 880 px auf dem body; sie hat auf
+   dem Handy einen Rollbalken über die ganze Seite erzwungen und ist
+   deshalb weg.
    ------------------------------------------------------------------ */
-
-:root {
-  /* Unter dieser Breite rollt die Seite waagrecht, statt zu quetschen.
-     208 px Navigation + 2 × 24 px Innenabstand + rund 620 px Inhalt. */
-  --g-mindestbreite: 880px;
-}
-
-body.g-seite {
-  min-width: var(--g-mindestbreite);
-}
 
 
 /* ==================================================================
    Kopfzeile
    ================================================================== */
 
-.g-status { align-self: center; }
+/* Die Statuschips stehen im Raster der Kopfzeile (design.css) unter dem
+   Titel und dürfen dort umbrechen. Eine eigene Ausrichtung brauchen sie
+   nicht mehr — früher war die Kopfzeile eine Flex-Reihe. */
 .g-band { display: flex; align-items: center; gap: var(--a3); flex-wrap: wrap; }
 
 
@@ -120,21 +116,73 @@ body.g-seite {
 
 
 /* ==================================================================
-   Zeitstrahl des Geräts
+   Lebenszyklus
 
-   Achse und Markenreihen kommen aus design.css. Hier nur der Platz
-   rechts, damit die Beschriftung der letzten Marke lesbar bleibt — Achse
-   und Reihen teilen sich dieselbe Inhaltsbreite und bleiben dadurch
-   deckungsgleich.
+   Eine einzige schmale Zeile statt des früheren Zeitstrahls: Beschaffung
+   und geplanter Ersatz als Text, daneben ein Status-Chip, darunter ein
+   sehr schmaler Balken für den Anteil der verstrichenen Zeit. Sie sieht
+   aus wie eine Karte, ist aber nur so hoch wie nötig.
    ================================================================== */
 
-.g-zeitstrahl { padding: var(--a4) var(--a2) var(--a2); overflow-x: auto; }
-.g-zeitstrahl .zeitstrahl-achse,
-.g-zeitstrahl .zeitstrahl-reihe { padding-right: 130px; }
+/* Der ganze Block: Zeile plus (falls nötig) Erfassungsfeld. Er hält den
+   Abstand zur nächsten Karte, damit die Zeile selbst ohne Aussenabstand
+   auskommt. */
+.g-lebenszyklus { margin-bottom: var(--a5); }
 
-.g-zeitstrahl .zeitstrahl-tick { padding-top: var(--a2); }
-.g-zeitstrahl .zeitstrahl-linie { background: var(--flaeche-2); height: 2px; }
-.g-zeitstrahl .zeitstrahl-tick.aktuell .zeitstrahl-linie { background: var(--marke); }
+.g-lz {
+  background: var(--weiss);
+  border-radius: var(--r);
+  box-shadow: var(--schatten);
+  padding: var(--a3) var(--a4);
+}
+
+.g-lz-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--a2) var(--a3);
+  flex-wrap: wrap;
+}
+
+.g-lz-daten {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--a1) var(--a2);
+  min-width: 0;
+}
+.g-lz-teil { display: inline-flex; align-items: baseline; gap: 6px; }
+.g-lz-name { font-size: var(--t-xs); color: var(--text-leise); }
+.g-lz-jahr {
+  font-size: var(--t-s); font-weight: 600;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.g-lz-punkt { color: var(--text-still); }
+
+/* Der Balken: 3 px hoch, damit er einordnet, ohne sich vorzudrängen. */
+.g-lz-spur {
+  height: 3px;
+  margin-top: var(--a2);
+  border-radius: 2px;
+  background: var(--flaeche-2);
+  overflow: hidden;
+}
+.g-lz-fuell {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--marke);
+}
+.g-lz-fuell.g-lz-warnung { background: var(--warnung); }
+.g-lz-fuell.g-lz-gefahr  { background: var(--gefahr); }
+
+/* Fehlt das Beschaffungsjahr, steht die Eingabe gleich darunter. */
+.g-lz-erfassen {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--a2);
+  margin-top: var(--a3);
+}
 
 
 /* ==================================================================
@@ -179,9 +227,11 @@ body.g-seite {
    Rohdaten («Alle Felder»)
    ================================================================== */
 
+/* Name, Wert, Kopierknopf. Die Namensspalte darf schrumpfen — sonst wird
+   die Zeile in einer schmalen Karte breiter als ihr Platz. */
 .g-roh-zeile {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
   gap: var(--a3);
   padding: 5px 0;
   align-items: start;
@@ -255,26 +305,43 @@ body.g-seite {
 /* ==================================================================
    Schmale Fenster
 
-   Die Seite bleibt mindestens --g-mindestbreite breit (siehe oben) und
-   rollt darunter waagrecht. Hier wird nur der Innenabstand knapper.
+   Bis 760 px macht design.css aus der Seitennavigation eine waagrecht
+   rollende Reiterleiste. Dazwischen (760–900 px) wird hier nur der
+   Innenabstand knapper, damit für den Inhalt mehr übrig bleibt.
    ================================================================== */
 
-@media (max-width: 900px) {
+@media (max-width: 900px) and (min-width: 761px) {
   .fenster-inhalt { padding: var(--a4) var(--a4) 96px; }
   .fenster-nav { padding: var(--a3) var(--a2) var(--a5); }
+}
+
+@media (max-width: 760px) {
+  /* Name und Wert untereinander, der Kopierknopf rechts daneben. */
+  .g-roh-zeile { grid-template-columns: minmax(0, 1fr) auto; }
+  .g-roh-name { grid-column: 1 / -1; }
+
+  .g-werkzeuge .g-eingabe { max-width: none; }
+  .g-eingabe, .g-textarea { max-width: none; }
+  .g-eingabe-schmal { max-width: 190px; }
 }
 
 
 /* ==================================================================
    Druck
+
+   Der Knopf «Drucken» ist aus der Kopfzeile verschwunden; über Ctrl+P
+   lässt sich das Fenster aber weiterhin ausdrucken, und dann soll es
+   ordentlich aussehen.
    ================================================================== */
 
 @media print {
-  body.g-seite { min-width: 0; background: #ffffff; }
+  body.g-seite { background: #ffffff; }
   .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .g-band,
   .g-werkzeuge, .g-kopierknopf, .g-person-knoepfe { display: none; }
   .fenster-rumpf { grid-template-columns: 1fr; }
   .fenster-inhalt { padding: 0; }
-  .karte, .kachel { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+  .karte, .kachel, .g-lz {
+    box-shadow: none; break-inside: avoid; page-break-inside: avoid;
+  }
   .karten { grid-template-columns: 1fr 1fr; }
 }

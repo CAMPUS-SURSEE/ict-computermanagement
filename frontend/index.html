@@ -16,7 +16,12 @@
 <header class="kopf">
 
   <div class="kopf-marke">
-    <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <!-- Das Logo führt zurück zur Übersicht. Als echter Link (mit href),
+         damit Mittelklick und Tastatur funktionieren; app.js fängt den
+         gewöhnlichen Klick ab und behält dabei ?mock=1 in der Adresse. -->
+    <a class="marke-logo" id="marke-logo" href="#uebersicht" aria-label="Zur Übersicht">
+      <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    </a>
     <div class="marke-text">
       <h1>Computer Inventar</h1>
       <p class="marke-unter">ICT Campus Sursee</p>

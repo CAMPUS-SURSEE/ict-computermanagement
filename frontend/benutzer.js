@@ -662,12 +662,6 @@ function kopfZeichnen() {
 
   const aktionen = leeren($("b-aktionen"));
 
-  const sp = el("a", "knopf", "In SharePoint öffnen");
-  sp.href = KONFIG.sharepointElementUrl("benutzer", zeile.id);
-  sp.target = "_blank";
-  sp.rel = "noopener noreferrer";
-  aktionen.appendChild(sp);
-
   const geraet = zugeordnetesGeraet();
   if (geraet) {
     aktionen.appendChild(knopf("Gerät öffnen", null, function () {
@@ -676,20 +670,43 @@ function kopfZeichnen() {
   }
 }
 
+/* Das Logo im Kopf führt zur Übersicht. Im Vorführmodus muss der Parameter
+   mitgehen, sonst landet man dort auf der Anmeldung. */
+function logoZeichnen() {
+  const verweis = $("b-logo");
+  if (!verweis) return;
+  verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
+}
+
+/* Die Seitennavigation. Die Spalte selbst (.fenster-nav) reicht bis zum
+   unteren Fensterrand; die Knöpfe stehen in einem eigenen Behälter
+   (.fenster-nav-menue), der darin klebt beziehungsweise auf schmalen
+   Fenstern zur waagrecht rollenden Reiterleiste wird. */
 function navZeichnen() {
   const nav = leeren($("b-nav"));
   nav.hidden = false;
   const zahlen = rechteZaehlen();
 
+  const menue = el("div", "fenster-nav-menue");
   for (const b of BEREICHE) {
     const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""));
     k.type = "button";
+    if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
     k.appendChild(document.createTextNode(b.d));
     if (b.k === "berechtigungen") {
       k.appendChild(el("span", "fenster-nav-zahl", String(zahlen.aktiv)));
     }
     k.addEventListener("click", function () { bereichWechseln(b.k); });
-    nav.appendChild(k);
+    menue.appendChild(k);
+  }
+  nav.appendChild(menue);
+
+  /* Auf schmalen Fenstern ist die Navigation eine waagrecht rollende
+     Leiste. Nach dem Neuzeichnen soll der aktive Eintrag sichtbar bleiben;
+     «nearest» rührt nichts an, wenn er ohnehin schon zu sehen ist. */
+  const aktiv = menue.querySelector(".fenster-nav-knopf.aktiv");
+  if (aktiv && aktiv.scrollIntoView) {
+    aktiv.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 }
 
@@ -943,7 +960,7 @@ function bandZeichnen() {
   band.appendChild(document.createTextNode(
     "Vorführmodus (?mock=1): alle Personen, Geräte und Berechtigungen sind "
     + "erfunden. Änderungen bleiben im Browser und gehen nie nach SharePoint."));
-  band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", null, function () {
+  band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", "knopf-leise", function () {
     if (!window.confirm("Alle im Vorführmodus gemachten Änderungen verwerfen?")) return;
     Mock.zuruecksetzen();
     entwurf = {};
@@ -954,6 +971,7 @@ function bandZeichnen() {
 
 async function start() {
   hashLesen();
+  logoZeichnen();
   bandZeichnen();
 
   try {

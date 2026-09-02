@@ -26,10 +26,6 @@ const KONFIG = {
   computerListId: "7870205c-bfa6-4d18-8035-d16d0a082637",
   benutzerListId: "7db0cf44-7a2a-4937-b982-03236858b4b9",
 
-  // Adressen der Listen in SharePoint, für die Links «In SharePoint öffnen».
-  sharepointComputerListUrl: "https://campussursee.sharepoint.com/sites/mgmts-ict-s/Lists/Computer/AllItems.aspx",
-  sharepointBenutzerListUrl: "https://campussursee.sharepoint.com/sites/mgmts-ict-s/Lists/Benutzer/AllItems.aspx",
-
   /* ---- programme.json in der Dokumentbibliothek der Site ----
      Graph: GET /sites/{siteId}/drive/root:/{programmeDateiPfad}:/content */
   programmeDateiPfad: "Inventar/programme.json",
@@ -51,15 +47,3 @@ KONFIG.listId = function (liste) {
   return liste === "benutzer" ? KONFIG.benutzerListId : KONFIG.computerListId;
 };
 
-/* Adresse der Liste in SharePoint. */
-KONFIG.sharepointListUrl = function (liste) {
-  return liste === "benutzer" ? KONFIG.sharepointBenutzerListUrl
-                              : KONFIG.sharepointComputerListUrl;
-};
-
-/* Adresse eines einzelnen Listenelements in SharePoint.
-   liste ∈ "computer" | "benutzer", id = Listen-ID des Elements. */
-KONFIG.sharepointElementUrl = function (liste, id) {
-  return KONFIG.sharepointListUrl(liste).replace(/AllItems\.aspx.*$/, "DispForm.aspx")
-    + "?ID=" + encodeURIComponent(id);
-};

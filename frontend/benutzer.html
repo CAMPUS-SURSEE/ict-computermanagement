@@ -17,7 +17,11 @@
 
 <header class="kopf">
   <div class="kopf-marke">
-    <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <!-- Das Logo führt zurück zur Übersicht. Im Vorführmodus hängt
+         benutzer.js den Parameter ?mock=1 an die Adresse. -->
+    <a class="logo-link" id="b-logo" href="index.html" aria-label="Zur Übersicht">
+      <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    </a>
     <div class="marke-text">
       <h1 id="b-titel">Benutzer wird geladen …</h1>
       <p class="marke-unter" id="b-unter"></p>

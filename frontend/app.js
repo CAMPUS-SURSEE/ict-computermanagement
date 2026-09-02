@@ -1602,6 +1602,18 @@ function dichteAnwenden(tab) {
   k.title = z.dicht ? "Zur normalen Zeilenhöhe wechseln" : "Zu kompakten Zeilen wechseln";
 }
 
+/* Auf eine andere Ansicht umschalten und den Hash nachführen.
+
+   Solange die Seite noch lädt oder einen Fehler zeigt (die Reiter sind dann
+   ausgeblendet), wird nur der Zustand gemerkt — sonst stünde die leere
+   Ansicht über der Lade- oder Fehlermeldung. */
+function ansichtWechseln(name) {
+  if (ANSICHTEN.indexOf(name) === -1) return;
+  zustand.ansicht = name;
+  if (!$("reiter").hidden) zeichneAnsicht();
+  hashSchreiben();
+}
+
 function zeichneAnsicht() {
   for (const a of ANSICHTEN) $("ansicht-" + a).hidden = a !== zustand.ansicht;
   for (const k of document.querySelectorAll(".reiter-knopf")) {
@@ -1637,9 +1649,15 @@ function standAnzeigen() {
     const d = Hilfe.datum(z.SCCM_LastSync);
     return d && (!max || d > max) ? d : max;
   }, null);
-  $("stand").textContent = letzterSync
+  const text = letzterSync
     ? "Daten Stand: " + Hilfe.datumZeitText(letzterSync) + " (" + Hilfe.relativText(letzterSync) + ")"
     : "Daten Stand: unbekannt";
+  $("stand").textContent = text;
+
+  /* In schmaleren Fenstern blendet styles.css den Daten-Stand aus, damit
+     die Kopfzeile einzeilig bleibt. Damit die Angabe trotzdem erreichbar
+     ist, hängt sie als Titel am Knopf «Neu laden». */
+  $("knopf-neuladen").title = text + " — Daten neu laden";
 }
 
 function mockBandZeigen() {
@@ -1760,11 +1778,17 @@ function ereignisseVerbinden() {
 
   for (const k of document.querySelectorAll(".reiter-knopf")) {
     k.addEventListener("click", function () {
-      zustand.ansicht = k.dataset.ansicht;
-      zeichneAnsicht();
-      hashSchreiben();
+      ansichtWechseln(k.dataset.ansicht);
     });
   }
+
+  /* Klick auf das Logo führt zur Übersicht. Modifizierte Klicks (neuer Tab,
+     neues Fenster) bleiben dem Browser überlassen. */
+  $("marke-logo").addEventListener("click", function (e) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    ansichtWechseln("uebersicht");
+  });
 
   $("knopf-neu").addEventListener("click", neuesGeraetOeffnen);
 
@@ -1796,9 +1820,7 @@ function ereignisseVerbinden() {
       let tab = zustand.ansicht;
       if (tab !== "geraete" && tab !== "benutzer" && tab !== "software") {
         tab = "geraete";
-        zustand.ansicht = tab;
-        zeichneAnsicht();
-        hashSchreiben();
+        ansichtWechseln(tab);
       }
       const feld = $(tab + "-suche");
       if (feld) { feld.focus(); feld.select(); }

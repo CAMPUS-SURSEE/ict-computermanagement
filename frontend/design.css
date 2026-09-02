@@ -23,6 +23,8 @@
    Kopfzeile und Navigation
      .kopf                  Obere Leiste (Marke links, Aktionen rechts).
      .kopf-marke .logo .marke-text .marke-unter
+     .logo-link             Das Logo als Verweis zur Übersicht (index.html).
+                            Dezenter Hover, Berührungsfläche mindestens 40 px.
      .kopf-rechts .stand .konto
      .reiter > .reiter-knopf[.aktiv]        Tabs als Segmente.
      .band .band-warnung .band-info         Volle Breite, Hinweisband oben.
@@ -91,20 +93,25 @@
      .leerzustand           Zentrierter Leerzustand: .leer-titel, .leer-text.
      .skelett               Graue Platzhalterfläche; .skelett-zeile für Tabellen.
 
-     Zentrierung: alle drei Zustände zentrieren AUCH OHNE Flex-Eltern. Sie
-     bringen dafür selbst mit: min-height (mindestens 320 px, sonst 55 % der
-     Fensterhöhe), width:100% und margin:auto. In einem gewöhnlichen Block
-     stehen sie damit waagrecht wie senkrecht in der Mitte ihres Kastens; in
-     einer Flex-Spalte greift zusätzlich flex:1, sodass sie den ganzen
-     freien Platz füllen. Wer eine eigene Fläche dafür braucht, hängt sie in
-     einen Behälter mit der Klasse .zustand-bereich (Flex-Spalte, füllt den
-     Rest der Seite).
+     Zentrierung: die Fläche kommt aus der Flex-Kette, NICHT aus einer
+     Rechnung mit 100dvh — sonst ragt die Ladeseite um ein paar Pixel über
+     den Fensterrand. In einer Flex-Spalte (.seite, .fenster-inhalt,
+     .zustand-bereich) nimmt der Zustand mit flex:1 genau den freien Platz
+     und zentriert seinen Inhalt darin. Wer eine eigene Fläche dafür
+     braucht, hängt sie in einen Behälter mit der Klasse .zustand-bereich
+     (Flex-Spalte, füllt den Rest der Seite).
 
    Detailfenster (Gerätefenster, Benutzerfenster)
      .fenster               Auf body: markiert ein Detailfenster (der
                             Untertitel im Kopf bleibt auch schmal sichtbar).
      .fenster-rumpf         Raster: Navigation links, Inhalt rechts.
-     .fenster-nav           Klebende Seitennavigation.
+     .fenster-nav           Die Navigationsspalte. Sie reicht IMMER bis zum
+                            unteren Fensterrand (eigene Fläche, eigene Kante)
+                            und wird schmal zur waagrecht rollenden Reiterleiste.
+     .fenster-nav-menue     Der klebende Block mit den Knöpfen INNERHALB der
+                            Spalte. Ohne diesen Behälter steht das Menü
+                            einfach oben in der Spalte — auch das sieht richtig
+                            aus, es klebt dann nur nicht mit.
      .fenster-nav-knopf[.aktiv] .fenster-nav-zahl
      .fenster-inhalt        Inhaltsspalte, unten Platz für die Speicherleiste.
      .fenster-bahn          Der Inhalt darin, auf 1400 px begrenzt.
@@ -122,11 +129,7 @@
      .zeitstrahl-label      Jahresbeschriftung unter dem Tick.
      .zeitstrahl-saeulen    Zwei Säulen je Jahr (.saeule-a Beschaffung,
                             .saeule-b Ersatz; .gefahr für überfällig).
-     .zeitstrahl-marke      Punkt + Text für Ereignisse (Gerätefenster).
-     .zeitstrahl-reihe      Markenreihe ÜBER der Achse, spaltengleich zu den
-     .zeitstrahl-zelle      Ticks: eine Zelle je Jahr, gleiche Breite wie
-                            .zeitstrahl-tick.
-     .zeitstrahl-heute      Senkrechte Markierung «heute».
+     .zeitstrahl-marke      Punkt + Text, für die Legende unter der Achse.
 
    Toolbar und Formulare
      .toolbar .toolbar-teil .suchfeld .suche .kuerzel .anzahl
@@ -201,6 +204,9 @@
 
   /* Zeilenhöhe der Tabellen, vom Dichte-Schalter überschrieben */
   --zellen-hoch: 9px;
+
+  /* Kleinste Berührungsfläche für Knöpfe und Verweise auf dem Handy. */
+  --tippziel: 40px;
 }
 
 * { box-sizing: border-box; }
@@ -264,10 +270,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    2. Grundgerüst
    ================================================================== */
 
+/* Die ganze Seite ist eine Flex-Spalte über die volle Fensterhöhe. 100dvh
+   überschreibt 100vh dort, wo es der Browser kennt — auf dem Handy zieht
+   sich die Adressleiste sonst von der sichtbaren Höhe ab. */
 .seite {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Scrollender Inhaltsbereich. */
@@ -311,12 +321,61 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .kopf-marke { display: flex; align-items: center; gap: var(--a3); min-width: 0; }
 .logo { height: 26px; width: auto; display: block; }
+
+/* Das Logo als Verweis zur Übersicht. Dezent: nur eine leicht getönte
+   Fläche beim Überfahren, kein Unterstrich. Die Fläche ist bewusst
+   mindestens --tippziel hoch, damit sie sich auch am Handy treffen lässt. */
+.logo-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tippziel);
+  padding: var(--a1) var(--a2);
+  margin-left: calc(var(--a2) * -1);
+  border-radius: var(--r-klein);
+  flex: none;
+}
+.logo-link:hover { background: var(--flaeche); text-decoration: none; }
+.logo-link:active { background: var(--flaeche-2); }
 .marke-text { min-width: 0; }
-.marke-unter { font-size: 11px; color: var(--text-still); letter-spacing: .3px; }
+
+/* Der Untertitel ist eine Zeile und wird gekürzt, statt die Kopfzeile
+   umbrechen zu lassen. Den vollen Text zeigt das title-Attribut. */
+.marke-unter {
+  font-size: 11px; color: var(--text-still); letter-spacing: .3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .kopf-rechts {
   display: flex; align-items: center; gap: var(--a2);
   flex-wrap: wrap; justify-content: flex-end; margin-left: auto;
+}
+
+/* ---------- Kopfzeile eines Detailfensters ----------
+
+   Ab 761 px ein Raster mit zwei Spalten statt einer Flex-Reihe: links
+   Marke, Titel, Untertitel und die Statuschips, rechts oben die Aktionen.
+   Als Flex-Reihe sind die Aktionen bei knapper Breite (rund 1080 px) unter
+   die Chips gerutscht und standen dort rechtsbündig im Leeren. Im Raster
+   bleiben sie in der Zeile des Titels; enger wird stattdessen die linke
+   Spalte, deren Untertitel dann mit «…» endet. */
+@media (min-width: 761px) {
+  .fenster .kopf {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--a4);
+    row-gap: var(--a2);
+  }
+  .fenster .kopf-marke { grid-column: 1; grid-row: 1; }
+  /* Zeile 2 entsteht nur, wenn es Chips gibt — sonst bleibt die Kopfzeile
+     einzeilig und bekommt keinen leeren Zwischenraum. */
+  .fenster .kopf .chips { grid-column: 1; grid-row: 2; }
+  .fenster .kopf-rechts {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+    align-self: start;
+  }
 }
 
 .stand { font-size: var(--t-xs); color: var(--text-leise); }
@@ -384,7 +443,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    langen Beschriftungen; unter 360 px wird daraus Kraut und Rüben. */
 .karten {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: var(--a4);
   align-items: start;
 }
@@ -400,9 +459,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 .bereich-unter { font-size: var(--t-xs); color: var(--text-leise); margin: 2px 0 var(--a4); }
 
+/* «min(… , 100%)» statt einer festen Mindestbreite: in einer schmalen
+   Spalte fällt das Raster auf eine Spalte zurück, statt breiter zu werden
+   als sein Platz. Ohne das rollt die ganze Seite waagrecht. */
 .gitter   { display: grid; gap: var(--a4); align-items: start; }
-.gitter-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
-.gitter-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.gitter-2 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.gitter-3 { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
 
 
 /* ==================================================================
@@ -411,7 +473,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .kacheln {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
   gap: var(--a3);
 }
 
@@ -794,17 +856,33 @@ button.chip:hover { background: #e2e5ea; }
 
 /* Zentriert — waagrecht und senkrecht.
 
-   Die eigene min-height plus «margin:auto» sorgt dafür, dass der Zustand
-   auch in einem gewöhnlichen Block (ohne Flex-Eltern) mittig steht. Liegt
-   er in einer Flex-Spalte, füllt flex:1 zusätzlich den freien Platz. */
+   WICHTIG: die Höhe wird NICHT aus 100dvh gerechnet. Jede solche Rechnung
+   muss Kopfzeile, Band, Innenabstände und Speicherleiste erraten und liegt
+   irgendwann daneben — dann ragt die Ladeseite ein paar Pixel über den
+   Fensterrand und es erscheint ein Rollbalken, obwohl nichts zu rollen ist.
+
+   Stattdessen macht es die Flex-Kette: body.seite ist eine Spalte über die
+   volle Fensterhöhe, .fenster-rumpf und .fenster-inhalt strecken sich
+   darin, und der Zustand nimmt mit flex:1 den Rest. Was übrig bleibt, ist
+   genau die freie Fläche — nie mehr.
+
+     flex:1        füllt in einer Flex-Spalte (.seite, .fenster-inhalt,
+                   .zustand-bereich) den ganzen freien Platz;
+     min-height    nur ein kleiner Sockel für den seltenen Fall, dass der
+                   Zustand in einem gewöhnlichen Block hängt;
+     margin:auto   zentriert ihn in einem solchen Block waagrecht.
+
+   Die Innenausrichtung (align-items/justify-content) zentriert dann den
+   Spinner samt Text in dieser Fläche. */
 .lade, .fehler, .leerzustand {
   flex: 1 1 auto;
+  align-self: stretch;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   text-align: center;
   gap: var(--a2);
-  padding: var(--a7) var(--a5);
-  min-height: max(320px, 55vh);
+  padding: var(--a5);
+  min-height: 200px;
   width: 100%;
   margin: auto;
 }
@@ -816,6 +894,14 @@ button.chip:hover { background: #e2e5ea; }
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Innerhalb einer Karte oder eines Rasters gibt es keinen Sockel: dort ist
+   die Fläche vorgegeben und der Zustand nur ein kurzer Satz. */
+.karte .lade, .karte .fehler, .karte .leerzustand,
+.karten .lade, .karten .fehler {
+  min-height: 0;
+  padding: var(--a5) var(--a3);
 }
 
 /* Ein Leerzustand innerhalb einer Karte darf klein bleiben. */
@@ -907,11 +993,7 @@ button.chip:hover { background: #e2e5ea; }
 .zeitstrahl-werte { font-size: 11px; color: var(--text-still);
                     font-variant-numeric: tabular-nums; }
 
-/* Markierung «heute» und Ereignis-Marken (Gerätefenster). */
-.zeitstrahl-heute {
-  position: absolute; top: 0; bottom: 0; width: 2px;
-  background: var(--marke); opacity: .55;
-}
+/* Marke: Punkt + Text. Wird von der Legende der Übersicht verwendet. */
 .zeitstrahl-marke {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--t-xs); color: var(--text-leise);
@@ -925,30 +1007,6 @@ button.chip:hover { background: #e2e5ea; }
 .zeitstrahl-marke.info    { color: var(--info); }
 .zeitstrahl-marke.stark   { color: var(--text); font-weight: 600; }
 
-/* Markenreihen über der Achse. Eine Reihe je Ereignis, eine Zelle je Jahr —
-   dieselbe Breitenverteilung wie .zeitstrahl-tick, damit Marke und Jahr
-   deckungsgleich stehen. */
-.zeitstrahl-reihe {
-  display: flex;
-  align-items: center;
-  gap: var(--a1);
-  min-width: 100%;
-  height: 26px;
-}
-.zeitstrahl-zelle {
-  flex: 1 1 0;
-  min-width: 54px;
-  position: relative;
-  height: 100%;
-}
-.zeitstrahl-zelle .zeitstrahl-marke {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-9px, -50%);
-  white-space: nowrap;
-}
-
 .zeitstrahl-legende {
   display: flex; flex-wrap: wrap; gap: var(--a4);
   padding: var(--a3) var(--a2) 0;
@@ -960,33 +1018,57 @@ button.chip:hover { background: #e2e5ea; }
    13. Detailfenster: Rumpf, Navigation, Speicherleiste, Toast, Dialog
 
    Gerätefenster und Benutzerfenster sind gleich aufgebaut: gleicher Kopf,
-   gleiche klebende Seitennavigation links, gleicher Inhaltsbereich rechts,
-   gleiche feste Speicherleiste unten. Deshalb steht das Gerüst hier und
-   nicht doppelt in geraet.css und benutzer.css.
+   gleiche Seitennavigation links, gleicher Inhaltsbereich rechts, gleiche
+   feste Speicherleiste unten. Deshalb steht das Gerüst hier und nicht
+   doppelt in geraet.css und benutzer.css.
+
+   Die Navigationsspalte reicht IMMER bis zum unteren Fensterrand, auch bei
+   kurzem Inhalt. Früher war die Spalte selbst klebend und endete als
+   schwebender Kasten nach dem letzten Menüeintrag; heute streckt sich die
+   Spalte, und nur das Menü darin klebt.
    ================================================================== */
 
 /* Erste Spalte «auto»: ist die Navigation verborgen (Laden, Fehler,
-   gelöschte Zeile), bleibt keine Lücke stehen. */
+   gelöschte Zeile), bleibt keine Lücke stehen.
+
+   «align-content: stretch» ist wichtig: die einzige Rasterzeile wird damit
+   auf die volle Höhe des Rumpfes gezogen. Der Rumpf selbst wächst über
+   flex:1 bis an den unteren Fensterrand — beides zusammen sorgt dafür,
+   dass die Navigationsspalte immer bis nach unten reicht, auch wenn der
+   Inhalt nur ein paar Zeilen hoch ist. */
 .fenster-rumpf {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
+  align-content: stretch;
 }
 
+/* Die Spalte: eigene weisse Fläche mit feiner Kante, volle Höhe. Sie ist
+   NICHT klebend — klebend ist das Menü darin (.fenster-nav-menue). */
 .fenster-nav {
+  grid-column: 1;
   width: 208px;
-  align-self: start;
-  position: sticky;
-  top: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--a4) var(--a3) var(--a6);
   background: var(--weiss);
   box-shadow: 1px 0 0 rgba(17, 24, 39, .05);
-  max-height: 100vh;
+}
+
+/* Das Menü klebt am oberen Rand und rollt bei sehr vielen Einträgen selbst.
+   Fehlt dieser Behälter (ältere Seite), stehen die Knöpfe einfach oben in
+   der Spalte — das Aussehen stimmt dann trotzdem. */
+.fenster-nav-menue {
+  position: sticky;
+  top: var(--a4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100dvh - var(--a6));
   overflow-y: auto;
 }
 
@@ -998,6 +1080,7 @@ button.chip:hover { background: #e2e5ea; }
   border: none;
   border-radius: var(--r-klein);
   padding: 7px 10px;
+  min-height: 34px;
   color: var(--text-leise);
   cursor: pointer;
   white-space: nowrap;
@@ -1020,13 +1103,22 @@ button.chip:hover { background: #e2e5ea; }
 .fenster-nav-knopf.aktiv .fenster-nav-zahl { color: var(--marke-dunkel); }
 
 /* Flex-Spalte, damit .lade und .fehler darin senkrecht wie waagrecht
-   zentriert stehen. Unten Platz für die feste Speicherleiste. */
+   zentriert stehen. Unten Platz für die feste Speicherleiste. Fest in der
+   zweiten Spalte: ist die Navigation verborgen (Laden, Fehler), bleibt die
+   leere erste Spalte 0 breit und der Inhalt füllt die ganze Seite. */
 .fenster-inhalt {
+  grid-column: 2;
   min-width: 0;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   padding: var(--a5) var(--a5) 96px;
 }
+
+/* Kein eigener Sockel für .lade/.fehler nötig: die Spalte ist gestreckt,
+   der Zustand füllt sie mit flex:1 und bleibt damit immer innerhalb des
+   Fensters. Der untere Innenabstand von 96 px liegt INNERHALB der Spalte
+   und macht die Seite deshalb nicht höher. */
 .fenster-bahn { max-width: 1400px; width: 100%; }
 
 .speicherleiste {
@@ -1145,23 +1237,90 @@ button.liste-zeile:hover { background: var(--flaeche); }
    Auf der Hauptseite weicht der Untertitel der Marke, damit Reiter und
    Suche Platz bekommen. In einem Detailfenster (body.fenster) steht dort
    die Kennzeichnung des Datensatzes — die bleibt immer sichtbar.
+
+   Grundsatz für schmale Fenster: die SEITE rollt nie waagrecht. Raster
+   fallen auf eine Spalte, die Kopfzeile bricht um, aus der Seiten-
+   navigation wird eine Reiterleiste, und was wirklich breit ist (Tabellen)
+   rollt in seinem eigenen Behälter.
    ================================================================== */
 
 @media (max-width: 760px) {
-  .kopf { padding: var(--a2) var(--a3); gap: var(--a3); }
+  /* Die Kopfzeile bricht um: Marke oben, Reiter, Status und Aktionen
+     darunter. Sie wird dadurch höher, aber nie breiter als das Fenster. */
+  .kopf {
+    padding: var(--a2) var(--a3);
+    gap: var(--a2);
+    align-items: flex-start;
+  }
+  .kopf-rechts { margin-left: 0; width: 100%; justify-content: flex-start; }
+  .kopf .chips { width: 100%; }
   .logo { height: 22px; }
   body:not(.fenster) .marke-unter { display: none; }
   .stand { display: none; }
   .reiter { order: 3; width: 100%; }
   .reiter-knopf { flex: 1; padding: 7px 8px; text-align: center; }
 
+  /* Berührungsflächen: mindestens --tippziel hoch. */
+  .knopf, .reiter-knopf { min-height: var(--tippziel); }
+
   .inhalt { padding: var(--a4) var(--a3) var(--a6); }
   .inhalt-fest { padding: var(--a3); }
 
-  .kacheln { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .kacheln { grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); }
   .gitter-2, .gitter-3, .karten { grid-template-columns: 1fr; }
   .suchfeld { max-width: none; flex-basis: 100%; }
   .kuerzel { display: none; }
   .hinweisband { left: var(--a3); right: var(--a3); bottom: var(--a3); text-align: center; }
   .toast { left: var(--a3); right: var(--a3); max-width: none; }
+
+  /* ---------- Detailfenster auf dem Handy ----------
+
+     Aus der Spalte links wird eine waagrecht rollende Reiterleiste über
+     dem Inhalt. Keine halbe Sidebar, kein zweispaltiges Raster.
+
+     Zwei Zeilen statt zwei Spalten: die erste bleibt so hoch wie die
+     Reiterleiste, die zweite nimmt den Rest — sonst würde
+     «align-content: stretch» beide Zeilen gleich hoch ziehen. */
+  .fenster-rumpf {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .fenster-nav {
+    grid-row: 1;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--a1);
+    padding: var(--a2) var(--a3);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    box-shadow: 0 1px 0 rgba(17, 24, 39, .08);
+  }
+  .fenster-nav-menue {
+    position: static;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: var(--a1);
+    max-height: none;
+    overflow: visible;
+  }
+  .fenster-nav-knopf {
+    min-height: var(--tippziel);
+    padding: 8px 12px;
+    justify-content: center;
+  }
+
+  .fenster-inhalt {
+    grid-column: 1;
+    grid-row: 2;
+    padding: var(--a4) var(--a3) 104px;
+  }
+
+  .speicherleiste { padding: var(--a2) var(--a3); gap: var(--a2); }
+  .speicher-text { width: 100%; margin-right: 0; }
+  .speicherleiste .knopf { flex: 1 1 auto; justify-content: center; }
 }
