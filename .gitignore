@@ -1,0 +1,6 @@
+# Konfiguration mit echten IDs, Logs und Datenexporte bleiben lokal
+code/Sync-SccmToSharePoint.config.json
+*.log
+*_rows.json
+import-*.json
+test.*

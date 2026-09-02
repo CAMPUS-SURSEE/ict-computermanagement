@@ -1,0 +1,11 @@
+{
+  "TenantId": "<Tenant-GUID, wird von Setup-EntraApp.ps1 eingetragen>",
+  "ClientId": "<App-ID der Registrierung SCCM-SharePoint-Sync>",
+  "CertThumbprint": "<Thumbprint des Zertifikats in LocalMachine\\My>",
+  "SiteUrl": "https://campussursee.sharepoint.com/sites/mgmts-ict-s",
+  "ListTitle": "Computer Inventar",
+  "ListId": "70afe6a4-0d23-4582-80c7-0cd0776961f8",
+  "SmsProvider": "adminsrv319.sasadmin.local",
+  "SiteCode": "PS2",
+  "LogPath": "C:\\Scripts\\ComputerInventar\\Sync-SccmToSharePoint.log"
+}

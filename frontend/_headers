@@ -1,0 +1,35 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
+
+# Hinweise zur Richtlinie oben. Wird eine dieser Adressen je geändert, muss sie
+# auch hier nachgeführt werden, sonst blockiert der Browser den Aufruf
+# stillschweigend, und der Fehler ist nur in der Entwicklerkonsole zu sehen.
+#
+#   script-src 'self'           Der gesamte eigene Code liegt in .js-Dateien.
+#                               In den HTML-Seiten steht bewusst kein einziges
+#                               inline-Script, deshalb braucht es hier kein
+#                               'unsafe-inline'. Wer je ein <script>…</script>
+#                               direkt in index.html schreibt, muss das hier
+#                               aufweichen: besser den Code in eine .js-Datei.
+#   script-src cdn.jsdelivr.net Für MSAL, die Anmeldebibliothek von Microsoft.
+#                               Sie ist in index.html mit einer
+#                               Integritätsprüfsumme (integrity="sha384-…") auf
+#                               eine feste Fassung festgenagelt. Wird die
+#                               Version angehoben, muss die Prüfsumme mit.
+#   style-src 'unsafe-inline'   Die Balken der Übersicht bekommen ihre Breite
+#                               über style.width gesetzt. Für Stile ist das
+#                               ungefährlich, für Skripte wäre es das nicht.
+#   img-src campus-sursee.ch    Nur für das Logo und das Favicon. Beide werden
+#                               bewusst direkt von der Hauptseite geladen und
+#                               nicht ins Repository kopiert.
+#   connect-src                 Microsoft Graph liefert die Listendaten,
+#                               login.microsoftonline.com die Token.
+#   frame-src login…            MSAL erneuert Token still in einem verborgenen
+#                               Rahmen; ohne diesen Eintrag scheitert das.
+#   default-src 'none'          Alles Übrige ist verboten. Die Seite lädt
+#                               nichts nach, sendet nichts weg und bettet
+#                               nichts ein.

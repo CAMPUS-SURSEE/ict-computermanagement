@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Inventar — Campus Sursee</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-links">
+    <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <h1>Computer Inventar</h1>
+  </div>
+  <div class="kopf-rechts">
+    <span class="stand" id="stand"></span>
+    <button type="button" class="knopf" id="knopf-neuladen">Neu laden</button>
+    <span class="benutzer" id="benutzer"></span>
+    <button type="button" class="knopf knopf-still" id="knopf-abmelden" hidden>Abmelden</button>
+  </div>
+</header>
+
+<nav class="reiter" id="reiter" hidden>
+  <button type="button" class="reiter-knopf" data-ansicht="uebersicht">Übersicht</button>
+  <button type="button" class="reiter-knopf" data-ansicht="geraete">Geräte</button>
+  <button type="button" class="reiter-knopf" data-ansicht="software">Software</button>
+</nav>
+
+<main>
+
+  <!-- Zustände: Laden und Fehler -->
+  <div class="meldung" id="meldung-laden">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="meldung-laden-text">Anmeldung wird geprüft …</p>
+  </div>
+
+  <div class="meldung meldung-fehler" id="meldung-fehler" hidden>
+    <h2 id="fehler-titel">Es ist ein Fehler aufgetreten</h2>
+    <p id="fehler-text"></p>
+    <p class="hinweis" id="fehler-hinweis"></p>
+    <button type="button" class="knopf knopf-primaer" id="knopf-nochmal">Nochmals versuchen</button>
+  </div>
+
+  <!-- Übersicht -->
+  <section class="ansicht" id="ansicht-uebersicht" hidden>
+    <div class="kennzahlen" id="kennzahlen"></div>
+    <div class="verteilungen" id="verteilungen"></div>
+  </section>
+
+  <!-- Geräte -->
+  <section class="ansicht" id="ansicht-geraete" hidden>
+
+    <div class="suchzeile">
+      <input type="search" id="suche" class="suche" placeholder="Suchen über alle Felder …" autocomplete="off">
+      <button type="button" class="knopf" id="knopf-filter">Filter</button>
+      <button type="button" class="knopf" id="knopf-spalten">Spalten</button>
+      <button type="button" class="knopf" id="knopf-csv">CSV</button>
+      <span class="anzahl" id="anzahl"></span>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="filterleiste" id="filterleiste" hidden></div>
+    <div class="spaltenwahl" id="spaltenwahl" hidden></div>
+
+    <div class="tabelle-rahmen">
+      <table class="tabelle" id="tabelle">
+        <thead id="tabellenkopf"></thead>
+        <tbody id="tabellenkoerper"></tbody>
+      </table>
+      <p class="leer" id="tabelle-leer" hidden>Keine Zeile passt zu den aktuellen Filtern.</p>
+    </div>
+  </section>
+
+  <!-- Software -->
+  <section class="ansicht" id="ansicht-software" hidden>
+    <div class="software-spalten">
+      <div class="software-block">
+        <h2>Software und Rechte aus dem Inventar</h2>
+        <p class="hinweis">Ja/Nein-Spalten und AD-Gruppen. Ein Klick filtert die Geräteliste.</p>
+        <div id="software-inventar"></div>
+      </div>
+      <div class="software-block">
+        <h2>SCCM-Applikationen (Deployments)</h2>
+        <p class="hinweis">Aus der Spalte «Zugewiesene Applikationen» aller Zeilen zusammengezählt.</p>
+        <div id="software-sccm"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Detailpanel -->
+<div class="detail-hintergrund" id="detail-hintergrund" hidden></div>
+<aside class="detail" id="detail" hidden aria-label="Gerätedetails">
+  <div class="detail-kopf">
+    <div>
+      <h2 id="detail-titel"></h2>
+      <p class="detail-unter" id="detail-unter"></p>
+    </div>
+    <button type="button" class="knopf knopf-still" id="knopf-detail-zu" aria-label="Schliessen">Schliessen</button>
+  </div>
+  <div class="detail-inhalt" id="detail-inhalt"></div>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
+        integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="konfig.js"></script>
+<script src="spalten.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
