@@ -240,12 +240,55 @@ const Daten = (function () {
   /** Alle Benutzer. */
   async function benutzer(fortschritt) { return alleZeilen("benutzer", fortschritt); }
 
-  /** Inhalt von programme.json aus der Dokumentbibliothek der Site. */
+  /* Verständliche Meldung, wenn programme.json nicht geladen werden kann. */
+  function programmFehler(ursache) {
+    const fehler = new Error(
+      "Die Datei " + KONFIG.programmeDateiPfad + " konnte nicht geladen werden. "
+      + "Microsoft Graph leitet für Dateien auf campussursee.sharepoint.com weiter. "
+      + "Diese Adresse muss in frontend/_headers unter «connect-src» stehen, sonst "
+      + "blockiert der Browser den Abruf. Ohne die Datei fehlen alle Berechtigungen. "
+      + "(" + ((ursache && ursache.message) || "unbekannter Fehler") + ")");
+    fehler.programme = true;
+    return fehler;
+  }
+
+  /** Inhalt von programme.json aus der Dokumentbibliothek der Site.
+
+     Graph liefert Dateiinhalte nicht selbst aus: der Aufruf von «:/content»
+     endet in einer Weiterleitung auf campussursee.sharepoint.com. Diese Adresse
+     muss in frontend/_headers unter connect-src stehen, sonst bricht der Browser
+     mit «Failed to fetch» ab. Scheitert der Weg trotzdem (etwa weil der
+     Authorization-Kopf bei der Weiterleitung verloren geht), wird die von Graph
+     gemeldete Download-Adresse ohne Kopfzeilen nachgeladen. */
   async function programme() {
     if (mockModus) return Mock.programme();
-    const pfad = "/sites/" + KONFIG.siteId + "/drive/root:/"
-      + KONFIG.programmeDateiPfad.split("/").map(encodeURIComponent).join("/") + ":/content";
-    const inhalt = await anfrage(pfad, { was: "die Datei " + KONFIG.programmeDateiPfad });
+    const wurzel = "/sites/" + KONFIG.siteId + "/drive/root:/"
+      + KONFIG.programmeDateiPfad.split("/").map(encodeURIComponent).join("/");
+    const was = "die Datei " + KONFIG.programmeDateiPfad;
+
+    let inhalt = null;
+    try {
+      inhalt = await anfrage(wurzel + ":/content", { was: was });
+    } catch (e) {
+      if (e && e.status !== undefined && e.status !== 0) throw e;
+      // Netzwerk- oder Richtlinienfehler: über die Download-Adresse versuchen.
+      let beschreibung;
+      try {
+        beschreibung = await anfrage(wurzel, { was: was });
+      } catch (e2) {
+        throw programmFehler(e2);
+      }
+      const adresse = beschreibung && beschreibung["@microsoft.graph.downloadUrl"];
+      if (!adresse) throw programmFehler(e);
+      try {
+        const antwort = await fetch(adresse);
+        if (!antwort.ok) throw new Error("HTTP " + antwort.status);
+        inhalt = await antwort.json();
+      } catch (e3) {
+        throw programmFehler(e3);
+      }
+    }
+
     if (!inhalt || !Array.isArray(inhalt.programme)) {
       throw new Error("Die Datei " + KONFIG.programmeDateiPfad
         + " ist leer oder hat nicht die erwartete Form (Schlüssel «programme»).");

@@ -3,7 +3,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://campussursee.sharepoint.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
 
 # Hinweise zur Richtlinie oben. Wird eine dieser Adressen je geändert, muss sie
 # auch hier nachgeführt werden, sonst blockiert der Browser den Aufruf
@@ -28,6 +28,15 @@
 #                               nicht ins Repository kopiert.
 #   connect-src                 Microsoft Graph liefert die Listendaten,
 #                               login.microsoftonline.com die Token.
+#   connect-src sharepoint      Nur für «Inventar/programme.json». Graph liefert
+#                               Dateiinhalte nicht selbst aus, sondern antwortet
+#                               auf …/drive/root:/…:/content mit einer
+#                               Weiterleitung auf campussursee.sharepoint.com
+#                               (download.aspx mit kurzlebigem tempauth-Token).
+#                               Ohne diesen Eintrag bricht der Abruf mit
+#                               «Failed to fetch» ab und die Berechtigungen
+#                               fehlen. Zieht die Site je auf einen anderen
+#                               Mandanten um, muss der Name hier mitziehen.
 #   frame-src login…            MSAL erneuert Token still in einem verborgenen
 #                               Rahmen; ohne diesen Eintrag scheitert das.
 #   default-src 'none'          Alles Übrige ist verboten. Die Seite lädt
