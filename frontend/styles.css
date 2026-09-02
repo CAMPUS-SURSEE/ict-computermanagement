@@ -1,17 +1,36 @@
 /* styles.css — Computer Inventar.
 
-   Gestaltung bewusst zurückhaltend: weisser Grund, Graustufen, eine einzige
-   Akzentfarbe. Getrennt wird mit 1px-Linien und Weissraum, nicht mit grauen
-   Flächen oder Schatten. */
+   Aufbau als App-Gerüst: eine schlanke Kopfleiste, darunter genau eine
+   rollende Fläche. Die Geräteliste rollt in ihrem eigenen Rahmen, damit
+   Tabellenkopf und erste Spalte stehen bleiben und die Seite selbst nie
+   seitwärts rutscht.
+
+   Gestaltung: ruhige helle Fläche, weisse Karten, feine Linien, eine
+   einzige Akzentfarbe (Campus-Grün). Schatten und Radien sind bewusst
+   dezent. */
 
 :root {
-  --gruen:     #84B819;
-  --gruen-hell:#f2f8e4;
-  --text:      #111111;
-  --sekundaer: #767676;
-  --linie:     #ebebeb;
-  --hover:     #f5f5f5;
-  --weiss:     #ffffff;
+  --gruen:       #84B819;
+  --gruen-dunkel:#6f9c14;
+  --gruen-hell:  #f2f8e4;
+  --text:        #111827;
+  --sekundaer:   #6b7280;
+  --linie:       #e5e7eb;
+  --hover:       #f3f4f6;
+  --weiss:       #ffffff;
+  --flaeche:     #f7f8fa;
+  --rot:         #dc2626;
+  --rot-hell:    #fef2f2;
+  --gelb:        #d97706;
+  --gelb-hell:   #fffbeb;
+  --blau:        #2563eb;
+  --blau-hell:   #eff6ff;
+  --radius:      8px;
+  --radius-klein:5px;
+  --schatten:    0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+
+  /* Zeilenhöhe der Tabelle, vom Dichte-Umschalter verändert. */
+  --zellen-hoch: 8px;
 }
 
 * { box-sizing: border-box; }
@@ -23,111 +42,214 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--weiss);
+  height: 100%;
+  background: var(--flaeche);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                "Helvetica Neue", Arial, sans-serif;
   font-size: 14px;
   line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Das App-Gerüst: Kopf oben, genau eine rollende Fläche darunter.
+   overflow-x:hidden hält die Seite in jeder Lage schmal genug. */
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 h1, h2, h3 { font-weight: 600; margin: 0; }
-h1 { font-size: 17px; }
-h2 { font-size: 15px; }
+h1 { font-size: 16px; letter-spacing: -0.2px; }
+h2 { font-size: 14px; }
 h3 { font-size: 13px; }
 
-a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
-a:hover { color: var(--gruen); }
+p { margin: 0; }
+
+a { color: var(--text); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 :focus-visible {
   outline: 2px solid var(--gruen);
   outline-offset: 2px;
+  border-radius: var(--radius-klein);
 }
 
-/* ---------- Kopfzeile ---------- */
+.icon { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor;
+        stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+
+/* ==================================================================
+   Kopfleiste
+   ================================================================== */
 
 .kopf {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 20px;
+  gap: 20px;
+  padding: 0 18px;
+  min-height: 56px;
+  background: var(--weiss);
   border-bottom: 1px solid var(--linie);
   flex-wrap: wrap;
+  z-index: 30;
 }
 
-.kopf-links { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.logo { height: 30px; width: auto; display: block; }
+.kopf-marke { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo { height: 26px; width: auto; display: block; }
+.marke-strich { width: 1px; height: 26px; background: var(--linie); }
+.marke-text { min-width: 0; }
+.marke-unter { font-size: 11px; color: var(--sekundaer); letter-spacing: 0.2px; }
 
 .kopf-rechts {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .stand, .benutzer { color: var(--sekundaer); font-size: 12px; }
+.benutzer {
+  color: var(--text);
+  background: var(--hover);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.benutzer:empty { display: none; }
 
-/* ---------- Knöpfe ---------- */
+/* ---------- Reiter als Segmente ---------- */
+
+.reiter {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.reiter-knopf {
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: none;
+  color: var(--sekundaer);
+  padding: 5px 14px;
+  border-radius: var(--radius-klein);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reiter-knopf:hover { color: var(--text); background: rgba(0,0,0,.04); }
+.reiter-knopf.aktiv {
+  color: var(--text);
+  background: var(--weiss);
+  font-weight: 600;
+  box-shadow: var(--schatten);
+}
+
+
+/* ==================================================================
+   Knöpfe
+   ================================================================== */
 
 .knopf {
   font: inherit;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--weiss);
   color: var(--text);
   border: 1px solid var(--linie);
-  border-radius: 3px;
-  padding: 5px 11px;
+  border-radius: var(--radius-klein);
+  padding: 6px 11px;
   cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--schatten);
 }
-.knopf:hover { background: var(--hover); border-color: #dcdcdc; }
-.knopf:active { background: #eeeeee; }
+.knopf:hover { background: var(--hover); border-color: #d7dae0; }
+.knopf:active { background: #e9ebef; }
+.knopf .icon { color: var(--sekundaer); }
+.knopf:hover .icon { color: var(--text); }
 
 .knopf-primaer {
   background: var(--gruen);
   border-color: var(--gruen);
   color: var(--weiss);
-  font-weight: 500;
+  font-weight: 600;
 }
-.knopf-primaer:hover { background: #77a516; border-color: #77a516; }
+.knopf-primaer:hover { background: var(--gruen-dunkel); border-color: var(--gruen-dunkel); }
+.knopf-primaer .icon, .knopf-primaer:hover .icon { color: var(--weiss); }
 
-.knopf-still { border-color: transparent; color: var(--sekundaer); }
-.knopf-still:hover { color: var(--text); }
+.knopf-still { border-color: transparent; background: none; box-shadow: none; color: var(--sekundaer); }
+.knopf-still:hover { color: var(--text); background: var(--hover); border-color: transparent; }
 
-/* ---------- Reiter ---------- */
+.knopf.aktiv { border-color: var(--gruen); background: var(--gruen-hell); }
+.knopf.aktiv .icon { color: var(--gruen-dunkel); }
 
-.reiter {
+/* Kleiner Zähler im Knopf, etwa «Filter (3)». */
+.zaehler {
+  background: var(--gruen);
+  color: var(--weiss);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 999px;
+  padding: 3px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+.knopf .zaehler-still { background: var(--linie); color: var(--sekundaer); }
+
+
+/* ==================================================================
+   Hauptfläche
+   ================================================================== */
+
+main {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
-  gap: 4px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--linie);
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.reiter-knopf {
-  font: inherit;
-  font-size: 14px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--sekundaer);
-  padding: 10px 8px;
-  margin-bottom: -1px;
-  cursor: pointer;
+/* Ansichten, die als Ganzes rollen (Übersicht, Software). */
+.ansicht-rollen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 20px 40px;
 }
-.reiter-knopf:hover { color: var(--text); }
-.reiter-knopf.aktiv { color: var(--text); border-bottom-color: var(--gruen); font-weight: 600; }
 
-main { padding: 20px; max-width: 1500px; }
+/* Ansicht mit fester Höhe: nur die Tabelle rollt (Geräte). */
+.ansicht-fest {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 20px 20px;
+  gap: 10px;
+}
 
 /* ---------- Zustände ---------- */
 
-.meldung { padding: 40px 4px; max-width: 620px; }
+.meldung { padding: 48px 24px; max-width: 620px; }
 .meldung p { color: var(--sekundaer); }
-.meldung-fehler h2 { margin-bottom: 8px; }
+.meldung-fehler h2 { margin-bottom: 8px; font-size: 16px; }
 .meldung-fehler p { color: var(--text); }
 .meldung-fehler .hinweis { color: var(--sekundaer); font-size: 13px; }
-.meldung-fehler .knopf { margin-top: 12px; }
+.meldung-fehler .knopf { margin-top: 14px; }
 
 .spinner {
   width: 18px; height: 18px;
@@ -139,63 +261,113 @@ main { padding: 20px; max-width: 1500px; }
 }
 @keyframes dreh { to { transform: rotate(360deg); } }
 
-.hinweis { color: var(--sekundaer); font-size: 12px; margin: 2px 0 10px; }
-.leer { color: var(--sekundaer); padding: 24px 4px; }
+.hinweis { color: var(--sekundaer); font-size: 12px; margin: 2px 0 0; }
+.leer { color: var(--sekundaer); padding: 32px 16px; text-align: center; }
 
-/* ---------- Übersicht: Kennzahlen ---------- */
+
+/* ==================================================================
+   Karten und Bereiche
+   ================================================================== */
+
+.bereich { margin-bottom: 28px; }
+.bereich-titel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px;
+                 color: var(--sekundaer); }
+.bereich-unter { font-size: 12px; color: var(--sekundaer); margin: 2px 0 12px; }
+
+.karte {
+  background: var(--weiss);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  overflow: hidden;
+}
+.karte-kopf { padding: 12px 16px; border-bottom: 1px solid var(--linie); }
+.karte-inhalt { padding: 8px 10px 12px; }
+
+
+/* ==================================================================
+   Übersicht: Kennzahlen
+   ================================================================== */
 
 .kennzahlen {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 1px;
-  background: var(--linie);
-  border: 1px solid var(--linie);
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
 }
 
 .kennzahl {
+  position: relative;
   background: var(--weiss);
-  border: none;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
   font: inherit;
   text-align: left;
   padding: 14px 16px;
   cursor: pointer;
   display: block;
+  color: var(--text);
+  transition: border-color .12s, box-shadow .12s;
 }
-.kennzahl:hover { background: var(--hover); }
+.kennzahl:hover { border-color: #d0d4da; box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.06); }
 .kennzahl[data-klickbar="nein"] { cursor: default; }
-.kennzahl[data-klickbar="nein"]:hover { background: var(--weiss); }
+.kennzahl[data-klickbar="nein"]:hover { border-color: var(--linie); box-shadow: var(--schatten); }
 
-.kennzahl-wert { font-size: 26px; font-weight: 600; line-height: 1.1; letter-spacing: -0.5px; }
-.kennzahl-text { font-size: 12px; color: var(--sekundaer); margin-top: 4px; }
+.kennzahl-wert { font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: -0.8px; }
+.kennzahl-wert.klein { font-size: 19px; letter-spacing: -0.2px; padding: 5px 0 4px; }
+.kennzahl-text { font-size: 12px; color: var(--sekundaer); margin-top: 5px; }
 
-/* ---------- Übersicht: Verteilungen ---------- */
+.kennzahl-marke {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-top: 8px;
+}
+.ton-rot  .kennzahl-marke { background: var(--rot-hell);  color: var(--rot); }
+.ton-gelb .kennzahl-marke { background: var(--gelb-hell); color: var(--gelb); }
+.ton-blau .kennzahl-marke { background: var(--blau-hell); color: var(--blau); }
+.ton-gruen .kennzahl-marke { background: var(--gruen-hell); color: var(--gruen-dunkel); }
+
+.ton-rot  .kennzahl-wert { color: var(--rot); }
+.ton-gelb .kennzahl-wert { color: var(--gelb); }
+
+.kennzahl.ton-rot,
+.kennzahl.ton-gelb,
+.kennzahl.ton-blau,
+.kennzahl.ton-gruen { border-top: 2px solid var(--linie); }
+.kennzahl.ton-rot   { border-top-color: var(--rot); }
+.kennzahl.ton-gelb  { border-top-color: var(--gelb); }
+.kennzahl.ton-blau  { border-top-color: var(--blau); }
+.kennzahl.ton-gruen { border-top-color: var(--gruen); }
+
+
+/* ==================================================================
+   Übersicht: Verteilungen
+   ================================================================== */
 
 .verteilungen {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 28px 40px;
-}
-
-.verteilung h2 {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--linie);
-  margin-bottom: 10px;
+  gap: 16px;
+  align-items: start;
 }
 
 .balken-zeile {
   display: grid;
-  grid-template-columns: 1fr 44px;
+  grid-template-columns: 1fr 52px;
   align-items: center;
   gap: 10px;
   width: 100%;
   border: none;
   background: none;
   font: inherit;
+  color: var(--text);
   text-align: left;
-  padding: 4px 4px;
+  padding: 5px 6px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius-klein);
 }
 .balken-zeile:hover { background: var(--hover); }
 
@@ -209,72 +381,126 @@ main { padding: 20px; max-width: 1500px; }
 .balken-spur {
   display: block;
   height: 6px;
-  background: var(--linie);
+  background: var(--hover);
   border-radius: 3px;
-  margin-top: 3px;
+  margin-top: 4px;
   overflow: hidden;
 }
-.balken-fuell { display: block; height: 100%; background: var(--gruen); }
-.balken-wert { font-size: 12px; color: var(--sekundaer); text-align: right; }
+.balken-fuell { display: block; height: 100%; background: var(--gruen); border-radius: 3px; }
+.balken-wert { font-size: 12px; color: var(--sekundaer); text-align: right;
+               font-variant-numeric: tabular-nums; }
+.karte-inhalt .hinweis { padding: 6px 6px 0; }
 
-/* ---------- Geräte: Suche und Filter ---------- */
 
-.suchzeile {
+/* ==================================================================
+   Geräte: Werkzeugleiste, Chips, Panels
+   ================================================================== */
+
+.werkzeug-bereich { position: relative; flex: none; }
+
+.werkzeugleiste {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 10px;
 }
+
+.suchfeld { position: relative; display: flex; align-items: center;
+            flex: 1 1 280px; max-width: 420px; min-width: 200px; }
+.suchfeld .icon { position: absolute; left: 10px; color: var(--sekundaer); pointer-events: none; }
 
 .suche {
   font: inherit;
   font-size: 14px;
-  padding: 6px 10px;
+  padding: 7px 42px 7px 32px;
+  width: 100%;
   border: 1px solid var(--linie);
-  border-radius: 3px;
-  min-width: 260px;
-  flex: 1 1 260px;
-  max-width: 420px;
+  border-radius: var(--radius-klein);
   background: var(--weiss);
   color: var(--text);
+  box-shadow: var(--schatten);
 }
-.suche:focus { outline: none; border-color: var(--gruen); }
+.suche:focus { outline: none; border-color: var(--gruen); box-shadow: 0 0 0 3px var(--gruen-hell); }
+.suche::-webkit-search-cancel-button { cursor: pointer; }
 
-.anzahl { color: var(--sekundaer); font-size: 12px; margin-left: auto; }
+.kuerzel {
+  position: absolute;
+  right: 8px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--sekundaer);
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: 4px;
+  padding: 0 5px;
+  pointer-events: none;
+}
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.chips:empty { margin-bottom: 0; }
+.anzahl { color: var(--sekundaer); font-size: 12px; margin-left: auto;
+          font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
 
 .chip {
   font: inherit;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--gruen-hell);
-  border: 1px solid var(--gruen);
+  border: 1px solid #cfe3a2;
   color: var(--text);
-  border-radius: 12px;
-  padding: 2px 8px 2px 10px;
+  border-radius: 999px;
+  padding: 3px 9px;
   cursor: pointer;
 }
 .chip:hover { background: #e8f2d0; }
-.chip .x { color: var(--sekundaer); margin-left: 6px; }
-.chip-alle { background: var(--weiss); border-color: var(--linie); }
+.chip .x { color: var(--sekundaer); font-size: 14px; line-height: 1; }
+.chip:hover .x { color: var(--rot); }
+.chip-alle { background: var(--weiss); border-color: var(--linie); color: var(--sekundaer); }
+.chip-alle:hover { background: var(--hover); color: var(--text); }
 
-.filterleiste, .spaltenwahl {
+/* Filter- und Spaltenpanel schweben über der Tabelle. */
+.panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  z-index: 20;
+  background: var(--weiss);
   border: 1px solid var(--linie);
-  padding: 14px 16px;
-  margin-bottom: 14px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 6px rgba(0,0,0,.05), 0 10px 24px rgba(0,0,0,.10);
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
 }
+
+.panel-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--linie);
+  position: sticky;
+  top: 0;
+  background: var(--weiss);
+  z-index: 1;
+}
+.panel-koerper { padding: 14px 16px 16px; }
 
 .filtergitter {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 14px 20px;
 }
 
-.filterfeld label {
+.filterfeld > label {
   display: block;
   font-size: 12px;
+  font-weight: 600;
   color: var(--sekundaer);
   margin-bottom: 4px;
 }
@@ -284,17 +510,18 @@ main { padding: 20px; max-width: 1500px; }
   font: inherit;
   font-size: 13px;
   border: 1px solid var(--linie);
-  border-radius: 3px;
+  border-radius: var(--radius-klein);
   background: var(--weiss);
   color: var(--text);
-  padding: 5px 8px;
+  padding: 6px 8px;
 }
 .filterfeld select:focus { outline: none; border-color: var(--gruen); }
 
 .mehrfach {
-  max-height: 130px;
+  max-height: 132px;
   overflow-y: auto;
   padding: 6px 8px;
+  background: var(--flaeche);
 }
 .mehrfach label {
   display: block;
@@ -314,40 +541,53 @@ main { padding: 20px; max-width: 1500px; }
   font: inherit;
   font-size: 12px;
   border: 1px solid var(--linie);
-  border-radius: 3px;
-  padding: 4px 6px;
-  margin-bottom: 4px;
+  border-radius: var(--radius-klein);
+  padding: 5px 7px;
+  margin-bottom: 5px;
 }
+.filter-suche:focus { outline: none; border-color: var(--gruen); }
 
-.spaltengruppe { margin-bottom: 12px; }
+.spaltengruppe { margin-bottom: 14px; }
 .spaltengruppe h3 {
   color: var(--sekundaer);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--linie);
 }
 .spaltengruppe .liste {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 0 16px;
 }
-.spaltengruppe label { font-size: 13px; cursor: pointer; display: block; }
+.spaltengruppe label { font-size: 13px; cursor: pointer; display: block; padding: 1px 0; }
 .spaltengruppe input { accent-color: var(--gruen); margin-right: 6px; }
 
 .werkzeugzeile { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
-/* ---------- Tabelle ---------- */
+
+/* ==================================================================
+   Tabelle
+   ================================================================== */
 
 .tabelle-rahmen {
-  overflow-x: auto;
-  border-top: 1px solid var(--linie);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--weiss);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
 }
 
 .tabelle {
-  border-collapse: collapse;
-  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
   font-size: 13px;
 }
 
@@ -356,190 +596,181 @@ main { padding: 20px; max-width: 1500px; }
   font-weight: 600;
   color: var(--sekundaer);
   font-size: 12px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--linie);
+  padding: 9px 12px;
   white-space: nowrap;
   cursor: pointer;
   position: sticky;
   top: 0;
+  z-index: 3;
   background: var(--weiss);
+  box-shadow: inset 0 -1px 0 var(--linie);
   user-select: none;
 }
-.tabelle th:hover { color: var(--text); }
+.tabelle th:hover { color: var(--text); background: var(--hover); }
 .tabelle th.sortiert { color: var(--text); }
-.tabelle th .pfeil { color: var(--gruen); margin-left: 4px; }
+.tabelle th .pfeil { color: var(--gruen-dunkel); margin-left: 4px; }
 
 .tabelle td {
-  padding: 7px 10px;
+  padding: var(--zellen-hoch) 12px;
   border-bottom: 1px solid var(--linie);
   white-space: nowrap;
-  max-width: 320px;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
+  background: var(--weiss);
 }
 
 .tabelle tbody tr { cursor: pointer; }
-.tabelle tbody tr:hover { background: var(--hover); }
+.tabelle tbody tr:hover td { background: var(--hover); }
+
+/* Erste Spalte bleibt beim seitlichen Rollen stehen. */
+.tabelle th:first-child,
+.tabelle td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 190px;
+  box-shadow: 1px 0 0 var(--linie);
+}
+.tabelle th:first-child { z-index: 4; box-shadow: inset 0 -1px 0 var(--linie), 1px 0 0 var(--linie); }
+
+.name-link { color: var(--text); font-weight: 500; }
+.tabelle tbody tr:hover .name-link { color: var(--gruen-dunkel); text-decoration: underline;
+                                     text-underline-offset: 2px; }
 
 .punkt {
   display: inline-block;
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--gruen);
-  margin-right: 6px;
+  margin-right: 8px;
   vertical-align: middle;
+  flex: none;
 }
 .punkt-aus { background: var(--linie); }
 
-.ja { color: var(--gruen); font-weight: 600; }
+.ja { color: var(--gruen-dunkel); font-weight: 600; }
 .nein { color: var(--sekundaer); }
 .still { color: var(--sekundaer); }
-.zahl-zelle { text-align: right; }
+.zahl-zelle { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ---------- Software-Ansicht ---------- */
+/* Dichte-Umschalter: kompakt oder normal. */
+body.dicht { --zellen-hoch: 4px; }
+body.dicht .tabelle th { padding-top: 6px; padding-bottom: 6px; }
+body.dicht .tabelle { font-size: 12.5px; }
+
+
+/* ==================================================================
+   Software-Ansicht
+   ================================================================== */
 
 .software-spalten {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 32px 48px;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  align-items: start;
 }
-.software-block h2 { margin-bottom: 2px; }
 
 .sw-zeile {
   display: grid;
-  grid-template-columns: 1fr 90px 46px;
+  grid-template-columns: 1fr 100px 56px;
   align-items: center;
   gap: 10px;
   width: 100%;
   border: none;
-  border-bottom: 1px solid var(--linie);
+  border-radius: var(--radius-klein);
   background: none;
   font: inherit;
+  color: var(--text);
   text-align: left;
-  padding: 6px 4px;
+  padding: 6px 8px;
   cursor: pointer;
 }
 .sw-zeile:hover { background: var(--hover); }
-.sw-zeile .zusatz { font-size: 12px; color: var(--sekundaer); text-align: right; }
+.sw-zeile > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-zeile .zusatz { font-size: 12px; color: var(--sekundaer); text-align: right;
+                    font-variant-numeric: tabular-nums; }
 
 .sw-kopf {
   display: grid;
-  grid-template-columns: 1fr 90px 46px;
+  grid-template-columns: 1fr 100px 56px;
   gap: 10px;
-  padding: 6px 4px;
+  padding: 4px 8px 6px;
   border-bottom: 1px solid var(--linie);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sekundaer);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 .sw-kopf span:not(:first-child) { text-align: right; }
 
 .sw-gruppe {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sekundaer);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin: 18px 0 2px;
+  letter-spacing: 0.5px;
+  margin: 16px 0 2px;
+  padding: 0 8px;
 }
 
-/* ---------- Detailpanel ---------- */
 
-.detail-hintergrund {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 17, 17, 0.25);
-  z-index: 10;
-}
-
-.detail {
-  position: fixed;
-  top: 0; right: 0; bottom: 0;
-  width: min(680px, 100%);
-  background: var(--weiss);
-  border-left: 1px solid var(--linie);
-  z-index: 11;
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-kopf {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--linie);
-}
-.detail-unter { color: var(--sekundaer); font-size: 12px; margin: 2px 0 0; }
-
-.detail-inhalt { overflow-y: auto; padding: 4px 20px 40px; }
-
-.detail-gruppe { margin-top: 22px; }
-.detail-gruppe h3 {
-  color: var(--sekundaer);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--linie);
-  margin-bottom: 6px;
-}
-
-.feldzeile {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 12px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--linie);
-}
-.feldzeile:last-child { border-bottom: none; }
-.feldname { color: var(--sekundaer); font-size: 12px; padding-top: 1px; }
-.feldwert { word-break: break-word; white-space: pre-wrap; }
-.feldwert .relativ { color: var(--sekundaer); font-size: 12px; margin-left: 6px; }
-
-.detail-liste { margin: 0; padding: 0; list-style: none; }
-.detail-liste li { padding: 3px 0; border-bottom: 1px solid var(--linie); font-size: 13px; }
-.detail-liste li:last-child { border-bottom: none; }
-.detail-liste .neben { color: var(--sekundaer); font-size: 12px; }
-
-.mini-tabelle { width: 100%; border-collapse: collapse; font-size: 13px; }
-.mini-tabelle th {
-  text-align: left; font-weight: 600; font-size: 12px; color: var(--sekundaer);
-  border-bottom: 1px solid var(--linie); padding: 4px 8px 4px 0;
-}
-.mini-tabelle td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--linie); vertical-align: top; }
-
-.detail-verweise { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; }
-
-.geteilt-hinweis {
-  border-left: 2px solid var(--gruen);
-  padding: 4px 0 4px 10px;
-  margin-top: 14px;
-  font-size: 13px;
-}
-
-/* ---------- Mock-Hinweis ---------- */
+/* ==================================================================
+   Mock-Band und Hinweisband
+   ================================================================== */
 
 .mock-band {
-  background: var(--gruen-hell);
-  border-bottom: 1px solid var(--gruen);
-  padding: 6px 20px;
+  flex: none;
+  background: var(--gelb-hell);
+  border-bottom: 1px solid #f3e2b8;
+  color: #7c5108;
+  padding: 7px 20px;
   font-size: 12px;
+  z-index: 25;
 }
 
-/* ---------- Mobil ---------- */
+.hinweisband {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  background: var(--text);
+  color: var(--weiss);
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+  animation: einblenden .18s ease-out;
+}
+@keyframes einblenden { from { opacity: 0; transform: translateY(6px); } }
+
+
+/* ==================================================================
+   Mobil
+   ================================================================== */
 
 @media (max-width: 720px) {
-  main { padding: 14px; }
-  .kopf { padding: 10px 14px; }
-  .reiter { padding: 0 14px; }
+  .kopf { padding: 8px 12px; gap: 10px; }
+  .kopf-marke { gap: 8px; }
+  .logo { height: 22px; }
+  .marke-strich, .marke-unter { display: none; }
   h1 { font-size: 15px; }
-  .logo { height: 24px; }
-  .kennzahlen { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  .verteilungen { grid-template-columns: 1fr; }
-  .feldzeile { grid-template-columns: 1fr; gap: 0; }
-  .detail { width: 100%; border-left: none; }
-  .suche { max-width: none; }
-  .anzahl { margin-left: 0; width: 100%; }
+  .stand { display: none; }
+  .reiter { order: 3; width: 100%; }
+  .reiter-knopf { flex: 1; padding: 6px 8px; text-align: center; }
+  .kopf-rechts { gap: 6px; }
+
+  .ansicht-rollen { padding: 14px 12px 32px; }
+  .ansicht-fest { padding: 10px 12px 12px; }
+
+  .kennzahlen { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .verteilungen, .software-spalten { grid-template-columns: 1fr; }
+  .suchfeld { max-width: none; flex-basis: 100%; }
+  .anzahl { margin-left: 0; }
+  .kuerzel { display: none; }
+  .panel { max-height: 70vh; }
+  .mock-band { padding: 7px 12px; }
+  .hinweisband { left: 12px; right: 12px; bottom: 12px; text-align: center; }
 }

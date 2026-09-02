@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerät — Computer Inventar</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<!-- styles.css liefert die Farbvariablen und die Grundelemente,
+     geraet.css alles Weitere. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="geraet.css">
+</head>
+<body class="g-seite">
+
+<div class="g-band" id="g-band" hidden></div>
+
+<header class="g-kopf">
+  <div class="g-kopf-titel">
+    <img class="g-logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <div class="g-kopf-text">
+      <h1 id="g-titel">Gerät wird geladen …</h1>
+      <p class="g-kopf-unter" id="g-unter"></p>
+      <div class="g-badges" id="g-badges"></div>
+    </div>
+  </div>
+  <div class="g-kopf-aktionen" id="g-aktionen"></div>
+</header>
+
+<div class="g-geschwister" id="g-geschwister" hidden></div>
+
+<div class="g-rumpf">
+
+  <nav class="g-nav" id="g-nav" hidden aria-label="Bereiche"></nav>
+
+  <main class="g-inhalt">
+
+    <div class="g-meldung" id="g-laden">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="g-laden-text">Anmeldung wird geprüft …</p>
+    </div>
+
+    <div class="g-meldung g-meldung-fehler" id="g-fehler" hidden>
+      <h2 id="g-fehler-titel">Es ist ein Fehler aufgetreten</h2>
+      <p id="g-fehler-text"></p>
+      <p class="hinweis" id="g-fehler-hinweis"></p>
+      <button type="button" class="knopf knopf-primaer" id="g-knopf-nochmal">Nochmals versuchen</button>
+    </div>
+
+    <div id="g-bereich" hidden></div>
+
+  </main>
+</div>
+
+<div class="g-speicherleiste" id="g-speicherleiste" hidden>
+  <span class="g-speicher-text" id="g-speicher-text"></span>
+  <span class="g-speicher-fehler" id="g-speicher-fehler" hidden></span>
+  <button type="button" class="knopf" id="g-knopf-verwerfen">Verwerfen</button>
+  <button type="button" class="knopf knopf-primaer" id="g-knopf-speichern">Speichern</button>
+</div>
+
+<div class="g-toast" id="g-toast" hidden role="status" aria-live="polite"></div>
+
+<div class="g-dialog-hintergrund" id="g-dialog-hintergrund" hidden></div>
+<div class="g-dialog" id="g-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="g-dialog-titel">
+  <h2 id="g-dialog-titel"></h2>
+  <div id="g-dialog-inhalt"></div>
+  <div class="g-dialog-knoepfe" id="g-dialog-knoepfe"></div>
+</div>
+
+<div id="g-datenlisten" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
+        integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="konfig.js"></script>
+<script src="spalten.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="geraet.js"></script>
+
+</body>
+</html>

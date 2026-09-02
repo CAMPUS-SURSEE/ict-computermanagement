@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Legt die App-Registrierung als Plattform "SPA" (Single-Page-Application) an, hinterlegt die
-  delegierten Microsoft-Graph-Berechtigungen User.Read und Sites.Read.All, erteilt dafür den
+  delegierten Microsoft-Graph-Berechtigungen User.Read und Sites.ReadWrite.All, erteilt dafür den
   Admin-Consent für den ganzen Tenant und setzt die Unternehmensanwendung auf
   "Zuweisung erforderlich" (nur zugewiesene Personen dürfen sich anmelden).
 
@@ -56,7 +56,14 @@ if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 if (-not $KonfigPath) { $KonfigPath = Join-Path $ScriptDir '..\frontend\konfig.js' }
 
 $GraphAppId    = '00000003-0000-0000-c000-000000000000'
-$DelegatedList = @('User.Read', 'Sites.Read.All')
+# Sites.ReadWrite.All statt Sites.Read.All: das Frontend pflegt seit dem
+# Gerätefenster (frontend\geraet.html) die von Hand geführten Spalten der
+# Liste. Die Berechtigung ist delegiert, das Token kann also nie mehr, als die
+# angemeldete Person in SharePoint ohnehin darf. Wer bisher nur Sites.Read.All
+# hatte, muss dieses Skript einmal erneut ausführen, damit der Admin-Consent
+# für den erweiterten Umfang erteilt wird (Schritt 4 ergänzt den fehlenden
+# Scope im bestehenden Grant).
+$DelegatedList = @('User.Read', 'Sites.ReadWrite.All')
 
 # --- 1) Device-Code-Anmeldung (Public Client der Microsoft Graph PowerShell) --
 $pubClient = '14d82eec-204b-4c2f-b7e8-296a70dab67e'

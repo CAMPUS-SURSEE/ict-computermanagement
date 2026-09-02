@@ -4,15 +4,18 @@
 # ..\frontend aus. Nur zum Anschauen waehrend der Entwicklung; produktiv
 # uebernimmt Netlify die Auslieferung.
 #
-#   .\serve.ps1        dann http://localhost:8123/?mock=1 im Browser oeffnen
+#   .\serve.ps1              dann http://localhost:8123/?mock=1 im Browser oeffnen
+#   .\serve.ps1 -Port 8765   falls 8123 auf dem Rechner belegt oder reserviert ist
 #
 # Beenden mit Strg+C oder indem der PowerShell-Prozess beendet wird.
 
+param([int]$Port = 8123)
+
 $root = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'frontend'
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add('http://localhost:8123/')
+$listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
-Write-Host "Serving $root on http://localhost:8123/"
+Write-Host "Serving $root on http://localhost:$Port/"
 while ($listener.IsListening) {
     $ctx = $listener.GetContext()
     $path = $ctx.Request.Url.AbsolutePath.TrimStart('/')
