@@ -1,0 +1,767 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "PC-Name",
+        "type":  "Title",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Gerätename in Grossbuchstaben, eindeutig; Schlüssel für den SCCM-Abgleich"
+    },
+    {
+        "internal":  "Seriennummer",
+        "display":  "Seriennummer",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Von Hand erfasste Seriennummer, vor allem für Geräte ohne SCCM"
+    },
+    {
+        "internal":  "GebaeudeStock",
+        "display":  "Gebäude / Stock",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Standort des Geräts, z. B. «Hauptgebäude / 2. OG»"
+    },
+    {
+        "internal":  "Bemerkung",
+        "display":  "Bemerkung",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Freitext"
+    },
+    {
+        "internal":  "Beschaffungsjahr",
+        "display":  "Beschaffungsjahr",
+        "type":  "Text",
+        "group":  "Beschaffung",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Geschäftsjahr der Beschaffung im Format 2023/2024 (1. August bis 31. Juli)"
+    },
+    {
+        "internal":  "ErsatzGeplant",
+        "display":  "Ersatz geplant",
+        "type":  "Text",
+        "group":  "Beschaffung",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Geschäftsjahr des geplanten Ersatzes im Format 2028/2029; Vorschlag = Beschaffungsjahr + 5"
+    },
+    {
+        "internal":  "SCCM_Name",
+        "display":  "SCCM Gerätename",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  "Name des zugeordneten SCCM-Geräts (Abgleich über PC-Name)"
+    },
+    {
+        "internal":  "SCCM_Found",
+        "display":  "In SCCM vorhanden",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ResourceID",
+        "display":  "SCCM ResourceID",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_SMSID",
+        "display":  "SCCM SMSID",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Domain",
+        "display":  "Domäne",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_OU",
+        "display":  "AD Distinguished Name",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ADSite",
+        "display":  "AD Standort",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ADCreated",
+        "display":  "AD Computerkonto erstellt",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ADLastLogon",
+        "display":  "AD letzte Anmeldung (Computerkonto)",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastLogonUser",
+        "display":  "Letzter angemeldeter Benutzer",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  "SMS_CombinedDeviceResources.LastLogonUser"
+    },
+    {
+        "internal":  "SCCM_CurrentLogonUser",
+        "display":  "Aktuell angemeldeter Benutzer",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_PrimaryUser",
+        "display":  "Primärer Benutzer (SCCM)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_TopConsoleUser",
+        "display":  "Hauptbenutzer (Konsolennutzung)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastConsoleUse",
+        "display":  "Letzte Benutzeranmeldung",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  "Neueste LastConsoleUse aus SYSTEM_CONSOLE_USER"
+    },
+    {
+        "internal":  "SCCM_ConsoleUsers",
+        "display":  "Konsolenbenutzer (Anmeldungen / Minuten / zuletzt)",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ClientVersion",
+        "display":  "SCCM Client-Version",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ClientActive",
+        "display":  "SCCM Client aktiv",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Online",
+        "display":  "Online (SCCM)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastOnline",
+        "display":  "Zuletzt online",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastOffline",
+        "display":  "Zuletzt offline",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastActive",
+        "display":  "Zuletzt aktiv (SCCM)",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastHardwareScan",
+        "display":  "Letzter Hardware-Inventar",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastSoftwareScan",
+        "display":  "Letzter Software-Inventar",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastDDR",
+        "display":  "Letzter Heartbeat (DDR)",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastPolicyRequest",
+        "display":  "Letzte Richtlinienanfrage",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastClientCheck",
+        "display":  "Letzte Client-Prüfung",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ClientCheckPass",
+        "display":  "Client-Prüfung bestanden",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ManagementPoint",
+        "display":  "Management Point",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_BoundaryGroups",
+        "display":  "Boundary Groups",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_CoManaged",
+        "display":  "Co-Managed (Intune)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_AADDeviceID",
+        "display":  "Entra Device ID",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Manufacturer",
+        "display":  "Hersteller",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Model",
+        "display":  "Modell",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_SerialNumber",
+        "display":  "Seriennummer (SCCM)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_SMBIOSGUID",
+        "display":  "SMBIOS GUID",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_ChassisType",
+        "display":  "Gehäusetyp",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_IsVirtual",
+        "display":  "Virtuelle Maschine",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_CPU",
+        "display":  "Prozessor",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_CPUCores",
+        "display":  "CPU Kerne",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_CPULogical",
+        "display":  "CPU logische Prozessoren",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_RAMGB",
+        "display":  "RAM (GB)",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_DiskCGB",
+        "display":  "Laufwerk C: Grösse (GB)",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_DiskCFreeGB",
+        "display":  "Laufwerk C: frei (GB)",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_PhysicalDisks",
+        "display":  "Physische Datenträger",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_BIOSVersion",
+        "display":  "BIOS-Version",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_BIOSDate",
+        "display":  "BIOS-Datum",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_TPMVersion",
+        "display":  "TPM-Version",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_TPMEnabled",
+        "display":  "TPM aktiviert",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_BitLocker",
+        "display":  "BitLocker",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Monitors",
+        "display":  "Monitore",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Battery",
+        "display":  "Akku",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_OS",
+        "display":  "Betriebssystem",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_OSVersion",
+        "display":  "OS-Version (Build)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_OSInstallDate",
+        "display":  "OS installiert am",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastBoot",
+        "display":  "Letzter Neustart",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_OSLanguage",
+        "display":  "OS-Sprache",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_SystemType",
+        "display":  "Systemtyp",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_IPv4",
+        "display":  "IPv4-Adresse",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_IPAddresses",
+        "display":  "IP-Adressen (alle)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_MACAddresses",
+        "display":  "MAC-Adressen",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_DHCP",
+        "display":  "DHCP",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPEnabled",
+        "display":  "Defender aktiv",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPClientVersion",
+        "display":  "Defender Client-Version",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPSignatureVersion",
+        "display":  "Defender Signaturversion",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPSignatureDate",
+        "display":  "Defender Signaturdatum",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPLastQuickScan",
+        "display":  "Defender letzter Schnellscan",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPLastFullScan",
+        "display":  "Defender letzter Vollscan",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPInfectionStatus",
+        "display":  "Defender Infektionsstatus",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPLastThreat",
+        "display":  "Defender letzte Bedrohung",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_EPPendingReboot",
+        "display":  "Defender Neustart ausstehend",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Office",
+        "display":  "Office-Produkte",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_DeployedApps",
+        "display":  "Zugewiesene Applikationen (Deployments)",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  "AppName | Sammlung | Erforderlich/Verfügbar | Status"
+    },
+    {
+        "internal":  "SCCM_AppsRequired",
+        "display":  "Anzahl erforderliche Apps",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_AppsInstalled",
+        "display":  "Anzahl installierte Apps (Deployments)",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_InstalledSoftware",
+        "display":  "Installierte Software (Add/Remove)",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_InstalledSoftwareCount",
+        "display":  "Anzahl installierte Software",
+        "type":  "Number",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_Collections",
+        "display":  "Sammlungen (Collections)",
+        "type":  "Note",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    },
+    {
+        "internal":  "SCCM_LastSync",
+        "display":  "Letzte Synchronisation mit SCCM",
+        "type":  "DateTime",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  true,
+        "description":  "Zeitpunkt des letzten Sync-Laufs"
+    },
+    {
+        "internal":  "SCCM_SyncStatus",
+        "display":  "Sync-Status",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  ""
+    }
+]

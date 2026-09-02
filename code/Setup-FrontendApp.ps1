@@ -45,6 +45,9 @@ param(
     [string]$AppName        = 'Computer Inventar Frontend',
     [string[]]$RedirectUris = @('http://localhost:8123/'),
     [switch]$AssignmentRequired = $true,
+    # «Allow public client flows» (isFallbackPublicClient): nötig, damit sich
+    # Migrate-ToTwoLists.ps1 mit dieser Client-ID per Device-Code anmelden kann.
+    [bool]$PublicClientFlows = $true,
     [string]$KonfigPath
 )
 $ErrorActionPreference = 'Stop'
@@ -127,7 +130,8 @@ if (-not $app) {
         signInAudience         = 'AzureADMyOrg'
         spa                    = @{ redirectUris = @($RedirectUris) }
         requiredResourceAccess = $rra
-        notes                  = "Statisches Web-Frontend (SPA, MSAL im Browser) für die SharePoint-Liste 'Computer Inventar'. Erstellt $(Get-Date -Format 'dd.MM.yyyy')."
+        isFallbackPublicClient = [bool]$PublicClientFlows
+        notes                  = "Statisches Web-Frontend (SPA, MSAL im Browser) für die Listen 'Computer' und 'Benutzer'. Erstellt $(Get-Date -Format 'dd.MM.yyyy')."
     }
 } else {
     Write-Host "App-Registrierung existiert bereits ($($app.appId)) – Umleitungsadressen/Berechtigungen aktualisieren"
@@ -135,7 +139,7 @@ if (-not $app) {
     if ($app.spa -and $app.spa.redirectUris) { $merged += @($app.spa.redirectUris) }
     $merged += @($RedirectUris)
     $merged = @($merged | Where-Object { $_ } | Select-Object -Unique)
-    G PATCH "/applications/$($app.id)" @{ spa = @{ redirectUris = $merged }; requiredResourceAccess = $rra } | Out-Null
+    G PATCH "/applications/$($app.id)" @{ spa = @{ redirectUris = $merged }; requiredResourceAccess = $rra; isFallbackPublicClient = [bool]$PublicClientFlows } | Out-Null
     $RedirectUris = $merged
 }
 $appId = $app.appId
@@ -183,6 +187,14 @@ Write-Host "Tenant-Name für MSAL:      $TenantId"
 Write-Host "Umleitungsadressen (SPA):"
 foreach ($u in $RedirectUris) { Write-Host "  - $u" }
 Write-Host "Delegierte Berechtigungen: $scopeString (Admin-Consent erteilt)"
+Write-Host ("Allow public client flows:  {0}" -f $(if ($PublicClientFlows) { 'Ja' } else { 'Nein' }))
+if ($PublicClientFlows) {
+    Write-Host '  Damit kann sich Migrate-ToTwoLists.ps1 mit dieser ClientId per Device-Code anmelden.'
+} else {
+    Write-Host '  Achtung: Ohne "Allow public client flows" scheitert der Device-Code-Login des' -ForegroundColor Yellow
+    Write-Host '  Migrationsskripts mit AADSTS7000218. Entra Admin Center > App-Registrierungen >' -ForegroundColor Yellow
+    Write-Host "  $AppName > Authentifizierung > 'Öffentliche Clientflows zulassen' = Ja." -ForegroundColor Yellow
+}
 Write-Host ''
 if ($wantAssignment) {
     Write-Host 'Benutzerzuweisung nötig ("Zuweisung erforderlich" ist aktiv):' -ForegroundColor Yellow

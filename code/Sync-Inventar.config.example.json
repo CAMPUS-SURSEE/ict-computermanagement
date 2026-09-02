@@ -1,0 +1,22 @@
+{
+  "TenantId": "<Tenant-GUID, wird von Setup-EntraApp.ps1 eingetragen>",
+  "ClientId": "<App-ID der Registrierung SCCM-SharePoint-Sync>",
+  "CertThumbprint": "<Thumbprint des Zertifikats in LocalMachine\\My>",
+  "FrontendClientId": "<App-ID der Registrierung Computer Inventar Frontend, nur für -Auth DeviceCode>",
+  "SiteUrl": "https://campussursee.sharepoint.com/sites/mgmts-ict-s",
+  "SiteId": "",
+  "AltListId": "70afe6a4-0d23-4582-80c7-0cd0776961f8",
+  "ComputerListId": "<Listen-ID der Liste Computer, wird von Migrate-ToTwoLists.ps1 ausgegeben>",
+  "BenutzerListId": "<Listen-ID der Liste Benutzer, wird von Migrate-ToTwoLists.ps1 ausgegeben>",
+  "ProgrammeDateiPfad": "Inventar/programme.json",
+  "SmsProvider": "adminsrv319.sasadmin.local",
+  "SiteCode": "PS2",
+  "AdServer": "",
+  "AdUserOUs": [
+    "<DN der OU Staff/users/Windows 11, z. B. OU=Windows 11,OU=users,OU=Staff,DC=sasadmin,DC=local>",
+    "<DN der OU Staff/users/Windows 10, z. B. OU=Windows 10,OU=users,OU=Staff,DC=sasadmin,DC=local>"
+  ],
+  "AdGruppenPraefixe": [],
+  "LoeschSchutzProzent": 50,
+  "LogPath": "C:\\ComputerInventar\\Sync-Inventar.log"
+}

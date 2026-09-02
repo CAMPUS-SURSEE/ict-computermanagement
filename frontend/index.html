@@ -5,16 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Computer Inventar — Campus Sursee</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<!-- design.css liefert Tokens und Komponenten, styles.css nur das
+     Seitenlayout dieser Seite. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="design.css">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="seite">
 
-<!-- Obere Leiste: Marke, Ansichtswechsel, Datenstand und Konto. -->
+<!-- Obere Leiste: Marke, Tabs, Datenstand und Konto. -->
 <header class="kopf">
 
   <div class="kopf-marke">
     <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
-    <span class="marke-strich" aria-hidden="true"></span>
     <div class="marke-text">
       <h1>Computer Inventar</h1>
       <p class="marke-unter">ICT Campus Sursee</p>
@@ -24,100 +26,141 @@
   <nav class="reiter" id="reiter" hidden aria-label="Ansicht wählen">
     <button type="button" class="reiter-knopf" data-ansicht="uebersicht">Übersicht</button>
     <button type="button" class="reiter-knopf" data-ansicht="geraete">Geräte</button>
+    <button type="button" class="reiter-knopf" data-ansicht="benutzer">Benutzer</button>
     <button type="button" class="reiter-knopf" data-ansicht="software">Software</button>
   </nav>
 
   <div class="kopf-rechts">
     <span class="stand" id="stand"></span>
-    <span class="benutzer" id="benutzer"></span>
+    <span class="konto" id="konto"></span>
     <button type="button" class="knopf" id="knopf-neuladen">Neu laden</button>
-    <button type="button" class="knopf knopf-still" id="knopf-abmelden" hidden>Abmelden</button>
+    <button type="button" class="knopf knopf-leise" id="knopf-abmelden" hidden>Abmelden</button>
   </div>
 
 </header>
 
-<main>
+<div class="band band-warnung" id="mock-band" hidden></div>
 
-  <!-- Zustände: Laden und Fehler -->
-  <div class="meldung" id="meldung-laden">
-    <div class="spinner" aria-hidden="true"></div>
-    <p id="meldung-laden-text">Anmeldung wird geprüft …</p>
-  </div>
+<!-- Ladezustand: zentriert im Inhaltsbereich -->
+<div class="lade" id="lade">
+  <div class="spinner" aria-hidden="true"></div>
+  <p class="lade-text" id="lade-text">Anmeldung wird geprüft …</p>
+  <p class="lade-fortschritt" id="lade-fortschritt"></p>
+</div>
 
-  <div class="meldung meldung-fehler" id="meldung-fehler" hidden>
-    <h2 id="fehler-titel">Es ist ein Fehler aufgetreten</h2>
-    <p id="fehler-text"></p>
-    <p class="hinweis" id="fehler-hinweis"></p>
-    <button type="button" class="knopf knopf-primaer" id="knopf-nochmal">Nochmals versuchen</button>
-  </div>
+<!-- Fehlerzustand: ebenfalls zentriert -->
+<div class="fehler" id="fehler" hidden>
+  <h2 class="fehler-titel" id="fehler-titel">Es ist ein Fehler aufgetreten</h2>
+  <p class="fehler-text" id="fehler-text"></p>
+  <p class="fehler-hinweis" id="fehler-hinweis"></p>
+  <button type="button" class="knopf knopf-primaer" id="knopf-nochmal">Erneut laden</button>
+</div>
 
-  <!-- Übersicht -->
-  <section class="ansicht ansicht-rollen" id="ansicht-uebersicht" hidden>
-    <div class="bereich">
-      <h2 class="bereich-titel">Kennzahlen</h2>
+<!-- Übersicht -->
+<main class="inhalt ansicht" id="ansicht-uebersicht" hidden>
+  <div class="bahn">
+
+    <section class="bereich">
+      <h2 class="bereich-titel">Geräte</h2>
       <p class="bereich-unter">Ein Klick auf eine Kachel öffnet die Geräteliste mit dem passenden Filter.</p>
-      <div class="kennzahlen" id="kennzahlen"></div>
-    </div>
-    <div class="bereich">
+      <div class="kacheln" id="kacheln-geraete"></div>
+    </section>
+
+    <section class="bereich">
+      <h2 class="bereich-titel">Benutzer</h2>
+      <p class="bereich-unter">Aus der Benutzerliste, die der AD-Abgleich pflegt.</p>
+      <div class="kacheln" id="kacheln-benutzer"></div>
+    </section>
+
+    <section class="bereich">
+      <h2 class="bereich-titel">Ersatzplanung</h2>
+      <p class="bereich-unter">Geschäftsjahre vom ältesten Beschaffungsjahr bis zum spätesten geplanten Ersatz. Ein Klick auf eine Säule filtert die Geräteliste.</p>
+      <div class="karte">
+        <div class="zeitstrahl" id="zeitstrahl"></div>
+        <div class="zeitstrahl-legende" id="zeitstrahl-legende"></div>
+      </div>
+    </section>
+
+    <section class="bereich">
       <h2 class="bereich-titel">Verteilungen</h2>
       <p class="bereich-unter">Die zehn häufigsten Werte je Merkmal.</p>
-      <div class="verteilungen" id="verteilungen"></div>
-    </div>
-  </section>
+      <div class="gitter gitter-2" id="verteilungen"></div>
+    </section>
 
-  <!-- Geräte -->
-  <section class="ansicht ansicht-fest" id="ansicht-geraete" hidden>
+  </div>
+</main>
 
-    <div class="werkzeug-bereich" id="werkzeug-bereich">
-      <div class="werkzeugleiste">
-        <div class="suchfeld">
-          <input type="search" id="suche" class="suche" placeholder="Suchen über alle Felder …"
-                 autocomplete="off" aria-label="Suchen über alle Felder">
-          <kbd class="kuerzel" aria-hidden="true">/</kbd>
-        </div>
-        <button type="button" class="knopf" id="knopf-filter" aria-expanded="false">Filter</button>
-        <button type="button" class="knopf" id="knopf-spalten" aria-expanded="false">Spalten</button>
-        <button type="button" class="knopf" id="knopf-dichte" aria-pressed="false">Kompakt</button>
-        <button type="button" class="knopf" id="knopf-csv">CSV</button>
-        <span class="anzahl" id="anzahl"></span>
-        <button type="button" class="knopf knopf-primaer" id="knopf-neu">Neues Gerät</button>
+<!-- Geräte -->
+<main class="inhalt-fest ansicht" id="ansicht-geraete" hidden>
+  <div class="werkzeug-bereich" id="geraete-werkzeuge">
+    <div class="toolbar">
+      <div class="suchfeld">
+        <input type="search" id="geraete-suche" class="suche" placeholder="Geräte durchsuchen …"
+               autocomplete="off" aria-label="Geräte durchsuchen">
+        <kbd class="kuerzel" aria-hidden="true">/</kbd>
       </div>
-
-      <div class="chips" id="chips"></div>
-
-      <div class="panel" id="filterleiste" hidden></div>
-      <div class="panel" id="spaltenwahl" hidden></div>
+      <button type="button" class="knopf" id="geraete-knopf-filter" aria-expanded="false">Filter</button>
+      <button type="button" class="knopf" id="geraete-knopf-spalten" aria-expanded="false">Spalten</button>
+      <button type="button" class="knopf" id="geraete-knopf-dichte" aria-pressed="false">Kompakt</button>
+      <button type="button" class="knopf" id="geraete-knopf-csv">CSV</button>
+      <span class="anzahl" id="geraete-anzahl"></span>
+      <button type="button" class="knopf knopf-primaer" id="knopf-neu">Neues Gerät</button>
     </div>
+    <div class="chips" id="geraete-chips"></div>
+    <div class="panel" id="geraete-filterleiste" hidden></div>
+    <div class="panel" id="geraete-spaltenwahl" hidden></div>
+  </div>
 
-    <div class="tabelle-rahmen" id="tabelle-rahmen">
-      <table class="tabelle" id="tabelle">
-        <thead id="tabellenkopf"></thead>
-        <tbody id="tabellenkoerper"></tbody>
-      </table>
-      <p class="leer" id="tabelle-leer" hidden>Keine Zeile passt zu den aktuellen Filtern.</p>
-    </div>
-  </section>
+  <div class="tabelle-rahmen" id="geraete-rahmen">
+    <table class="tabelle" id="geraete-tabelle">
+      <thead id="geraete-kopf"></thead>
+      <tbody id="geraete-koerper"></tbody>
+    </table>
+    <p class="tabelle-leer" id="geraete-leer" hidden>Kein Gerät passt zu den aktuellen Filtern.</p>
+  </div>
+</main>
 
-  <!-- Software -->
-  <section class="ansicht ansicht-rollen" id="ansicht-software" hidden>
-    <div class="software-spalten">
-      <div class="karte">
-        <div class="karte-kopf">
-          <h2>Software und Rechte aus dem Inventar</h2>
-          <p class="hinweis">Ja/Nein-Spalten und AD-Gruppen. Ein Klick filtert die Geräteliste.</p>
-        </div>
-        <div class="karte-inhalt" id="software-inventar"></div>
+<!-- Benutzer -->
+<main class="inhalt-fest ansicht" id="ansicht-benutzer" hidden>
+  <div class="werkzeug-bereich" id="benutzer-werkzeuge">
+    <div class="toolbar">
+      <div class="suchfeld">
+        <input type="search" id="benutzer-suche" class="suche" placeholder="Benutzer durchsuchen …"
+               autocomplete="off" aria-label="Benutzer durchsuchen">
+        <kbd class="kuerzel" aria-hidden="true">/</kbd>
       </div>
-      <div class="karte">
-        <div class="karte-kopf">
-          <h2>SCCM-Applikationen (Deployments)</h2>
-          <p class="hinweis">Aus der Spalte «Zugewiesene Applikationen» aller Zeilen zusammengezählt.</p>
-        </div>
-        <div class="karte-inhalt" id="software-sccm"></div>
-      </div>
+      <button type="button" class="knopf" id="benutzer-knopf-filter" aria-expanded="false">Filter</button>
+      <button type="button" class="knopf" id="benutzer-knopf-spalten" aria-expanded="false">Spalten</button>
+      <button type="button" class="knopf" id="benutzer-knopf-dichte" aria-pressed="false">Kompakt</button>
+      <button type="button" class="knopf" id="benutzer-knopf-csv">CSV</button>
+      <span class="anzahl" id="benutzer-anzahl"></span>
     </div>
-  </section>
+    <div class="chips" id="benutzer-chips"></div>
+    <div class="panel" id="benutzer-filterleiste" hidden></div>
+    <div class="panel" id="benutzer-spaltenwahl" hidden></div>
+  </div>
 
+  <div class="tabelle-rahmen" id="benutzer-rahmen">
+    <table class="tabelle" id="benutzer-tabelle">
+      <thead id="benutzer-kopf"></thead>
+      <tbody id="benutzer-koerper"></tbody>
+    </table>
+    <p class="tabelle-leer" id="benutzer-leer" hidden>Kein Benutzer passt zu den aktuellen Filtern.</p>
+  </div>
+</main>
+
+<!-- Software -->
+<main class="inhalt ansicht" id="ansicht-software" hidden>
+  <div class="bahn">
+    <div class="toolbar sw-toolbar">
+      <div class="suchfeld">
+        <input type="search" id="software-suche" class="suche" placeholder="Programm suchen …"
+               autocomplete="off" aria-label="Programm suchen">
+      </div>
+      <span class="anzahl" id="software-anzahl"></span>
+    </div>
+    <div id="software-liste"></div>
+  </div>
 </main>
 
 <!-- Kurzer Hinweis unten rechts, etwa nach einer Änderung im Detailfenster. -->
@@ -130,6 +173,7 @@
 <script src="spalten.js"></script>
 <script src="auth.js"></script>
 <script src="graph.js"></script>
+<script src="modell.js"></script>
 <script src="app.js"></script>
 
 </body>

@@ -13,11 +13,14 @@
    2. App-Registrierung anlegen, öffentlichen Schlüssel hinterlegen
    3. Service Principal anlegen, Sites.Selected zuweisen (= Admin-Consent)
    4. Der App Schreibrecht ("write") auf die SharePoint-Site erteilen
-   5. Konfigurationsdatei Sync-SccmToSharePoint.config.json schreiben
+   5. Konfigurationsdatei Sync-Inventar.config.json schreiben (bestehende Werte bleiben erhalten)
 
 .NOTES
   Läuft auch ohne Global Admin, wenn das Konto Application Administrator ist UND Site-Collection-Admin
   der Ziel-Site (für Schritt 4).
+
+  Das Konto, unter dem Sync-Inventar.ps1 später läuft, braucht zusätzlich Leserecht auf das
+  Active Directory (Benutzerattribute und Gruppenmitgliedschaften der in AdUserOUs genannten OUs).
 #>
 [CmdletBinding()]
 param(
@@ -37,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
-if (-not $ConfigPath) { $ConfigPath = Join-Path $ScriptDir 'Sync-SccmToSharePoint.config.json' }
+if (-not $ConfigPath) { $ConfigPath = Join-Path $ScriptDir 'Sync-Inventar.config.json' }
 
 # --- 1) Zertifikat ---------------------------------------------------------
 $cert = Get-ChildItem $CertStore | Where-Object { $_.Subject -eq "CN=$AppName" -and $_.NotAfter -gt (Get-Date).AddDays(30) } | Sort-Object NotAfter -Descending | Select-Object -First 1
@@ -130,18 +133,37 @@ if (-not $perms) {
 } else { Write-Host "Site-Berechtigung existiert bereits: $($perms.roles -join ',')" }
 
 # --- 5) Konfiguration schreiben ------------------------------------------------
-$cfg = [ordered]@{
-    TenantId       = $tenantGuid
-    ClientId       = $appId
-    CertThumbprint = $cert.Thumbprint
-    SiteUrl        = $SiteUrl
-    ListTitle      = $ListTitle
-    ListId         = $ListId
-    SmsProvider    = $SmsProvider
-    SiteCode       = $SiteCode
-    LogPath        = (Join-Path $ScriptDir 'Sync-SccmToSharePoint.log')
+# Bestehende Konfiguration nicht überschreiben, sondern nur die Anmeldedaten nachführen.
+$alt = $null
+if (Test-Path $ConfigPath) { $alt = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+function AltWert($name, $vorgabe) {
+    if ($alt -and $alt.PSObject.Properties[$name] -and "$($alt.$name)" -ne '') { return $alt.$name }
+    return $vorgabe
 }
-$cfg | ConvertTo-Json | Set-Content -Path $ConfigPath -Encoding UTF8
+$cfg = [ordered]@{
+    TenantId            = $tenantGuid
+    ClientId            = $appId
+    CertThumbprint      = $cert.Thumbprint
+    FrontendClientId    = (AltWert 'FrontendClientId' '<App-ID der Registrierung Computer Inventar Frontend, nur für Migrate-ToTwoLists.ps1 -Auth DeviceCode>')
+    SiteUrl             = $SiteUrl
+    SiteId              = (AltWert 'SiteId' '')
+    AltListId           = (AltWert 'AltListId' $ListId)
+    ComputerListId      = (AltWert 'ComputerListId' '<Listen-ID der Liste Computer, siehe Migrate-ToTwoLists.ps1>')
+    BenutzerListId      = (AltWert 'BenutzerListId' '<Listen-ID der Liste Benutzer, siehe Migrate-ToTwoLists.ps1>')
+    ProgrammeDateiPfad  = (AltWert 'ProgrammeDateiPfad' 'Inventar/programme.json')
+    SmsProvider         = $SmsProvider
+    SiteCode            = $SiteCode
+    AdServer            = (AltWert 'AdServer' '')
+    AdUserOUs           = @(AltWert 'AdUserOUs' @('<DN der OU Staff/users/Windows 11>', '<DN der OU Staff/users/Windows 10>'))
+    AdGruppenPraefixe   = @(AltWert 'AdGruppenPraefixe' @())
+    LoeschSchutzProzent = (AltWert 'LoeschSchutzProzent' 50)
+    LogPath             = (AltWert 'LogPath' (Join-Path $ScriptDir 'Sync-Inventar.log'))
+}
+$cfg | ConvertTo-Json -Depth 5 | Set-Content -Path $ConfigPath -Encoding UTF8
 Write-Host "`nKonfiguration geschrieben: $ConfigPath" -ForegroundColor Green
+Write-Host 'Noch von Hand einzutragen: ComputerListId, BenutzerListId und vor allem AdUserOUs (die echten OU-DNs).'
 Write-Host "Hinweis: Das Task-Konto braucht Leserecht auf den privaten Schlüssel (certlm.msc > Zertifikat > Alle Aufgaben > Private Schlüssel verwalten)."
-Write-Host "Test:  powershell -File .\Sync-SccmToSharePoint.ps1 -WhatIf -OnlyDevices CAMPUS-073"
+Write-Host "Hinweis: Das Konto, unter dem Sync-Inventar.ps1 läuft, braucht zusätzlich LESERECHT AUF DAS ACTIVE DIRECTORY"
+Write-Host "         (Benutzerattribute und Gruppenmitgliedschaften der konfigurierten OUs). Das Computerkonto des"
+Write-Host "         Site-Servers (SYSTEM) erfüllt das in einer Domäne normalerweise bereits."
+Write-Host "Test:  powershell -File .\Sync-Inventar.ps1 -WhatIf -OnlyComputers -OnlyDevices CAMPUS-073"

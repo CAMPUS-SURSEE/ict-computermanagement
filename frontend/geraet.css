@@ -1,661 +1,280 @@
-/* geraet.css — Gerätefenster des Computer Inventars.
+/* geraet.css — Seitenlayout des Gerätefensters.
 
-   Wird zusammen mit styles.css geladen und stützt sich auf dessen
-   :root-Variablen. Weil sich styles.css unabhängig weiterentwickelt, steht
-   hinter jeder Variablen ein Rückfallwert; fehlt eine, sieht die Seite trotzdem
-   richtig aus.
+   Das gesamte Gerüst kommt aus design.css: Kopf (.kopf), Rumpf mit
+   klebender Seitennavigation (.fenster-rumpf, .fenster-nav,
+   .fenster-inhalt), Kartenraster (.karten, .karte-breit), Datenzeilen
+   (.datenzeilen, .datenzeile), kurze Tabellen (.tabelle-schlicht),
+   Speicherleiste, Toast und Dialog. Hier steht nur noch, was es genau in
+   diesem Fenster gibt — Hinweise, Zeitstrahl-Ränder, Benutzerliste,
+   Rohdaten, Zeitachse und Flottenvergleich.
 
-   Alle Klassen dieser Datei beginnen mit «g-», damit sie sich nie mit den
-   Klassen der Hauptseite beissen. Schriften sind Systemschriften, Akzent ist
-   das Campus-Grün, Symbole sind Unicode oder inline erzeugte SVG. Nichts wird
-   von aussen nachgeladen. */
+   Alle eigenen Klassen beginnen mit «g-», damit sie sich nie mit den
+   Klassen des Design-Systems oder der Hauptseite beissen.
 
-.g-seite {
-  background: var(--flaeche, #f7f8fa);
-  color: var(--text, #111827);
-  /* Platz für die feste Speicherleiste am unteren Rand. */
-  padding-bottom: 0;
+   ------------------------------------------------------------------
+   SCROLLEN (Spezifikation 3.3)
+
+   body trägt .seite aus design.css: Flex-Spalte, min-height 100vh, KEIN
+   overflow:hidden. Damit rollt die Seite senkrecht von selbst.
+
+   Waagrecht: dieses Fenster ist ein Arbeitsfenster für den Schreibtisch.
+   Unter --g-mindestbreite wird der Inhalt nicht weiter zusammengedrückt,
+   sondern die Seite wird breiter als das Fenster — und rollt dann
+   waagrecht. Das erledigt die min-width auf body; kein !important, kein
+   overflow-Trick.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Unter dieser Breite rollt die Seite waagrecht, statt zu quetschen.
+     208 px Navigation + 2 × 24 px Innenabstand + rund 620 px Inhalt. */
+  --g-mindestbreite: 880px;
 }
 
-/* ---------- Vorführband ---------- */
-
-.g-band {
-  background: var(--gruen-hell, #f2f8e4);
-  border-bottom: 1px solid var(--gruen, #84B819);
-  padding: 6px 20px;
-  font-size: 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
+body.g-seite {
+  min-width: var(--g-mindestbreite);
 }
 
-/* ---------- Kopf ---------- */
 
-.g-kopf {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 16px 22px;
-  background: var(--weiss, #ffffff);
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-}
+/* ==================================================================
+   Kopfzeile
+   ================================================================== */
 
-.g-kopf-titel { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
-.g-logo { height: 30px; width: auto; display: block; margin-top: 2px; }
-.g-kopf-text { min-width: 0; }
+.g-status { align-self: center; }
+.g-band { display: flex; align-items: center; gap: var(--a3); flex-wrap: wrap; }
 
-.g-kopf h1 {
-  font-size: 24px;
-  letter-spacing: -0.4px;
-  line-height: 1.15;
-  word-break: break-word;
-}
 
-.g-kopf-unter {
-  margin: 4px 0 0;
-  color: var(--sekundaer, #6b7280);
-  font-size: 13px;
-}
-
-.g-kopf-aktionen {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-/* ---------- Statusabzeichen ---------- */
-
-.g-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-
-.g-badge {
-  font-size: 11.5px;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 2px 10px;
-  border: 1px solid var(--linie, #e5e7eb);
-  background: var(--weiss, #ffffff);
-  color: var(--sekundaer, #6b7280);
-  white-space: nowrap;
-}
-.g-badge-gruen { background: var(--gruen-hell, #f2f8e4); border-color: var(--gruen, #84B819); color: #4d6d0c; }
-.g-badge-rot   { background: var(--rot-hell, #fef2f2); border-color: var(--rot, #dc2626); color: var(--rot, #dc2626); }
-.g-badge-gelb  { background: var(--gelb-hell, #fffbeb); border-color: var(--gelb, #d97706); color: var(--gelb, #d97706); }
-.g-badge-blau  { background: var(--blau-hell, #eff6ff); border-color: var(--blau, #2563eb); color: var(--blau, #2563eb); }
-
-/* ---------- Hinweis auf weitere Benutzerzeilen ---------- */
-
-.g-geschwister {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 8px 22px;
-  background: var(--weiss, #ffffff);
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-  font-size: 12.5px;
-  color: var(--sekundaer, #6b7280);
-}
-
-.g-geschwister-knopf {
-  font: inherit;
-  font-size: 12.5px;
-  background: var(--flaeche, #f7f8fa);
-  border: 1px solid var(--linie, #e5e7eb);
-  border-radius: 999px;
-  padding: 2px 10px;
-  color: var(--text, #111827);
-  cursor: pointer;
-}
-.g-geschwister-knopf:hover { background: var(--hover, #f3f4f6); }
-.g-geschwister-knopf[aria-current="true"] {
-  background: var(--gruen-hell, #f2f8e4);
-  border-color: var(--gruen, #84B819);
-  font-weight: 600;
-}
-
-/* ---------- Rumpf: Seitenleiste und Inhalt ---------- */
-
-/* Erste Spalte «auto»: ist die Seitenleiste verborgen (Laden, Fehler,
-   gelöschte Zeile), bleibt sie leer und der Inhalt bekommt die ganze
-   Breite — mit einer festen Breite bliebe eine 210px breite Lücke. */
-.g-rumpf {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0;
-}
-
-.g-nav {
-  width: 210px;
-  position: sticky;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 16px 10px;
-  border-right: 1px solid var(--linie, #e5e7eb);
-  background: var(--weiss, #ffffff);
-  min-height: 100vh;
-}
-
-.g-nav-knopf {
-  font: inherit;
-  font-size: 13.5px;
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: var(--radius-klein, 5px);
-  padding: 7px 10px;
-  color: var(--sekundaer, #6b7280);
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-}
-.g-nav-knopf:hover { background: var(--hover, #f3f4f6); color: var(--text, #111827); }
-.g-nav-knopf.aktiv {
-  background: var(--gruen-hell, #f2f8e4);
-  color: var(--text, #111827);
-  font-weight: 600;
-}
-.g-nav-zahl {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--weiss, #ffffff);
-  background: var(--rot, #dc2626);
-  border-radius: 999px;
-  padding: 0 6px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.g-inhalt { padding: 20px 22px 120px; min-width: 0; }
-
-.g-meldung { padding: 40px 4px; max-width: 640px; }
-.g-meldung p { color: var(--sekundaer, #6b7280); }
-.g-meldung-fehler h2 { margin-bottom: 8px; }
-.g-meldung-fehler p { color: var(--text, #111827); }
-.g-meldung-fehler .knopf { margin-top: 12px; }
-
-/* ---------- Karten ---------- */
-
-.g-karten {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.g-karte {
-  background: var(--weiss, #ffffff);
-  border: 1px solid var(--linie, #e5e7eb);
-  border-radius: var(--radius, 8px);
-  box-shadow: var(--schatten, 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06));
-  padding: 14px 16px 16px;
-  margin-bottom: 16px;
-  min-width: 0;
-}
-.g-karten .g-karte { margin-bottom: 0; }
-
-.g-karte-kopf {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.g-karte h2 { font-size: 14px; }
-.g-karte h3 {
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--sekundaer, #6b7280);
-  margin: 14px 0 6px;
-}
-.g-karte-hinweis { color: var(--sekundaer, #6b7280); font-size: 12px; margin: 0 0 10px; }
-
-.g-breit { grid-column: 1 / -1; }
-
-/* ---------- Kennzahl-Kacheln ---------- */
-
-.g-kacheln {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.g-kachel {
-  background: var(--weiss, #ffffff);
-  border: 1px solid var(--linie, #e5e7eb);
-  border-left: 3px solid var(--linie, #e5e7eb);
-  border-radius: var(--radius, 8px);
-  box-shadow: var(--schatten, 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06));
-  padding: 12px 14px;
-  min-width: 0;
-}
-.g-kachel-titel {
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--sekundaer, #6b7280);
-}
-.g-kachel-wert {
-  font-size: 21px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
-  line-height: 1.2;
-  margin-top: 3px;
-  word-break: break-word;
-}
-.g-kachel-neben { font-size: 12px; color: var(--sekundaer, #6b7280); margin-top: 2px; }
-
-.g-kachel.g-ampel-gruen { border-left-color: var(--gruen, #84B819); }
-.g-kachel.g-ampel-gelb  { border-left-color: var(--gelb, #d97706); }
-.g-kachel.g-ampel-rot   { border-left-color: var(--rot, #dc2626); }
-.g-kachel.g-ampel-blau  { border-left-color: var(--blau, #2563eb); }
-
-/* ---------- Balken ---------- */
-
-.g-spur {
-  height: 7px;
-  background: var(--linie, #e5e7eb);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 7px;
-}
-.g-fuell { display: block; height: 100%; background: var(--gruen, #84B819); }
-.g-fuell-gelb { background: var(--gelb, #d97706); }
-.g-fuell-rot  { background: var(--rot, #dc2626); }
-.g-fuell-blau { background: var(--blau, #2563eb); }
-
-/* ---------- Auffälligkeiten ---------- */
-
-.g-befund {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  gap: 10px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-}
-.g-befund:last-child { border-bottom: none; }
-.g-befund-punkt {
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  margin-top: 5px;
-  background: var(--blau, #2563eb);
-}
-.g-stufe-rot .g-befund-punkt  { background: var(--rot, #dc2626); }
-.g-stufe-gelb .g-befund-punkt { background: var(--gelb, #d97706); }
-.g-befund-titel { font-weight: 600; font-size: 13px; }
-.g-befund-text { color: var(--sekundaer, #6b7280); font-size: 12.5px; margin-top: 1px; }
-
-.g-score {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.g-score-zahl { font-size: 40px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
-.g-score-max { color: var(--sekundaer, #6b7280); font-size: 14px; }
-
-/* ---------- Feldzeilen (Lesemodus) ---------- */
-
-.g-felder { display: grid; gap: 0; }
-
-.g-feld {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-  align-items: start;
-}
-.g-feld:last-child { border-bottom: none; }
-.g-feld-name { color: var(--sekundaer, #6b7280); font-size: 12.5px; padding-top: 3px; }
-.g-feld-wert { word-break: break-word; white-space: pre-wrap; font-size: 13.5px; }
-.g-feld-wert .g-neben { color: var(--sekundaer, #6b7280); font-size: 12px; margin-left: 6px; }
-.g-leerwert { color: var(--sekundaer, #6b7280); }
-
-.g-schloss {
-  font-size: 11px;
-  color: var(--sekundaer, #6b7280);
-  margin-left: 6px;
-  cursor: help;
-}
-
-/* ---------- Eingabefelder ---------- */
-
-.g-eingabe, .g-textarea {
-  font: inherit;
-  font-size: 13.5px;
-  width: 100%;
-  max-width: 420px;
-  padding: 6px 9px;
-  border: 1px solid var(--linie, #e5e7eb);
-  border-radius: var(--radius-klein, 5px);
-  background: var(--weiss, #ffffff);
-  color: var(--text, #111827);
-}
-.g-textarea { max-width: 560px; min-height: 74px; resize: vertical; }
-.g-eingabe:focus, .g-textarea:focus {
-  outline: none;
-  border-color: var(--gruen, #84B819);
-  box-shadow: 0 0 0 3px var(--gruen-hell, #f2f8e4);
-}
-.g-eingabe.g-ungueltig, .g-textarea.g-ungueltig {
-  border-color: var(--rot, #dc2626);
-  box-shadow: 0 0 0 3px var(--rot-hell, #fef2f2);
-}
-.g-feldfehler { color: var(--rot, #dc2626); font-size: 12px; margin-top: 3px; }
-.g-geaendert > .g-feld-name::after {
-  content: " •";
-  color: var(--gruen, #84B819);
-  font-weight: 700;
-}
-
-/* ---------- Schalter (Ja/Nein) ---------- */
-
-.g-schalter {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  cursor: pointer;
-  font-size: 13px;
-  padding: 4px 0;
-  min-width: 0;
-}
-.g-schalter input { position: absolute; opacity: 0; width: 0; height: 0; }
-.g-schalter-spur {
-  flex: 0 0 auto;
-  width: 34px; height: 19px;
-  border-radius: 999px;
-  background: var(--linie, #e5e7eb);
-  position: relative;
-  transition: background .12s ease-in-out;
-}
-.g-schalter-spur::after {
-  content: "";
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 15px; height: 15px;
-  border-radius: 50%;
-  background: var(--weiss, #ffffff);
-  box-shadow: 0 1px 2px rgba(0,0,0,.25);
-  transition: transform .12s ease-in-out;
-}
-.g-schalter input:checked + .g-schalter-spur { background: var(--gruen, #84B819); }
-.g-schalter input:checked + .g-schalter-spur::after { transform: translateX(15px); }
-.g-schalter input:focus-visible + .g-schalter-spur { outline: 2px solid var(--gruen, #84B819); outline-offset: 2px; }
-.g-schalter input:disabled + .g-schalter-spur { opacity: .5; }
-.g-schalter-text { min-width: 0; overflow-wrap: anywhere; }
-
-.g-raster {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 2px 18px;
-}
-
-/* ---------- Jahres-Chips ---------- */
-
-.g-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.g-chip {
-  font: inherit;
-  font-size: 12.5px;
-  border: 1px solid var(--linie, #e5e7eb);
-  background: var(--weiss, #ffffff);
-  color: var(--sekundaer, #6b7280);
-  border-radius: 999px;
-  padding: 3px 12px;
-  cursor: pointer;
-}
-.g-chip:hover { background: var(--hover, #f3f4f6); }
-.g-chip[aria-pressed="true"] {
-  background: var(--gruen-hell, #f2f8e4);
-  border-color: var(--gruen, #84B819);
-  color: var(--text, #111827);
-  font-weight: 600;
-}
-.g-chip[disabled] { cursor: default; opacity: .8; }
-
-/* ---------- Werkzeugzeilen und Suchfelder ---------- */
+/* ==================================================================
+   Werkzeugzeilen und Zwischenüberschriften in den Karten
+   ================================================================== */
 
 .g-werkzeuge {
   display: flex;
-  gap: 8px;
+  gap: var(--a2);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: var(--a3);
 }
-.g-suche {
+.g-werkzeuge .g-eingabe { max-width: 320px; }
+
+.g-schalterchen {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--t-xs); color: var(--text-leise); cursor: pointer;
+}
+.g-schalterchen input { accent-color: var(--marke); }
+
+.g-untertitel {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-still); font-weight: 600;
+  margin: var(--a4) 0 var(--a2);
+}
+
+.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
+
+
+/* ==================================================================
+   Eingaben
+
+   Die Feldzeilen selbst kommen aus design.css (.datenzeile); hier stehen
+   nur die Eingabefelder, weil sie eine eigene Höchstbreite brauchen.
+   ================================================================== */
+
+.g-eingabe, .g-textarea {
   font: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
-  border: 1px solid var(--linie, #e5e7eb);
-  border-radius: var(--radius-klein, 5px);
-  background: var(--weiss, #ffffff);
-  color: var(--text, #111827);
-  min-width: 200px;
-  flex: 1 1 200px;
-  max-width: 340px;
+  font-size: var(--t-s);
+  width: 100%;
+  max-width: 420px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--r-klein);
+  background: var(--flaeche);
+  color: var(--text);
 }
-.g-suche:focus { outline: none; border-color: var(--gruen, #84B819); }
-.g-zaehler { color: var(--sekundaer, #6b7280); font-size: 12px; }
-.g-schalterchen { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--sekundaer, #6b7280); cursor: pointer; }
-.g-schalterchen input { accent-color: var(--gruen, #84B819); }
-
-/* ---------- Tabellen ---------- */
-
-.g-tabelle-rahmen { overflow-x: auto; }
-.g-tabelle { width: 100%; border-collapse: collapse; font-size: 13px; }
-.g-tabelle th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--sekundaer, #6b7280);
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-  padding: 6px 10px 6px 0;
-  white-space: nowrap;
+.g-textarea { max-width: 560px; min-height: 78px; resize: vertical; }
+.g-eingabe:focus, .g-textarea:focus {
+  outline: none;
+  background: var(--weiss);
+  box-shadow: 0 0 0 2px var(--marke);
 }
-.g-tabelle td {
-  padding: 6px 10px 6px 0;
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-  vertical-align: top;
-  word-break: break-word;
+.g-eingabe.g-ungueltig, .g-textarea.g-ungueltig {
+  background: var(--gefahr-hell);
+  box-shadow: 0 0 0 2px var(--gefahr);
 }
-.g-tabelle tr:last-child td { border-bottom: none; }
-.g-tabelle .g-rechts { text-align: right; }
+.g-eingabe-schmal { max-width: 190px; }
 
-.g-leer { color: var(--sekundaer, #6b7280); font-size: 13px; padding: 8px 0; }
 
-/* ---------- Zeitachse ---------- */
+/* ==================================================================
+   Hinweise (frühere «Auffälligkeiten», ohne Punkte und ohne Stufenrahmen)
+   ================================================================== */
 
-.g-achse { position: relative; margin: 4px 0 0 6px; padding-left: 18px; }
+.g-hinweis {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--a3);
+  padding: 7px 0;
+  align-items: start;
+}
+.g-hinweis + .g-hinweis { box-shadow: inset 0 1px 0 var(--linie); }
+.g-hinweis .icon { margin-top: 2px; }
+.g-hinweis-titel { font-size: var(--t-s); font-weight: 600; }
+.g-hinweis-text { font-size: var(--t-xs); color: var(--text-leise); margin-top: 1px; }
+
+
+/* ==================================================================
+   Zeitstrahl des Geräts
+
+   Achse und Markenreihen kommen aus design.css. Hier nur der Platz
+   rechts, damit die Beschriftung der letzten Marke lesbar bleibt — Achse
+   und Reihen teilen sich dieselbe Inhaltsbreite und bleiben dadurch
+   deckungsgleich.
+   ================================================================== */
+
+.g-zeitstrahl { padding: var(--a4) var(--a2) var(--a2); overflow-x: auto; }
+.g-zeitstrahl .zeitstrahl-achse,
+.g-zeitstrahl .zeitstrahl-reihe { padding-right: 130px; }
+
+.g-zeitstrahl .zeitstrahl-tick { padding-top: var(--a2); }
+.g-zeitstrahl .zeitstrahl-linie { background: var(--flaeche-2); height: 2px; }
+.g-zeitstrahl .zeitstrahl-tick.aktuell .zeitstrahl-linie { background: var(--marke); }
+
+
+/* ==================================================================
+   Benutzerliste des Geräts
+   ================================================================== */
+
+/* Name links, Knöpfe rechts — in schmalen Karten rutschen die Knöpfe
+   auf eine eigene Zeile, statt den Namen zu zerquetschen. */
+.g-person {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--a1) var(--a3);
+  padding: var(--a2) 0;
+}
+.g-person > div:first-child { flex: 1 1 220px; min-width: 0; }
+.g-person + .g-person { box-shadow: inset 0 1px 0 var(--linie); }
+.g-person-name { font-size: var(--t-m); font-weight: 500; }
+.g-person-unter { font-size: var(--t-xs); color: var(--text-leise); }
+.g-person-knoepfe { display: flex; gap: var(--a2); flex-wrap: wrap; }
+
+/* Trefferliste im Dialog «Benutzer zuordnen». */
+.g-trefferliste {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: var(--a2);
+}
+.g-treffer {
+  display: block; width: 100%;
+  font: inherit; text-align: left;
+  background: none; border: none;
+  border-radius: var(--r-klein);
+  padding: 6px var(--a2);
+  cursor: pointer;
+}
+.g-treffer:hover { background: var(--flaeche); }
+.g-treffer .g-person-unter { margin-top: 1px; }
+
+
+/* ==================================================================
+   Rohdaten («Alle Felder»)
+   ================================================================== */
+
+.g-roh-zeile {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) auto;
+  gap: var(--a3);
+  padding: 5px 0;
+  align-items: start;
+}
+.g-roh-zeile + .g-roh-zeile { box-shadow: inset 0 1px 0 var(--linie); }
+.g-roh-name { color: var(--text-leise); font-size: var(--t-xs); }
+.g-roh-intern { display: block; font-size: 11px; color: var(--text-still); }
+.g-roh-wert { font-size: var(--t-s); white-space: pre-wrap; overflow-wrap: anywhere; }
+.g-kopierknopf {
+  font: inherit; font-size: 11px;
+  background: none; border: none;
+  border-radius: var(--r-klein);
+  color: var(--text-still);
+  padding: 2px 7px; cursor: pointer;
+}
+.g-kopierknopf:hover { background: var(--flaeche); color: var(--text); }
+
+
+/* ==================================================================
+   Zeitachse der SCCM-Zeitstempel
+   ================================================================== */
+
+.g-achse { position: relative; margin-left: 6px; padding-left: 18px; }
 .g-achse::before {
   content: "";
   position: absolute;
-  left: 3px; top: 6px; bottom: 6px;
+  left: 3px; top: 8px; bottom: 8px;
   width: 2px;
-  background: var(--linie, #e5e7eb);
+  background: var(--flaeche-2);
 }
-.g-achse-punkt { position: relative; padding: 7px 0; }
+.g-achse-punkt { position: relative; padding: 6px 0; }
 .g-achse-punkt::before {
   content: "";
   position: absolute;
   left: -18px; top: 12px;
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--gruen, #84B819);
-  border: 2px solid var(--weiss, #ffffff);
+  background: var(--marke);
 }
-.g-achse-punkt.g-alt::before { background: var(--linie, #e5e7eb); }
-.g-achse-titel { font-size: 13px; }
-.g-achse-zeit { color: var(--sekundaer, #6b7280); font-size: 12px; }
+.g-achse-punkt.g-alt::before { background: var(--flaeche-2); }
+.g-achse-titel { font-size: var(--t-s); }
+.g-achse-zeit { color: var(--text-leise); font-size: var(--t-xs); }
 
-/* ---------- Analyse ---------- */
+
+/* ==================================================================
+   Flottenvergleich
+   ================================================================== */
 
 .g-vergleich {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--linie, #e5e7eb);
+  gap: 2px var(--a3);
+  padding: var(--a2) 0;
 }
-.g-vergleich:last-child { border-bottom: none; }
-.g-vergleich-name { font-size: 13px; }
-.g-vergleich-wert { font-size: 13px; font-weight: 600; text-align: right; white-space: nowrap; }
-.g-vergleich-neben { grid-column: 1 / -1; color: var(--sekundaer, #6b7280); font-size: 12px; }
+.g-vergleich + .g-vergleich { box-shadow: inset 0 1px 0 var(--linie); }
+.g-vergleich-name { font-size: var(--t-s); }
+.g-vergleich-wert {
+  font-size: var(--t-s); font-weight: 600; text-align: right;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.g-vergleich-neben { grid-column: 1 / -1; color: var(--text-leise); font-size: var(--t-xs); }
 
 .g-verteilung { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 6px; }
-.g-verteilung-saeule { flex: 1 1 0; background: var(--linie, #e5e7eb); border-radius: 2px 2px 0 0; min-height: 2px; }
-.g-verteilung-saeule.g-hier { background: var(--gruen, #84B819); }
-
-/* ---------- Rohdaten ---------- */
-
-.g-roh-zeile {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--linie, #e5e7eb);
-  align-items: start;
+.g-verteilung-saeule {
+  flex: 1 1 0; background: var(--flaeche-2);
+  border-radius: 2px 2px 0 0; min-height: 2px;
 }
-.g-roh-name { color: var(--sekundaer, #6b7280); font-size: 12.5px; }
-.g-roh-name .g-roh-intern { display: block; font-size: 11px; opacity: .8; }
-.g-roh-wert { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
-.g-kopierknopf {
-  font: inherit;
-  font-size: 11.5px;
-  border: 1px solid var(--linie, #e5e7eb);
-  background: var(--weiss, #ffffff);
-  color: var(--sekundaer, #6b7280);
-  border-radius: var(--radius-klein, 5px);
-  padding: 1px 7px;
-  cursor: pointer;
-}
-.g-kopierknopf:hover { background: var(--hover, #f3f4f6); color: var(--text, #111827); }
+.g-verteilung-saeule.g-hier { background: var(--marke); }
 
-/* ---------- Speicherleiste ---------- */
 
-.g-speicherleiste {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 10px 22px;
-  background: var(--weiss, #ffffff);
-  border-top: 1px solid var(--linie, #e5e7eb);
-  box-shadow: 0 -2px 10px rgba(0,0,0,.06);
-}
-.g-speicher-text { font-size: 13px; font-weight: 600; margin-right: auto; }
-.g-speicher-fehler {
-  font-size: 12.5px;
-  color: var(--rot, #dc2626);
-  background: var(--rot-hell, #fef2f2);
-  border: 1px solid var(--rot, #dc2626);
-  border-radius: var(--radius-klein, 5px);
-  padding: 3px 8px;
-  max-width: 60ch;
-}
+/* ==================================================================
+   Schmale Fenster
 
-/* ---------- Toast ---------- */
-
-.g-toast {
-  position: fixed;
-  right: 22px;
-  bottom: 74px;
-  z-index: 30;
-  background: var(--text, #111827);
-  color: var(--weiss, #ffffff);
-  font-size: 13px;
-  border-radius: var(--radius, 8px);
-  padding: 9px 14px;
-  box-shadow: 0 4px 14px rgba(0,0,0,.2);
-  max-width: 60ch;
-}
-.g-toast-fehler { background: var(--rot, #dc2626); }
-
-/* ---------- Dialog ---------- */
-
-.g-dialog-hintergrund {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, .35);
-  z-index: 40;
-}
-.g-dialog {
-  position: fixed;
-  z-index: 41;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(460px, calc(100% - 32px));
-  background: var(--weiss, #ffffff);
-  border-radius: var(--radius, 8px);
-  box-shadow: 0 12px 40px rgba(0,0,0,.25);
-  padding: 18px 20px;
-}
-.g-dialog h2 { margin-bottom: 8px; }
-.g-dialog p { font-size: 13.5px; margin: 0 0 10px; }
-.g-dialog .g-eingabe { max-width: none; }
-.g-dialog-knoepfe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-
-.knopf-gefahr {
-  background: var(--rot, #dc2626);
-  border-color: var(--rot, #dc2626);
-  color: var(--weiss, #ffffff);
-  font-weight: 500;
-}
-.knopf-gefahr:hover { background: #b91c1c; border-color: #b91c1c; }
-.knopf[disabled], .knopf-gefahr[disabled] { opacity: .5; cursor: default; }
-
-/* ---------- Mobil ---------- */
+   Die Seite bleibt mindestens --g-mindestbreite breit (siehe oben) und
+   rollt darunter waagrecht. Hier wird nur der Innenabstand knapper.
+   ================================================================== */
 
 @media (max-width: 900px) {
-  .g-rumpf { grid-template-columns: 1fr; }
-  .g-nav {
-    width: auto;
-    position: static;
-    flex-direction: row;
-    overflow-x: auto;
-    min-height: 0;
-    border-right: none;
-    border-bottom: 1px solid var(--linie, #e5e7eb);
-    padding: 8px 12px;
-  }
-  .g-nav-knopf { white-space: nowrap; }
-  .g-inhalt { padding: 14px 14px 130px; }
-  .g-kopf { padding: 12px 14px; }
-  .g-kopf h1 { font-size: 19px; }
-  .g-logo { height: 24px; }
-  .g-feld { grid-template-columns: 1fr; gap: 0; }
-  .g-roh-zeile { grid-template-columns: 1fr auto; }
-  .g-roh-wert { grid-column: 1 / -1; }
-  .g-speicherleiste { padding: 10px 14px; }
-  .g-toast { left: 14px; right: 14px; bottom: 84px; }
+  .fenster-inhalt { padding: var(--a4) var(--a4) 96px; }
+  .fenster-nav { padding: var(--a3) var(--a2) var(--a5); }
 }
 
-/* ---------- Druck ---------- */
+
+/* ==================================================================
+   Druck
+   ================================================================== */
 
 @media print {
-  .g-seite { background: #ffffff; }
-  .g-nav, .g-kopf-aktionen, .g-speicherleiste, .g-toast, .g-band,
-  .g-werkzeuge, .g-kopierknopf, .g-geschwister-knopf { display: none !important; }
-  .g-rumpf { grid-template-columns: 1fr; }
-  .g-inhalt { padding: 0; }
-  .g-karte, .g-kachel {
-    box-shadow: none;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .g-karten { grid-template-columns: 1fr 1fr; }
+  body.g-seite { min-width: 0; background: #ffffff; }
+  .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .g-band,
+  .g-werkzeuge, .g-kopierknopf, .g-person-knoepfe { display: none; }
+  .fenster-rumpf { grid-template-columns: 1fr; }
+  .fenster-inhalt { padding: 0; }
+  .karte, .kachel { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+  .karten { grid-template-columns: 1fr 1fr; }
 }

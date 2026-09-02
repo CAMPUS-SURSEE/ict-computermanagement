@@ -1,0 +1,90 @@
+/* benutzer.css — Seitenlayout des Benutzerfensters.
+
+   Wird NACH design.css geladen. Das gesamte Gerüst — Kopf, Rumpf mit
+   klebender Seitennavigation (.fenster-rumpf, .fenster-nav,
+   .fenster-inhalt), Kartenraster (.karten), Datenzeilen (.datenzeilen,
+   .datenzeile), Speicherleiste, Toast und Dialog — steht in design.css und
+   ist mit dem Gerätefenster identisch. Hier bleiben nur die wenigen Muster,
+   die es nur in diesem Fenster gibt: Statuszeile im Kopf, Hinweiszeilen,
+   Trefferliste der Gerätesuche und die Programmliste.
+
+   Alle eigenen Klassen beginnen mit «b-». Farben, Abstände, Radien und
+   Schatten kommen ausschliesslich aus den Variablen von design.css.
+
+   Wichtig: kein overflow:hidden. Die Seite scrollt senkrecht wie waagrecht,
+   sobald der Inhalt grösser ist als das Fenster. */
+
+:root {
+  /* Wie im Gerätefenster: darunter rollt die Seite waagrecht, statt den
+     Inhalt weiter zu quetschen. */
+  --b-mindestbreite: 880px;
+}
+
+body.b-seite {
+  min-width: var(--b-mindestbreite);
+}
+
+
+/* ---------- Kopf ---------- */
+
+/* Der AD-Status steht unter der Kennzeichnung, Farbe nur auf dem Text. */
+.b-status { font-size: var(--t-xs); font-weight: 600; margin-top: 2px; }
+.b-status:empty { display: none; }
+
+
+/* ---------- Hinweiszeilen ---------- */
+
+.b-hinweis {
+  display: flex; align-items: center; gap: var(--a2);
+  flex-wrap: wrap;
+  font-size: var(--t-s);
+  margin-top: var(--a3);
+}
+
+
+/* ---------- Gerätesuche ---------- */
+
+.b-treffer { display: grid; gap: 2px; margin-top: var(--a3); }
+
+.b-treffer-zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--a3);
+  padding: 7px var(--a2);
+  border-radius: var(--r-klein);
+}
+.b-treffer-zeile:hover { background: var(--flaeche); }
+.b-treffer-name { font-size: var(--t-s); font-weight: 500; }
+.b-treffer-unter { font-size: var(--t-xs); color: var(--text-leise); }
+.b-treffer-zeile.aktuell { background: var(--marke-hell); }
+
+
+/* ---------- Berechtigungen ---------- */
+
+.b-werkzeuge {
+  display: flex; align-items: center; gap: var(--a2); flex-wrap: wrap;
+  margin-bottom: var(--a4);
+}
+
+.b-programme { display: grid; gap: 1px; }
+
+.b-programm-zusatz {
+  display: flex; align-items: center; gap: var(--a1) var(--a2);
+  flex-wrap: wrap;
+}
+
+
+/* ---------- Abstände ---------- */
+
+.b-abstand { margin-top: var(--a5); }
+
+.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
+
+
+/* ---------- Schmale Fenster ---------- */
+
+@media (max-width: 900px) {
+  .fenster-inhalt { padding: var(--a4) var(--a4) 110px; }
+  .fenster-nav { padding: var(--a3) var(--a2) var(--a5); }
+}

@@ -1,0 +1,922 @@
+{
+    "version":  1,
+    "aktualisiert":  "2026-09-02T14:44:44Z",
+    "kategorien":  [
+                       "Standard-Software und Rechte",
+                       "ABACUS",
+                       "Zusatz-Software",
+                       "Spezial-Software",
+                       "Technik-Software",
+                       "Bpanda"
+                   ],
+    "programme":  [
+                      {
+                          "id":  "Microsoft365",
+                          "name":  "Microsoft 365",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Project2019",
+                          "name":  "Project 2019",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Visio2019",
+                          "name":  "Visio 2019",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "SharePoint",
+                          "name":  "SharePoint",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ZeitAG",
+                          "name":  "Zeit AG",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "TimePro",
+                          "name":  "Time.pro",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Presento",
+                          "name":  "Presento",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Projekto",
+                          "name":  "Projekto",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Dispo",
+                          "name":  "Dispo",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Exporto",
+                          "name":  "Exporto",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PerformX",
+                          "name":  "PerformX",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CampusAdmin",
+                          "name":  "Campus_Admin",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CampusBenutzer",
+                          "name":  "Campus_Benutzer",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CampusSchuladmin",
+                          "name":  "Campus_Schuladmin",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "RechtBearbeitungLogin",
+                          "name":  "Recht_Bearbeitung_Login",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "RechtBewertungen",
+                          "name":  "Recht_Bewertungen",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "RechtHonorar",
+                          "name":  "Recht_Honorar",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "RechtLohnDebi",
+                          "name":  "Recht_Lohn_Debi",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "RechtReferentenAdmin",
+                          "name":  "Recht_Referenten_Admin",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Protel",
+                          "name":  "Protel",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PDFCreator",
+                          "name":  "PDFCreator",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CitrixClient",
+                          "name":  "Citrix-Client",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "VLCPlayer",
+                          "name":  "VLC-Player",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AdobeReader",
+                          "name":  "Adobe Reader",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CAFMMeldeformular",
+                          "name":  "CAFM (Meldeformular)",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Frontify",
+                          "name":  "Frontify",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "KeePass",
+                          "name":  "KeePass",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "EvaSysCloud",
+                          "name":  "EvaSys Cloud",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Milestone",
+                          "name":  "Milestone",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Monocard",
+                          "name":  "Monocard",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Wallboard",
+                          "name":  "Wallboard",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AppCore",
+                          "name":  "AppCore",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ABACUS",
+                          "name":  "ABACUS",
+                          "kategorie":  "Standard-Software und Rechte",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AbaView",
+                          "name":  "AbaView",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Administrator",
+                          "name":  "Administrator",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Anlagenbuchhaltung",
+                          "name":  "Anlagenbuchhaltung",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Debitorenbuchhaltung",
+                          "name":  "Debitorenbuchhaltung",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Finanzbuchhaltung",
+                          "name":  "Finanzbuchhaltung",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AbacusHumanResources",
+                          "name":  "Human Resources (ABACUS)",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Kreditorenbuchhaltung",
+                          "name":  "Kreditorenbuchhaltung",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Lohnbuchhaltung",
+                          "name":  "Lohnbuchhaltung",
+                          "kategorie":  "ABACUS",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AdobeAcrobatPro",
+                          "name":  "Adobe Acrobat Pro",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AdobeCreativeSuite",
+                          "name":  "Adobe Creative Suite",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AttendantPro",
+                          "name":  "Attendant Pro",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CADdyPP2D",
+                          "name":  "CADdy++ 2D",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "CADdyPP3D",
+                          "name":  "CADdy++ 3D",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Microsoft365Copilot",
+                          "name":  "Microsoft 365 Copilot",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "MicrosoftPowerBIDesktop",
+                          "name":  "Microsoft Power BI Desktop",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "MicrosoftPowerBIProLizenz",
+                          "name":  "Microsoft Power BI Pro - Lizenz",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PDFXChangeEditor",
+                          "name":  "PDF-XChange Editor",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PrismaPrepare",
+                          "name":  "PrismaPrepare",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Sunetplus",
+                          "name":  "Sunetplus",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Supermailer",
+                          "name":  "Supermailer",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "TACReservationssystem",
+                          "name":  "TAC Reservationssystem",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "TCPOSAdmin",
+                          "name":  "TCPOS Admin",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Silverlight",
+                          "name":  "Silverlight",
+                          "kategorie":  "Zusatz-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ADPhotoEdit",
+                          "name":  "AD Photo Edit",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AdobePhotoshopCS6",
+                          "name":  "Adobe Photoshop CS6",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "Hot_Reze",
+                                            "MgmtS_ICT-S",
+                                            "Hot_VA",
+                                            "MgmtS_HR",
+                                            "Hot_TeamLBL"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ContentStudio",
+                          "name":  "Content Studio",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "BLD_D\u0026G"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Firefox",
+                          "name":  "Firefox",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "Hot_Reze",
+                                            "MgmtS_ICT-S",
+                                            "Bildung",
+                                            "MgmtS_HR",
+                                            "MgmtS_TechD",
+                                            "Hot_AssGF"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ForatableReservationsbuch",
+                          "name":  "Foratable Reservationsbuch",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "Hot_Reze",
+                                            "MgmtS_ICT-S"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "KeyMagic",
+                          "name":  "KeyMagic",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "MgmtS_Infras"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PaulisKitchenSolution",
+                          "name":  "Paulis Kitchen Solution",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "Hot_Kue17"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "PostPWC",
+                          "name":  "postPWC",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "MgmtS_SiBe",
+                                            "MgmtS_FRW",
+                                            "MgmtS_ChefMgmtS"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Salto",
+                          "name":  "Salto",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "Hot_Reze",
+                                            "Hot_NachtD",
+                                            "MgmtS_ICT-S",
+                                            "Spo_E\u0026V",
+                                            "MgmtS_TechD",
+                                            "MgmtS_BerLInfras",
+                                            "MgmtS_SiBe"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "SupermailerADGruppe",
+                          "name":  "Supermailer (AD-Gruppe)",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "Spo_E\u0026V",
+                                            "Spo_K\u0026A"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "TACVista",
+                          "name":  "TAC Vista",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "Hot_BerLVA",
+                                            "MgmtS_TechD",
+                                            "MgmtS_SiBe"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Tiffany",
+                          "name":  "Tiffany",
+                          "kategorie":  "Spezial-Software",
+                          "adGruppen":  [
+                                            "MgmtS_ICT-S",
+                                            "MgmtS_Infras"
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "AutoCADLT",
+                          "name":  "AutoCAD LT",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ChauvinArnoux",
+                          "name":  "Chauvin Arnoux",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ELDESConfigTool",
+                          "name":  "ELDES Config Tool",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "ETS6KNX",
+                          "name":  "ETS 6 (KNX)",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "GateControl",
+                          "name":  "Gate Control",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "SaltoPPDUSB",
+                          "name":  "Salto PPD USB",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "SnapformViewer",
+                          "name":  "SnapformViewer",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Testo",
+                          "name":  "Testo",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "Woehler",
+                          "name":  "Wöhler",
+                          "kategorie":  "Technik-Software",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "BpandaConsumer",
+                          "name":  "Bpanda Consumer",
+                          "kategorie":  "Bpanda",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "BpandaContributor",
+                          "name":  "Bpanda Contributor",
+                          "kategorie":  "Bpanda",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      },
+                      {
+                          "id":  "BpandaManager",
+                          "name":  "Bpanda Manager",
+                          "kategorie":  "Bpanda",
+                          "adGruppen":  [
+
+                                        ],
+                          "vorschlaege":  [
+
+                                          ]
+                      }
+                  ]
+}

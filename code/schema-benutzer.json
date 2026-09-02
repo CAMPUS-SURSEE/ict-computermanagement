@@ -1,0 +1,119 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "Login",
+        "type":  "Title",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "sAMAccountName aus dem AD, Schlüssel der Liste"
+    },
+    {
+        "internal":  "Anzeigename",
+        "display":  "Name",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "AD-Attribut displayName"
+    },
+    {
+        "internal":  "EMail",
+        "display":  "E-Mail",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "AD-Attribut mail"
+    },
+    {
+        "internal":  "Abteilung",
+        "display":  "Abteilung",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "AD-Attribut department"
+    },
+    {
+        "internal":  "Funktion",
+        "display":  "Funktion",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "AD-Attribut title"
+    },
+    {
+        "internal":  "Vorgesetzter",
+        "display":  "Vorgesetzter",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  false,
+        "description":  "Anzeigename des AD-Attributs manager"
+    },
+    {
+        "internal":  "Telefon",
+        "display":  "Telefon",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  false,
+        "description":  "AD-Attribut telephoneNumber"
+    },
+    {
+        "internal":  "Firma",
+        "display":  "Firma",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "AD-Attribut company"
+    },
+    {
+        "internal":  "ADAktiviert",
+        "display":  "AD-Konto aktiv",
+        "type":  "Text",
+        "group":  "AD",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "Ja oder Nein, aus dem AD-Attribut Enabled"
+    },
+    {
+        "internal":  "ADLetzterSync",
+        "display":  "Letzter AD-Sync",
+        "type":  "DateTime",
+        "group":  "AD",
+        "source":  "ad",
+        "inDefaultView":  false,
+        "description":  "Zeitpunkt des letzten Laufs, der diese Zeile abgeglichen hat"
+    },
+    {
+        "internal":  "SCCMPrimaerGeraet",
+        "display":  "Primärgerät (SCCM)",
+        "type":  "Text",
+        "group":  "SCCM",
+        "source":  "sccm",
+        "inDefaultView":  false,
+        "description":  "Aus SMS_UserMachineRelationship (User Device Affinity), nur als Hinweis"
+    },
+    {
+        "internal":  "Computer",
+        "display":  "Computer",
+        "type":  "Text",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "PC-Name aus der Liste «Computer»; leer bedeutet kein zugeordnetes Gerät"
+    },
+    {
+        "internal":  "Bemerkung",
+        "display":  "Bemerkung",
+        "type":  "Note",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Freitext"
+    }
+]

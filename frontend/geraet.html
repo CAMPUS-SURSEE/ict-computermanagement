@@ -5,66 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gerät — Computer Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<!-- styles.css liefert die Farbvariablen und die Grundelemente,
-     geraet.css alles Weitere. Reihenfolge ist wichtig. -->
-<link rel="stylesheet" href="styles.css">
+<!-- design.css liefert Tokens und Komponenten, geraet.css nur das
+     Seitenlayout dieses Fensters. Reihenfolge ist wichtig.
+     styles.css wird hier bewusst NICHT geladen. -->
+<link rel="stylesheet" href="design.css">
 <link rel="stylesheet" href="geraet.css">
 </head>
-<body class="g-seite">
+<body class="seite fenster g-seite">
 
-<div class="g-band" id="g-band" hidden></div>
+<!-- Band für den Vorführmodus, volle Breite. -->
+<div class="band band-warnung g-band" id="g-band" hidden></div>
 
-<header class="g-kopf">
-  <div class="g-kopf-titel">
-    <img class="g-logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
-    <div class="g-kopf-text">
+<header class="kopf">
+  <div class="kopf-marke">
+    <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <div class="marke-text">
       <h1 id="g-titel">Gerät wird geladen …</h1>
-      <p class="g-kopf-unter" id="g-unter"></p>
-      <div class="g-badges" id="g-badges"></div>
+      <p class="marke-unter" id="g-unter"></p>
     </div>
   </div>
-  <div class="g-kopf-aktionen" id="g-aktionen"></div>
+  <div class="chips g-status" id="g-status"></div>
+  <div class="kopf-rechts" id="g-aktionen"></div>
 </header>
 
-<div class="g-geschwister" id="g-geschwister" hidden></div>
+<div class="fenster-rumpf">
 
-<div class="g-rumpf">
+  <nav class="fenster-nav" id="g-nav" hidden aria-label="Bereiche"></nav>
 
-  <nav class="g-nav" id="g-nav" hidden aria-label="Bereiche"></nav>
+  <main class="fenster-inhalt" id="g-inhalt">
 
-  <main class="g-inhalt">
-
-    <div class="g-meldung" id="g-laden">
+    <div class="lade" id="g-laden">
       <div class="spinner" aria-hidden="true"></div>
-      <p id="g-laden-text">Anmeldung wird geprüft …</p>
+      <p class="lade-text" id="g-laden-text">Anmeldung wird geprüft …</p>
+      <p class="lade-fortschritt" id="g-laden-fortschritt"></p>
     </div>
 
-    <div class="g-meldung g-meldung-fehler" id="g-fehler" hidden>
-      <h2 id="g-fehler-titel">Es ist ein Fehler aufgetreten</h2>
-      <p id="g-fehler-text"></p>
-      <p class="hinweis" id="g-fehler-hinweis"></p>
-      <button type="button" class="knopf knopf-primaer" id="g-knopf-nochmal">Nochmals versuchen</button>
+    <div class="fehler" id="g-fehler" hidden>
+      <h2 class="fehler-titel" id="g-fehler-titel">Es ist ein Fehler aufgetreten</h2>
+      <p class="fehler-text" id="g-fehler-text"></p>
+      <p class="fehler-hinweis" id="g-fehler-hinweis"></p>
+      <button type="button" class="knopf knopf-primaer" id="g-knopf-nochmal">Erneut laden</button>
     </div>
 
-    <div id="g-bereich" hidden></div>
+    <div class="fenster-bahn" id="g-bereich" hidden></div>
 
   </main>
 </div>
 
-<div class="g-speicherleiste" id="g-speicherleiste" hidden>
-  <span class="g-speicher-text" id="g-speicher-text"></span>
-  <span class="g-speicher-fehler" id="g-speicher-fehler" hidden></span>
+<div class="speicherleiste" id="g-speicherleiste" hidden>
+  <span class="speicher-text" id="g-speicher-text"></span>
+  <span class="speicher-fehler t-gefahr" id="g-speicher-fehler" hidden></span>
   <button type="button" class="knopf" id="g-knopf-verwerfen">Verwerfen</button>
   <button type="button" class="knopf knopf-primaer" id="g-knopf-speichern">Speichern</button>
 </div>
 
-<div class="g-toast" id="g-toast" hidden role="status" aria-live="polite"></div>
+<div class="toast" id="g-toast" hidden role="status" aria-live="polite"></div>
 
-<div class="g-dialog-hintergrund" id="g-dialog-hintergrund" hidden></div>
-<div class="g-dialog" id="g-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="g-dialog-titel">
+<div class="dialog-hintergrund" id="g-dialog-hintergrund" hidden></div>
+<div class="dialog" id="g-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="g-dialog-titel">
   <h2 id="g-dialog-titel"></h2>
   <div id="g-dialog-inhalt"></div>
-  <div class="g-dialog-knoepfe" id="g-dialog-knoepfe"></div>
+  <div class="dialog-knoepfe" id="g-dialog-knoepfe"></div>
 </div>
 
 <div id="g-datenlisten" hidden></div>
@@ -76,6 +77,7 @@
 <script src="spalten.js"></script>
 <script src="auth.js"></script>
 <script src="graph.js"></script>
+<script src="modell.js"></script>
 <script src="geraet.js"></script>
 
 </body>

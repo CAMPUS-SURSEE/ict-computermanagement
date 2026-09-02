@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benutzer — Computer Inventar</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<!-- design.css liefert Tokens und Komponenten, benutzer.css nur das
+     Seitenlayout dieses Fensters. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="benutzer.css">
+</head>
+<body class="seite fenster b-seite">
+
+<!-- Band für den Vorführmodus (?mock=1). -->
+<div class="band band-warnung" id="b-band" hidden></div>
+
+<header class="kopf">
+  <div class="kopf-marke">
+    <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    <div class="marke-text">
+      <h1 id="b-titel">Benutzer wird geladen …</h1>
+      <p class="marke-unter" id="b-unter"></p>
+      <p class="b-status" id="b-status"></p>
+    </div>
+  </div>
+  <div class="kopf-rechts" id="b-aktionen"></div>
+</header>
+
+<div class="fenster-rumpf">
+
+  <nav class="fenster-nav" id="b-nav" hidden aria-label="Bereiche"></nav>
+
+  <main class="fenster-inhalt">
+
+    <div class="lade" id="b-laden">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="lade-text" id="b-laden-text">Anmeldung wird geprüft …</p>
+      <p class="lade-fortschritt" id="b-laden-fortschritt"></p>
+    </div>
+
+    <div class="fehler" id="b-fehler" hidden>
+      <h2 class="fehler-titel" id="b-fehler-titel">Es ist ein Fehler aufgetreten</h2>
+      <p class="fehler-text" id="b-fehler-text"></p>
+      <p class="fehler-hinweis" id="b-fehler-hinweis"></p>
+      <button type="button" class="knopf knopf-primaer" id="b-knopf-nochmal">Erneut laden</button>
+    </div>
+
+    <div class="fenster-bahn" id="b-bereich" hidden></div>
+
+  </main>
+</div>
+
+<div class="speicherleiste" id="b-speicherleiste" hidden>
+  <span class="speicher-text" id="b-speicher-text"></span>
+  <span class="speicher-fehler t-gefahr" id="b-speicher-fehler" hidden></span>
+  <button type="button" class="knopf" id="b-knopf-verwerfen">Verwerfen</button>
+  <button type="button" class="knopf knopf-primaer" id="b-knopf-speichern">Speichern</button>
+</div>
+
+<div class="toast" id="b-toast" hidden role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
+        integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="konfig.js"></script>
+<script src="spalten.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="modell.js"></script>
+<script src="benutzer.js"></script>
+
+</body>
+</html>

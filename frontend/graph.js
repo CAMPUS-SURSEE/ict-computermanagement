@@ -1,37 +1,47 @@
 /* graph.js — Daten für «Computer Inventar».
 
-   Zwei Aufgaben:
+   Drei Teile:
      1. Hilfe   — Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
-     2. Daten   — Lesen und Schreiben der SharePoint-Liste über Microsoft Graph,
-                  dazu der Fantasie-Datensatz für den Modus ?mock=1.
+     2. Daten   — Lesen und Schreiben der beiden SharePoint-Listen und der
+                  Datei programme.json über Microsoft Graph.
+     3. Mock    — Fantasie-Datensatz für den Modus ?mock=1.
 
    Die Berechtigung ist delegiert (Sites.ReadWrite.All): das Token kann genau
-   das, was die angemeldete Person in SharePoint ohnehin darf. Geschrieben
-   werden ausschliesslich die von Hand gepflegten Spalten (Quelle «excel»);
-   die SCCM-Spalten überschreibt der Abgleich ohnehin bei jedem Lauf.
+   das, was die angemeldete Person in SharePoint ohnehin darf.
+
+   Öffentliche Schnittstelle (auch im Vorführmodus identisch):
+     await Daten.computer(fortschritt)     → Array flacher Zeilen
+     await Daten.benutzer(fortschritt)     → Array flacher Zeilen
+     await Daten.programme()               → Objekt aus programme.json
+     await Daten.zeile(liste, id)          → eine Zeile
+     await Daten.speichern(liste, id, f)   → geänderte Zeile
+     await Daten.anlegen(liste, felder)    → neue Zeile
+     await Daten.loeschen(liste, id)       → true
+   «liste» ist immer "computer" oder "benutzer". «fortschritt» ist eine
+   Rückrufe-Funktion, die nach jeder geladenen Seite die bisherige Anzahl
+   bekommt.
 
    Setzt konfig.js, spalten.js und auth.js voraus. */
 
+"use strict";
+
 
 /* ==================================================================
-   Hilfe — Formatierung
+   1. Hilfe — Formatierung
    ================================================================== */
 
 const Hilfe = (function () {
 
   const MS_TAG = 24 * 60 * 60 * 1000;
 
-  /* Aus einem ISO-Zeitstempel (Graph liefert UTC) ein Date-Objekt, oder null.
-     Alle Vergleiche im Frontend laufen über Date-Objekte, nie über Text. */
+  /* Aus einem ISO-Zeitstempel (Graph liefert UTC) ein Date-Objekt, oder null. */
   function datum(wert) {
     if (!wert) return null;
-    const d = new Date(wert);
+    const d = wert instanceof Date ? wert : new Date(wert);
     return isNaN(d.getTime()) ? null : d;
   }
 
-  function zweistellig(n) {
-    return String(n).padStart(2, "0");
-  }
+  function zweistellig(n) { return String(n).padStart(2, "0"); }
 
   /* «2026-09-01T05:41:00Z» -> «01.09.2026 07:41» in lokaler Zeit. */
   function datumZeitText(wert) {
@@ -55,8 +65,7 @@ const Hilfe = (function () {
     return Math.floor((Date.now() - d.getTime()) / MS_TAG);
   }
 
-  /* «vor 3 Tagen», «heute», «vor 2 Monaten». Bewusst grob: für die Frage
-     «ist das Gerät noch in Betrieb» reicht die Grössenordnung. */
+  /* «vor 3 Tagen», «heute», «vor 2 Monaten». */
   function relativText(wert) {
     const tage = tageHer(wert);
     if (tage === null) return "";
@@ -72,7 +81,7 @@ const Hilfe = (function () {
     return jahre <= 1 ? "vor einem Jahr" : "vor " + jahre + " Jahren";
   }
 
-  /* Zahlen in Schweizer Schreibweise, mit Apostroph als Tausendertrenner. */
+  /* Zahlen in Schweizer Schreibweise. */
   function zahlText(wert, nachkomma) {
     if (wert === null || wert === undefined || wert === "") return "";
     const n = Number(wert);
@@ -83,8 +92,7 @@ const Hilfe = (function () {
     });
   }
 
-  /* Die SCCM-Spalten liefern «Ja»/«Nein» als Text, die Excel-Spalten echte
-     Wahrheitswerte. Beides landet hier. */
+  /* Ja/Nein: SCCM und AD liefern Text, ältere Spalten echte Wahrheitswerte. */
   function istJa(wert) {
     if (wert === true) return true;
     if (typeof wert === "string") {
@@ -97,11 +105,8 @@ const Hilfe = (function () {
   /* Mehrzeilige Note-Spalten in saubere Zeilen zerlegen. */
   function zeilen(wert) {
     if (!wert) return [];
-    return String(wert)
-      .replace(/\r/g, "")
-      .split("\n")
-      .map(z => z.trim())
-      .filter(z => z.length > 0);
+    return String(wert).replace(/\r/g, "").split("\n")
+      .map(z => z.trim()).filter(z => z.length > 0);
   }
 
   /* Eine Zeile einer Note-Spalte am Trennzeichen «|» in Felder zerlegen. */
@@ -118,31 +123,40 @@ const Hilfe = (function () {
   }
 
   return {
-    datum: datum,
-    datumText: datumText,
-    datumZeitText: datumZeitText,
-    tageHer: tageHer,
-    relativText: relativText,
-    zahlText: zahlText,
-    istJa: istJa,
-    zeilen: zeilen,
-    felder: felder,
-    vergleiche: vergleiche
+    datum: datum, datumText: datumText, datumZeitText: datumZeitText,
+    tageHer: tageHer, relativText: relativText, zahlText: zahlText,
+    istJa: istJa, zeilen: zeilen, felder: felder, vergleiche: vergleiche
   };
 })();
 
 
 /* ==================================================================
-   Daten — Microsoft Graph
+   2. Daten — Microsoft Graph
    ================================================================== */
 
 const Daten = (function () {
 
   const WURZEL = "https://graph.microsoft.com/v1.0";
-  const LISTE = "/sites/" + KONFIG.siteId + "/lists/" + KONFIG.listId;
+  const ABFRAGE = new URLSearchParams(location.search);
+  const mockModus = ABFRAGE.get("mock") === "1";
 
-  /* Eine Anfrage an Graph. «einstellungen» erlaubt eine andere Methode und
-     einen Rumpf; ohne Angabe ist es ein einfaches GET. */
+  const LISTEN_TITEL = { computer: "Computer", benutzer: "Benutzer" };
+
+  function listenPfad(liste) {
+    if (!KONFIG.listeBereit(liste)) {
+      const fehler = new Error(
+        "In konfig.js fehlt die Listen-ID für die Liste «" + (LISTEN_TITEL[liste] || liste)
+        + "». Sie wird von code\\Migrate-ToTwoLists.ps1 mit dem Schalter "
+        + "-UpdateKonfig eingetragen. Bis dahin lässt sich die Seite mit "
+        + "?mock=1 im Vorführmodus anschauen.");
+      fehler.status = 0;
+      fehler.konfiguration = true;
+      throw fehler;
+    }
+    return "/sites/" + KONFIG.siteId + "/lists/" + KONFIG.listId(liste);
+  }
+
+  /* Eine Anfrage an Graph. */
   async function anfrage(pfad, einstellungen) {
     const e = einstellungen || {};
     const methode = e.methode || "GET";
@@ -150,7 +164,7 @@ const Daten = (function () {
 
     const kopfzeilen = {
       "Authorization": "Bearer " + zugriff,
-      "Accept": "application/json"
+      "Accept": e.roh ? "*/*" : "application/json"
     };
     let rumpf;
     if (e.rumpf !== undefined && e.rumpf !== null) {
@@ -159,38 +173,36 @@ const Daten = (function () {
     }
 
     const antwort = await fetch(pfad.indexOf("http") === 0 ? pfad : WURZEL + pfad, {
-      method: methode,
-      headers: kopfzeilen,
-      body: rumpf
+      method: methode, headers: kopfzeilen, body: rumpf
     });
 
     // DELETE antwortet mit 204 und leerem Rumpf.
     const daten = antwort.status === 204 ? null : await antwort.json().catch(() => null);
     if (!antwort.ok) {
-      const fehler = new Error(lesbarerFehler(antwort.status, daten, methode));
+      const fehler = new Error(lesbarerFehler(antwort.status, daten, methode, e.was));
       fehler.status = antwort.status;
       throw fehler;
     }
     return daten;
   }
 
-  function lesbarerFehler(status, daten, methode) {
+  function lesbarerFehler(status, daten, methode, was) {
     const meldung = daten && daten.error && (daten.error.message || daten.error.code);
     const schreibend = methode && methode !== "GET";
+    const ziel = was || "die Liste";
     if (status === 400) return "Microsoft Graph hat die Änderung abgelehnt: "
       + (meldung || "ungültiger Wert") + ". Bitte die Eingaben prüfen.";
     if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
-    if (status === 403 && schreibend) return "Keine Schreibberechtigung für die Liste "
-      + "«Computer Inventar». Entweder fehlt der Anwendung die Berechtigung "
-      + "Sites.ReadWrite.All — dann bitte code\\Setup-FrontendApp.ps1 erneut ausführen, "
-      + "damit der Admin-Consent erteilt wird — oder das Konto darf in SharePoint "
-      + "nur lesen.";
-    if (status === 403) return "Keine Berechtigung für die Liste «Computer Inventar». "
-      + "Bitte prüfen, ob das Konto Zugriff auf die SharePoint-Site «mgmts-ict-s» hat.";
+    if (status === 403 && schreibend) return "Keine Schreibberechtigung für " + ziel
+      + ". Entweder fehlt der Anwendung die Berechtigung Sites.ReadWrite.All — dann bitte "
+      + "code\\Setup-FrontendApp.ps1 erneut ausführen, damit der Admin-Consent erteilt "
+      + "wird — oder das Konto darf in SharePoint nur lesen.";
+    if (status === 403) return "Keine Berechtigung für " + ziel + ". Bitte prüfen, ob das "
+      + "Konto Zugriff auf die SharePoint-Site «mgmts-ict-s» hat.";
     if (status === 409 || status === 412) return "Die Zeile wurde zwischenzeitlich von "
       + "jemand anderem geändert. Bitte neu laden und die Änderung wiederholen.";
-    if (status === 404) return "Nicht gefunden. Entweder wurde die Zeile inzwischen gelöscht, "
-      + "oder siteId und listId in konfig.js stimmen nicht mehr.";
+    if (status === 404) return "Nicht gefunden: " + ziel + ". Entweder wurde die Zeile "
+      + "gelöscht, oder die IDs in konfig.js stimmen nicht mehr.";
     if (status === 429) return "Zu viele Anfragen an Microsoft Graph. "
       + "Bitte eine Minute warten und dann neu laden.";
     if (status >= 500) return "Microsoft Graph antwortet gerade nicht (HTTP " + status + "). "
@@ -198,26 +210,23 @@ const Daten = (function () {
     return meldung || ("Fehler von Microsoft Graph (HTTP " + status + ")");
   }
 
-  /* Graph verschachtelt die Listenspalten unter «fields». Für die Seite ist
-     ein flaches Objekt bequemer. */
+  /* Graph verschachtelt die Listenspalten unter «fields». Flach ist bequemer. */
   function flach(element) {
     const satz = Object.assign({}, element.fields || {});
     satz.id = element.id;
     return satz;
   }
 
-  /* Lädt die ganze Liste, inklusive Folgeseiten.
-
-     Bewusst ohne $select: die Liste hat rund 190 Spalten, eine Auswahl wäre
-     länger als die Adresse erlaubt und müsste bei jeder Schemaänderung
-     nachgeführt werden. Ebenso bewusst ohne serverseitiges $filter: das
-     bräuchte Indizes und scheitert bei dieser Listengrösse sporadisch.
-     Rund 220 Zeilen sind im Browser mühelos zu filtern. */
-  async function alleZeilen(fortschritt) {
-    let url = LISTE + "/items?$expand=fields&$top=999";
+  /* Alle Zeilen einer Liste, inklusive Folgeseiten.
+     Bewusst ohne $select und ohne serverseitiges $filter: die Computer-Liste
+     hat rund 85 Spalten, die Benutzer-Liste wächst mit jedem Programm, und
+     ein paar hundert Zeilen filtert der Browser mühelos selbst. */
+  async function alleZeilen(liste, fortschritt) {
+    if (mockModus) return Mock.zeilen(liste);
+    let url = listenPfad(liste) + "/items?$expand=fields&$top=999";
     const treffer = [];
     while (url) {
-      const seite = await anfrage(url);
+      const seite = await anfrage(url, { was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
       for (const el of (seite.value || [])) treffer.push(flach(el));
       if (fortschritt) fortschritt(treffer.length);
       url = seite["@odata.nextLink"] || null;
@@ -225,66 +234,85 @@ const Daten = (function () {
     return treffer;
   }
 
-  /* Eine einzelne Zeile, flach wie bei alleZeilen(). */
-  async function zeile(id) {
-    const el = await anfrage(LISTE + "/items/" + encodeURIComponent(id) + "?$expand=fields");
+  /** Alle Geräte. */
+  async function computer(fortschritt) { return alleZeilen("computer", fortschritt); }
+
+  /** Alle Benutzer. */
+  async function benutzer(fortschritt) { return alleZeilen("benutzer", fortschritt); }
+
+  /** Inhalt von programme.json aus der Dokumentbibliothek der Site. */
+  async function programme() {
+    if (mockModus) return Mock.programme();
+    const pfad = "/sites/" + KONFIG.siteId + "/drive/root:/"
+      + KONFIG.programmeDateiPfad.split("/").map(encodeURIComponent).join("/") + ":/content";
+    const inhalt = await anfrage(pfad, { was: "die Datei " + KONFIG.programmeDateiPfad });
+    if (!inhalt || !Array.isArray(inhalt.programme)) {
+      throw new Error("Die Datei " + KONFIG.programmeDateiPfad
+        + " ist leer oder hat nicht die erwartete Form (Schlüssel «programme»).");
+    }
+    return inhalt;
+  }
+
+  /** Eine einzelne Zeile, flach wie bei computer()/benutzer(). */
+  async function zeile(liste, id) {
+    if (mockModus) return Mock.zeile(liste, id);
+    const el = await anfrage(listenPfad(liste) + "/items/" + encodeURIComponent(id)
+      + "?$expand=fields", { was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
     return flach(el);
   }
 
-  /* Ändert nur die übergebenen Felder einer Zeile.
-     «felder» ist ein flaches Objekt { InternerName: Wert }. Texte als
-     Zeichenkette (leer = ""), Ja/Nein als true/false, Zahlen als Zahl oder
-     null. Alles Übrige bleibt unangetastet. */
-  async function speichern(id, felder) {
+  /* Ändert nur die übergebenen Felder einer Zeile. «felder» ist ein flaches
+     Objekt { InternerName: Wert }; Texte als Zeichenkette (leer = ""),
+     Zahlen als Zahl oder null. Alles Übrige bleibt unangetastet. */
+  async function speichern(liste, id, felder) {
+    if (mockModus) return Mock.speichern(liste, id, felder);
     const geaendert = await anfrage(
-      LISTE + "/items/" + encodeURIComponent(id) + "/fields",
-      { methode: "PATCH", rumpf: felder });
+      listenPfad(liste) + "/items/" + encodeURIComponent(id) + "/fields",
+      { methode: "PATCH", rumpf: felder, was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
     const satz = Object.assign({}, geaendert || {});
     satz.id = String(id);
     return satz;
   }
 
-  /* Legt eine neue Zeile an und gibt sie flach zurück. */
-  async function anlegen(felder) {
-    const el = await anfrage(LISTE + "/items",
-      { methode: "POST", rumpf: { fields: felder } });
+  /** Legt eine neue Zeile an und gibt sie flach zurück. */
+  async function anlegen(liste, felder) {
+    if (mockModus) return Mock.anlegen(liste, felder);
+    const el = await anfrage(listenPfad(liste) + "/items",
+      { methode: "POST", rumpf: { fields: felder },
+        was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
     return flach(el);
   }
 
   /* Löscht eine Zeile. SharePoint legt sie in den Papierkorb der Site, ein
      Versehen lässt sich dort innerhalb von 93 Tagen rückgängig machen. */
-  async function loeschen(id) {
-    await anfrage(LISTE + "/items/" + encodeURIComponent(id), { methode: "DELETE" });
+  async function loeschen(liste, id) {
+    if (mockModus) return Mock.loeschen(liste, id);
+    await anfrage(listenPfad(liste) + "/items/" + encodeURIComponent(id),
+      { methode: "DELETE", was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
     return true;
   }
 
-  /* Eine Quelle mit immer gleicher Signatur: entweder Graph oder die
-     Fantasie-Daten. So muss die Oberfläche nirgends zwischen den beiden
-     Fällen verzweigen. Mock wird erst hier nachgeschlagen, weil das Modul
-     weiter unten in derselben Datei steht. */
-  function quelle(mockModus) {
-    if (mockModus) {
-      return {
-        mock: true,
-        alleZeilen: async function () { return Mock.zeilen(); },
-        zeile: async function (id) { return Mock.zeile(id); },
-        speichern: async function (id, felder) { return Mock.speichern(id, felder); },
-        anlegen: async function (felder) { return Mock.anlegen(felder); },
-        loeschen: async function (id) { return Mock.loeschen(id); }
-      };
-    }
+  /* Ältere Schnittstelle für das Gerätefenster: eine Quelle mit immer
+     gleicher Signatur, fest auf die Computer-Liste. Neuer Code ruft besser
+     direkt Daten.computer() / Daten.speichern("computer", …) auf. */
+  function quelle(mock, liste) {
+    const l = liste || "computer";
     return {
-      mock: false,
-      alleZeilen: alleZeilen,
-      zeile: zeile,
-      speichern: speichern,
-      anlegen: anlegen,
-      loeschen: loeschen
+      mock: !!mock || mockModus,
+      liste: l,
+      alleZeilen: function (fortschritt) { return alleZeilen(l, fortschritt); },
+      zeile: function (id) { return zeile(l, id); },
+      speichern: function (id, felder) { return speichern(l, id, felder); },
+      anlegen: function (felder) { return anlegen(l, felder); },
+      loeschen: function (id) { return loeschen(l, id); }
     };
   }
 
   return {
-    alleZeilen: alleZeilen,
+    mockModus: mockModus,
+    computer: computer,
+    benutzer: benutzer,
+    programme: programme,
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,
@@ -295,15 +323,36 @@ const Daten = (function () {
 
 
 /* ==================================================================
-   Mock — Fantasie-Daten für ?mock=1
+   3. Mock — Fantasie-Daten für ?mock=1
 
-   Damit lässt sich die Seite ohne Anmeldung anschauen und im Netz
-   vorführen. Alle Namen und Geräte sind erfunden, die Zahlen stammen aus
-   einem Zufallsgenerator mit festem Startwert: derselbe Aufruf ergibt immer
+   Damit lässt sich die Seite ohne Anmeldung anschauen und vorführen. Alle
+   Namen und Geräte sind erfunden, die Zahlen stammen aus einem
+   Zufallsgenerator mit festem Startwert: derselbe Aufruf ergibt immer
    dieselben Daten.
+
+   Enthalten sind bewusst auch die Sonderfälle:
+     - Benutzer ohne Gerät
+     - Geräte ohne Benutzer
+     - Geräte mit zwei Benutzern
+     - Programme mit Stufe 0, 1 und 2 sowie Vorschlägen
+     - Geräte ohne Beschaffungsjahr und mit überfälligem Ersatz
+
+   Mit ?mock=1&fehler=1 wirft jeder Ladevorgang einen Fehler. Damit lässt
+   sich der Fehlerzustand der Oberfläche prüfen.
    ================================================================== */
 
 const Mock = (function () {
+
+  const ABFRAGE = new URLSearchParams(location.search);
+  const fehlerModus = ABFRAGE.get("fehler") === "1";
+
+  function fehlerPruefen() {
+    if (!fehlerModus) return;
+    const f = new Error("Vorführ-Fehler (?fehler=1): so sieht die Seite aus, "
+      + "wenn Microsoft Graph nicht antwortet.");
+    f.status = 503;
+    throw f;
+  }
 
   /* Kleiner Generator mit festem Startwert (mulberry32). */
   function wuerfel(saat) {
@@ -322,6 +371,10 @@ const Mock = (function () {
   const VORNAMEN  = ["Anna", "Beat", "Petra", "Urs", "Lena", "Marco", "Sara",
                      "Tobias", "Nina", "Reto", "Iris", "Fabian"];
   const FIRMEN    = ["Bildung", "Betriebe", "Seminarhotel", "Sport", "Verwaltung"];
+  const ABTEILUNGEN = ["ICT", "Finanzen", "Human Resources", "Marketing",
+                       "Technischer Dienst", "Bildung", "Empfang", "Gastronomie"];
+  const FUNKTIONEN = ["Sachbearbeiter/in", "Fachspezialist/in", "Leiter/in",
+                      "Assistent/in", "Lernende/r", "Projektleiter/in"];
   const GEBAEUDE  = ["Haus A / EG", "Haus A / 1. OG", "Haus B / 2. OG",
                      "Haus C / UG", "Werkhof / EG", "Sportzentrum / 1. OG"];
   const HERSTELLER = ["Dell Inc.", "Dell Inc.", "Dell Inc.", "HP", "LENOVO"];
@@ -329,25 +382,15 @@ const Mock = (function () {
                      "Precision 3581", "EliteBook 840 G10", "ThinkCentre M70q"];
   const OSVERSION = ["10.0.26100", "10.0.26100", "10.0.22631", "10.0.19045"];
   const GEHAEUSE  = ["Notebook", "Notebook", "Desktop", "Mini PC"];
-  const TYPEN     = ["Notebook", "Desktop", "Notebook", "Mini PC"];
-  const JAHRE     = ["J20212022", "J20222023", "J20232024", "J20242025", "J20252026"];
-
-  const SOFTWARE_JA = ["Microsoft365", "SharePoint", "AdobeReader", "PDFCreator",
-                       "KeePass", "VLCPlayer", "CitrixClient", "ZeitAG", "TimePro",
-                       "Protel", "ABACUS", "Frontify", "Microsoft365Copilot",
-                       "AdobeAcrobatPro", "MicrosoftPowerBIDesktop", "AutoCADLT",
-                       "BpandaConsumer", "PerformX", "Milestone", "AppCore"];
-  const ADGRUPPEN = ["ADPhotoEdit", "ContentStudio", "Firefox", "KeyMagic",
-                     "Salto", "Tiffany", "PostPWC"];
+  const BESCHAFFUNG = ["2019/2020", "2020/2021", "2021/2022", "2022/2023",
+                       "2023/2024", "2024/2025", "2025/2026"];
   const APPS = ["7-Zip 24.09", "Adobe Acrobat Reader", "Google Chrome",
                 "KeePass 2.57", "Microsoft 365 Apps", "Notepad++ 8.7",
                 "VLC Media Player", "Citrix Workspace", "Power BI Desktop"];
   const SAMMLUNGEN = ["Alle Notebooks", "Alle Desktops", "Standard-Software",
                       "Bildung", "Verwaltung", "Technischer Dienst"];
 
-  function waehle(r, liste) {
-    return liste[Math.floor(r() * liste.length)];
-  }
+  function waehle(r, liste) { return liste[Math.floor(r() * liste.length)]; }
 
   function vorTagen(tage, stunde) {
     const d = new Date();
@@ -356,44 +399,149 @@ const Mock = (function () {
     return d.toISOString();
   }
 
-  /* Baut eine vollständige Zeile: erst alle Spalten leer, dann gefüllt.
-     So sieht die Seite im Mock-Modus genau die Spalten, die sie auch
-     produktiv sieht. */
-  function leereZeile() {
-    const z = {};
-    for (const s of SPALTEN) {
-      z[s.i] = s.t === "Boolean" ? false : "";
+
+  /* ---------- programme.json ---------- */
+
+  /* [id, Anzeigename] je Kategorie. Anzeigenamen wie in der bisherigen
+     Spaltendefinition. */
+  const PROGRAMME_ROH = {
+    "Standard-Software und Rechte": [
+      ["Microsoft365", "Microsoft 365"], ["Project2019", "Project 2019"],
+      ["Visio2019", "Visio 2019"], ["SharePoint", "SharePoint"],
+      ["ZeitAG", "Zeit AG"], ["TimePro", "Time.pro"], ["Presento", "Presento"],
+      ["Projekto", "Projekto"], ["Dispo", "Dispo"], ["Exporto", "Exporto"],
+      ["PerformX", "PerformX"], ["CampusAdmin", "Campus_Admin"],
+      ["CampusBenutzer", "Campus_Benutzer"], ["CampusSchuladmin", "Campus_Schuladmin"],
+      ["RechtBearbeitungLogin", "Recht_Bearbeitung_Login"],
+      ["RechtBewertungen", "Recht_Bewertungen"], ["RechtHonorar", "Recht_Honorar"],
+      ["RechtLohnDebi", "Recht_Lohn_Debi"], ["RechtReferentenAdmin", "Recht_Referenten_Admin"],
+      ["Protel", "Protel"], ["PDFCreator", "PDFCreator"], ["CitrixClient", "Citrix-Client"],
+      ["VLCPlayer", "VLC-Player"], ["AdobeReader", "Adobe Reader"],
+      ["CAFMMeldeformular", "CAFM (Meldeformular)"], ["Frontify", "Frontify"],
+      ["KeePass", "KeePass"], ["EvaSysCloud", "EvaSys Cloud"], ["Milestone", "Milestone"],
+      ["Monocard", "Monocard"], ["Wallboard", "Wallboard"], ["AppCore", "AppCore"],
+      ["ABACUS", "ABACUS"]
+    ],
+    "ABACUS": [
+      ["AbaView", "AbaView"], ["Administrator", "Administrator"],
+      ["Anlagenbuchhaltung", "Anlagenbuchhaltung"],
+      ["Debitorenbuchhaltung", "Debitorenbuchhaltung"],
+      ["Finanzbuchhaltung", "Finanzbuchhaltung"],
+      ["AbacusHumanResources", "Human Resources (ABACUS)"],
+      ["Kreditorenbuchhaltung", "Kreditorenbuchhaltung"],
+      ["Lohnbuchhaltung", "Lohnbuchhaltung"]
+    ],
+    "Zusatz-Software": [
+      ["AdobeAcrobatPro", "Adobe Acrobat Pro"], ["AdobeCreativeSuite", "Adobe Creative Suite"],
+      ["AttendantPro", "Attendant Pro"], ["CADdyPP2D", "CADdy++ 2D"],
+      ["CADdyPP3D", "CADdy++ 3D"], ["Microsoft365Copilot", "Microsoft 365 Copilot"],
+      ["MicrosoftPowerBIDesktop", "Microsoft Power BI Desktop"],
+      ["MicrosoftPowerBIProLizenz", "Microsoft Power BI Pro - Lizenz"],
+      ["PDFXChangeEditor", "PDF-XChange Editor"], ["PrismaPrepare", "PrismaPrepare"],
+      ["Sunetplus", "Sunetplus"], ["Supermailer", "Supermailer"],
+      ["TACReservationssystem", "TAC Reservationssystem"], ["TCPOSAdmin", "TCPOS Admin"],
+      ["Silverlight", "Silverlight"]
+    ],
+    "Spezial-Software": [
+      ["ADPhotoEdit", "AD Photo Edit"], ["AdobePhotoshopCS6", "Adobe Photoshop CS6"],
+      ["ContentStudio", "Content Studio"], ["Firefox", "Firefox"],
+      ["ForatableReservationsbuch", "Foratable Reservationsbuch"], ["KeyMagic", "KeyMagic"],
+      ["PaulisKitchenSolution", "Paulis Kitchen Solution"], ["PostPWC", "postPWC"],
+      ["Salto", "Salto"], ["SupermailerADGruppe", "Supermailer (AD-Gruppe)"],
+      ["TACVista", "TAC Vista"], ["Tiffany", "Tiffany"]
+    ],
+    "Technik-Software": [
+      ["AutoCADLT", "AutoCAD LT"], ["ChauvinArnoux", "Chauvin Arnoux"],
+      ["ELDESConfigTool", "ELDES Config Tool"], ["ETS6KNX", "ETS 6 (KNX)"],
+      ["GateControl", "Gate Control"], ["SaltoPPDUSB", "Salto PPD USB"],
+      ["SnapformViewer", "SnapformViewer"], ["Testo", "Testo"], ["Woehler", "Wöhler"]
+    ],
+    "Bpanda": [
+      ["BpandaConsumer", "Bpanda Consumer"], ["BpandaContributor", "Bpanda Contributor"],
+      ["BpandaManager", "Bpanda Manager"]
+    ]
+  };
+
+  /* AD-Gruppen im Vorführmodus: die Spezial-Software hat welche, dazu ein
+     paar aus anderen Kategorien. Alles Übrige ist rein manuell. */
+  const AD_GRUPPEN = {
+    ADPhotoEdit: ["Hot_ADPhoto"], AdobePhotoshopCS6: ["Hot_Reze"],
+    ContentStudio: ["SW_ContentStudio"], Firefox: ["SW_Firefox"],
+    ForatableReservationsbuch: ["Hot_Foratable"], KeyMagic: ["SW_KeyMagic"],
+    PaulisKitchenSolution: ["Resto_Paulis"], PostPWC: ["Fin_PostPWC"],
+    Salto: ["TD_Salto", "TD_Salto_Admin"], SupermailerADGruppe: ["MK_Supermailer"],
+    TACVista: ["TD_TACVista"], Tiffany: ["Hot_Tiffany"],
+    Microsoft365: ["SW_M365"], AutoCADLT: ["TD_AutoCAD"],
+    BpandaManager: ["Bpanda_Manager"]
+  };
+
+  /* Vorschläge von Suggest-ProgrammGruppen.ps1, noch nicht übernommen. */
+  const VORSCHLAEGE = {
+    Frontify: ["SW_Frontify"], KeePass: ["SW_KeePass", "SW_KeePass_Admin"],
+    Milestone: ["TD_Milestone"], AdobeAcrobatPro: ["SW_AcrobatPro"],
+    BpandaConsumer: ["Bpanda_Consumer"]
+  };
+
+  function programme() {
+    fehlerPruefen();
+    const liste = [];
+    const kategorien = Object.keys(PROGRAMME_ROH);
+    for (const kategorie of kategorien) {
+      for (const [id, name] of PROGRAMME_ROH[kategorie]) {
+        liste.push({
+          id: id, name: name, kategorie: kategorie,
+          adGruppen: (AD_GRUPPEN[id] || []).slice(),
+          vorschlaege: (VORSCHLAEGE[id] || []).slice()
+        });
+      }
     }
+    return {
+      version: 1,
+      aktualisiert: vorTagen(1, 6),
+      kategorien: kategorien,
+      programme: liste
+    };
+  }
+
+  /* Alle Programm-IDs, für die leeren Benutzerzeilen. */
+  function programmIds() {
+    const ids = [];
+    for (const kategorie of Object.keys(PROGRAMME_ROH)) {
+      for (const [id] of PROGRAMME_ROH[kategorie]) ids.push(id);
+    }
+    return ids;
+  }
+
+
+  /* ---------- Grunddaten ---------- */
+
+  function leereZeile(spalten) {
+    const z = {};
+    for (const s of spalten) z[s.i] = s.t === "Boolean" ? false : "";
     return z;
   }
 
   function geraet(r, nummer) {
-    const z = leereZeile();
-    const nach = waehle(r, NACHNAMEN);
-    const vor = waehle(r, VORNAMEN);
-    const person = nach + " " + vor;
-    const login = (nach + "." + vor).toLowerCase();
+    const z = leereZeile(SPALTEN_COMPUTER);
     const name = "CAMPUS-9" + String(nummer).padStart(2, "0");
 
     z.id = String(nummer);
     z.Title = name;
-    z.Arbeitsplatz = person;
-    z.Login = login;
-    z.Firma = waehle(r, FIRMEN);
-    z.Typ = waehle(r, TYPEN);
     z.Seriennummer = "SN" + String(100000 + Math.floor(r() * 899999));
     z.GebaeudeStock = waehle(r, GEBAEUDE);
     z.Bemerkung = r() < 0.15 ? "Ersatzgerät, Rückgabe offen" : "";
-    z[waehle(r, JAHRE)] = true;
 
-    for (const spalte of SOFTWARE_JA) {
-      if (r() < 0.35) z[spalte] = true;
-    }
-    for (const spalte of ADGRUPPEN) {
-      if (r() < 0.2) z[spalte] = "Ja";
+    // Rund jedes achte Gerät hat kein Beschaffungsjahr: alter Bestand.
+    if (r() > 0.12) {
+      z.Beschaffungsjahr = waehle(r, BESCHAFFUNG);
+      // Meist der Vorschlag +5, manchmal von Hand vorgezogen oder leer.
+      const w = r();
+      if (w < 0.15) z.ErsatzGeplant = "";
+      else if (w < 0.3) z.ErsatzGeplant = Modell.gjPlus(z.Beschaffungsjahr, 4);
+      else z.ErsatzGeplant = Modell.gjPlus(z.Beschaffungsjahr, 5);
     }
 
-    // Rund jedes zehnte Gerät ist nicht in SCCM: alte Excel-Zeile ohne Abgleich.
+    // Rund jedes zehnte Gerät ist nicht in SCCM.
     const inSccm = r() > 0.1;
     z.SCCM_Found = inSccm ? "Ja" : "Nein";
     if (!inSccm) {
@@ -412,19 +560,10 @@ const Mock = (function () {
     z.SCCM_ADSite = "Sursee";
     z.SCCM_ADCreated = vorTagen(400 + nummer * 3, 9);
     z.SCCM_ADLastLogon = vorTagen(aktivVorTagen, 7);
-    z.SCCM_LastLogonUser = "SASADMIN\\" + login;
-    z.SCCM_CurrentLogonUser = online ? "SASADMIN\\" + login : "";
-    z.SCCM_PrimaryUser = "SASADMIN\\" + login;
-    z.SCCM_TopConsoleUser = "SASADMIN\\" + login;
     z.SCCM_LastConsoleUse = vorTagen(aktivVorTagen, 7);
-    z.SCCM_ConsoleUsers = [
-      "SASADMIN\\" + login + " | " + (20 + Math.floor(r() * 300)) + " Anmeldungen | "
-        + (500 + Math.floor(r() * 40000)) + " Min | zuletzt "
-        + Hilfe.datumZeitText(vorTagen(aktivVorTagen, 7)),
-      "SASADMIN\\ict.support | " + (1 + Math.floor(r() * 9)) + " Anmeldungen | "
-        + (10 + Math.floor(r() * 200)) + " Min | zuletzt "
-        + Hilfe.datumZeitText(vorTagen(aktivVorTagen + 40, 14))
-    ].join("\n");
+    /* Die Benutzerkonten (PrimaryUser, LastLogonUser, CurrentLogonUser,
+       TopConsoleUser, ConsoleUsers) setzt benutzerkontenAbgleichen(), sobald
+       die Benutzerzeilen stehen — sie werden aus deren Logins abgeleitet. */
 
     z.SCCM_ClientVersion = "5.00.9132.1000";
     z.SCCM_ClientActive = aktivVorTagen < 30 ? "Ja" : "Nein";
@@ -453,8 +592,6 @@ const Mock = (function () {
     z.SCCM_CPULogical = 12;
     z.SCCM_RAMGB = waehle(r, [8, 16, 16, 32]);
     z.SCCM_DiskCGB = waehle(r, [256, 476, 476, 953]);
-    // Rund jedes siebte Gerät läuft absichtlich knapp am Speicherplatz,
-    // damit die Kennzahl «unter 20 GB frei» im Vorführmodus etwas zeigt.
     const knapp = r() < 0.15;
     z.SCCM_DiskCFreeGB = Math.round(z.SCCM_DiskCGB
       * (knapp ? 0.005 + r() * 0.03 : 0.1 + r() * 0.55) * 10) / 10;
@@ -465,7 +602,8 @@ const Mock = (function () {
     z.SCCM_TPMEnabled = "Ja";
     z.SCCM_BitLocker = r() < 0.85 ? "Verschlüsselt" : "Nicht verschlüsselt";
     z.SCCM_Monitors = "DELL P2422H | 1920x1080\nDELL P2422H | 1920x1080";
-    z.SCCM_Battery = z.SCCM_ChassisType === "Notebook" ? "OK, " + (60 + Math.floor(r() * 40)) + " %" : "";
+    z.SCCM_Battery = z.SCCM_ChassisType === "Notebook"
+      ? "OK, " + (60 + Math.floor(r() * 40)) + " %" : "";
 
     z.SCCM_OS = "Microsoft Windows 11 Enterprise";
     z.SCCM_OSVersion = waehle(r, OSVERSION);
@@ -505,8 +643,7 @@ const Mock = (function () {
     z.SCCM_AppsRequired = appZeilen.filter(a => a.indexOf("Erforderlich") > -1).length;
     z.SCCM_AppsInstalled = erfolgreich;
 
-    const swAnzahl = 40 + Math.floor(r() * 60);
-    z.SCCM_InstalledSoftwareCount = swAnzahl;
+    z.SCCM_InstalledSoftwareCount = 40 + Math.floor(r() * 60);
     z.SCCM_InstalledSoftware = APPS.slice(0, 6)
       .map((a, i) => a + " | " + (1 + i) + "." + i + ".0").join("\n");
     z.SCCM_Collections = SAMMLUNGEN.slice(0, 3).join("\n");
@@ -516,85 +653,195 @@ const Mock = (function () {
     return z;
   }
 
-  /* Weitere Benutzerzeile desselben Geräts: gleiche SCCM-Daten, andere Person. */
-  function geteiltesGeraet(r, quelle, nummer) {
-    const z = Object.assign({}, quelle);
+  function benutzerZeile(r, nummer, pcName, ids) {
+    const z = leereZeile(SPALTEN_BENUTZER);
+    for (const id of ids) z[id] = "0";
+
     const nach = waehle(r, NACHNAMEN);
     const vor = waehle(r, VORNAMEN);
+    const login = (nach + "." + vor).toLowerCase() + (nummer % 7 === 0 ? String(nummer) : "");
+
     z.id = String(nummer);
-    z.Title = "Shared " + quelle.Title;
-    z.Arbeitsplatz = nach + " " + vor;
-    z.Login = (nach + "." + vor).toLowerCase();
+    z.Title = login;
+    z.Anzeigename = vor + " " + nach;
+    z.EMail = login + "@campus-sursee.ch";
+    z.Abteilung = waehle(r, ABTEILUNGEN);
+    z.Funktion = waehle(r, FUNKTIONEN);
+    z.Vorgesetzter = waehle(r, VORNAMEN) + " " + waehle(r, NACHNAMEN);
+    z.Telefon = "+41 41 926 " + (20 + Math.floor(r() * 79)) + " " + (10 + Math.floor(r() * 89));
     z.Firma = waehle(r, FIRMEN);
+    z.ADAktiviert = r() < 0.92 ? "Ja" : "Nein";
+    z.ADLetzterSync = vorTagen(0, 4);
+    z.Computer = pcName || "";
+    /* SCCMPrimaerGeraet setzt benutzerkontenAbgleichen(): meist gleich der
+       Zuordnung, bei rund jedem zehnten Benutzer abweichend. */
+    z.Bemerkung = r() < 0.1 ? "Zweitgerät im Homeoffice" : "";
+
+    // Berechtigungen: Stufe 2 nur dort, wo es auch AD-Gruppen gibt.
+    for (const id of ids) {
+      const hatGruppe = !!AD_GRUPPEN[id];
+      const w = r();
+      if (hatGruppe && w < 0.12) z[id] = "2";
+      else if (w < 0.3) z[id] = "1";
+    }
+    // Microsoft 365 hat praktisch jeder — und zwar über die AD-Gruppe.
+    if (r() < 0.85) z.Microsoft365 = "2";
     return z;
   }
 
-  /* Person ohne eigenes Gerät. */
-  function ohneGeraet(r, nummer) {
-    const z = leereZeile();
-    const nach = waehle(r, NACHNAMEN);
-    const vor = waehle(r, VORNAMEN);
-    z.id = String(nummer);
-    z.Title = "Kein PC";
-    z.Arbeitsplatz = nach + " " + vor;
-    z.Login = (nach + "." + vor).toLowerCase();
-    z.Firma = waehle(r, FIRMEN);
-    z.Typ = "";
-    z.SCCM_Found = "Nein";
-    z.SCCM_SyncStatus = "Kein Gerät hinterlegt";
-    for (const spalte of SOFTWARE_JA) {
-      if (r() < 0.25) z[spalte] = true;
-    }
-    return z;
+  /* ---------- SCCM-Konten aus den Zuordnungen ableiten ----------
+
+     Im echten SCCM stehen in SCCM_PrimaryUser, SCCM_LastLogonUser und
+     SCCM_CurrentLogonUser die Konten, die an diesem Gerät wirklich
+     arbeiten — also normalerweise die zugeordnete Person, geschrieben als
+     «DOMAENE\login». Umgekehrt meldet SMS_UserMachineRelationship für jede
+     Person ihr Primärgerät; das landet in SCCMPrimaerGeraet.
+
+     «Normalerweise»: bei rund jedem zehnten Datensatz weicht ein Feld ab —
+     Handwechsel nicht nachgeführt, Support-Anmeldung, Zweitgerät. Genau
+     diese Abweichungen erzeugen im Frontend die Hinweise «Primärer Benutzer
+     ist nicht zugeordnet» und «SCCM meldet ein anderes Primärgerät». Ohne
+     sie wären die Hinweise nie zu sehen, mit zu vielen wären sie unglaubwürdig. */
+
+  const DOMAENE = "SASADMIN";
+
+  function konto(login) {
+    return login ? DOMAENE + "\\" + login : "";
   }
+
+  function benutzerkontenAbgleichen(r, computer, benutzer) {
+    // Logins je Gerät, in der Reihenfolge der Benutzerliste.
+    const nachGeraet = new Map();
+    for (const b of benutzer) {
+      const pc = String(b.Computer || "").trim().toLowerCase();
+      if (!pc) continue;
+      if (!nachGeraet.has(pc)) nachGeraet.set(pc, []);
+      nachGeraet.get(pc).push(b.Title);
+    }
+    const alleLogins = benutzer.map(b => b.Title);
+    const inSccm = computer.filter(z => Hilfe.istJa(z.SCCM_Found));
+
+    /* --- Geräteseite --- */
+    for (const z of computer) {
+      if (!Hilfe.istJa(z.SCCM_Found)) continue;
+      const logins = nachGeraet.get(String(z.Title || "").toLowerCase()) || [];
+      const online = Hilfe.istJa(z.SCCM_Online);
+      const fremd = alleLogins[Math.floor(r() * alleLogins.length)];
+
+      let primaer;
+      if (!logins.length) {
+        // Gerät ohne Zuordnung: mal steht noch ein altes Konto darauf,
+        // mal ist es tatsächlich unbenutzt.
+        primaer = r() < 0.5 ? fremd : "";
+      } else {
+        primaer = r() < 0.1 ? fremd : logins[0];
+      }
+
+      // Der zuletzt angemeldete Benutzer ist meist derselbe; sonst der
+      // zweite zugeordnete Benutzer oder der Support.
+      const letzter = r() < 0.1 ? (logins[1] || "ict.support") : primaer;
+
+      z.SCCM_PrimaryUser = konto(primaer);
+      z.SCCM_TopConsoleUser = konto(primaer);
+      z.SCCM_LastLogonUser = konto(letzter);
+      z.SCCM_CurrentLogonUser = online ? konto(letzter) : "";
+
+      const zeilen = [];
+      if (primaer) {
+        zeilen.push(konto(primaer) + " | " + (20 + Math.floor(r() * 300))
+          + " Anmeldungen | " + (500 + Math.floor(r() * 40000)) + " Min | zuletzt "
+          + Hilfe.datumZeitText(z.SCCM_LastConsoleUse));
+      }
+      zeilen.push(konto("ict.support") + " | " + (1 + Math.floor(r() * 9))
+        + " Anmeldungen | " + (10 + Math.floor(r() * 200)) + " Min | zuletzt "
+        + Hilfe.datumZeitText(z.SCCM_LastOffline));
+      z.SCCM_ConsoleUsers = zeilen.join("\n");
+    }
+
+    /* --- Benutzerseite --- */
+    for (const b of benutzer) {
+      const zugeordnet = String(b.Computer || "").trim();
+      if (!zugeordnet) {
+        // Ohne Zuordnung meldet SCCM manchmal trotzdem ein Primärgerät.
+        b.SCCMPrimaerGeraet = r() < 0.25 && inSccm.length
+          ? inSccm[Math.floor(r() * inSccm.length)].Title : "";
+        continue;
+      }
+      if (r() < 0.1 && inSccm.length) {
+        // Abweichung: SCCM sieht die Person hauptsächlich an einem anderen Gerät.
+        b.SCCMPrimaerGeraet = inSccm[Math.floor(r() * inSccm.length)].Title;
+      } else {
+        b.SCCMPrimaerGeraet = zugeordnet;
+      }
+    }
+  }
+
 
   /* Die Grunddaten: immer dieselben, weil der Würfel einen festen Startwert
      hat. Was im Vorführmodus bearbeitet wird, liegt separat im Overlay. */
+  let zwischenspeicher = null;
+
   function grunddaten() {
+    if (zwischenspeicher) return zwischenspeicher;
     const r = wuerfel(20260902);
-    const alle = [];
+    const ids = programmIds();
+
+    const computer = [];
+    for (let i = 1; i <= 50; i++) computer.push(geraet(r, i));
+
+    const benutzer = [];
     let nr = 1;
-    for (let i = 1; i <= 50; i++) alle.push(geraet(r, nr++));
-    for (let i = 0; i < 6; i++) {
-      const quelle = alle[i * 7];
-      if (quelle && quelle.SCCM_Found === "Ja") alle.push(geteiltesGeraet(r, quelle, nr++));
-    }
-    for (let i = 0; i < 5; i++) alle.push(ohneGeraet(r, nr++));
-    return alle;
+    // Die ersten 42 Geräte bekommen einen Benutzer, sechs davon einen zweiten.
+    for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, computer[i].Title, ids));
+    for (let i = 0; i < 6; i++) benutzer.push(benutzerZeile(r, nr++, computer[i * 3].Title, ids));
+    // Acht Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Benutzer.
+    for (let i = 0; i < 8; i++) benutzer.push(benutzerZeile(r, nr++, "", ids));
+
+    // Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten.
+    benutzerkontenAbgleichen(r, computer, benutzer);
+
+    zwischenspeicher = { computer: computer, benutzer: benutzer };
+    return zwischenspeicher;
   }
+
 
   /* ---------- Overlay: Änderungen im Vorführmodus ----------
 
      Im Vorführmodus gibt es kein SharePoint. Damit Bearbeiten trotzdem
-     etwas bewirkt und Hauptseite wie Detailfenster dasselbe sehen, landen
-     Änderungen in localStorage. Struktur bewusst schlicht:
+     etwas bewirkt und alle Fenster dasselbe sehen, landen Änderungen im
+     localStorage, getrennt nach Liste:
 
-       { geaendert: { "5": { Firma: "Sport" } },
-         neu: [ { id: "1001", Title: "…", … } ],
-         geloescht: [ "7" ] }
+       { computer: { geaendert:{}, neu:[], geloescht:[] },
+         benutzer: { … } }
 
      Mock.zuruecksetzen() räumt alles wieder weg. */
 
-  const SCHLUESSEL = "computerinventar.mock.aenderungen";
-  const LEER = { geaendert: {}, neu: [], geloescht: [] };
+  const SCHLUESSEL = "computerinventar.mock.aenderungen.v2";
 
-  // Ersatzspeicher, falls localStorage nicht zur Verfügung steht (privater
-  // Modus, gesperrte Site-Daten). Dann gilt die Änderung nur für dieses Fenster.
+  // Ersatzspeicher, falls localStorage nicht zur Verfügung steht.
   let ersatz = null;
+
+  function leeresOverlay() {
+    return {
+      computer: { geaendert: {}, neu: [], geloescht: [] },
+      benutzer: { geaendert: {}, neu: [], geloescht: [] }
+    };
+  }
+
+  function teilLesen(o, liste) {
+    const t = (o && o[liste]) || {};
+    return { geaendert: t.geaendert || {}, neu: t.neu || [], geloescht: t.geloescht || [] };
+  }
 
   function overlayLesen() {
     if (ersatz) return ersatz;
     try {
       const roh = window.localStorage.getItem(SCHLUESSEL);
-      if (!roh) return JSON.parse(JSON.stringify(LEER));
+      if (!roh) return leeresOverlay();
       const o = JSON.parse(roh);
-      return {
-        geaendert: (o && o.geaendert) || {},
-        neu: (o && o.neu) || [],
-        geloescht: (o && o.geloescht) || []
-      };
+      return { computer: teilLesen(o, "computer"), benutzer: teilLesen(o, "benutzer") };
     } catch (e) {
-      return JSON.parse(JSON.stringify(LEER));
+      return leeresOverlay();
     }
   }
 
@@ -607,26 +854,28 @@ const Mock = (function () {
     }
   }
 
-  /* Alle Zeilen mit angewandtem Overlay. */
-  function zeilen() {
-    const o = overlayLesen();
-    const alle = grunddaten()
+  /* Alle Zeilen einer Liste mit angewandtem Overlay. */
+  function zeilen(liste) {
+    fehlerPruefen();
+    const l = liste === "benutzer" ? "benutzer" : "computer";
+    const o = overlayLesen()[l];
+    const alle = grunddaten()[l]
       .filter(z => o.geloescht.indexOf(String(z.id)) === -1)
       .map(function (z) {
         const aenderung = o.geaendert[String(z.id)];
-        return aenderung ? Object.assign({}, z, aenderung) : z;
+        return aenderung ? Object.assign({}, z, aenderung) : Object.assign({}, z);
       });
     for (const n of o.neu) {
       if (o.geloescht.indexOf(String(n.id)) > -1) continue;
       const aenderung = o.geaendert[String(n.id)];
-      alle.push(aenderung ? Object.assign({}, n, aenderung) : n);
+      alle.push(aenderung ? Object.assign({}, n, aenderung) : Object.assign({}, n));
     }
     return alle;
   }
 
-  function zeile(id) {
+  function zeile(liste, id) {
     const gesucht = String(id);
-    const treffer = zeilen().filter(z => String(z.id) === gesucht)[0];
+    const treffer = zeilen(liste).filter(z => String(z.id) === gesucht)[0];
     if (!treffer) {
       const fehler = new Error("Diese Zeile gibt es im Vorführmodus nicht (mehr).");
       fehler.status = 404;
@@ -635,31 +884,36 @@ const Mock = (function () {
     return treffer;
   }
 
-  function speichern(id, felder) {
+  function speichern(liste, id, felder) {
+    const l = liste === "benutzer" ? "benutzer" : "computer";
     const o = overlayLesen();
-    const schluessel = String(id);
-    o.geaendert[schluessel] = Object.assign({}, o.geaendert[schluessel] || {}, felder);
+    const s = String(id);
+    o[l].geaendert[s] = Object.assign({}, o[l].geaendert[s] || {}, felder);
     overlaySchreiben(o);
-    return zeile(id);
+    return zeile(l, id);
   }
 
-  function anlegen(felder) {
+  function anlegen(liste, felder) {
+    const l = liste === "benutzer" ? "benutzer" : "computer";
     const o = overlayLesen();
     let hoechste = 1000;
-    for (const z of grunddaten()) hoechste = Math.max(hoechste, Number(z.id) || 0);
-    for (const z of o.neu) hoechste = Math.max(hoechste, Number(z.id) || 0);
-    const z = Object.assign(leereZeile(), felder);
+    for (const z of grunddaten()[l]) hoechste = Math.max(hoechste, Number(z.id) || 0);
+    for (const z of o[l].neu) hoechste = Math.max(hoechste, Number(z.id) || 0);
+    const vorlage = leereZeile(l === "benutzer" ? SPALTEN_BENUTZER : SPALTEN_COMPUTER);
+    if (l === "benutzer") for (const id of programmIds()) vorlage[id] = "0";
+    const z = Object.assign(vorlage, felder);
     z.id = String(hoechste + 1);
-    o.neu.push(z);
+    o[l].neu.push(z);
     overlaySchreiben(o);
     return z;
   }
 
-  function loeschen(id) {
+  function loeschen(liste, id) {
+    const l = liste === "benutzer" ? "benutzer" : "computer";
     const o = overlayLesen();
-    const schluessel = String(id);
-    if (o.geloescht.indexOf(schluessel) === -1) o.geloescht.push(schluessel);
-    delete o.geaendert[schluessel];
+    const s = String(id);
+    if (o[l].geloescht.indexOf(s) === -1) o[l].geloescht.push(s);
+    delete o[l].geaendert[s];
     overlaySchreiben(o);
     return true;
   }
@@ -672,11 +926,18 @@ const Mock = (function () {
   /* Gibt es überhaupt Änderungen? Für den Hinweis im Vorführband. */
   function anzahlAenderungen() {
     const o = overlayLesen();
-    return Object.keys(o.geaendert).length + o.neu.length + o.geloescht.length;
+    let n = 0;
+    for (const l of ["computer", "benutzer"]) {
+      n += Object.keys(o[l].geaendert).length + o[l].neu.length + o[l].geloescht.length;
+    }
+    return n;
   }
 
   return {
     zeilen: zeilen,
+    computer: function () { return zeilen("computer"); },
+    benutzer: function () { return zeilen("benutzer"); },
+    programme: programme,
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,
