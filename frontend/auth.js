@@ -14,15 +14,19 @@
      3. MSAL kehrt danach von selbst auf die ursprüngliche Adresse zurück.
      4. Auth.token() liefert jederzeit ein gültiges Zugriffstoken.
 
-   Die Berechtigungen sind bewusst nur lesend. Diese Seite schreibt nichts
-   nach SharePoint zurück.
+   Die Berechtigung ist delegiert und umfasst Lesen und Schreiben
+   (Sites.ReadWrite.All): das Detailfenster geraet.html pflegt die von Hand
+   geführten Spalten der Liste. Mehr als die angemeldete Person in SharePoint
+   selbst darf, kann das Token nie.
 
-   Ablage: sessionStorage. Beim Schliessen des Tabs ist alles weg. */
+   Ablage: localStorage. Damit übernimmt das Detailfenster, das die Hauptseite
+   mit window.open() öffnet, die bestehende Anmeldung, statt eine zweite
+   Umleitung auszulösen. Abmelden räumt den Speicher auf. */
 
 const Auth = (function () {
 
   const BEREICHE = [
-    "https://graph.microsoft.com/Sites.Read.All",
+    "https://graph.microsoft.com/Sites.ReadWrite.All",
     "https://graph.microsoft.com/User.Read"
   ];
 
@@ -30,11 +34,14 @@ const Auth = (function () {
   let konto = null;
 
   /* Die Umleitungsadresse muss exakt so in der App-Registrierung stehen.
-     Ohne Abfragezeichenfolge und ohne Rautezeichen, damit Filter und Ansicht
-     nicht mitregistriert werden müssen. MSAL merkt sich die vollständige
-     Adresse selbst und kehrt am Ende dorthin zurück. */
+     Deshalb immer die Wurzel der Seite, ohne Dateiname, ohne
+     Abfragezeichenfolge und ohne Rautezeichen: sonst müsste neben «/» auch
+     «/geraet.html» eingetragen werden, und jede weitere Seite ebenso.
+     navigateToLoginRequestUrl: true bringt MSAL nach der Anmeldung von selbst
+     auf die ursprünglich gewünschte Adresse zurück, also auch auf
+     geraet.html?id=… */
   function zielUrl() {
-    return location.origin + location.pathname;
+    return location.origin + "/";
   }
 
   async function anwendung() {
@@ -60,7 +67,9 @@ const Auth = (function () {
           navigateToLoginRequestUrl: true
         },
         cache: {
-          cacheLocation: "sessionStorage",
+          // localStorage statt sessionStorage: nur so teilen Hauptseite und
+          // das mit window.open() geöffnete Detailfenster dieselbe Anmeldung.
+          cacheLocation: "localStorage",
           storeAuthStateInCookie: false
         }
       });

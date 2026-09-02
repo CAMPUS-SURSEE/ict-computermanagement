@@ -2,11 +2,13 @@
 
    Zwei Aufgaben:
      1. Hilfe   — Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
-     2. Daten   — Laden der SharePoint-Liste über Microsoft Graph, dazu der
-                  Fantasie-Datensatz für den Modus ?mock=1.
+     2. Daten   — Lesen und Schreiben der SharePoint-Liste über Microsoft Graph,
+                  dazu der Fantasie-Datensatz für den Modus ?mock=1.
 
-   Die Berechtigung ist delegiert und nur lesend: das Token kann nur das, was
-   die angemeldete Person in SharePoint ohnehin sehen darf.
+   Die Berechtigung ist delegiert (Sites.ReadWrite.All): das Token kann genau
+   das, was die angemeldete Person in SharePoint ohnehin darf. Geschrieben
+   werden ausschliesslich die von Hand gepflegten Spalten (Quelle «excel»);
+   die SCCM-Spalten überschreibt der Abgleich ohnehin bei jedem Lauf.
 
    Setzt konfig.js, spalten.js und auth.js voraus. */
 
@@ -139,31 +141,56 @@ const Daten = (function () {
   const WURZEL = "https://graph.microsoft.com/v1.0";
   const LISTE = "/sites/" + KONFIG.siteId + "/lists/" + KONFIG.listId;
 
-  async function anfrage(pfad) {
+  /* Eine Anfrage an Graph. «einstellungen» erlaubt eine andere Methode und
+     einen Rumpf; ohne Angabe ist es ein einfaches GET. */
+  async function anfrage(pfad, einstellungen) {
+    const e = einstellungen || {};
+    const methode = e.methode || "GET";
     const zugriff = await Auth.token();
+
+    const kopfzeilen = {
+      "Authorization": "Bearer " + zugriff,
+      "Accept": "application/json"
+    };
+    let rumpf;
+    if (e.rumpf !== undefined && e.rumpf !== null) {
+      kopfzeilen["Content-Type"] = "application/json";
+      rumpf = JSON.stringify(e.rumpf);
+    }
+
     const antwort = await fetch(pfad.indexOf("http") === 0 ? pfad : WURZEL + pfad, {
-      method: "GET",
-      headers: {
-        "Authorization": "Bearer " + zugriff,
-        "Accept": "application/json"
-      }
+      method: methode,
+      headers: kopfzeilen,
+      body: rumpf
     });
 
-    const daten = await antwort.json().catch(() => null);
+    // DELETE antwortet mit 204 und leerem Rumpf.
+    const daten = antwort.status === 204 ? null : await antwort.json().catch(() => null);
     if (!antwort.ok) {
-      const fehler = new Error(lesbarerFehler(antwort.status, daten));
+      const fehler = new Error(lesbarerFehler(antwort.status, daten, methode));
       fehler.status = antwort.status;
       throw fehler;
     }
     return daten;
   }
 
-  function lesbarerFehler(status, daten) {
+  function lesbarerFehler(status, daten, methode) {
     const meldung = daten && daten.error && (daten.error.message || daten.error.code);
+    const schreibend = methode && methode !== "GET";
+    if (status === 400) return "Microsoft Graph hat die Änderung abgelehnt: "
+      + (meldung || "ungültiger Wert") + ". Bitte die Eingaben prüfen.";
     if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
+    if (status === 403 && schreibend) return "Keine Schreibberechtigung für die Liste "
+      + "«Computer Inventar». Entweder fehlt der Anwendung die Berechtigung "
+      + "Sites.ReadWrite.All — dann bitte code\\Setup-FrontendApp.ps1 erneut ausführen, "
+      + "damit der Admin-Consent erteilt wird — oder das Konto darf in SharePoint "
+      + "nur lesen.";
     if (status === 403) return "Keine Berechtigung für die Liste «Computer Inventar». "
       + "Bitte prüfen, ob das Konto Zugriff auf die SharePoint-Site «mgmts-ict-s» hat.";
-    if (status === 404) return "Liste nicht gefunden. Bitte siteId und listId in konfig.js prüfen.";
+    if (status === 409 || status === 412) return "Die Zeile wurde zwischenzeitlich von "
+      + "jemand anderem geändert. Bitte neu laden und die Änderung wiederholen.";
+    if (status === 404) return "Nicht gefunden. Entweder wurde die Zeile inzwischen gelöscht, "
+      + "oder siteId und listId in konfig.js stimmen nicht mehr.";
     if (status === 429) return "Zu viele Anfragen an Microsoft Graph. "
       + "Bitte eine Minute warten und dann neu laden.";
     if (status >= 500) return "Microsoft Graph antwortet gerade nicht (HTTP " + status + "). "
@@ -198,8 +225,71 @@ const Daten = (function () {
     return treffer;
   }
 
+  /* Eine einzelne Zeile, flach wie bei alleZeilen(). */
+  async function zeile(id) {
+    const el = await anfrage(LISTE + "/items/" + encodeURIComponent(id) + "?$expand=fields");
+    return flach(el);
+  }
+
+  /* Ändert nur die übergebenen Felder einer Zeile.
+     «felder» ist ein flaches Objekt { InternerName: Wert }. Texte als
+     Zeichenkette (leer = ""), Ja/Nein als true/false, Zahlen als Zahl oder
+     null. Alles Übrige bleibt unangetastet. */
+  async function speichern(id, felder) {
+    const geaendert = await anfrage(
+      LISTE + "/items/" + encodeURIComponent(id) + "/fields",
+      { methode: "PATCH", rumpf: felder });
+    const satz = Object.assign({}, geaendert || {});
+    satz.id = String(id);
+    return satz;
+  }
+
+  /* Legt eine neue Zeile an und gibt sie flach zurück. */
+  async function anlegen(felder) {
+    const el = await anfrage(LISTE + "/items",
+      { methode: "POST", rumpf: { fields: felder } });
+    return flach(el);
+  }
+
+  /* Löscht eine Zeile. SharePoint legt sie in den Papierkorb der Site, ein
+     Versehen lässt sich dort innerhalb von 93 Tagen rückgängig machen. */
+  async function loeschen(id) {
+    await anfrage(LISTE + "/items/" + encodeURIComponent(id), { methode: "DELETE" });
+    return true;
+  }
+
+  /* Eine Quelle mit immer gleicher Signatur: entweder Graph oder die
+     Fantasie-Daten. So muss die Oberfläche nirgends zwischen den beiden
+     Fällen verzweigen. Mock wird erst hier nachgeschlagen, weil das Modul
+     weiter unten in derselben Datei steht. */
+  function quelle(mockModus) {
+    if (mockModus) {
+      return {
+        mock: true,
+        alleZeilen: async function () { return Mock.zeilen(); },
+        zeile: async function (id) { return Mock.zeile(id); },
+        speichern: async function (id, felder) { return Mock.speichern(id, felder); },
+        anlegen: async function (felder) { return Mock.anlegen(felder); },
+        loeschen: async function (id) { return Mock.loeschen(id); }
+      };
+    }
+    return {
+      mock: false,
+      alleZeilen: alleZeilen,
+      zeile: zeile,
+      speichern: speichern,
+      anlegen: anlegen,
+      loeschen: loeschen
+    };
+  }
+
   return {
-    alleZeilen: alleZeilen
+    alleZeilen: alleZeilen,
+    zeile: zeile,
+    speichern: speichern,
+    anlegen: anlegen,
+    loeschen: loeschen,
+    quelle: quelle
   };
 })();
 
@@ -458,7 +548,9 @@ const Mock = (function () {
     return z;
   }
 
-  function zeilen() {
+  /* Die Grunddaten: immer dieselben, weil der Würfel einen festen Startwert
+     hat. Was im Vorführmodus bearbeitet wird, liegt separat im Overlay. */
+  function grunddaten() {
     const r = wuerfel(20260902);
     const alle = [];
     let nr = 1;
@@ -471,5 +563,125 @@ const Mock = (function () {
     return alle;
   }
 
-  return { zeilen: zeilen };
+  /* ---------- Overlay: Änderungen im Vorführmodus ----------
+
+     Im Vorführmodus gibt es kein SharePoint. Damit Bearbeiten trotzdem
+     etwas bewirkt und Hauptseite wie Detailfenster dasselbe sehen, landen
+     Änderungen in localStorage. Struktur bewusst schlicht:
+
+       { geaendert: { "5": { Firma: "Sport" } },
+         neu: [ { id: "1001", Title: "…", … } ],
+         geloescht: [ "7" ] }
+
+     Mock.zuruecksetzen() räumt alles wieder weg. */
+
+  const SCHLUESSEL = "computerinventar.mock.aenderungen";
+  const LEER = { geaendert: {}, neu: [], geloescht: [] };
+
+  // Ersatzspeicher, falls localStorage nicht zur Verfügung steht (privater
+  // Modus, gesperrte Site-Daten). Dann gilt die Änderung nur für dieses Fenster.
+  let ersatz = null;
+
+  function overlayLesen() {
+    if (ersatz) return ersatz;
+    try {
+      const roh = window.localStorage.getItem(SCHLUESSEL);
+      if (!roh) return JSON.parse(JSON.stringify(LEER));
+      const o = JSON.parse(roh);
+      return {
+        geaendert: (o && o.geaendert) || {},
+        neu: (o && o.neu) || [],
+        geloescht: (o && o.geloescht) || []
+      };
+    } catch (e) {
+      return JSON.parse(JSON.stringify(LEER));
+    }
+  }
+
+  function overlaySchreiben(o) {
+    try {
+      window.localStorage.setItem(SCHLUESSEL, JSON.stringify(o));
+      ersatz = null;
+    } catch (e) {
+      ersatz = o;
+    }
+  }
+
+  /* Alle Zeilen mit angewandtem Overlay. */
+  function zeilen() {
+    const o = overlayLesen();
+    const alle = grunddaten()
+      .filter(z => o.geloescht.indexOf(String(z.id)) === -1)
+      .map(function (z) {
+        const aenderung = o.geaendert[String(z.id)];
+        return aenderung ? Object.assign({}, z, aenderung) : z;
+      });
+    for (const n of o.neu) {
+      if (o.geloescht.indexOf(String(n.id)) > -1) continue;
+      const aenderung = o.geaendert[String(n.id)];
+      alle.push(aenderung ? Object.assign({}, n, aenderung) : n);
+    }
+    return alle;
+  }
+
+  function zeile(id) {
+    const gesucht = String(id);
+    const treffer = zeilen().filter(z => String(z.id) === gesucht)[0];
+    if (!treffer) {
+      const fehler = new Error("Diese Zeile gibt es im Vorführmodus nicht (mehr).");
+      fehler.status = 404;
+      throw fehler;
+    }
+    return treffer;
+  }
+
+  function speichern(id, felder) {
+    const o = overlayLesen();
+    const schluessel = String(id);
+    o.geaendert[schluessel] = Object.assign({}, o.geaendert[schluessel] || {}, felder);
+    overlaySchreiben(o);
+    return zeile(id);
+  }
+
+  function anlegen(felder) {
+    const o = overlayLesen();
+    let hoechste = 1000;
+    for (const z of grunddaten()) hoechste = Math.max(hoechste, Number(z.id) || 0);
+    for (const z of o.neu) hoechste = Math.max(hoechste, Number(z.id) || 0);
+    const z = Object.assign(leereZeile(), felder);
+    z.id = String(hoechste + 1);
+    o.neu.push(z);
+    overlaySchreiben(o);
+    return z;
+  }
+
+  function loeschen(id) {
+    const o = overlayLesen();
+    const schluessel = String(id);
+    if (o.geloescht.indexOf(schluessel) === -1) o.geloescht.push(schluessel);
+    delete o.geaendert[schluessel];
+    overlaySchreiben(o);
+    return true;
+  }
+
+  function zuruecksetzen() {
+    ersatz = null;
+    try { window.localStorage.removeItem(SCHLUESSEL); } catch (e) { /* egal */ }
+  }
+
+  /* Gibt es überhaupt Änderungen? Für den Hinweis im Vorführband. */
+  function anzahlAenderungen() {
+    const o = overlayLesen();
+    return Object.keys(o.geaendert).length + o.neu.length + o.geloescht.length;
+  }
+
+  return {
+    zeilen: zeilen,
+    zeile: zeile,
+    speichern: speichern,
+    anlegen: anlegen,
+    loeschen: loeschen,
+    zuruecksetzen: zuruecksetzen,
+    anzahlAenderungen: anzahlAenderungen
+  };
 })();

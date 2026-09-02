@@ -283,4 +283,79 @@ dann «0x1» als letztes Ergebnis. Details stehen immer im Log mit Gerätename u
 | `schema.json`, `Build-Schema.ps1` | Spaltendefinition der Liste und deren Generator |
 | `create-list.js`, `Build-CreateListJs.ps1` | Anlegen der Liste und Spalten per SharePoint-REST aus dem Browser |
 | `ComputerInventar_header.json`, `ComputerInventar_rows.json`, `import-compact.json` | Excel-Export vom 02.09.2026, Grundlage des Erstimports |
+| `Setup-FrontendApp.ps1` | Einrichtung der App-Registrierung des Web-Frontends (SPA, MSAL im Browser) |
+| `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
 | `README.md` | dieses Dokument |
+
+Dateien des Frontends (Ordner `frontend`, wird von Netlify unverändert ausgeliefert):
+
+| Datei | Zweck |
+|---|---|
+| `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Geräteliste, Software |
+| `geraet.html`, `geraet.js`, `geraet.css` | Gerätefenster (Dashboard mit Bearbeitung), siehe Abschnitt 8 |
+| `konfig.js` | Mandanten-, Client-, Site- und List-ID (keine Geheimnisse) |
+| `spalten.js` | Spaltendefinition, erzeugt aus `schema.json` |
+| `auth.js` | Anmeldung an Entra ID über MSAL |
+| `graph.js` | Lesen und Schreiben über Microsoft Graph, dazu die Vorführdaten für `?mock=1` |
+| `_headers` | Sicherheitsheader und Content Security Policy (nur hier nachführen) |
+
+---
+
+## 8. Web-Frontend «Computer Inventar»
+
+Die Liste lässt sich in SharePoint direkt bearbeiten. Für den Alltag gibt es zusätzlich eine eigene
+Webseite: reines HTML, CSS und JavaScript ohne Bauprozess, ausgeliefert von Netlify aus dem Ordner
+`frontend`. Angemeldet wird mit dem Microsoft-365-Konto (MSAL im Browser, Authorization Code Flow
+mit PKCE); die Berechtigung ist delegiert, es sieht und ändert also niemand mehr, als er in
+SharePoint ohnehin dürfte.
+
+### 8.1 Gerätefenster und Bearbeitung
+
+Ein Klick auf eine Zeile der Geräteliste öffnet `geraet.html?id=<Listen-ID>` in einem eigenen Fenster.
+Dort steht das Gerät als Dashboard: Kennzahlen, Auffälligkeiten mit Gesundheits-Score, Stammdaten,
+Software und Rechte, Hardware, System und Netzwerk, Sicherheit, SCCM-Aktivität als Zeitachse, ein
+Flottenvergleich und alle Rohdaten.
+
+- **Bearbeitbar** sind genau die von Hand gepflegten Spalten (in `spalten.js` mit `q: "excel"`):
+  PC-Name, Arbeitsplatz, Login, Firma, Typ, Seriennummer, Testuser SCCM, Gebäude/Stock, Bemerkung,
+  die Beschaffungsjahre, das Budget-Häkchen sowie alle Software-, Rechte- und AD-Gruppen-Spalten.
+- **Schreibgeschützt** sind alle `SCCM_*`-Spalten. Sie sind mit einem Schloss gekennzeichnet und
+  werden bei jedem Sync-Lauf überschrieben; eine Änderung dort wäre spätestens nach vier Stunden weg.
+- Geändertes sammelt das Fenster in einer Speicherleiste am unteren Rand («3 Änderungen · Speichern ·
+  Verwerfen»). `Ctrl+S` speichert, `Esc` beendet die Bearbeitung. Wer das Fenster mit ungespeicherten
+  Änderungen schliesst, wird vom Browser gewarnt.
+- Gespeichert wird als `PATCH` auf `…/items/<id>/fields`, und zwar nur die tatsächlich geänderten
+  Felder. Neue Zeilen entstehen mit `geraet.html?neu=1`, «Als Vorlage duplizieren» übernimmt
+  Stammdaten und Häkchen einer bestehenden Zeile ohne PC-Name, Seriennummer, Person und Login.
+- **Löschen** verlangt das Abtippen des PC-Namens. Die Zeile landet im Papierkorb der SharePoint-Site
+  und lässt sich dort 93 Tage lang zurückholen.
+
+### 8.2 Berechtigung: Setup-Skript einmal erneut ausführen
+
+Solange das Frontend nur gelesen hat, genügte die delegierte Berechtigung `Sites.Read.All`. Für die
+Bearbeitung braucht es `Sites.ReadWrite.All`. Deshalb einmalig ausführen:
+
+```powershell
+cd code
+.\Setup-FrontendApp.ps1 -RedirectUris @('http://localhost:8123/','https://inventar.campus-sursee.ch/')
+```
+
+Das Skript ist idempotent: Es aktualisiert die verlangten Berechtigungen der App-Registrierung
+«Computer Inventar Frontend» und ergänzt den fehlenden Scope im bestehenden Admin-Consent. Ohne
+diesen Lauf lädt die Seite weiterhin, das Speichern scheitert aber mit HTTP 403 und der Meldung
+«Keine Schreibberechtigung … Setup-FrontendApp.ps1 erneut ausführen».
+
+Zwei weitere Punkte zur Anmeldung:
+
+- Die Umleitungsadresse ist die **Wurzel** der Seite (`https://…/`), nicht `…/geraet.html`. MSAL kehrt
+  nach der Anmeldung von selbst auf die ursprünglich gewünschte Adresse zurück, in der
+  App-Registrierung muss also nur die Wurzel stehen.
+- Die Token liegen in `localStorage` statt in `sessionStorage`, damit das mit `window.open()`
+  geöffnete Gerätefenster die Anmeldung der Hauptseite übernimmt und nicht ein zweites Mal umleitet.
+
+### 8.3 Vorführmodus
+
+Mit `?mock=1` (auch `geraet.html?id=5&mock=1`) zeigt die Seite erfundene Daten ohne jede Verbindung
+zu SharePoint — praktisch für Vorführungen und für die Entwicklung. Änderungen im Vorführmodus
+landen in `localStorage` (Schlüssel `computerinventar.mock.aenderungen`) und lassen sich mit dem
+Knopf «Vorführ-Änderungen zurücksetzen» im grünen Band wieder wegräumen.
