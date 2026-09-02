@@ -15,7 +15,7 @@ const KONFIG = {
   // Muss nach dem Anlegen der Registrierung hier eingetragen werden.
   // Solange der Platzhalter steht, zeigt die Seite eine Meldung statt einer
   // Anmeldeschleife.
-  clientId: "HIER-CLIENT-ID-EINTRAGEN",
+  clientId: "58384569-7580-4617-ad5c-2bf5a81d397d",
 
   /* ---- SharePoint (Site «mgmts-ict-s», Liste «Computer Inventar») ---- */
   siteId: "campussursee.sharepoint.com,b2339cb3-8025-46c6-8fc1-2399e252377e,2ee595fd-6462-42fb-9591-c0dc589480b8",

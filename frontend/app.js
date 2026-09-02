@@ -113,6 +113,7 @@ const zustand = {
   zeit:      {},   // { schluessel: zeitraum }
   speicher:  "",
   software:  [],   // interne Spaltennamen
+  app:       "",   // eine SCCM-Applikation aus den Deployments
   sortSpalte: "Title",
   sortAuf:   true,
   spalten:   STANDARD_SPALTEN.slice(),
@@ -121,7 +122,10 @@ const zustand = {
 
 let alleZeilen = [];      // angereicherte Zeilen
 let sichtbareZeilen = []; // nach Filter und Sortierung
-let hashSchreibsperre = false;
+/* Zuletzt selbst geschriebener Hash. Damit lässt sich das eigene
+   hashchange-Ereignis von einem echten Klick auf Vor/Zurück unterscheiden,
+   ohne mit Zeitgebern zu arbeiten. */
+let eigenerHash = null;
 
 const mockModus = new URLSearchParams(location.search).get("mock") === "1";
 
@@ -229,6 +233,16 @@ function hatSoftware(zeile, spalte) {
   return t.toLowerCase() !== "nein";
 }
 
+/* Ist dieser Applikation ein Deployment auf dieses Gerät zugewiesen?
+   Bewusst kein Volltexttreffer: derselbe Name steht meist auch in der Liste
+   der installierten Programme, und dann würde der Filter zu viel finden. */
+function hatDeployedApp(zeile, app) {
+  for (const z of Hilfe.zeilen(zeile.SCCM_DeployedApps)) {
+    if (Hilfe.felder(z)[0] === app) return true;
+  }
+  return false;
+}
+
 function filtern() {
   const suche = zustand.suche.trim().toLowerCase();
   const worte = suche ? suche.split(/\s+/) : [];
@@ -251,6 +265,8 @@ function filtern() {
     if (zustand.speicher && !speicherPasst(z.SCCM_DiskCFreeGB, zustand.speicher)) return false;
 
     for (const spalte of zustand.software) if (!hatSoftware(z, spalte)) return false;
+
+    if (zustand.app && !hatDeployedApp(z, zustand.app)) return false;
 
     return true;
   });
@@ -298,7 +314,6 @@ function neuBerechnen() {
    ================================================================== */
 
 function hashSchreiben() {
-  if (hashSchreibsperre) return;
   const p = new URLSearchParams();
   if (zustand.suche) p.set("q", zustand.suche);
 
@@ -315,6 +330,7 @@ function hashSchreiben() {
 
   if (zustand.speicher) p.set("sp", zustand.speicher);
   if (zustand.software.length) p.set("sw", zustand.software.join(","));
+  if (zustand.app) p.set("app", zustand.app);
   if (zustand.sortSpalte !== "Title" || !zustand.sortAuf) {
     p.set("s", zustand.sortSpalte + ":" + (zustand.sortAuf ? "auf" : "ab"));
   }
@@ -322,10 +338,20 @@ function hashSchreiben() {
 
   const text = p.toString();
   const neu = "#" + zustand.ansicht + (text ? "?" + text : "");
-  if (location.hash !== neu) {
-    hashSchreibsperre = true;
+  if (location.hash === neu) return;
+  eigenerHash = neu;
+
+  /* Bewusst replaceState statt location.hash:
+       - Zwei Zuweisungen an location.hash im selben Durchlauf verwirft der
+         Browser stillschweigend, die zweite Änderung ginge verloren. Genau
+         das passiert, wenn ein Klick zwei Filter gleichzeitig setzt.
+       - Jede Filteränderung als eigenen Eintrag in den Verlauf zu legen,
+         würde die Zurück-Taste unbrauchbar machen.
+     Der Link in der Adresszeile bleibt trotzdem jederzeit teilbar. */
+  if (window.history && history.replaceState) {
+    history.replaceState(null, "", location.pathname + location.search + neu);
+  } else {
     location.hash = neu;
-    setTimeout(function () { hashSchreibsperre = false; }, 0);
   }
 }
 
@@ -356,6 +382,7 @@ function hashLesen() {
 
   zustand.speicher = p.get("sp") || "";
   zustand.software = (p.get("sw") || "").split(",").filter(Boolean);
+  zustand.app = p.get("app") || "";
 
   const s = p.get("s");
   if (s) {
@@ -398,6 +425,7 @@ function filterZuruecksetzen() {
   zustand.zeit = {};
   zustand.speicher = "";
   zustand.software = [];
+  zustand.app = "";
 }
 
 function facetteSetzen(schluessel, wert) {
@@ -410,6 +438,7 @@ function springeMitFilter(setzen) {
   setzen();
   zustand.ansicht = "geraete";
   zustand.detail = null;
+  neuBerechnen();
   zeichnen();
   hashSchreiben();
   window.scrollTo(0, 0);
@@ -739,6 +768,9 @@ function zeichneChips() {
     chip("hat " + beschriftung(s), function () {
       zustand.software = zustand.software.filter(x => x !== s);
     });
+  }
+  if (zustand.app) {
+    chip("SCCM-Applikation: " + zustand.app, function () { zustand.app = ""; });
   }
 
   if (anzahl > 1) {
@@ -1071,8 +1103,7 @@ function zeichneSoftware() {
 
   for (const [app, e] of sortiert) {
     rechts.appendChild(swZeile(app, e.geraete, e.ok + " / " + e.fehler, function () {
-      springeMitFilter(function () { zustand.suche = app; });
-      $("suche").value = app;
+      springeMitFilter(function () { zustand.app = app; });
     }));
   }
 }
@@ -1390,7 +1421,9 @@ function ereignisseVerbinden() {
   });
 
   window.addEventListener("hashchange", function () {
-    if (hashSchreibsperre) return;
+    // Eigene Änderung: der Zustand stimmt bereits, nichts neu zeichnen.
+    if (location.hash === eigenerHash) { eigenerHash = null; return; }
+    eigenerHash = null;
     hashLesen();
     if (!alleZeilen.length) return;
     neuBerechnen();

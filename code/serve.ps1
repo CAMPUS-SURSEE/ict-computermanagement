@@ -24,6 +24,9 @@ while ($listener.IsListening) {
         $mime = @{'.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json'; '.png'='image/png'; '.svg'='image/svg+xml'; '.webp'='image/webp'}[$ext]
         if (-not $mime) { $mime = 'application/octet-stream' }
         $ctx.Response.ContentType = $mime
+        # Kein Zwischenspeichern: sonst zeigt der Browser beim Entwickeln
+        # hartnaeckig die vorige Fassung einer .js- oder .css-Datei an.
+        $ctx.Response.Headers.Add('Cache-Control', 'no-store, must-revalidate')
         $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
     } else {
         $ctx.Response.StatusCode = 404
