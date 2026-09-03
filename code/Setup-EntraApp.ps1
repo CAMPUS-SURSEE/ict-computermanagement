@@ -107,10 +107,20 @@ if (-not $app) {
     $app = G POST '/applications' @{ displayName = $AppName; signInAudience = 'AzureADMyOrg'; keyCredentials = @($keyCred); requiredResourceAccess = $rra; notes = "Synchronisiert SCCM ($SiteCode) in die SharePoint-Liste '$ListTitle'. Erstellt $(Get-Date -Format 'dd.MM.yyyy')." }
 } else {
     Write-Host "App-Registrierung existiert bereits ($($app.appId)) – Zertifikat/Berechtigung aktualisieren"
-    # PATCH keyCredentials ersetzt die Liste: bestehende Schlüssel (nur keyId) + neuer Schlüssel
-    $creds = @($app.keyCredentials | Where-Object { $_.customKeyIdentifier -ne [Convert]::ToBase64String($cert.GetCertHash()) } | ForEach-Object { @{ type = $_.type; usage = $_.usage; keyId = $_.keyId; displayName = $_.displayName } })
-    $creds += $keyCred
-    G PATCH "/applications/$($app.id)" @{ requiredResourceAccess = $rra; keyCredentials = $creds } | Out-Null
+    # PATCH keyCredentials ersetzt die ganze Liste. Bestehende Schlüssel müssen dabei EXAKT so
+    # zurückgegeben werden, wie Graph sie liefert (alle Felder, key = null). Wer nur keyId oder
+    # ein abweichendes displayName schickt, bekommt 400 «KeyNotUpdatable».
+    $neuerHash = [Convert]::ToBase64String($cert.GetCertHash())
+    $schonDa = @($app.keyCredentials | Where-Object { $_.customKeyIdentifier -eq $neuerHash })
+    if ($schonDa.Count -gt 0) {
+        Write-Host "Zertifikat $($cert.Thumbprint) ist an der App bereits hinterlegt."
+        G PATCH "/applications/$($app.id)" @{ requiredResourceAccess = $rra } | Out-Null
+    } else {
+        $creds = @($app.keyCredentials | ForEach-Object { $_ })
+        $creds += $keyCred
+        G PATCH "/applications/$($app.id)" @{ requiredResourceAccess = $rra; keyCredentials = $creds } | Out-Null
+        Write-Host "Zertifikat $($cert.Thumbprint) an der App hinterlegt (bestehende Schlüssel bleiben)."
+    }
 }
 $appId = $app.appId
 Write-Host "ClientId: $appId"
@@ -148,20 +158,21 @@ $cfg = [ordered]@{
     SiteUrl             = $SiteUrl
     SiteId              = (AltWert 'SiteId' '')
     AltListId           = (AltWert 'AltListId' $ListId)
-    ComputerListId      = (AltWert 'ComputerListId' '<Listen-ID der Liste Computer, siehe Migrate-ToTwoLists.ps1>')
-    BenutzerListId      = (AltWert 'BenutzerListId' '<Listen-ID der Liste Benutzer, siehe Migrate-ToTwoLists.ps1>')
+    # Listen-IDs aus der Migration vom 02.09.2026 (Site mgmts-ict-s); identisch mit frontend/konfig.js.
+    ComputerListId      = (AltWert 'ComputerListId' '7870205c-bfa6-4d18-8035-d16d0a082637')
+    BenutzerListId      = (AltWert 'BenutzerListId' '7db0cf44-7a2a-4937-b982-03236858b4b9')
     ProgrammeDateiPfad  = (AltWert 'ProgrammeDateiPfad' 'Inventar/programme.json')
     SmsProvider         = $SmsProvider
     SiteCode            = $SiteCode
     AdServer            = (AltWert 'AdServer' '')
-    AdUserOUs           = @(AltWert 'AdUserOUs' @('<DN der OU Staff/users/Windows 11>', '<DN der OU Staff/users/Windows 10>'))
+    AdUserOUs           = @(AltWert 'AdUserOUs' @('OU=Windows 11,OU=Users,OU=Staff,DC=sasadmin,DC=local', 'OU=Windows 10,OU=Users,OU=Staff,DC=sasadmin,DC=local'))
     AdGruppenPraefixe   = @(AltWert 'AdGruppenPraefixe' @())
     LoeschSchutzProzent = (AltWert 'LoeschSchutzProzent' 50)
     LogPath             = (AltWert 'LogPath' (Join-Path $ScriptDir 'Sync-Inventar.log'))
 }
 $cfg | ConvertTo-Json -Depth 5 | Set-Content -Path $ConfigPath -Encoding UTF8
 Write-Host "`nKonfiguration geschrieben: $ConfigPath" -ForegroundColor Green
-Write-Host 'Noch von Hand einzutragen: ComputerListId, BenutzerListId und vor allem AdUserOUs (die echten OU-DNs).'
+Write-Host 'AdUserOUs, ComputerListId und BenutzerListId sind mit den Werten von Campus Sursee vorbelegt; bei Bedarf in der Config anpassen.'
 Write-Host "Hinweis: Das Task-Konto braucht Leserecht auf den privaten Schlüssel (certlm.msc > Zertifikat > Alle Aufgaben > Private Schlüssel verwalten)."
 Write-Host "Hinweis: Das Konto, unter dem Sync-Inventar.ps1 läuft, braucht zusätzlich LESERECHT AUF DAS ACTIVE DIRECTORY"
 Write-Host "         (Benutzerattribute und Gruppenmitgliedschaften der konfigurierten OUs). Das Computerkonto des"

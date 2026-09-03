@@ -330,6 +330,8 @@ Erwartete Ausgabe: `Ergebnis: 75 bestanden, 0 fehlgeschlagen`.
 | Device-Code läuft ab | niemand hat den Code eingegeben | Skript neu starten |
 | Frontend: «Die Daten konnten nicht geladen werden – Failed to fetch», in der Entwicklerkonsole ein CSP-Verstoss gegen `campussursee.sharepoint.com` | Graph liefert Dateien nicht selbst aus, sondern leitet für `Inventar/programme.json` auf SharePoint weiter. Fehlt der Host in `connect-src`, blockiert der Browser den Abruf stillschweigend | In `frontend/_headers` muss `connect-src` den Eintrag `https://campussursee.sharepoint.com` enthalten. Nach dem Ändern neu deployen; die Kopfzeilen kommen von Netlify, nicht aus dem Repository-Abzug im Browser-Cache (hart neu laden) |
 | `invalid_client` / `AADSTS700027` | Zertifikat abgelaufen oder nicht mehr an der App | `Setup-EntraApp.ps1` erneut ausführen |
+| `KeyNotUpdatable` beim PATCH in `Setup-EntraApp.ps1` | bestehende Schlüssel wurden nicht unverändert mitgeschickt (Fassung vor dem 02.09.2026) | aktuelle Fassung des Skripts auf den Server kopieren; sie reicht bestehende Schlüssel exakt durch |
+| `Sync-Inventar.config.json` fehlt | `Setup-EntraApp.ps1` ist vor Schritt 5 abgebrochen | Setup erneut ausführen, danach `AdUserOUs` eintragen |
 | `Kein Zugriff auf den privaten Schlüssel` | Task-Konto darf den Schlüssel nicht lesen | in `certlm.msc` Leserecht vergeben oder als SYSTEM laufen lassen |
 | Graph `403` beim Schreiben | Site-Berechtigung fehlt | `Setup-EntraApp.ps1` erneut ausführen |
 | Graph `404` bei einer Liste | `ComputerListId`/`BenutzerListId` falsch | IDs aus den Listeneinstellungen bzw. aus dem Migrationslog übernehmen |
