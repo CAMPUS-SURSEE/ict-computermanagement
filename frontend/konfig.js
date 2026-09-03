@@ -6,8 +6,8 @@
    angemeldeten Person.
 
    Seit dem Umbau auf zwei Listen gibt es «computerListId» und
-   «benutzerListId». Beide werden von code/Migrate-ToTwoLists.ps1 mit
-   -UpdateKonfig eingetragen. Solange der Platzhalter steht, zeigt das
+   «benutzerListId». Beide stehen in den Listeneinstellungen in SharePoint.
+   Solange der Platzhalter steht, zeigt das
    Frontend eine verständliche Meldung statt einer Fehlerkaskade. */
 
 const KONFIG = {

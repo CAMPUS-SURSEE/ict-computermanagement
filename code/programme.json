@@ -1,6 +1,6 @@
 {
     "version":  1,
-    "aktualisiert":  "2026-09-02T14:44:44Z",
+    "aktualisiert":  "2026-09-03T06:41:26Z",
     "kategorien":  [
                        "Standard-Software und Rechte",
                        "ABACUS",
@@ -15,7 +15,7 @@
                           "name":  "Microsoft 365",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -26,7 +26,7 @@
                           "name":  "Project 2019",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -37,7 +37,7 @@
                           "name":  "Visio 2019",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -48,7 +48,7 @@
                           "name":  "SharePoint",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -59,7 +59,7 @@
                           "name":  "Zeit AG",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -70,7 +70,7 @@
                           "name":  "Time.pro",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -81,7 +81,7 @@
                           "name":  "Presento",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_HR"
                                         ],
                           "vorschlaege":  [
 
@@ -92,7 +92,7 @@
                           "name":  "Projekto",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "Bildung"
                                         ],
                           "vorschlaege":  [
 
@@ -103,7 +103,7 @@
                           "name":  "Dispo",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "HotSpo_TeamL"
                                         ],
                           "vorschlaege":  [
 
@@ -114,7 +114,7 @@
                           "name":  "Exporto",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_HR"
                                         ],
                           "vorschlaege":  [
 
@@ -125,7 +125,7 @@
                           "name":  "PerformX",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "-abt-PerformX"
                                         ],
                           "vorschlaege":  [
 
@@ -180,7 +180,8 @@
                           "name":  "Recht_Bewertungen",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "BLD_Administration",
+                                            "BLD_Kra"
                                         ],
                           "vorschlaege":  [
 
@@ -202,7 +203,8 @@
                           "name":  "Recht_Lohn_Debi",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_FRW",
+                                            "rgc-scanHR"
                                         ],
                           "vorschlaege":  [
 
@@ -224,7 +226,7 @@
                           "name":  "Protel",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -235,7 +237,7 @@
                           "name":  "PDFCreator",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -246,7 +248,7 @@
                           "name":  "Citrix-Client",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -257,7 +259,7 @@
                           "name":  "VLC-Player",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -268,7 +270,7 @@
                           "name":  "Adobe Reader",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -279,7 +281,7 @@
                           "name":  "CAFM (Meldeformular)",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -290,7 +292,7 @@
                           "name":  "Frontify",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -301,7 +303,7 @@
                           "name":  "KeePass",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "CS_ALLE"
                                         ],
                           "vorschlaege":  [
 
@@ -312,7 +314,7 @@
                           "name":  "EvaSys Cloud",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "BLD_Administration"
                                         ],
                           "vorschlaege":  [
 
@@ -323,7 +325,11 @@
                           "name":  "Milestone",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_ICT-S",
+                                            "MgmtS_TechD",
+                                            "MgmtS_UmgD",
+                                            "Hot_Reze",
+                                            "MgmtS_SiBe"
                                         ],
                           "vorschlaege":  [
 
@@ -334,7 +340,10 @@
                           "name":  "Monocard",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_ICT-S",
+                                            "MgmtS_TechD",
+                                            "Hot_Reze",
+                                            "Hot_VA"
                                         ],
                           "vorschlaege":  [
 
@@ -345,7 +354,7 @@
                           "name":  "Wallboard",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_ICT-S"
                                         ],
                           "vorschlaege":  [
 
@@ -356,7 +365,7 @@
                           "name":  "AppCore",
                           "kategorie":  "Standard-Software und Rechte",
                           "adGruppen":  [
-
+                                            "MgmtS_ICT-S"
                                         ],
                           "vorschlaege":  [
 
@@ -378,7 +387,7 @@
                           "name":  "AbaView",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "rgc-SS-ABACUS"
                                         ],
                           "vorschlaege":  [
 
@@ -400,7 +409,7 @@
                           "name":  "Anlagenbuchhaltung",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "MgmtS_FRW"
                                         ],
                           "vorschlaege":  [
 
@@ -411,7 +420,7 @@
                           "name":  "Debitorenbuchhaltung",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "MgmtS_FRW"
                                         ],
                           "vorschlaege":  [
 
@@ -422,7 +431,7 @@
                           "name":  "Finanzbuchhaltung",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "MgmtS_FRW"
                                         ],
                           "vorschlaege":  [
 
@@ -433,7 +442,7 @@
                           "name":  "Human Resources (ABACUS)",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "rgc-SS-ABACUS"
                                         ],
                           "vorschlaege":  [
 
@@ -455,7 +464,7 @@
                           "name":  "Lohnbuchhaltung",
                           "kategorie":  "ABACUS",
                           "adGruppen":  [
-
+                                            "rgc-SS-ABACUS"
                                         ],
                           "vorschlaege":  [
 
@@ -477,7 +486,8 @@
                           "name":  "Adobe Creative Suite",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "MgmtS_MarKom",
+                                            "BLD_D\u0026G"
                                         ],
                           "vorschlaege":  [
 
@@ -499,7 +509,9 @@
                           "name":  "CADdy++ 2D",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "Hot_VA",
+                                            "Hot_Bank",
+                                            "Hot_VASupp"
                                         ],
                           "vorschlaege":  [
 
@@ -510,7 +522,7 @@
                           "name":  "CADdy++ 3D",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "Hot_VA"
                                         ],
                           "vorschlaege":  [
 
@@ -521,7 +533,7 @@
                           "name":  "Microsoft 365 Copilot",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-Copilot"
                                         ],
                           "vorschlaege":  [
 
@@ -532,7 +544,7 @@
                           "name":  "Microsoft Power BI Desktop",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-PowerBIPro"
                                         ],
                           "vorschlaege":  [
 
@@ -543,7 +555,7 @@
                           "name":  "Microsoft Power BI Pro - Lizenz",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-PowerBIPro-App"
                                         ],
                           "vorschlaege":  [
 
@@ -565,7 +577,7 @@
                           "name":  "PrismaPrepare",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "BLD_DC"
                                         ],
                           "vorschlaege":  [
 
@@ -576,7 +588,7 @@
                           "name":  "Sunetplus",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "MgmtS_HR"
                                         ],
                           "vorschlaege":  [
 
@@ -587,7 +599,7 @@
                           "name":  "Supermailer",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "BLD_Administration"
                                         ],
                           "vorschlaege":  [
 
@@ -598,7 +610,9 @@
                           "name":  "TAC Reservationssystem",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "Spo_E\u0026V",
+                                            "Spo_K\u0026A",
+                                            "Sport"
                                         ],
                           "vorschlaege":  [
 
@@ -609,7 +623,8 @@
                           "name":  "TCPOS Admin",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "Spo_E\u0026V",
+                                            "Hot_Reze"
                                         ],
                           "vorschlaege":  [
 
@@ -620,7 +635,9 @@
                           "name":  "Silverlight",
                           "kategorie":  "Zusatz-Software",
                           "adGruppen":  [
-
+                                            "MgmtS_TechD",
+                                            "Spo_BetrReiSpo",
+                                            "Spo_K\u0026A"
                                         ],
                           "vorschlaege":  [
 
@@ -659,22 +676,6 @@
                           "adGruppen":  [
                                             "MgmtS_ICT-S",
                                             "BLD_D\u0026G"
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "Firefox",
-                          "name":  "Firefox",
-                          "kategorie":  "Spezial-Software",
-                          "adGruppen":  [
-                                            "Hot_Reze",
-                                            "MgmtS_ICT-S",
-                                            "Bildung",
-                                            "MgmtS_HR",
-                                            "MgmtS_TechD",
-                                            "Hot_AssGF"
                                         ],
                           "vorschlaege":  [
 
@@ -748,19 +749,6 @@
                                           ]
                       },
                       {
-                          "id":  "SupermailerADGruppe",
-                          "name":  "Supermailer (AD-Gruppe)",
-                          "kategorie":  "Spezial-Software",
-                          "adGruppen":  [
-                                            "MgmtS_ICT-S",
-                                            "Spo_E\u0026V",
-                                            "Spo_K\u0026A"
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
                           "id":  "TACVista",
                           "name":  "TAC Vista",
                           "kategorie":  "Spezial-Software",
@@ -787,66 +775,12 @@
                                           ]
                       },
                       {
-                          "id":  "AutoCADLT",
-                          "name":  "AutoCAD LT",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "ChauvinArnoux",
-                          "name":  "Chauvin Arnoux",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "ELDESConfigTool",
-                          "name":  "ELDES Config Tool",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "ETS6KNX",
-                          "name":  "ETS 6 (KNX)",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "GateControl",
-                          "name":  "Gate Control",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
                           "id":  "SaltoPPDUSB",
                           "name":  "Salto PPD USB",
                           "kategorie":  "Technik-Software",
                           "adGruppen":  [
-
+                                            "MgmtS_TechD",
+                                            "MgmtS_SiBe"
                                         ],
                           "vorschlaege":  [
 
@@ -864,33 +798,11 @@
                                           ]
                       },
                       {
-                          "id":  "Testo",
-                          "name":  "Testo",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
-                          "id":  "Woehler",
-                          "name":  "Wöhler",
-                          "kategorie":  "Technik-Software",
-                          "adGruppen":  [
-
-                                        ],
-                          "vorschlaege":  [
-
-                                          ]
-                      },
-                      {
                           "id":  "BpandaConsumer",
                           "name":  "Bpanda Consumer",
                           "kategorie":  "Bpanda",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-BPanda-Consumer"
                                         ],
                           "vorschlaege":  [
 
@@ -901,7 +813,7 @@
                           "name":  "Bpanda Contributor",
                           "kategorie":  "Bpanda",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-BPanda-Contributor"
                                         ],
                           "vorschlaege":  [
 
@@ -912,7 +824,7 @@
                           "name":  "Bpanda Manager",
                           "kategorie":  "Bpanda",
                           "adGruppen":  [
-
+                                            "rgh-Licensing-BPanda-Manager"
                                         ],
                           "vorschlaege":  [
 

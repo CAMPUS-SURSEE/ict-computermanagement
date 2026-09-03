@@ -146,8 +146,8 @@ const Daten = (function () {
     if (!KONFIG.listeBereit(liste)) {
       const fehler = new Error(
         "In konfig.js fehlt die Listen-ID für die Liste «" + (LISTEN_TITEL[liste] || liste)
-        + "». Sie wird von code\\Migrate-ToTwoLists.ps1 mit dem Schalter "
-        + "-UpdateKonfig eingetragen. Bis dahin lässt sich die Seite mit "
+        + "». Sie steht in den Listeneinstellungen in SharePoint und gehört in konfig.js. "
+        + "Bis dahin lässt sich die Seite mit "
         + "?mock=1 im Vorführmodus anschauen.");
       fehler.status = 0;
       fehler.konfiguration = true;
@@ -518,7 +518,7 @@ const Mock = (function () {
     BpandaManager: ["Bpanda_Manager"]
   };
 
-  /* Vorschläge von Suggest-ProgrammGruppen.ps1, noch nicht übernommen. */
+  /* Vorschläge – nur Demodaten für den Vorführmodus. */
   const VORSCHLAEGE = {
     Frontify: ["SW_Frontify"], KeePass: ["SW_KeePass", "SW_KeePass_Admin"],
     Milestone: ["TD_Milestone"], AdobeAcrobatPro: ["SW_AcrobatPro"],

@@ -46,7 +46,7 @@ param(
     [string[]]$RedirectUris = @('http://localhost:8123/'),
     [switch]$AssignmentRequired = $true,
     # «Allow public client flows» (isFallbackPublicClient): nötig, damit sich
-    # Migrate-ToTwoLists.ps1 mit dieser Client-ID per Device-Code anmelden kann.
+    # Wartungsskripte mit dieser Client-ID per Device-Code anmelden koennen.
     [bool]$PublicClientFlows = $true,
     [string]$KonfigPath
 )
@@ -189,7 +189,7 @@ foreach ($u in $RedirectUris) { Write-Host "  - $u" }
 Write-Host "Delegierte Berechtigungen: $scopeString (Admin-Consent erteilt)"
 Write-Host ("Allow public client flows:  {0}" -f $(if ($PublicClientFlows) { 'Ja' } else { 'Nein' }))
 if ($PublicClientFlows) {
-    Write-Host '  Damit kann sich Migrate-ToTwoLists.ps1 mit dieser ClientId per Device-Code anmelden.'
+    Write-Host '  Damit koennen sich Wartungsskripte mit dieser ClientId per Device-Code anmelden.'
 } else {
     Write-Host '  Achtung: Ohne "Allow public client flows" scheitert der Device-Code-Login des' -ForegroundColor Yellow
     Write-Host '  Migrationsskripts mit AADSTS7000218. Entra Admin Center > App-Registrierungen >' -ForegroundColor Yellow

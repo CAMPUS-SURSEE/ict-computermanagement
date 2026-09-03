@@ -7,8 +7,7 @@
   «. (Join-Path $ScriptDir 'Inventar-Gemeinsam.ps1')» eingebunden. Sie führt selbst nichts aus
   und lässt sich deshalb gefahrlos in Tests laden.
 
-  Muster «nur Funktionen laden»: Die übrigen Skripte (Migrate-ToTwoLists.ps1, Sync-Inventar.ps1,
-  Suggest-ProgrammGruppen.ps1) prüfen nach ihren Funktionsdefinitionen die Variable
+  Muster «nur Funktionen laden»: Sync-Inventar.ps1 prüft nach seinen Funktionsdefinitionen die Variable
   $InventarNurFunktionen. Ist sie $true, kehren sie vor dem eigentlichen Hauptteil zurück.
   Test-Inventar.ps1 setzt die Variable und kann die reinen Funktionen so ohne Graph, SCCM und AD prüfen.
 
