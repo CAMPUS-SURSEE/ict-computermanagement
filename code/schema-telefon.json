@@ -1,0 +1,110 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "Kurzwahl",
+        "type":  "Title",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Interne Kurzwahl (drei Ziffern, z. B. 373), Schlüssel der Liste"
+    },
+    {
+        "internal":  "Telefonnummer",
+        "display":  "Telefonnummer",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Vollständige Nummer, z. B. +41 41 926 23 73; das Frontend leitet sie aus der Kurzwahl ab"
+    },
+    {
+        "internal":  "Name",
+        "display":  "Name",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Bezeichnung: Person, Dienst, Raum oder HelpFon; leer bei freien Nummern"
+    },
+    {
+        "internal":  "Typ",
+        "display":  "Typ",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Person, Dienst, Raum oder Notruf"
+    },
+    {
+        "internal":  "Status",
+        "display":  "Status",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Aktiv, Inaktiv oder Frei. Leer gilt als Aktiv; Frei = sofort vergebbar"
+    },
+    {
+        "internal":  "Benutzer",
+        "display":  "Benutzer (AD)",
+        "type":  "Text",
+        "group":  "AD",
+        "source":  "ad",
+        "inDefaultView":  true,
+        "description":  "Login des AD-Benutzers, dessen telephoneNumber diese Nummer ist; der Sync pflegt das Feld"
+    },
+    {
+        "internal":  "ADLetzterSync",
+        "display":  "Letzter AD-Sync",
+        "type":  "DateTime",
+        "group":  "AD",
+        "source":  "ad",
+        "inDefaultView":  false,
+        "description":  "Zeitpunkt des letzten Laufs, der diese Zeile abgeglichen hat"
+    },
+    {
+        "internal":  "Apparat",
+        "display":  "Apparat",
+        "type":  "Text",
+        "group":  "Ausstattung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Endgerät, z. B. Teams, Tischtelefon, Headset, SIP-Apparat"
+    },
+    {
+        "internal":  "Standort",
+        "display":  "Standort",
+        "type":  "Text",
+        "group":  "Ausstattung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Gebäude / Raum des Apparats"
+    },
+    {
+        "internal":  "Hinweis",
+        "display":  "Hinweis",
+        "type":  "Note",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Grund oder Hinweis, Freitext"
+    },
+    {
+        "internal":  "FruehererEintrag",
+        "display":  "Früherer Eintrag",
+        "type":  "Text",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Wer die Nummer vorher hatte"
+    },
+    {
+        "internal":  "Verlauf",
+        "display":  "Verlauf",
+        "type":  "Note",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; Pflege im Frontend als Timeline"
+    }
+]

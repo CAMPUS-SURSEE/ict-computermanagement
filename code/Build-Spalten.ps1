@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-  Erzeugt frontend\spalten.js aus schema-computer.json und schema-benutzer.json.
+  Erzeugt frontend\spalten.js aus schema-computer.json, schema-benutzer.json und schema-telefon.json.
 
 .DESCRIPTION
-  Die beiden Schemadateien sind die Quelle der Wahrheit für die Spalten der Listen «Computer»
-  und «Benutzer». Dieses Skript schreibt daraus die JavaScript-Datei frontend\spalten.js mit
-  den Konstanten SPALTEN_COMPUTER und SPALTEN_BENUTZER.
+  Die drei Schemadateien sind die Quelle der Wahrheit für die Spalten der Listen «Computer»,
+  «Benutzer» und «Telefonnummern». Dieses Skript schreibt daraus die JavaScript-Datei
+  frontend\spalten.js mit den Konstanten SPALTEN_COMPUTER, SPALTEN_BENUTZER und SPALTEN_TELEFON.
 
   Programmspalten stehen bewusst NICHT in spalten.js: sie kommen aus programme.json und werden
   vom Frontend zur Laufzeit ergänzt (siehe frontend\modell.js).
@@ -17,6 +17,7 @@
 param(
     [string]$ComputerSchema,
     [string]$BenutzerSchema,
+    [string]$TelefonSchema,
     [string]$Ziel
 )
 $ErrorActionPreference = 'Stop'
@@ -27,6 +28,7 @@ if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 
 if (-not $ComputerSchema) { $ComputerSchema = Join-Path $ScriptDir 'schema-computer.json' }
 if (-not $BenutzerSchema) { $BenutzerSchema = Join-Path $ScriptDir 'schema-benutzer.json' }
+if (-not $TelefonSchema) { $TelefonSchema = Join-Path $ScriptDir 'schema-telefon.json' }
 if (-not $Ziel) { $Ziel = Join-Path $ScriptDir '..\frontend\spalten.js' }
 
 function JsText([string]$s) {
@@ -48,17 +50,18 @@ function Build-Block {
 
 $computer = @(Read-JsonDatei $ComputerSchema)
 $benutzer = @(Read-JsonDatei $BenutzerSchema)
+$telefon = @(Read-JsonDatei $TelefonSchema)
 
-foreach ($s in ($computer + $benutzer)) {
+foreach ($s in ($computer + $benutzer + $telefon)) {
     if ($s.source -notin @('manuell', 'sccm', 'ad')) {
         throw "Unerlaubte Quelle '$($s.source)' bei Spalte '$($s.internal)' (erlaubt: manuell, sccm, ad)"
     }
 }
 
 $kopf = @'
-/* spalten.js — Spaltendefinition der SharePoint-Listen «Computer» und «Benutzer».
-   Erzeugt aus code/schema-computer.json und code/schema-benutzer.json durch
-   code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
+/* spalten.js — Spaltendefinition der SharePoint-Listen «Computer», «Benutzer» und
+   «Telefonnummern». Erzeugt aus code/schema-computer.json, code/schema-benutzer.json und
+   code/schema-telefon.json durch code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
 
    i = interner Name in Graph, d = Anzeigename, t = Typ
    (Title|Text|Note|Boolean|Number|DateTime), g = Gruppe,
@@ -66,8 +69,8 @@ $kopf = @'
                sccm    = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
                ad      = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt).
 
-   Die Titelspalte heisst in Graph «Title»; sie wird in der Computer-Liste als «PC-Name»
-   und in der Benutzer-Liste als «Login» angezeigt.
+   Die Titelspalte heisst in Graph «Title»; sie wird in der Computer-Liste als «PC-Name»,
+   in der Benutzer-Liste als «Login» und in der Telefonliste als «Kurzwahl» angezeigt.
 
    Die Programmspalten der Benutzer-Liste stehen NICHT hier, sondern in programme.json
    (Ablage in SharePoint: Inventar/programme.json); modell.js ergänzt sie zur Laufzeit.
@@ -75,7 +78,7 @@ $kopf = @'
 
 '@
 
-$inhalt = $kopf + (Build-Block $computer 'SPALTEN_COMPUTER') + "`n" + (Build-Block $benutzer 'SPALTEN_BENUTZER')
+$inhalt = $kopf + (Build-Block $computer 'SPALTEN_COMPUTER') + "`n" + (Build-Block $benutzer 'SPALTEN_BENUTZER') + "`n" + (Build-Block $telefon 'SPALTEN_TELEFON')
 $zielVoll = [IO.Path]::GetFullPath($Ziel)
 $ordner = Split-Path -Parent $zielVoll
 if (-not (Test-Path $ordner)) { throw "Zielordner fehlt: $ordner" }
@@ -84,3 +87,4 @@ if (-not (Test-Path $ordner)) { throw "Zielordner fehlt: $ordner" }
 Write-Host ("Geschrieben: {0}" -f $zielVoll)
 Write-Host ("  SPALTEN_COMPUTER: {0} Spalten" -f $computer.Count)
 Write-Host ("  SPALTEN_BENUTZER: {0} Spalten" -f $benutzer.Count)
+Write-Host ("  SPALTEN_TELEFON: {0} Spalten" -f $telefon.Count)

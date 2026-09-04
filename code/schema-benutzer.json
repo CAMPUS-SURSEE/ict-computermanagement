@@ -115,5 +115,14 @@
         "source":  "manuell",
         "inDefaultView":  false,
         "description":  "Freitext"
+    },
+    {
+        "internal":  "Verlauf",
+        "display":  "Verlauf",
+        "type":  "Note",
+        "group":  "Zuordnung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; Pflege im Frontend als Timeline"
     }
 ]

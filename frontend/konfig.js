@@ -5,10 +5,10 @@
    Anmeldung an Entra ID und aus den SharePoint-Berechtigungen der
    angemeldeten Person.
 
-   Seit dem Umbau auf zwei Listen gibt es «computerListId» und
-   «benutzerListId». Beide stehen in den Listeneinstellungen in SharePoint.
-   Solange der Platzhalter steht, zeigt das
-   Frontend eine verständliche Meldung statt einer Fehlerkaskade. */
+   Es gibt drei Listen: «computerListId», «benutzerListId» und
+   «telefonListId». Alle stehen in den Listeneinstellungen in SharePoint.
+   Solange ein Platzhalter steht, zeigt das Frontend eine verständliche
+   Meldung statt einer Fehlerkaskade. */
 
 const KONFIG = {
 
@@ -26,6 +26,14 @@ const KONFIG = {
   computerListId: "7870205c-bfa6-4d18-8035-d16d0a082637",
   benutzerListId: "7db0cf44-7a2a-4937-b982-03236858b4b9",
 
+  // Liste «Telefonnummern». code\Import-Telefonliste.ps1 -UpdateKonfig trägt die ID ein.
+  telefonListId: "bd91b4ff-af5f-4457-8a37-13dad6ba6c39",
+
+  /* Nummernblock des Hauses ohne Kurzwahl: aus der Kurzwahl 373 wird
+     +41 41 926 23 73. Muss mit «TelefonPraefix» in Sync-Inventar.config.json
+     übereinstimmen. */
+  telefonPraefix: "+41 41 926 2",
+
   /* ---- programme.json in der Dokumentbibliothek der Site ----
      Graph: GET /sites/{siteId}/drive/root:/{programmeDateiPfad}:/content */
   programmeDateiPfad: "Inventar/programme.json",
@@ -38,12 +46,14 @@ const KONFIG = {
    Das Frontend prüft das vor dem ersten Graph-Aufruf und zeigt sonst eine
    Meldung, die sagt, was zu tun ist. */
 KONFIG.listeBereit = function (liste) {
-  const id = liste === "benutzer" ? KONFIG.benutzerListId : KONFIG.computerListId;
+  const id = KONFIG.listId(liste);
   return !!id && id.indexOf("<") === -1;
 };
 
-/* Listen-ID nach Name («computer» | «benutzer»). */
+/* Listen-ID nach Name («computer» | «benutzer» | «telefon»). */
 KONFIG.listId = function (liste) {
-  return liste === "benutzer" ? KONFIG.benutzerListId : KONFIG.computerListId;
+  if (liste === "benutzer") return KONFIG.benutzerListId;
+  if (liste === "telefon") return KONFIG.telefonListId;
+  return KONFIG.computerListId;
 };
 

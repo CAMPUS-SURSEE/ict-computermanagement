@@ -3,144 +3,100 @@
    Wird von allen Seiten als ERSTE Stilvorlage geladen. styles.css,
    geraet.css und benutzer.css enthalten danach nur noch Seitenlayout.
 
-   Haltung: modern, minimal, trotzdem dicht an Information. Grosszügiger
-   Weissraum, Trennung durch Abstand statt durch Linien, Hierarchie über
-   Typografie. Karten haben KEINE Rahmen und KEINE farbigen Seitenkanten.
-   Status wird ausschliesslich über Text-, Zahlen- und Symbolfarbe gezeigt.
+   HALTUNG: Google Material Design 3, so wie Google es in seinen eigenen
+   Konsolen einsetzt (Admin-Konsole, Search Console, Cloud Console):
+
+     - reiner weisser Grund, keine getönte Seite
+     - Trennung durch 1 px feine Linien (#dadce0), keine Schatten auf Karten
+     - Schatten nur für Schwebendes: Menüs, Dialoge, Snackbars
+     - Google-Blau (#0b57d0) als einzige Akzentfarbe; Status als Text-
+       und Chipfarbe (grün, orange, rot) in den Google-Tönen
+     - Roboto (Google Fonts) für Text, «Google Sans» für Titel, falls
+       vorhanden — sonst ebenfalls Roboto
+     - Knöpfe als Pillen (36 px hoch), Eingabefelder mit Rahmen (4 px),
+       Karten und Tabellen mit 8 px Radius
+     - viel Weissraum: 24 px Innenabstand, 8er-Raster
+
+   Quellen: m3.material.io/styles (Farbrollen, Typografie, Form) sowie die
+   Baseline-Töne der Google-Oberflächen (Primary #0b57d0, On-Surface
+   #1f1f1f, On-Surface-Variant #444746, Outline #747775, Outline-Variant
+   #c4c7c5, Hairline #dadce0).
 
    ------------------------------------------------------------------
    ÜBERSICHT DER KLASSEN (für die Seiten, die darauf aufbauen)
    ------------------------------------------------------------------
 
    Grundgerüst
-     .seite                 Flex-Spalte über die ganze Fensterhöhe. Die Seite
-                            selbst darf scrollen; kein overflow:hidden auf body.
+     .seite                 Flex-Spalte über die ganze Fensterhöhe.
+     .rumpf                 Reihe unter der Kopfzeile: Navigation links,
+                            Bühne rechts.
+     .buehne                Flex-Spalte für die Ansichten und Zustände.
      .inhalt                Scrollender Inhaltsbereich (flex:1, min-height:0).
-     .inhalt-fest           Wie .inhalt, aber ohne eigenes Scrollen: das
-                            Kind (z. B. .tabelle-rahmen) scrollt selbst.
-     .bahn                  Innenabstand + maximale Breite für Textbereiche.
+     .inhalt-fest           Wie .inhalt, aber das Kind rollt selbst.
+     .bahn                  Maximale Breite für Textbereiche.
 
    Kopfzeile und Navigation
-     .kopf                  Obere Leiste (Marke links, Aktionen rechts).
-     .kopf-marke .logo .marke-text .marke-unter
-     .logo-link             Das Logo als Verweis zur Übersicht (index.html).
-                            Dezenter Hover, Berührungsfläche mindestens 40 px.
+     .kopf                  Obere App-Leiste, 64 px, Hairline unten.
+     .kopf-marke .logo .marke-text
+     .logo-link             Das Logo als Verweis zur Übersicht.
      .kopf-rechts .stand .konto
-     .reiter > .reiter-knopf[.aktiv]        Tabs als Segmente.
+     .reiter > .reiter-knopf[.aktiv]        Linke Navigation (Hauptseite).
      .band .band-warnung .band-info         Volle Breite, Hinweisband oben.
+     .seitenkopf            Titelzeile eines Detailfensters: Titel,
+                            Untertitel, Statuschips.
 
    Flächen
-     .karte                 Weisse Karte, kein Rahmen, sehr weicher Schatten.
-     .karte-kopf .karte-inhalt .karte-titel .karte-unter
-     .karte-kopf-zeile      Kopf mit Titel links und Zusatz rechts.
+     .karte                 Weisse Karte mit 1-px-Rahmen, 8 px Radius.
+     .karte-kopf .karte-inhalt .karte-titel .karte-unter .karte-kopf-zeile
      .bereich .bereich-titel .bereich-unter Abschnitt mit Überschrift.
-     .gitter .gitter-2 .gitter-3            Einfache Rasterbehälter.
-     .karten                Kartenraster (auto-fit, mind. 360 px je Spalte).
-     .karte-breit           Karte über die volle Rasterbreite.
-     .stapel                Karten untereinander mit gleichem Abstand.
+     .gitter .gitter-2 .gitter-3 .karten .karte-breit .stapel
 
-   Datenzeilen (Name links, Wert rechts, optional mit Schloss)
-     .datenzeilen           Behälter; trennt die Zeilen mit feinen Linien.
-     .datenzeile            Eine Zeile. Zusatz .geaendert markiert einen
-                            geänderten, noch nicht gespeicherten Wert.
-     .datenzeile-name .datenzeile-wert[.leer] .datenzeile-neben
-     .datenzeile-hinweis    Kleiner Hinweis unter dem Wert.
-     .datenzeile-zeile      Waagrechte Reihe aus Eingabe und Knöpfen.
-     .datenzeile-breit      Ganze Breite (Bemerkung, Textfeld).
+   Datenzeilen (Name links, Wert rechts)
+     .datenzeilen .datenzeile[.geaendert] .datenzeile-name
+     .datenzeile-wert[.leer] .datenzeile-neben .datenzeile-hinweis
+     .datenzeile-zeile .datenzeile-breit
 
    Kennzahlen
-     .kacheln               Raster für Kennzahl-Kacheln.
-     .kachel                Kachel (button oder div), Farbe nur auf der Zahl.
-     .kachel-wert[.klein] .kachel-text .kachel-unter
-     .kachel.ton-erfolg|.ton-warnung|.ton-gefahr|.ton-info
-                            färbt AUSSCHLIESSLICH die Zahl.
+     .kacheln .kachel .kachel-wert[.klein] .kachel-text .kachel-unter
+     .kachel.ton-erfolg|.ton-warnung|.ton-gefahr|.ton-info (färbt die Zahl)
 
-   Text- und Statusfarben (überall verwendbar)
-     .t-erfolg .t-warnung .t-gefahr .t-info .t-leise .t-stark
-     .zahl                  Tabellenziffern, rechtsbündig.
+   Text- und Statusfarben
+     .t-erfolg .t-warnung .t-gefahr .t-info .t-leise .t-still .t-stark .zahl
 
    Chips
-     .chips                 Flexbehälter.
-     .chip                  Neutraler Chip. Zusatz: .chip-erfolg, .chip-warnung,
-                            .chip-gefahr, .chip-info, .chip-marke, .chip-leise.
-                            Entfernbar wird ein Chip durch ein Kind
-                            <span class="x">×</span> darin.
+     .chips .chip .chip-erfolg .chip-warnung .chip-gefahr .chip-info
+     .chip-marke .chip-leise; button.chip = Filterchip mit Rahmen und
+     optionalem <span class="x">×</span>.
 
    Tabellen
-     .tabelle-rahmen        Scrollcontainer (x und y), weisse Fläche.
-     .tabelle               Kopf sticky, Zebra sehr dezent, Hover.
-     th.sortiert > .pfeil   Sortierhinweis.
-     .dicht                 Auf einem Vorfahren gesetzt = kompakte Zeilen.
-     .tabelle-leer          Leerzustand innerhalb des Rahmens.
-     .tabelle-schlicht      Kurze Aufstellung IN einer Karte: kein klebender
-                            Kopf, keine klebende erste Spalte, kein Zeiger.
-                            Immer zusammen mit .tabelle verwenden, aussen
-                            herum .tabelle-schlicht-rahmen (rollt waagrecht).
+     .tabelle-rahmen .tabelle th.sortiert>.pfeil .dicht .tabelle-leer
+     .tabelle-schlicht(-rahmen)
 
-   Schalter (Tri-State, siehe Spezifikation 3.4)
-     .schalter              Grundzustand 0 (aus, umschaltbar).
-     .schalter.an           Zustand 1 (manuell an, umschaltbar).
-     .schalter.gesperrt     Zustand 2 (aus AD-Gruppe, an und gesperrt);
-                            zeigt ein Schloss und braucht ein title-Attribut.
-     .schalter-zeile        Zeile aus Schalter + Beschriftung + Zusatz.
+   Schalter
+     .schalter[.an|.gesperrt] .schalter-zeile
 
    Zustände
-     .lade                  Zentriert (vertikal und horizontal): Spinner,
-                            Text, Fortschritt. Innen: .lade-text, .lade-fortschritt.
-     .spinner               28 px Spinner (auch einzeln verwendbar).
-     .fehler                Zentrierter Fehlerzustand: .fehler-titel,
-                            .fehler-text, .fehler-hinweis, darunter Knöpfe.
-     .leerzustand           Zentrierter Leerzustand: .leer-titel, .leer-text.
-     .skelett               Graue Platzhalterfläche; .skelett-zeile für Tabellen.
+     .lade .spinner .fehler .leerzustand .skelett .zustand-bereich
 
-     Zentrierung: die Fläche kommt aus der Flex-Kette, NICHT aus einer
-     Rechnung mit 100dvh — sonst ragt die Ladeseite um ein paar Pixel über
-     den Fensterrand. In einer Flex-Spalte (.seite, .fenster-inhalt,
-     .zustand-bereich) nimmt der Zustand mit flex:1 genau den freien Platz
-     und zentriert seinen Inhalt darin. Wer eine eigene Fläche dafür
-     braucht, hängt sie in einen Behälter mit der Klasse .zustand-bereich
-     (Flex-Spalte, füllt den Rest der Seite).
-
-   Detailfenster (Gerätefenster, Benutzerfenster)
-     .fenster               Auf body: markiert ein Detailfenster (der
-                            Untertitel im Kopf bleibt auch schmal sichtbar).
-     .fenster-rumpf         Raster: Navigation links, Inhalt rechts.
-     .fenster-nav           Die Navigationsspalte. Sie reicht IMMER bis zum
-                            unteren Fensterrand (eigene Fläche, eigene Kante)
-                            und wird schmal zur waagrecht rollenden Reiterleiste.
-     .fenster-nav-menue     Der klebende Block mit den Knöpfen INNERHALB der
-                            Spalte. Ohne diesen Behälter steht das Menü
-                            einfach oben in der Spalte — auch das sieht richtig
-                            aus, es klebt dann nur nicht mit.
-     .fenster-nav-knopf[.aktiv] .fenster-nav-zahl
-     .fenster-inhalt        Inhaltsspalte, unten Platz für die Speicherleiste.
-     .fenster-bahn          Der Inhalt darin, auf 1400 px begrenzt.
-     .speicherleiste        Feste Leiste unten: .speicher-text,
-                            .speicher-fehler, Knöpfe.
-     .toast[.toast-fehler]  Kurzmeldung über der Speicherleiste.
-     .dialog-hintergrund .dialog .dialog-knoepfe   Modaler Dialog.
-     .knopf-gefahr          Roter Knopf für zerstörende Aktionen.
+   Detailfenster
+     .fenster .fenster-rumpf .fenster-nav .fenster-nav-menue
+     .fenster-nav-knopf[.aktiv] .fenster-nav-zahl .fenster-inhalt
+     .fenster-bahn .speicherleiste .toast[.toast-fehler]
+     .dialog-hintergrund .dialog .dialog-knoepfe .knopf-gefahr
 
    Zeitstrahl
-     .zeitstrahl            Behälter. Innen:
-     .zeitstrahl-achse      Waagrechte Achse mit Ticks.
-     .zeitstrahl-tick       Ein Jahr; .aktuell = laufendes Geschäftsjahr,
-                            .vergangen dämpft, .klickbar macht ihn zum Knopf.
-     .zeitstrahl-label      Jahresbeschriftung unter dem Tick.
-     .zeitstrahl-saeulen    Zwei Säulen je Jahr (.saeule-a Beschaffung,
-                            .saeule-b Ersatz; .gefahr für überfällig).
-     .zeitstrahl-marke      Punkt + Text, für die Legende unter der Achse.
+     .zeitstrahl .zeitstrahl-achse .zeitstrahl-tick[.aktuell|.vergangen|
+     .klickbar] .zeitstrahl-saeulen .saeule(-a|-b) .zeitstrahl-label
+     .zeitstrahl-marke .zeitstrahl-legende
 
    Toolbar und Formulare
      .toolbar .toolbar-teil .suchfeld .suche .kuerzel .anzahl
      .knopf .knopf-primaer .knopf-leise .knopf.aktiv .zaehler
      .feld .feld-label .feld-eingabe .feld-hinweis .schloss
-     .panel .panel-kopf .panel-koerper
+     .panel .panel-kopf .panel-koerper .mehrfach
 
    Sinnbilder
-     .icon                  16 px SVG, stroke = currentColor.
-
-   Tooltips: einfach das Attribut title setzen. Keine eigene Komponente.
+     .icon                  SVG, stroke = currentColor.
    ------------------------------------------------------------------ */
 
 
@@ -149,31 +105,43 @@
    ================================================================== */
 
 :root {
-  /* Marke */
-  --marke:        #84B819;   /* Campus-Grün, nur als Marke/Akzent */
-  --marke-dunkel: #6f9c14;
-  --marke-hell:   #f3f8e6;
+  /* Akzent: Google-Blau (Material 3 Primary) */
+  --primaer:           #0b57d0;
+  --primaer-dunkel:    #0842a0;
+  --primaer-hell:      #e8f0fe;   /* Auswahl, Tonal-Flächen */
+  --primaer-container: #d3e3fd;
+  --primaer-schwach:   #a8c7fa;   /* zweite Datenreihe */
 
-  /* Status. Für Text bewusst dunklere Töne als die Marke: lesbar auf Weiss. */
-  --erfolg:       #3f8f2e;
-  --erfolg-hell:  #eef7ea;
-  --warnung:      #b45309;
-  --warnung-hell: #fdf5e7;
-  --gefahr:       #b91c1c;
-  --gefahr-hell:  #fdeeee;
-  --info:         #1d4ed8;
-  --info-hell:    #eef2fe;
+  /* Kompatibilität: ältere Regeln sprechen von der «Marke». Sie ist
+     jetzt der Akzent. Das Campus-Grün lebt nur noch im Logo. */
+  --marke:        var(--primaer);
+  --marke-dunkel: var(--primaer-dunkel);
+  --marke-hell:   var(--primaer-hell);
 
-  /* Neutrale Töne */
-  --text:         #111827;
-  --text-leise:   #6b7280;
-  --text-still:   #9ca3af;
+  /* Status in den Google-Tönen: Text dunkel genug für Weiss, Fläche hell. */
+  --erfolg:       #137333;
+  --erfolg-hell:  #e6f4ea;
+  --warnung:      #b06000;
+  --warnung-hell: #fef7e0;
+  --gefahr:       #b3261e;
+  --gefahr-hell:  #fce8e6;
+  --info:         #0b57d0;
+  --info-hell:    #e8f0fe;
+
+  /* Neutrale Töne (On-Surface, On-Surface-Variant, Outline) */
+  --text:         #1f1f1f;
+  --text-leise:   #444746;
+  --text-still:   #747775;
   --weiss:        #ffffff;
-  --flaeche:      #f6f7f9;   /* leicht getönter Seitengrund */
-  --flaeche-2:    #eef0f3;   /* Hover, Spuren, Skelett */
-  --linie:        #e5e7eb;   /* nur dort, wo eine Linie wirklich nötig ist */
+  --flaeche:      #f8f9fa;   /* Hover auf Zeilen, leichte Flächen */
+  --flaeche-2:    #f1f3f4;   /* Suchfeld, Spuren, Skelett */
+  --flaeche-3:    #e8eaed;   /* stärkere Fläche */
+  --linie:        #dadce0;   /* die Hairline: Karten, Tabellen, Kopf */
+  --linie-leicht: #e8eaed;   /* Zeilen innerhalb von Listen */
+  --umriss:       #747775;   /* Rahmen von Knöpfen und Feldern */
+  --umriss-leicht:#c4c7c5;   /* Rahmen von Chips */
 
-  /* Abstände (4er-Raster) */
+  /* Abstände (8er-Raster, 4 als Halbschritt) */
   --a1: 4px;
   --a2: 8px;
   --a3: 12px;
@@ -183,86 +151,82 @@
   --a7: 48px;
 
   /* Radien */
-  --r-klein: 6px;
-  --r:       10px;
-  --r-gross: 14px;
-  --r-rund:  999px;
+  --r-klein: 4px;    /* Eingabefelder */
+  --r:       8px;    /* Karten, Tabellen, Chips, Menüs */
+  --r-gross: 12px;
+  --r-rund:  999px;  /* Knöpfe, Navigation */
 
-  /* Schatten: sehr weich, ersetzt den Kartenrahmen */
-  --schatten:      0 1px 2px rgba(17,24,39,.04), 0 1px 8px rgba(17,24,39,.04);
-  --schatten-hoch: 0 2px 6px rgba(17,24,39,.06), 0 12px 32px rgba(17,24,39,.10);
+  /* Schatten nur für Schwebendes (Material Elevation 1–3) */
+  --schatten:        0 1px 2px 0 rgba(60,64,67,.30), 0 1px 3px 1px rgba(60,64,67,.15);
+  --schatten-hoch:   0 1px 2px 0 rgba(60,64,67,.30), 0 2px 6px 2px rgba(60,64,67,.15);
+  --schatten-dialog: 0 1px 3px 0 rgba(60,64,67,.30), 0 4px 8px 3px rgba(60,64,67,.15);
 
   /* Typografie */
-  --schrift: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-             "Helvetica Neue", Arial, sans-serif;
+  --schrift: Roboto, "Helvetica Neue", Arial, sans-serif;
+  --schrift-titel: "Google Sans", "Google Sans Text", Roboto, "Helvetica Neue", Arial, sans-serif;
   --t-xs: 12px;
   --t-s:  13px;
   --t-m:  14px;
   --t-l:  16px;
-  --t-xl: 20px;
+  --t-xl: 22px;
   --t-xxl:28px;
 
-  /* Zeilenhöhe der Tabellen, vom Dichte-Schalter überschrieben */
-  --zellen-hoch: 9px;
+  /* Senkrechter Innenabstand der Tabellenzellen; .dicht überschreibt ihn. */
+  --zellen-hoch: 13px;
 
-  /* Kleinste Berührungsfläche für Knöpfe und Verweise auf dem Handy. */
+  /* Kleinste Berührungsfläche */
   --tippziel: 40px;
+
+  /* Breite der linken Navigation, Höhe der App-Leiste */
+  --nav-breit: 240px;
+  --kopf-hoch: 64px;
 }
 
 * { box-sizing: border-box; }
 
-/* Muss vor allen Layoutregeln stehen, sonst überschreibt ein späteres
-   display:flex das hidden-Attribut. */
 [hidden] { display: none !important; }
 
-html {
-  height: 100%;
-  background: var(--flaeche);
-}
+html { height: 100%; background: var(--weiss); }
 
-/* Wichtig: KEIN overflow:hidden auf body. Jede Seite regelt ihr Scrollen
-   selbst — die Hauptseite über .inhalt-fest und .tabelle-rahmen, die
-   Detailfenster über normales Seitenscrollen. */
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--flaeche);
+  background: var(--weiss);
   color: var(--text);
   font-family: var(--schrift);
   font-size: var(--t-m);
-  line-height: 1.5;
+  line-height: 1.43;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.2px; }
-h1 { font-size: var(--t-l); }
-h2 { font-size: var(--t-m); }
-h3 { font-size: var(--t-s); }
+h1, h2, h3, h4 { margin: 0; font-family: var(--schrift-titel); font-weight: 500; letter-spacing: 0; }
+h1 { font-size: var(--t-xl); font-weight: 400; line-height: 28px; }
+h2 { font-size: var(--t-l); line-height: 24px; }
+h3 { font-size: var(--t-m); line-height: 20px; }
 p  { margin: 0; }
 
-a { color: var(--text); text-decoration: none; }
+a { color: var(--primaer); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 :focus-visible {
-  outline: 2px solid var(--marke);
+  outline: 2px solid var(--primaer);
   outline-offset: 2px;
-  border-radius: var(--r-klein);
 }
 
 .icon {
-  width: 16px; height: 16px; flex: none;
+  width: 18px; height: 18px; flex: none;
   fill: none; stroke: currentColor; stroke-width: 1.8;
   stroke-linecap: round; stroke-linejoin: round;
 }
 
-/* Text- und Statusfarben */
 .t-erfolg  { color: var(--erfolg); }
 .t-warnung { color: var(--warnung); }
 .t-gefahr  { color: var(--gefahr); }
 .t-info    { color: var(--info); }
 .t-leise   { color: var(--text-leise); }
 .t-still   { color: var(--text-still); }
-.t-stark   { font-weight: 600; }
+.t-stark   { font-weight: 500; }
 .zahl      { font-variant-numeric: tabular-nums; }
 
 
@@ -270,9 +234,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    2. Grundgerüst
    ================================================================== */
 
-/* Die ganze Seite ist eine Flex-Spalte über die volle Fensterhöhe. 100dvh
-   überschreibt 100vh dort, wo es der Browser kennt — auf dem Handy zieht
-   sich die Adressleiste sonst von der sichtbaren Höhe ab. */
 .seite {
   display: flex;
   flex-direction: column;
@@ -280,69 +241,86 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   min-height: 100dvh;
 }
 
-/* Scrollender Inhaltsbereich. */
+/* Reihe unter der Kopfzeile: Navigation links, Bühne rechts. */
+.rumpf {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.buehne {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .inhalt {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: var(--a5) var(--a5) var(--a7);
+  padding: var(--a5) var(--a6) var(--a7);
 }
 
-/* Inhaltsbereich, dessen Kind selbst scrollt (Tabellenansicht). */
 .inhalt-fest {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--a3);
-  padding: var(--a4) var(--a5) var(--a5);
+  gap: var(--a4);
+  padding: var(--a5) var(--a6) var(--a5);
 }
 
 .bahn { max-width: 1400px; margin: 0 auto; }
 
 
 /* ==================================================================
-   3. Kopfzeile, Reiter, Bänder
+   3. Kopfzeile (App-Leiste), Navigation, Bänder
    ================================================================== */
 
 .kopf {
   flex: none;
   display: flex;
   align-items: center;
-  gap: var(--a5);
-  flex-wrap: wrap;
-  padding: var(--a2) var(--a5);
-  min-height: 60px;
+  gap: var(--a4);
+  min-height: var(--kopf-hoch);
+  padding: 0 var(--a5) 0 var(--a4);
   background: var(--weiss);
-  box-shadow: 0 1px 0 rgba(17,24,39,.05);
+  border-bottom: 1px solid var(--linie);
   position: relative;
   z-index: 30;
 }
 
 .kopf-marke { display: flex; align-items: center; gap: var(--a3); min-width: 0; }
-.logo { height: 26px; width: auto; display: block; }
+.logo { height: 28px; width: auto; display: block; }
 
-/* Das Logo als Verweis zur Übersicht. Dezent: nur eine leicht getönte
-   Fläche beim Überfahren, kein Unterstrich. Die Fläche ist bewusst
-   mindestens --tippziel hoch, damit sie sich auch am Handy treffen lässt. */
-.logo-link {
+.logo-link, .marke-logo {
   display: inline-flex;
   align-items: center;
   min-height: var(--tippziel);
   padding: var(--a1) var(--a2);
   margin-left: calc(var(--a2) * -1);
-  border-radius: var(--r-klein);
+  border-radius: var(--r);
   flex: none;
 }
-.logo-link:hover { background: var(--flaeche); text-decoration: none; }
-.logo-link:active { background: var(--flaeche-2); }
-.marke-text { min-width: 0; }
+.logo-link:hover, .marke-logo:hover { background: var(--flaeche-2); text-decoration: none; }
+.logo-link:active, .marke-logo:active { background: var(--flaeche-3); }
 
-/* Der Untertitel ist eine Zeile und wird gekürzt, statt die Kopfzeile
-   umbrechen zu lassen. Den vollen Text zeigt das title-Attribut. */
+.marke-text { min-width: 0; display: flex; align-items: baseline; gap: var(--a2); }
+.marke-text h1 {
+  font-family: var(--schrift-titel);
+  font-size: var(--t-xl);
+  font-weight: 400;
+  color: var(--text-leise);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .marke-unter {
-  font-size: 11px; color: var(--text-still); letter-spacing: .3px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--t-xs); color: var(--text-still);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .kopf-rechts {
@@ -350,71 +328,99 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   flex-wrap: wrap; justify-content: flex-end; margin-left: auto;
 }
 
-/* ---------- Kopfzeile eines Detailfensters ----------
+.stand { font-size: var(--t-xs); color: var(--text-leise); margin-right: var(--a2); }
 
-   Ab 761 px ein Raster mit zwei Spalten statt einer Flex-Reihe: links
-   Marke, Titel, Untertitel und die Statuschips, rechts oben die Aktionen.
-   Als Flex-Reihe sind die Aktionen bei knapper Breite (rund 1080 px) unter
-   die Chips gerutscht und standen dort rechtsbündig im Leeren. Im Raster
-   bleiben sie in der Zeile des Titels; enger wird stattdessen die linke
-   Spalte, deren Untertitel dann mit «…» endet. */
-@media (min-width: 761px) {
-  .fenster .kopf {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    column-gap: var(--a4);
-    row-gap: var(--a2);
-  }
-  .fenster .kopf-marke { grid-column: 1; grid-row: 1; }
-  /* Zeile 2 entsteht nur, wenn es Chips gibt — sonst bleibt die Kopfzeile
-     einzeilig und bekommt keinen leeren Zwischenraum. */
-  .fenster .kopf .chips { grid-column: 1; grid-row: 2; }
-  .fenster .kopf-rechts {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: 0;
-    align-self: start;
-  }
-}
-
-.stand { font-size: var(--t-xs); color: var(--text-leise); }
 .konto {
-  font-size: var(--t-xs); color: var(--text);
-  background: var(--flaeche); border-radius: var(--r-rund);
-  padding: 3px 10px; max-width: 220px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--t-m); color: var(--text);
+  display: inline-flex; align-items: center; gap: var(--a2);
+  height: 32px; padding: 0 var(--a3) 0 var(--a2);
+  border: 1px solid var(--linie); border-radius: var(--r-rund);
+  max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.konto::before {
+  content: ""; width: 20px; height: 20px; border-radius: 50%; flex: none;
+  background: var(--primaer);
 }
 .konto:empty { display: none; }
 
-/* Reiter als Segmente, ohne Rahmen. */
+/* ---------- Linke Navigation der Hauptseite ---------- */
+
 .reiter {
-  display: flex; gap: 2px; padding: 3px;
-  background: var(--flaeche); border-radius: var(--r);
+  flex: none;
+  width: var(--nav-breit);
+  display: flex;
+  flex-direction: column;
+  gap: var(--a1);
+  padding: var(--a3);
+  border-right: 1px solid var(--linie);
+  background: var(--weiss);
+  overflow-y: auto;
 }
+
 .reiter-knopf {
-  font: inherit; font-size: var(--t-s);
-  background: none; border: none; color: var(--text-leise);
-  padding: 6px 16px; border-radius: var(--r-klein);
+  font: inherit; font-family: var(--schrift-titel);
+  font-size: var(--t-m); font-weight: 500;
+  display: flex; align-items: center; gap: var(--a3);
+  width: 100%; min-height: 40px;
+  padding: 0 var(--a4);
+  background: none; border: none;
+  border-radius: var(--r-rund);
+  color: var(--text); text-align: left;
   cursor: pointer; white-space: nowrap;
+  transition: background .12s;
 }
-.reiter-knopf:hover { color: var(--text); background: rgba(17,24,39,.04); }
-.reiter-knopf.aktiv {
-  color: var(--text); background: var(--weiss);
-  font-weight: 600; box-shadow: var(--schatten);
-}
+.reiter-knopf .icon { width: 20px; height: 20px; color: var(--text-leise); }
+.reiter-knopf:hover { background: var(--flaeche-2); }
+.reiter-knopf:active { background: var(--flaeche-3); }
+.reiter-knopf.aktiv { background: var(--primaer-hell); color: var(--primaer); }
+.reiter-knopf.aktiv .icon { color: var(--primaer); }
 
 /* Band über die volle Breite (Vorführmodus, Warnungen). */
 .band {
   flex: none;
+  display: flex; align-items: center; gap: var(--a3); flex-wrap: wrap;
   padding: var(--a2) var(--a5);
-  font-size: var(--t-xs);
+  font-size: var(--t-s);
   background: var(--flaeche-2);
   color: var(--text-leise);
+  border-bottom: 1px solid var(--linie);
 }
 .band-warnung { background: var(--warnung-hell); color: var(--warnung); }
 .band-info    { background: var(--info-hell);    color: var(--info); }
-.band .knopf  { margin-left: var(--a3); }
+.band .knopf  { margin-left: var(--a2); height: 32px; }
+
+/* ---------- Titelzeile eines Detailfensters ---------- */
+
+.seitenkopf {
+  display: flex; flex-direction: column; gap: var(--a1);
+  padding-bottom: var(--a5);
+  margin-bottom: var(--a5);
+  border-bottom: 1px solid var(--linie);
+}
+.seitenkopf h1 {
+  font-size: 28px; line-height: 36px; font-weight: 400;
+  color: var(--text); overflow-wrap: anywhere;
+}
+.seitenkopf-unter {
+  font-size: var(--t-m); color: var(--text-leise);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.seitenkopf .chips { margin-top: var(--a2); }
+
+/* Der Pfad über dem Titel («Geräte»): zeigt, wo man ist, und führt
+   zurück in die Liste. */
+.seitenkopf-pfad {
+  display: inline-flex; align-items: center; gap: var(--a1);
+  align-self: flex-start;
+  font-size: var(--t-s); font-weight: 500; color: var(--text-leise);
+  margin-bottom: var(--a1);
+}
+.seitenkopf-pfad::before {
+  content: ""; width: 7px; height: 7px; flex: none;
+  border-left: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor;
+  transform: rotate(45deg); margin-right: 2px;
+}
+.seitenkopf-pfad:hover { color: var(--primaer); text-decoration: none; }
 
 
 /* ==================================================================
@@ -423,83 +429,100 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .karte {
   background: var(--weiss);
-  border: none;
+  border: 1px solid var(--linie);
   border-radius: var(--r);
-  box-shadow: var(--schatten);
   overflow: hidden;
 }
-.karte-kopf { padding: var(--a4) var(--a4) var(--a2); }
-.karte-titel { font-size: var(--t-m); }
-.karte-unter { font-size: var(--t-xs); color: var(--text-leise); margin-top: 2px; }
-.karte-inhalt { padding: var(--a2) var(--a3) var(--a4); }
+.karte-kopf { padding: var(--a4) var(--a5) var(--a2); }
+.karte-titel { font-size: var(--t-l); font-weight: 500; color: var(--text); }
+.karte-unter { font-size: var(--t-s); color: var(--text-leise); margin-top: 2px; }
+.karte-inhalt { padding: var(--a2) var(--a5) var(--a5); }
 
-/* Kopf mit Titel links und Zusatz (Zahl, Chip, Knopf) rechts. */
 .karte-kopf-zeile {
-  display: flex; align-items: baseline; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   gap: var(--a3); flex-wrap: wrap;
 }
 
-/* Kartenraster der Detailfenster. Die Karten tragen dichte Feldlisten mit
-   langen Beschriftungen; unter 360 px wird daraus Kraut und Rüben. */
+/* Blöcke im Karteninhalt (Feldliste, Tabelle, Chips, Kacheln, Hinweise)
+   stehen mit gleichem Abstand untereinander. Zeilen derselben Liste, die
+   direkt in der Karte liegen, bleiben ohne Abstand. */
+.karte-inhalt > * + * { margin-top: var(--a4); }
+.karte-inhalt > .g-hinweis + .g-hinweis,
+.karte-inhalt > .g-person + .g-person,
+.karte-inhalt > .g-roh-zeile + .g-roh-zeile,
+.karte-inhalt > .g-vergleich + .g-vergleich,
+.karte-inhalt > .liste-zeile + .liste-zeile,
+.karte-inhalt > .datenzeile + .datenzeile { margin-top: 0; }
+
+/* Fusszeile einer Karte mit den Aktionen (Material: Card actions). */
+.karte-aktionen {
+  display: flex; align-items: center; gap: var(--a2); flex-wrap: wrap;
+  margin-top: var(--a4);
+  padding-top: var(--a4);
+  border-top: 1px solid var(--linie-leicht);
+}
+.karte-inhalt > .karte-aktionen:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
 .karten {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
   gap: var(--a4);
   align-items: start;
 }
 .karte-breit { grid-column: 1 / -1; }
 
-/* Karten untereinander, gleicher Abstand wie im Raster. */
 .stapel { display: grid; gap: var(--a4); }
 
 .bereich { margin-bottom: var(--a6); }
 .bereich-titel {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
-  color: var(--text-still); font-weight: 600;
+  font-family: var(--schrift-titel);
+  font-size: var(--t-l); font-weight: 500; line-height: 24px;
+  color: var(--text);
 }
-.bereich-unter { font-size: var(--t-xs); color: var(--text-leise); margin: 2px 0 var(--a4); }
+.bereich-unter { font-size: var(--t-s); color: var(--text-leise); margin: 2px 0 var(--a4); }
 
-/* «min(… , 100%)» statt einer festen Mindestbreite: in einer schmalen
-   Spalte fällt das Raster auf eine Spalte zurück, statt breiter zu werden
-   als sein Platz. Ohne das rollt die ganze Seite waagrecht. */
 .gitter   { display: grid; gap: var(--a4); align-items: start; }
 .gitter-2 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
 .gitter-3 { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
 
 
 /* ==================================================================
-   5. Kennzahl-Kacheln — Farbe ausschliesslich auf der Zahl
+   5. Kennzahl-Kacheln — Beschriftung oben, Zahl darunter (wie in der
+      Search Console). Farbe ausschliesslich auf der Zahl.
    ================================================================== */
 
 .kacheln {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
-  gap: var(--a3);
+  gap: var(--a4);
 }
 
 .kachel {
   background: var(--weiss);
-  border: none;
+  border: 1px solid var(--linie);
   border-radius: var(--r);
-  box-shadow: var(--schatten);
   font: inherit; color: var(--text); text-align: left;
-  padding: var(--a4) var(--a4) var(--a3);
-  display: block; width: 100%;
-  transition: box-shadow .12s, transform .12s;
+  padding: var(--a4) var(--a5);
+  display: flex; flex-direction: column; width: 100%;
+  transition: background .12s, border-color .12s;
 }
 button.kachel { cursor: pointer; }
-button.kachel:hover { box-shadow: var(--schatten-hoch); transform: translateY(-1px); }
+button.kachel:hover { background: var(--flaeche); border-color: var(--umriss-leicht); }
+button.kachel:active { background: var(--flaeche-2); }
 .kachel[data-klickbar="nein"] { cursor: default; }
 
+.kachel-text  { order: 1; font-size: var(--t-m); color: var(--text-leise); line-height: 20px; }
 .kachel-wert {
-  font-size: var(--t-xxl); font-weight: 600; line-height: 1.1;
-  letter-spacing: -1px; font-variant-numeric: tabular-nums;
+  order: 2;
+  font-family: var(--schrift-titel);
+  font-size: 32px; font-weight: 400; line-height: 40px;
+  margin-top: var(--a1);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
-.kachel-wert.klein { font-size: var(--t-xl); letter-spacing: -.3px; }
-.kachel-text  { font-size: var(--t-xs); color: var(--text-leise); margin-top: var(--a1); }
-.kachel-unter { font-size: 11px; color: var(--text-still); margin-top: 2px; }
+.kachel-wert.klein { font-size: var(--t-xl); line-height: 32px; }
+.kachel-unter { order: 3; font-size: var(--t-xs); color: var(--text-still); margin-top: 2px; }
 
-/* Der Ton färbt NUR die Zahl — nie Rahmen, nie Fläche. */
 .kachel.ton-erfolg  .kachel-wert { color: var(--erfolg); }
 .kachel.ton-warnung .kachel-wert { color: var(--warnung); }
 .kachel.ton-gefahr  .kachel-wert { color: var(--gefahr); }
@@ -508,71 +531,102 @@ button.kachel:hover { box-shadow: var(--schatten-hoch); transform: translateY(-1
 
 /* ==================================================================
    6. Chips
+      span/a .chip  = kleine Statusmarke (24 px, gefärbte Fläche)
+      button.chip   = Filterchip nach Material 3 (32 px, Rahmen)
    ================================================================== */
 
-.chips { display: flex; flex-wrap: wrap; gap: var(--a1) var(--a2); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--a2); align-items: center; }
 .chips:empty { display: none; }
 
 .chip {
-  font: inherit; font-size: var(--t-xs);
+  font: inherit; font-size: var(--t-xs); font-weight: 500;
   display: inline-flex; align-items: center; gap: var(--a1);
-  background: var(--flaeche-2); color: var(--text);
-  border: none; border-radius: var(--r-rund);
-  padding: 3px 10px; white-space: nowrap;
+  height: 24px; padding: 0 var(--a2);
+  background: var(--flaeche-2); color: var(--text-leise);
+  border: none; border-radius: var(--r);
+  white-space: nowrap; line-height: 1;
 }
-button.chip { cursor: pointer; }
-button.chip:hover { background: #e2e5ea; }
+a.chip:hover { text-decoration: none; background: var(--flaeche-3); }
 
 .chip-erfolg  { background: var(--erfolg-hell);  color: var(--erfolg); }
 .chip-warnung { background: var(--warnung-hell); color: var(--warnung); }
 .chip-gefahr  { background: var(--gefahr-hell);  color: var(--gefahr); }
 .chip-info    { background: var(--info-hell);    color: var(--info); }
-.chip-marke   { background: var(--marke-hell);   color: var(--marke-dunkel); }
+.chip-marke   { background: var(--primaer-hell); color: var(--primaer); }
 .chip-leise   { background: none; color: var(--text-still); padding-left: 0; padding-right: 0; }
 
-.chip .x { color: var(--text-still); font-size: var(--t-m); line-height: 1; }
-.chip:hover .x { color: var(--gefahr); }
+/* Filterchips (interaktiv). Ein langer Suchbegriff bricht innerhalb des
+   Chips um, statt die Seite waagrecht rollen zu lassen. */
+button.chip {
+  height: auto; min-height: 32px; padding: 5px var(--a3);
+  max-width: 100%;
+  font-size: var(--t-m); font-weight: 500; line-height: 20px;
+  color: var(--text-leise);
+  background: var(--weiss);
+  border: 1px solid var(--umriss-leicht);
+  cursor: pointer;
+  white-space: normal; text-align: left; overflow-wrap: anywhere;
+  transition: background .12s;
+}
+.chip { max-width: 100%; }
+span.chip, a.chip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 24px; }
+button.chip:hover { background: var(--flaeche); }
+button.chip.chip-marke,
+button.chip.chip-info {
+  background: var(--primaer-hell); color: var(--primaer); border-color: transparent;
+}
+button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--primaer-container); }
+
+.chip .x { color: currentColor; font-size: var(--t-l); line-height: 1; margin: 0 -2px 0 2px; opacity: .7; }
+.chip:hover .x { opacity: 1; }
 
 
 /* ==================================================================
-   7. Knöpfe
+   7. Knöpfe (Material 3: Outlined, Filled, Text, Tonal)
    ================================================================== */
 
 .knopf {
-  font: inherit; font-size: var(--t-s);
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--weiss); color: var(--text);
-  border: none; border-radius: var(--r-klein);
-  padding: 7px 12px; cursor: pointer; white-space: nowrap;
-  box-shadow: var(--schatten);
+  font: inherit; font-family: var(--schrift-titel);
+  font-size: var(--t-m); font-weight: 500; line-height: 20px;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--a2);
+  height: 36px; padding: 0 var(--a4);
+  background: var(--weiss); color: var(--primaer);
+  border: 1px solid var(--umriss); border-radius: var(--r-rund);
+  cursor: pointer; white-space: nowrap;
+  transition: background .12s, box-shadow .12s;
 }
-.knopf:hover { background: var(--flaeche); }
-.knopf:active { background: var(--flaeche-2); }
-.knopf[disabled] { opacity: .5; cursor: default; }
-.knopf .icon { color: var(--text-leise); }
-.knopf:hover .icon { color: var(--text); }
+.knopf:hover  { background: rgba(11,87,208,.08); }
+.knopf:active { background: rgba(11,87,208,.12); }
+.knopf[disabled] {
+  background: rgba(31,31,31,.06); color: rgba(31,31,31,.38);
+  border-color: transparent; cursor: default;
+}
+.knopf .icon { color: currentColor; width: 18px; height: 18px; }
+.knopf:has(> .icon:first-child) { padding-left: var(--a3); }
 
 .knopf-primaer {
-  background: var(--marke); color: var(--weiss); font-weight: 600;
+  background: var(--primaer); color: var(--weiss); border-color: transparent;
 }
-.knopf-primaer:hover { background: var(--marke-dunkel); }
-.knopf-primaer .icon, .knopf-primaer:hover .icon { color: var(--weiss); }
+.knopf-primaer:hover { background: var(--primaer-dunkel); box-shadow: var(--schatten); }
+.knopf-primaer:active { background: var(--primaer-dunkel); box-shadow: none; }
 
-.knopf-leise {
-  background: none; box-shadow: none; color: var(--text-leise);
-}
-.knopf-leise:hover { background: var(--flaeche-2); color: var(--text); }
+.knopf-leise { background: none; border-color: transparent; color: var(--primaer); }
+.knopf-leise:hover { background: rgba(11,87,208,.08); }
 
-.knopf.aktiv { background: var(--marke-hell); color: var(--marke-dunkel); }
-.knopf.aktiv .icon { color: var(--marke-dunkel); }
+/* Gedrückter Zustand (Filter offen, Kompakt an, Archiv an): tonal. */
+.knopf.aktiv { background: var(--primaer-hell); border-color: transparent; color: var(--primaer); }
+.knopf.aktiv:hover { background: var(--primaer-container); }
+
+.knopf-gefahr { background: var(--gefahr); color: var(--weiss); border-color: transparent; }
+.knopf-gefahr:hover { background: #8c1d18; }
 
 .zaehler {
-  background: var(--marke); color: var(--weiss);
-  font-size: 11px; font-weight: 600; line-height: 1;
-  border-radius: var(--r-rund); padding: 3px 6px;
-  min-width: 18px; text-align: center;
+  background: var(--primaer); color: var(--weiss);
+  font-size: 11px; font-weight: 500; line-height: 16px;
+  border-radius: var(--r-rund); padding: 0 6px;
+  min-width: 16px; text-align: center;
 }
-.zaehler-still { background: var(--flaeche-2); color: var(--text-leise); }
+.zaehler-still { background: var(--flaeche-3); color: var(--text-leise); }
 
 
 /* ==================================================================
@@ -586,146 +640,180 @@ button.chip:hover { background: #e2e5ea; }
 
 .suchfeld {
   position: relative; display: flex; align-items: center;
-  flex: 1 1 260px; max-width: 420px; min-width: 180px;
+  flex: 1 1 280px; max-width: 480px; min-width: 200px;
 }
-.suchfeld .icon { position: absolute; left: 10px; color: var(--text-still); pointer-events: none; }
+.suchfeld .icon {
+  position: absolute; left: 14px; width: 20px; height: 20px;
+  color: var(--text-leise); pointer-events: none;
+}
 
 .suche {
   font: inherit; font-size: var(--t-m);
-  padding: 8px 40px 8px 34px; width: 100%;
-  border: none; border-radius: var(--r-klein);
-  background: var(--weiss); color: var(--text);
-  box-shadow: var(--schatten);
+  height: 40px; padding: 0 44px; width: 100%;
+  border: none; border-radius: var(--r-rund);
+  background: var(--flaeche-2); color: var(--text);
+  transition: background .12s, box-shadow .12s;
 }
-.suche:focus { outline: none; box-shadow: 0 0 0 2px var(--marke); }
+.suche::placeholder { color: var(--text-leise); }
+/* Ohne Lupe (Suchfelder, die ein Skript baut) kein Platz dafür. */
+.suchfeld:not(:has(> .icon)) .suche { padding-left: var(--a4); }
+.suche:hover { background: var(--flaeche-3); }
+.suche:focus {
+  outline: none;
+  background: var(--weiss);
+  box-shadow: 0 1px 1px 0 rgba(65,69,73,.30), 0 1px 3px 1px rgba(65,69,73,.15);
+}
+.suche::-webkit-search-cancel-button { cursor: pointer; }
 
 .kuerzel {
-  position: absolute; right: 9px;
-  font: inherit; font-size: 11px; color: var(--text-still);
-  background: var(--flaeche); border-radius: 4px; padding: 1px 5px;
+  position: absolute; right: 14px;
+  font-family: var(--schrift); font-size: 11px; color: var(--text-still);
+  border: 1px solid var(--linie); border-radius: 4px; padding: 0 5px; line-height: 16px;
+  background: var(--weiss);
   pointer-events: none;
 }
 
-.anzahl { color: var(--text-leise); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.anzahl { color: var(--text-leise); font-size: var(--t-s); font-variant-numeric: tabular-nums; }
 
 .panel {
   position: absolute; left: 0; right: 0; top: 100%;
-  margin-top: var(--a2); z-index: 20;
-  background: var(--weiss); border: none;
+  margin-top: var(--a1); z-index: 20;
+  background: var(--weiss);
   border-radius: var(--r); box-shadow: var(--schatten-hoch);
   max-height: min(64vh, 580px); overflow-y: auto;
 }
 .panel-kopf {
   display: flex; align-items: center; justify-content: space-between;
-  gap: var(--a3); padding: var(--a3) var(--a4);
+  gap: var(--a3); padding: var(--a3) var(--a5);
   position: sticky; top: 0; background: var(--weiss); z-index: 1;
+  border-bottom: 1px solid var(--linie);
+  font-family: var(--schrift-titel); font-weight: 500;
 }
-.panel-koerper { padding: var(--a2) var(--a4) var(--a4); }
+.panel-koerper { padding: var(--a4) var(--a5) var(--a5); }
 
-/* Formularfelder */
+/* ---------- Formularfelder: Material Outlined ---------- */
+
 .feld { margin-bottom: var(--a3); }
 .feld-label {
   display: flex; align-items: center; gap: 5px;
-  font-size: var(--t-xs); font-weight: 600; color: var(--text-leise);
+  font-size: var(--t-xs); font-weight: 500; color: var(--text-leise);
   margin-bottom: var(--a1);
 }
 .feld-eingabe, .feld input, .feld select, .feld textarea {
-  font: inherit; font-size: var(--t-s); width: 100%;
-  padding: 7px 10px;
-  border: none; border-radius: var(--r-klein);
-  background: var(--flaeche); color: var(--text);
+  font: inherit; font-size: var(--t-m); width: 100%;
+  min-height: 40px; padding: var(--a2) var(--a3);
+  border: 1px solid var(--umriss); border-radius: var(--r-klein);
+  background: var(--weiss); color: var(--text);
+  transition: border-color .12s, box-shadow .12s;
 }
+.feld input:hover, .feld select:hover, .feld textarea:hover, .feld-eingabe:hover { border-color: var(--text); }
 .feld-eingabe:focus, .feld input:focus, .feld select:focus, .feld textarea:focus {
-  outline: none; box-shadow: 0 0 0 2px var(--marke); background: var(--weiss);
+  outline: none; border-color: var(--primaer);
+  box-shadow: inset 0 0 0 1px var(--primaer);
 }
 .feld-eingabe[readonly], .feld input[readonly], .feld textarea[readonly] {
   color: var(--text-leise); background: var(--flaeche);
+  border-color: var(--linie);
 }
-.feld-hinweis { font-size: 11px; color: var(--text-still); margin-top: 2px; }
+.feld-hinweis { font-size: var(--t-xs); color: var(--text-still); margin-top: 2px; }
 
-/* Schloss vor schreibgeschützten Feldern. */
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--primaer); width: auto; min-height: 0;
+}
+
 .schloss { color: var(--text-still); font-size: var(--t-xs); }
 .schloss::before { content: "\1F512"; }
 
-/* ---------- Datenzeilen: Name links, Wert rechts ----------
-   Das Grundmuster beider Detailfenster. Schreibgeschützte Zeilen bekommen
-   ein .schloss in den Namen, geänderte Zeilen die Klasse .geaendert. Die
-   Namensspalte darf mitschrumpfen, sonst bleibt in einer schmalen Karte
-   kein Platz für den Wert. */
+/* ---------- Datenzeilen: Name links, Wert rechts ---------- */
 
 .datenzeilen { display: grid; gap: 0; }
 
 .datenzeile {
   display: grid;
-  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
-  gap: var(--a3);
-  padding: 6px 0;
+  grid-template-columns: minmax(110px, 36%) minmax(0, 1fr);
+  gap: var(--a4);
+  padding: 10px 0;
   align-items: start;
+  border-bottom: 1px solid var(--linie-leicht);
 }
-.datenzeile + .datenzeile { box-shadow: inset 0 1px 0 var(--linie); }
+.datenzeile:first-child { padding-top: 2px; }
+.datenzeile:last-child { border-bottom: none; padding-bottom: 2px; }
+
+/* Bearbeitbares Feld: Beschriftung oben, Eingabe in voller Breite darunter,
+   Hinweis unter dem Feld — wie ein Material-Textfeld mit Label. */
+.datenzeile-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--a1);
+  padding: var(--a3) 0;
+}
+.datenzeile-form .datenzeile-name { font-size: var(--t-xs); font-weight: 500; line-height: 16px; }
+.datenzeile-form .datenzeile-wert { white-space: normal; }
+.datenzeile-form input:not([type="checkbox"]):not(.g-eingabe-schmal),
+.datenzeile-form select:not(.g-eingabe-schmal),
+.datenzeile-form textarea { max-width: 560px; }
+.datenzeile-form .datenzeile-hinweis { margin-top: var(--a1); line-height: 16px; }
 
 .datenzeile-name {
   display: flex; align-items: baseline; gap: 5px;
-  font-size: var(--t-xs); font-weight: 600; color: var(--text-leise);
-  padding-top: 3px;
+  font-size: var(--t-s); font-weight: 400; color: var(--text-leise);
+  line-height: 20px;
 }
 .datenzeile-wert {
-  font-size: var(--t-s);
+  font-size: var(--t-m); line-height: 20px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 .datenzeile-wert.leer { color: var(--text-still); }
 .datenzeile-neben { color: var(--text-still); font-size: var(--t-xs); margin-left: 6px; }
-.datenzeile-hinweis { font-size: 11px; color: var(--text-still); margin-top: 3px; }
+.datenzeile-hinweis { font-size: var(--t-xs); color: var(--text-still); margin-top: 3px; }
 .datenzeile-zeile { display: flex; gap: var(--a2); align-items: center; flex-wrap: wrap; }
 
-/* Ein geändertes, noch nicht gespeichertes Feld. */
 .datenzeile.geaendert .datenzeile-name::after {
   content: "\2022";
-  color: var(--marke-dunkel);
+  color: var(--primaer);
   font-weight: 700;
 }
 
-/* Ganze Breite, etwa für ein mehrzeiliges Bemerkungsfeld. */
-.datenzeile-breit { display: block; padding: 6px 0; }
-.datenzeile-breit .datenzeile-name { margin-bottom: var(--a1); padding-top: 0; }
+.datenzeile-breit { display: block; padding: 10px 0; }
+.datenzeile-breit .datenzeile-name { margin-bottom: var(--a2); }
 .datenzeile-breit textarea {
-  font: inherit; font-size: var(--t-s); width: 100%;
+  font: inherit; font-size: var(--t-m); width: 100%;
   min-height: 140px; resize: vertical;
   padding: var(--a2) var(--a3);
-  border: none; border-radius: var(--r-klein);
-  background: var(--flaeche); color: var(--text);
+  border: 1px solid var(--umriss); border-radius: var(--r-klein);
+  background: var(--weiss); color: var(--text);
 }
+.datenzeile-breit textarea:hover { border-color: var(--text); }
 .datenzeile-breit textarea:focus {
-  outline: none; background: var(--weiss); box-shadow: 0 0 0 2px var(--marke);
+  outline: none; border-color: var(--primaer); box-shadow: inset 0 0 0 1px var(--primaer);
 }
-
 
 /* Mehrfachauswahl in Filtern */
 .mehrfach {
-  max-height: 150px; overflow-y: auto;
-  padding: var(--a2); border-radius: var(--r-klein);
-  background: var(--flaeche);
+  max-height: 160px; overflow-y: auto;
+  padding: var(--a1) var(--a2);
+  border: 1px solid var(--linie); border-radius: var(--r-klein);
+  background: var(--weiss);
 }
 .mehrfach label {
-  display: block; font-size: var(--t-s); cursor: pointer;
+  display: block; font-size: var(--t-m); cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  padding: 1px 0;
+  padding: 3px 0;
 }
-.mehrfach input { accent-color: var(--marke); margin-right: 6px; }
+.mehrfach input { margin-right: var(--a2); }
 .mehrfach .zahl { color: var(--text-still); font-size: var(--t-xs); }
 
 
 /* ==================================================================
-   9. Tabellen
+   9. Tabellen (Material Data Table)
    ================================================================== */
 
 .tabelle-rahmen {
   flex: 1 1 auto; min-height: 0;
   overflow: auto;
   background: var(--weiss);
+  border: 1px solid var(--linie);
   border-radius: var(--r);
-  box-shadow: var(--schatten);
 }
 
 .tabelle {
@@ -735,104 +823,104 @@ button.chip:hover { background: #e2e5ea; }
 }
 
 .tabelle th {
-  text-align: left; font-weight: 600;
-  color: var(--text-leise); font-size: var(--t-xs);
-  padding: 10px 14px; white-space: nowrap; cursor: pointer;
+  text-align: left; font-weight: 500;
+  color: var(--text-leise); font-size: var(--t-xs); line-height: 16px;
+  padding: 14px var(--a4); white-space: nowrap; cursor: pointer;
   position: sticky; top: 0; z-index: 3;
   background: var(--weiss);
-  box-shadow: inset 0 -1px 0 var(--linie);
+  border-bottom: 1px solid var(--linie);
   user-select: none;
 }
-.tabelle th:hover { color: var(--text); }
+.tabelle th:hover { color: var(--text); background: var(--flaeche); }
 .tabelle th.sortiert { color: var(--text); }
-.tabelle th .pfeil { color: var(--marke-dunkel); margin-left: 4px; }
+.tabelle th .pfeil { color: var(--primaer); margin-left: 4px; }
 
 .tabelle td {
-  padding: var(--zellen-hoch) 14px;
+  padding: var(--zellen-hoch) var(--a4);
   white-space: nowrap; max-width: 280px;
   overflow: hidden; text-overflow: ellipsis;
   vertical-align: middle;
-  background: transparent;
+  background: var(--weiss);
+  border-bottom: 1px solid var(--linie-leicht);
+  color: var(--text);
 }
-
-/* Zebra sehr dezent, keine Trennlinien zwischen den Zeilen. */
-.tabelle tbody tr:nth-child(even) td { background: rgba(17,24,39,.016); }
+.tabelle tbody tr:last-child td { border-bottom: none; }
 .tabelle tbody tr { cursor: pointer; }
-.tabelle tbody tr:hover td { background: var(--flaeche-2); }
+.tabelle tbody tr:hover td { background: var(--flaeche); }
 
-/* Erste Spalte bleibt beim seitlichen Rollen stehen. */
 .tabelle th:first-child, .tabelle td:first-child {
   position: sticky; left: 0; z-index: 2; min-width: 180px;
-  background: var(--weiss);
 }
-.tabelle tbody tr:nth-child(even) td:first-child { background: #fafbfc; }
-.tabelle tbody tr:hover td:first-child { background: var(--flaeche-2); }
 .tabelle th:first-child { z-index: 4; }
 
-.name-link { font-weight: 500; }
-.tabelle tbody tr:hover .name-link { color: var(--marke-dunkel); }
+.name-link { font-weight: 500; color: var(--text); }
+.tabelle tbody tr:hover .name-link { color: var(--primaer); }
 
 .punkt {
-  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
   background: var(--erfolg); margin-right: var(--a2); vertical-align: middle;
 }
-.punkt-aus { background: var(--flaeche-2); }
+.punkt-aus { background: var(--umriss-leicht); }
 
-.tabelle-leer { padding: var(--a6); text-align: center; color: var(--text-leise); }
+.tabelle-leer { padding: var(--a7) var(--a5); text-align: center; color: var(--text-leise); }
 
-/* ---------- Kurze Aufstellung in einer Karte ----------
-   Keine Listenansicht: darum kein klebender Kopf, keine klebende erste
-   Spalte und kein Zeigefinger auf den Zeilen. Gerollt wird im Rahmen. */
-
+/* Kurze Aufstellung in einer Karte */
 .tabelle-schlicht-rahmen { overflow-x: auto; }
-
 .tabelle-schlicht { width: 100%; }
-.tabelle-schlicht th { position: static; cursor: default; }
+.tabelle-schlicht th { position: static; cursor: default; padding-top: var(--a2); padding-bottom: var(--a2); }
 .tabelle-schlicht th:first-child, .tabelle-schlicht td:first-child {
-  position: static; min-width: 0; background: transparent;
+  position: static; min-width: 0;
 }
 .tabelle-schlicht th, .tabelle-schlicht td { padding-left: 0; }
 .tabelle-schlicht th:not(:first-child),
 .tabelle-schlicht td:not(:first-child) { padding-left: var(--a3); }
+.tabelle-schlicht td { padding-top: var(--a2); padding-bottom: var(--a2); white-space: normal; max-width: 420px; }
 .tabelle-schlicht tbody tr { cursor: default; }
 .tabelle-schlicht tbody tr:hover td { background: transparent; }
-.tabelle-schlicht tbody tr:nth-child(even) td { background: rgba(17, 24, 39, .016); }
-.tabelle-schlicht td { white-space: normal; max-width: 420px; }
+.tabelle-schlicht th:hover { background: transparent; color: var(--text-leise); }
 
-/* Dichte «kompakt»: die Klasse .dicht liegt auf body oder einem Vorfahren. */
-.dicht { --zellen-hoch: 5px; }
+/* Dichte «kompakt» */
+.dicht { --zellen-hoch: 7px; }
 .dicht .tabelle { font-size: var(--t-xs); }
-.dicht .tabelle th { padding-top: 6px; padding-bottom: 6px; }
+.dicht .tabelle th { padding-top: var(--a2); padding-bottom: var(--a2); }
 
 
 /* ==================================================================
-   10. Tri-State-Schalter
+   10. Tri-State-Schalter (Material 3 Switch)
         0 = aus (umschaltbar), 1 = an (umschaltbar),
         2 = an und gesperrt (aus AD-Gruppe), mit Schloss und title.
    ================================================================== */
 
 .schalter {
   position: relative;
-  width: 38px; height: 22px; flex: none;
-  border: none; border-radius: var(--r-rund);
-  background: var(--flaeche-2);
+  width: 44px; height: 24px; flex: none;
+  border: 2px solid var(--umriss); border-radius: var(--r-rund);
+  background: var(--weiss);
   cursor: pointer; padding: 0;
-  transition: background .14s;
+  transition: background .14s, border-color .14s;
 }
 .schalter::after {
   content: "";
-  position: absolute; top: 3px; left: 3px;
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--weiss);
-  box-shadow: 0 1px 2px rgba(17,24,39,.2);
-  transition: transform .14s;
+  position: absolute; top: 50%; left: 4px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--umriss);
+  transform: translateY(-50%);
+  transition: transform .14s, width .14s, height .14s, left .14s, background .14s;
 }
-.schalter.an { background: var(--marke); }
-.schalter.an::after { transform: translateX(16px); }
+.schalter:hover::after { background: var(--text-leise); }
+.schalter.an { background: var(--primaer); border-color: var(--primaer); }
+.schalter.an::after {
+  left: 2px; width: 18px; height: 18px;
+  background: var(--weiss);
+  transform: translate(18px, -50%);
+}
 
-/* Zustand 2: an, gesperrt. Schloss statt Griff-Fläche, kein Zeiger. */
-.schalter.gesperrt { background: var(--erfolg); cursor: not-allowed; }
-.schalter.gesperrt::after { transform: translateX(16px); }
+.schalter.gesperrt { background: var(--primaer-dunkel); border-color: var(--primaer-dunkel); cursor: not-allowed; }
+.schalter.gesperrt::after {
+  left: 2px; width: 18px; height: 18px;
+  background: var(--weiss);
+  transform: translate(18px, -50%);
+}
 .schalter.gesperrt::before {
   content: "\1F512";
   position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
@@ -842,11 +930,16 @@ button.chip:hover { background: #e2e5ea; }
 
 .schalter-zeile {
   display: flex; align-items: center; gap: var(--a3);
-  padding: 6px var(--a2); border-radius: var(--r-klein);
+  min-height: 44px; padding: var(--a1) var(--a2);
+  border-radius: var(--r);
 }
 .schalter-zeile:hover { background: var(--flaeche); }
-.schalter-zeile .name { flex: 1 1 auto; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Der Name darf umbrechen: lieber zwei Zeilen als ein abgeschnittener
+   Programmname. Die Chips rechts nehmen nur so viel Platz wie nötig. */
+.schalter-zeile .name { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.schalter-zeile > .b-programm-zusatz, .schalter-zeile > .chips {
+  flex: 0 1 auto; justify-content: flex-end; max-width: 50%;
+}
 .schalter-zeile .zusatz { font-size: var(--t-xs); color: var(--text-still); }
 
 
@@ -854,26 +947,6 @@ button.chip:hover { background: #e2e5ea; }
    11. Zustände: Laden, Fehler, Leer, Skelett
    ================================================================== */
 
-/* Zentriert — waagrecht und senkrecht.
-
-   WICHTIG: die Höhe wird NICHT aus 100dvh gerechnet. Jede solche Rechnung
-   muss Kopfzeile, Band, Innenabstände und Speicherleiste erraten und liegt
-   irgendwann daneben — dann ragt die Ladeseite ein paar Pixel über den
-   Fensterrand und es erscheint ein Rollbalken, obwohl nichts zu rollen ist.
-
-   Stattdessen macht es die Flex-Kette: body.seite ist eine Spalte über die
-   volle Fensterhöhe, .fenster-rumpf und .fenster-inhalt strecken sich
-   darin, und der Zustand nimmt mit flex:1 den Rest. Was übrig bleibt, ist
-   genau die freie Fläche — nie mehr.
-
-     flex:1        füllt in einer Flex-Spalte (.seite, .fenster-inhalt,
-                   .zustand-bereich) den ganzen freien Platz;
-     min-height    nur ein kleiner Sockel für den seltenen Fall, dass der
-                   Zustand in einem gewöhnlichen Block hängt;
-     margin:auto   zentriert ihn in einem solchen Block waagrecht.
-
-   Die Innenausrichtung (align-items/justify-content) zentriert dann den
-   Spinner samt Text in dieser Fläche. */
 .lade, .fehler, .leerzustand {
   flex: 1 1 auto;
   align-self: stretch;
@@ -887,8 +960,6 @@ button.chip:hover { background: #e2e5ea; }
   margin: auto;
 }
 
-/* Behälter, der einer Seite ohne eigenes Flex-Gerüst die volle Restfläche
-   für .lade / .fehler / .leerzustand gibt. */
 .zustand-bereich {
   flex: 1 1 auto;
   min-height: 0;
@@ -896,23 +967,17 @@ button.chip:hover { background: #e2e5ea; }
   flex-direction: column;
 }
 
-/* Innerhalb einer Karte oder eines Rasters gibt es keinen Sockel: dort ist
-   die Fläche vorgegeben und der Zustand nur ein kurzer Satz. */
 .karte .lade, .karte .fehler, .karte .leerzustand,
 .karten .lade, .karten .fehler {
   min-height: 0;
   padding: var(--a5) var(--a3);
 }
-
-/* Ein Leerzustand innerhalb einer Karte darf klein bleiben. */
-.karte-inhalt > .leerzustand {
-  min-height: 0; padding: var(--a5) var(--a3);
-}
+.karte-inhalt > .leerzustand { min-height: 0; padding: var(--a5) var(--a3); }
 
 .spinner {
-  width: 28px; height: 28px;
-  border: 3px solid var(--flaeche-2);
-  border-top-color: var(--marke);
+  width: 32px; height: 32px;
+  border: 3px solid var(--flaeche-3);
+  border-top-color: var(--primaer);
   border-radius: 50%;
   animation: dreh .8s linear infinite;
 }
@@ -922,17 +987,17 @@ button.chip:hover { background: #e2e5ea; }
 .lade-fortschritt { font-size: var(--t-xs); color: var(--text-leise);
                     font-variant-numeric: tabular-nums; }
 
-.fehler-titel  { font-size: var(--t-l); }
-.fehler-text   { font-size: var(--t-s); color: var(--text); max-width: 560px; }
-.fehler-hinweis{ font-size: var(--t-xs); color: var(--text-leise); max-width: 560px; }
+.fehler-titel  { font-size: var(--t-xl); font-weight: 400; }
+.fehler-text   { font-size: var(--t-m); color: var(--text); max-width: 560px; }
+.fehler-hinweis{ font-size: var(--t-s); color: var(--text-leise); max-width: 560px; }
 .fehler .knopf { margin-top: var(--a3); }
-.fehler .icon-gross { width: 28px; height: 28px; color: var(--gefahr); }
+.fehler .icon-gross { width: 32px; height: 32px; color: var(--gefahr); }
 
-.leer-titel { font-size: var(--t-m); color: var(--text); }
+.leer-titel { font-size: var(--t-m); font-weight: 500; color: var(--text); }
 .leer-text  { font-size: var(--t-s); color: var(--text-leise); max-width: 460px; }
 
 .skelett {
-  background: linear-gradient(90deg, var(--flaeche-2) 25%, #f3f4f6 37%, var(--flaeche-2) 63%);
+  background: linear-gradient(90deg, var(--flaeche-2) 25%, var(--flaeche) 37%, var(--flaeche-2) 63%);
   background-size: 400% 100%;
   animation: schimmer 1.3s ease-in-out infinite;
   border-radius: var(--r-klein);
@@ -943,7 +1008,7 @@ button.chip:hover { background: #e2e5ea; }
 
 
 /* ==================================================================
-   12. Zeitstrahl
+   12. Zeitstrahl (Google-Diagrammfarben)
    ================================================================== */
 
 .zeitstrahl { padding: var(--a4) var(--a2) var(--a2); overflow-x: auto; }
@@ -955,87 +1020,71 @@ button.chip:hover { background: #e2e5ea; }
 }
 
 .zeitstrahl-tick {
-  flex: 1 1 0; min-width: 54px;
+  flex: 1 1 0; min-width: 56px;
   display: flex; flex-direction: column; align-items: center;
   gap: var(--a1);
   background: none; border: none; font: inherit; color: inherit;
-  padding: var(--a1) 2px var(--a2);
-  border-radius: var(--r-klein);
+  padding: var(--a2) 2px;
+  border-radius: var(--r);
   position: relative;
 }
 .zeitstrahl-tick.klickbar { cursor: pointer; }
 .zeitstrahl-tick.klickbar:hover { background: var(--flaeche); }
-.zeitstrahl-tick.vergangen { opacity: .62; }
-.zeitstrahl-tick.aktuell { background: var(--marke-hell); }
+.zeitstrahl-tick.vergangen { opacity: .6; }
+.zeitstrahl-tick.aktuell { background: var(--primaer-hell); }
 
-/* Zwei Säulen je Jahr: Beschaffung und geplanter Ersatz. */
 .zeitstrahl-saeulen {
   display: flex; align-items: flex-end; justify-content: center;
-  gap: 3px; height: 84px; width: 100%;
+  gap: 3px; height: 96px; width: 100%;
 }
 .saeule {
-  width: 14px; min-height: 3px; border-radius: 3px 3px 0 0;
-  background: var(--flaeche-2);
+  width: 14px; min-height: 2px; border-radius: 2px 2px 0 0;
+  background: var(--flaeche-3);
+  border: none; padding: 0; cursor: default;
 }
-.saeule-a { background: var(--marke); }
-.saeule-b { background: #c9d9a5; }
-.saeule-b.gefahr { background: var(--gefahr); }
-.saeule-b.warnung { background: var(--warnung); }
+button.saeule { cursor: pointer; }
+button.saeule:hover { filter: brightness(.9); }
+.saeule-a { background: var(--primaer); }
+.saeule-b { background: var(--primaer-schwach); }
+.saeule-b.gefahr { background: #d93025; }
+.saeule-b.warnung { background: #f9ab00; }
 
-/* Die Achse selbst: eine feine Linie unter den Säulen. */
 .zeitstrahl-linie { height: 1px; width: 100%; background: var(--linie); }
 
 .zeitstrahl-label {
-  font-size: 11px; color: var(--text-leise); white-space: nowrap;
+  font-size: var(--t-xs); color: var(--text-leise); white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.zeitstrahl-tick.aktuell .zeitstrahl-label { color: var(--marke-dunkel); font-weight: 600; }
+.zeitstrahl-tick.aktuell .zeitstrahl-label { color: var(--primaer); font-weight: 500; }
 .zeitstrahl-werte { font-size: 11px; color: var(--text-still);
                     font-variant-numeric: tabular-nums; }
 
-/* Marke: Punkt + Text. Wird von der Legende der Übersicht verwendet. */
 .zeitstrahl-marke {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--t-xs); color: var(--text-leise);
 }
 .zeitstrahl-marke::before {
-  content: ""; width: 8px; height: 8px; border-radius: 50%;
-  background: currentColor; flex: none;
+  content: ""; width: 10px; height: 10px; border-radius: 2px;
+  background: var(--primaer); flex: none;
 }
-.zeitstrahl-marke.gefahr  { color: var(--gefahr); }
-.zeitstrahl-marke.warnung { color: var(--warnung); }
-.zeitstrahl-marke.info    { color: var(--info); }
-.zeitstrahl-marke.stark   { color: var(--text); font-weight: 600; }
+.zeitstrahl-marke.gefahr::before  { background: #d93025; }
+.zeitstrahl-marke.warnung::before { background: #f9ab00; }
+.zeitstrahl-marke.info::before    { background: var(--primaer-schwach); }
+.zeitstrahl-marke.stark { color: var(--text); font-weight: 500; }
+.zeitstrahl-marke.stark::before { display: none; }
 
 .zeitstrahl-legende {
-  display: flex; flex-wrap: wrap; gap: var(--a4);
-  padding: var(--a3) var(--a2) 0;
+  display: flex; flex-wrap: wrap; gap: var(--a2) var(--a5);
+  padding: var(--a3) var(--a5) var(--a4);
+  border-top: 1px solid var(--linie-leicht);
   font-size: var(--t-xs); color: var(--text-leise);
 }
 
 
 /* ==================================================================
    13. Detailfenster: Rumpf, Navigation, Speicherleiste, Toast, Dialog
-
-   Gerätefenster und Benutzerfenster sind gleich aufgebaut: gleicher Kopf,
-   gleiche Seitennavigation links, gleicher Inhaltsbereich rechts, gleiche
-   feste Speicherleiste unten. Deshalb steht das Gerüst hier und nicht
-   doppelt in geraet.css und benutzer.css.
-
-   Die Navigationsspalte reicht IMMER bis zum unteren Fensterrand, auch bei
-   kurzem Inhalt. Früher war die Spalte selbst klebend und endete als
-   schwebender Kasten nach dem letzten Menüeintrag; heute streckt sich die
-   Spalte, und nur das Menü darin klebt.
    ================================================================== */
 
-/* Erste Spalte «auto»: ist die Navigation verborgen (Laden, Fehler,
-   gelöschte Zeile), bleibt keine Lücke stehen.
-
-   «align-content: stretch» ist wichtig: die einzige Rasterzeile wird damit
-   auf die volle Höhe des Rumpfes gezogen. Der Rumpf selbst wächst über
-   flex:1 bis an den unteren Fensterrand — beides zusammen sorgt dafür,
-   dass die Navigationsspalte immer bis nach unten reicht, auch wenn der
-   Inhalt nur ein paar Zeilen hoch ist. */
 .fenster-rumpf {
   flex: 1 1 auto;
   min-height: 0;
@@ -1045,80 +1094,65 @@ button.chip:hover { background: #e2e5ea; }
   align-content: stretch;
 }
 
-/* Die Spalte: eigene weisse Fläche mit feiner Kante, volle Höhe. Sie ist
-   NICHT klebend — klebend ist das Menü darin (.fenster-nav-menue). */
 .fenster-nav {
   grid-column: 1;
-  width: 208px;
+  width: var(--nav-breit);
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--a4) var(--a3) var(--a6);
+  gap: var(--a1);
+  padding: var(--a3) var(--a3) var(--a6);
   background: var(--weiss);
-  box-shadow: 1px 0 0 rgba(17, 24, 39, .05);
+  border-right: 1px solid var(--linie);
 }
 
-/* Das Menü klebt am oberen Rand und rollt bei sehr vielen Einträgen selbst.
-   Fehlt dieser Behälter (ältere Seite), stehen die Knöpfe einfach oben in
-   der Spalte — das Aussehen stimmt dann trotzdem. */
 .fenster-nav-menue {
   position: sticky;
-  top: var(--a4);
+  top: var(--a3);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--a1);
   max-height: calc(100dvh - var(--a6));
   overflow-y: auto;
 }
 
 .fenster-nav-knopf {
-  font: inherit;
-  font-size: var(--t-s);
+  font: inherit; font-family: var(--schrift-titel);
+  font-size: var(--t-m); font-weight: 500;
   text-align: left;
   background: none;
   border: none;
-  border-radius: var(--r-klein);
-  padding: 7px 10px;
-  min-height: 34px;
-  color: var(--text-leise);
+  border-radius: var(--r-rund);
+  padding: 0 var(--a4);
+  min-height: 40px;
+  color: var(--text);
   cursor: pointer;
   white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--a2);
+  transition: background .12s;
 }
-.fenster-nav-knopf:hover { background: var(--flaeche); color: var(--text); }
-.fenster-nav-knopf.aktiv {
-  background: var(--flaeche);
-  color: var(--text);
-  font-weight: 600;
-}
+.fenster-nav-knopf:hover { background: var(--flaeche-2); }
+.fenster-nav-knopf:active { background: var(--flaeche-3); }
+.fenster-nav-knopf.aktiv { background: var(--primaer-hell); color: var(--primaer); }
 .fenster-nav-zahl {
-  font-size: 11px;
+  font-family: var(--schrift);
+  font-size: var(--t-xs); font-weight: 400;
   color: var(--text-still);
   font-variant-numeric: tabular-nums;
 }
-.fenster-nav-knopf.aktiv .fenster-nav-zahl { color: var(--marke-dunkel); }
+.fenster-nav-knopf.aktiv .fenster-nav-zahl { color: var(--primaer); }
 
-/* Flex-Spalte, damit .lade und .fehler darin senkrecht wie waagrecht
-   zentriert stehen. Unten Platz für die feste Speicherleiste. Fest in der
-   zweiten Spalte: ist die Navigation verborgen (Laden, Fehler), bleibt die
-   leere erste Spalte 0 breit und der Inhalt füllt die ganze Seite. */
 .fenster-inhalt {
   grid-column: 2;
   min-width: 0;
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  padding: var(--a5) var(--a5) 96px;
+  padding: var(--a5) var(--a6) 104px;
 }
-
-/* Kein eigener Sockel für .lade/.fehler nötig: die Spalte ist gestreckt,
-   der Zustand füllt sie mit flex:1 und bleibt damit immer innerhalb des
-   Fensters. Der untere Innenabstand von 96 px liegt INNERHALB der Spalte
-   und macht die Seite deshalb nicht höher. */
 .fenster-bahn { max-width: 1400px; width: 100%; }
 
 .speicherleiste {
@@ -1129,11 +1163,12 @@ button.chip:hover { background: #e2e5ea; }
   align-items: center;
   gap: var(--a3);
   flex-wrap: wrap;
-  padding: var(--a3) var(--a5);
+  padding: var(--a3) var(--a6);
   background: var(--weiss);
-  box-shadow: 0 -1px 0 rgba(17, 24, 39, .06), 0 -8px 24px rgba(17, 24, 39, .06);
+  border-top: 1px solid var(--linie);
+  box-shadow: 0 -2px 8px rgba(60,64,67,.08);
 }
-.speicher-text { font-size: var(--t-s); font-weight: 600; margin-right: auto; }
+.speicher-text { font-size: var(--t-m); font-weight: 500; margin-right: auto; }
 .speicher-fehler {
   font-size: var(--t-xs);
   background: var(--gefahr-hell);
@@ -1142,26 +1177,30 @@ button.chip:hover { background: #e2e5ea; }
   max-width: 60ch;
 }
 
-.toast {
+/* Snackbar */
+.toast, .hinweisband {
   position: fixed;
   right: var(--a5);
-  bottom: 76px;
+  bottom: 80px;
   z-index: 45;
-  background: var(--text);
+  background: #3c4043;
   color: var(--weiss);
-  font-size: var(--t-s);
-  border-radius: var(--r);
-  padding: 10px 14px;
+  font-size: var(--t-m);
+  border-radius: var(--r-klein);
+  padding: 14px 16px;
   box-shadow: var(--schatten-hoch);
   max-width: 60ch;
+  min-width: 280px;
   animation: einblenden .18s ease-out;
 }
+.hinweisband { bottom: var(--a5); }
 .toast-fehler { background: var(--gefahr); }
+@keyframes einblenden { from { opacity: 0; transform: translateY(8px); } }
 
 .dialog-hintergrund {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, .35);
+  background: rgba(31,31,31,.32);
   z-index: 50;
 }
 .dialog {
@@ -1169,29 +1208,19 @@ button.chip:hover { background: #e2e5ea; }
   z-index: 51;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: min(520px, calc(100% - 32px));
+  width: min(560px, calc(100% - 32px));
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   background: var(--weiss);
-  border-radius: var(--r);
-  box-shadow: var(--schatten-hoch);
+  border-radius: var(--r-gross);
+  box-shadow: var(--schatten-dialog);
   padding: var(--a5);
 }
-.dialog h2 { margin-bottom: var(--a2); }
-.dialog p { font-size: var(--t-s); margin: 0 0 var(--a2); }
+.dialog h2 { font-size: var(--t-xl); font-weight: 400; margin-bottom: var(--a4); }
+.dialog p { font-size: var(--t-m); color: var(--text-leise); margin: 0 0 var(--a2); }
 .dialog-knoepfe {
   display: flex; justify-content: flex-end; gap: var(--a2);
-  margin-top: var(--a4); flex-wrap: wrap;
-}
-
-.knopf-gefahr { background: var(--gefahr); color: var(--weiss); font-weight: 600; }
-.knopf-gefahr:hover { background: #a11717; }
-
-/* Im Kopf eines Detailfensters ist der Titel lang und mehrzeilig. */
-.fenster .kopf h1 {
-  font-size: var(--t-xl);
-  line-height: 1.2;
-  overflow-wrap: anywhere;
+  margin-top: var(--a5); flex-wrap: wrap;
 }
 
 
@@ -1199,125 +1228,161 @@ button.chip:hover { background: #e2e5ea; }
    14. Kleine wiederkehrende Muster
    ================================================================== */
 
-/* Zeile aus Name links, Zahlen rechts (Software-Ansicht, Listen). */
 .liste-zeile {
   display: grid; grid-template-columns: 1fr auto;
   align-items: center; gap: var(--a3);
-  width: 100%; border: none; background: none; font: inherit;
+  border: none; background: none; font: inherit;
   color: var(--text); text-align: left;
-  padding: 7px var(--a2); border-radius: var(--r-klein);
+  padding: var(--a2); margin: 0 calc(var(--a2) * -1);
+  width: calc(100% + var(--a4));
+  border-radius: var(--r-klein);
 }
 button.liste-zeile { cursor: pointer; }
 button.liste-zeile:hover { background: var(--flaeche); }
-.liste-zeile .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liste-zeile .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-s); }
 .liste-zeile .zusatz { font-size: var(--t-xs); color: var(--text-leise);
                        font-variant-numeric: tabular-nums; }
 
-/* Balken mit Spur (Verteilungen). */
-.spur { display: block; height: 6px; background: var(--flaeche-2);
-        border-radius: 3px; margin-top: 4px; overflow: hidden; }
-.fuell { display: block; height: 100%; background: var(--marke); border-radius: 3px; }
+.spur { display: block; height: 4px; background: var(--flaeche-3);
+        border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.fuell { display: block; height: 100%; background: var(--primaer); border-radius: 2px; }
 
-/* Kurzer Hinweis unten rechts. */
-.hinweisband {
-  position: fixed; right: var(--a5); bottom: var(--a5); z-index: 40;
-  background: var(--text); color: var(--weiss);
-  font-size: var(--t-s); padding: 10px 14px;
-  border-radius: var(--r); box-shadow: var(--schatten-hoch);
-  animation: einblenden .18s ease-out;
+.hinweis { color: var(--text-leise); font-size: var(--t-s); line-height: 18px; }
+
+/* Hinweisbanner in einer Karte: Text, dazu Chips oder ein Knopf. Getönte
+   Fläche nach dem Ton des Textes darin, wie ein Material-Banner. */
+.b-hinweis, .g-banner {
+  display: flex; align-items: center; gap: var(--a2) var(--a3); flex-wrap: wrap;
+  font-size: var(--t-s); line-height: 18px;
+  padding: var(--a3) var(--a4);
+  border-radius: var(--r);
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
 }
-@keyframes einblenden { from { opacity: 0; transform: translateY(6px); } }
-
-.hinweis { color: var(--text-leise); font-size: var(--t-xs); }
+.b-hinweis > .t-warnung, .g-banner > .t-warnung { flex: 1 1 260px; }
+.b-hinweis:has(> .t-warnung) { background: var(--warnung-hell); border-color: transparent; }
+.b-hinweis:has(> .t-gefahr)  { background: var(--gefahr-hell);  border-color: transparent; }
+.b-hinweis:has(> .t-info)    { background: var(--info-hell);    border-color: transparent; }
+.b-hinweis .knopf { margin-left: auto; }
+.b-hinweis .chips { flex-basis: 100%; }
 
 
 /* ==================================================================
    15. Schmale Fenster
-
-   Auf der Hauptseite weicht der Untertitel der Marke, damit Reiter und
-   Suche Platz bekommen. In einem Detailfenster (body.fenster) steht dort
-   die Kennzeichnung des Datensatzes — die bleibt immer sichtbar.
-
-   Grundsatz für schmale Fenster: die SEITE rollt nie waagrecht. Raster
-   fallen auf eine Spalte, die Kopfzeile bricht um, aus der Seiten-
-   navigation wird eine Reiterleiste, und was wirklich breit ist (Tabellen)
-   rollt in seinem eigenen Behälter.
    ================================================================== */
 
+@media (max-width: 1100px) {
+  :root { --nav-breit: 200px; }
+  .inhalt { padding: var(--a5) var(--a5) var(--a7); }
+  .inhalt-fest { padding: var(--a4) var(--a5) var(--a5); }
+  .fenster-inhalt { padding: var(--a5) var(--a5) 104px; }
+}
+
 @media (max-width: 760px) {
-  /* Die Kopfzeile bricht um: Marke oben, Reiter, Status und Aktionen
-     darunter. Sie wird dadurch höher, aber nie breiter als das Fenster. */
-  .kopf {
-    padding: var(--a2) var(--a3);
-    gap: var(--a2);
-    align-items: flex-start;
+  :root { --kopf-hoch: 56px; }
+
+  /* App-Leiste: nur Logo und Aktionen; der Produktname weicht, die
+     Aktionen bleiben in einer Zeile und rollen notfalls waagrecht. */
+  .kopf { padding: 0 var(--a3); gap: var(--a2); }
+  .kopf-rechts {
+    gap: var(--a1); flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    scrollbar-width: none; min-width: 0;
   }
-  .kopf-rechts { margin-left: 0; width: 100%; justify-content: flex-start; }
-  .kopf .chips { width: 100%; }
+  .kopf-rechts::-webkit-scrollbar { display: none; }
+  .kopf-rechts .knopf { padding-left: var(--a3); padding-right: var(--a3); }
   .logo { height: 22px; }
-  body:not(.fenster) .marke-unter { display: none; }
+  .marke-text { display: none; }
   .stand { display: none; }
-  .reiter { order: 3; width: 100%; }
-  .reiter-knopf { flex: 1; padding: 7px 8px; text-align: center; }
 
-  /* Berührungsflächen: mindestens --tippziel hoch. */
-  .knopf, .reiter-knopf { min-height: var(--tippziel); }
+  /* Hauptseite: aus der linken Navigation wird eine Reiterleiste. */
+  .rumpf { flex-direction: column; }
+  .reiter {
+    width: auto;
+    flex: none;
+    flex-direction: row;
+    gap: 0;
+    padding: 0 var(--a2);
+    border-right: none;
+    border-bottom: 1px solid var(--linie);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .reiter::-webkit-scrollbar { display: none; }
+  .reiter-knopf {
+    flex: 1 0 auto; width: auto; justify-content: center;
+    min-height: 48px; padding: 0 var(--a3);
+    border-radius: 0; color: var(--text-leise);
+    border-bottom: 3px solid transparent;
+  }
+  .reiter-knopf .icon { display: none; }
+  .reiter-knopf:hover { background: var(--flaeche); }
+  .reiter-knopf.aktiv {
+    background: none; color: var(--primaer);
+    border-bottom-color: var(--primaer);
+  }
 
-  .inhalt { padding: var(--a4) var(--a3) var(--a6); }
+  .knopf { min-height: var(--tippziel); }
+
+  .inhalt { padding: var(--a4) var(--a4) var(--a6); }
   .inhalt-fest { padding: var(--a3); }
 
-  .kacheln { grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); }
+  .kacheln { grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: var(--a3); }
+  .kachel { padding: var(--a3) var(--a4); }
+  .kachel-wert { font-size: var(--t-xxl); line-height: 36px; }
   .gitter-2, .gitter-3, .karten { grid-template-columns: 1fr; }
   .suchfeld { max-width: none; flex-basis: 100%; }
   .kuerzel { display: none; }
-  .hinweisband { left: var(--a3); right: var(--a3); bottom: var(--a3); text-align: center; }
-  .toast { left: var(--a3); right: var(--a3); max-width: none; }
+  .hinweisband, .toast { left: var(--a3); right: var(--a3); max-width: none; min-width: 0; }
+  .hinweisband { bottom: var(--a3); }
 
-  /* ---------- Detailfenster auf dem Handy ----------
+  .seitenkopf h1 { font-size: var(--t-xl); line-height: 28px; }
+  .seitenkopf-unter { white-space: normal; }
 
-     Aus der Spalte links wird eine waagrecht rollende Reiterleiste über
-     dem Inhalt. Keine halbe Sidebar, kein zweispaltiges Raster.
-
-     Zwei Zeilen statt zwei Spalten: die erste bleibt so hoch wie die
-     Reiterleiste, die zweite nimmt den Rest — sonst würde
-     «align-content: stretch» beide Zeilen gleich hoch ziehen. */
+  /* Detailfenster: Reiterleiste statt Spalte. */
   .fenster-rumpf {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
-
   .fenster-nav {
     grid-row: 1;
     width: auto;
     flex-direction: row;
     align-items: center;
-    gap: var(--a1);
-    padding: var(--a2) var(--a3);
+    gap: 0;
+    padding: 0 var(--a2);
+    border-right: none;
+    border-bottom: 1px solid var(--linie);
     overflow-x: auto;
     overscroll-behavior-x: contain;
     position: sticky;
     top: 0;
     z-index: 20;
-    box-shadow: 0 1px 0 rgba(17, 24, 39, .08);
+    scrollbar-width: none;
   }
+  .fenster-nav::-webkit-scrollbar { display: none; }
   .fenster-nav-menue {
     position: static;
     flex: 0 0 auto;
     flex-direction: row;
-    gap: var(--a1);
+    gap: 0;
     max-height: none;
     overflow: visible;
   }
   .fenster-nav-knopf {
-    min-height: var(--tippziel);
-    padding: 8px 12px;
+    min-height: 48px;
+    padding: 0 var(--a3);
     justify-content: center;
+    border-radius: 0;
+    color: var(--text-leise);
+    border-bottom: 3px solid transparent;
   }
+  .fenster-nav-knopf.aktiv { background: none; color: var(--primaer); border-bottom-color: var(--primaer); }
 
   .fenster-inhalt {
     grid-column: 1;
     grid-row: 2;
-    padding: var(--a4) var(--a3) 104px;
+    padding: var(--a4) var(--a4) 112px;
   }
 
   .speicherleiste { padding: var(--a2) var(--a3); gap: var(--a2); }

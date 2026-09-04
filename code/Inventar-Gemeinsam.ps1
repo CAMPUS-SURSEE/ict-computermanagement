@@ -161,6 +161,239 @@ function Get-Text {
     return ([string]$v).Trim()
 }
 
+# ---------------------------------------------------------------------------
+# 3a) Seriennummern
+# ---------------------------------------------------------------------------
+# Werte, die zwar in SCCM/BIOS stehen, aber keine echte Seriennummer sind.
+$script:SeriennummerPlatzhalter = @(
+    'TO BE FILLED BY O.E.M.', 'TO BE FILLED BY OEM', 'DEFAULT STRING', 'SYSTEM SERIAL NUMBER',
+    'CHASSIS SERIAL NUMBER', 'SERIAL NUMBER', 'BASE BOARD SERIAL NUMBER', 'NONE', 'N/A', 'NA',
+    'NOT APPLICABLE', 'NOT SPECIFIED', 'NOT AVAILABLE', 'UNKNOWN', 'UNBEKANNT', 'INVALID',
+    'EMPTY', 'FILLED BY O.E.M.', 'OEM', 'DEFAULT', 'NULL', '1234567890', '123456789'
+)
+
+function NormSeriennummer {
+    <# Seriennummer für den Abgleich: getrimmt, Innenleerzeichen zusammengefasst, Grossbuchstaben. #>
+    param([string]$s)
+    if (-not $s) { return '' }
+    $s = ([string]$s).Trim()
+    $s = $s -replace '\s+', ' '
+    return $s.ToUpperInvariant()
+}
+
+function Test-Seriennummer {
+    <#
+      Ist das eine brauchbare Seriennummer? Nein bei leer, bei einem der bekannten Platzhalter,
+      bei weniger als drei Zeichen und bei reinen Füllmustern (nur 0, X, -, . oder Leerzeichen).
+    #>
+    param([string]$s)
+    $n = NormSeriennummer $s
+    if ($n -eq '') { return $false }
+    if ($n.Length -lt 3) { return $false }
+    if ($script:SeriennummerPlatzhalter -contains $n) { return $false }
+    if ($n -match '^[0X\-\._ ]+$') { return $false }
+    return $true
+}
+
+# ---------------------------------------------------------------------------
+# 3a') Telefonnummern
+# ---------------------------------------------------------------------------
+# Die Telefonliste kennt Kurzwahlen (373) und vollständige Nummern (+41 41 926 23 73).
+# Verglichen wird immer über die Ziffernfolge mit Landesvorwahl: 41419262373.
+# $Praefix ist der Nummernblock des Hauses ohne Kurzwahl, Standard «+41 41 926 2».
+$script:TelefonPraefixStandard = '+41 41 926 2'
+
+function Get-TelefonZiffern {
+    <#
+      Nummer -> Ziffernfolge mit Landesvorwahl (41…), ohne Leerzeichen und Sonderzeichen.
+      «0041 41 926 23 73», «+41 41 926 23 73», «041 926 23 73» -> 41419262373.
+      Eine reine Kurzwahl (ein bis vier Ziffern) wird mit dem Präfix ergänzt.
+      Leer oder unlesbar -> ''.
+    #>
+    param([string]$Nummer, [string]$Praefix)
+    if (-not $Praefix) { $Praefix = $script:TelefonPraefixStandard }
+    if ($null -eq $Nummer) { return '' }
+    $z = ([string]$Nummer) -replace '[^\d]', ''
+    if ($z -eq '') { return '' }
+    if ($z.Length -le 4) {
+        $p = ([string]$Praefix) -replace '[^\d]', ''
+        return ($p + $z)
+    }
+    if ($z.StartsWith('0041')) { return $z.Substring(2) }
+    if ($z.StartsWith('00')) { return $z.Substring(2) }
+    if ($z.StartsWith('0')) { return ('41' + $z.Substring(1)) }
+    return $z
+}
+
+function Format-Telefon {
+    <#
+      Ziffernfolge oder beliebige Schreibweise -> «+41 41 926 23 73».
+      Nur Schweizer Nummern (41 + 9 Ziffern) werden formatiert, alles andere kommt getrimmt zurück.
+    #>
+    param([string]$Nummer, [string]$Praefix)
+    $z = Get-TelefonZiffern $Nummer $Praefix
+    if ($z -eq '') { return '' }
+    if ($z.Length -eq 11 -and $z.StartsWith('41')) {
+        return ('+41 {0} {1} {2} {3}' -f $z.Substring(2, 2), $z.Substring(4, 3), $z.Substring(7, 2), $z.Substring(9, 2))
+    }
+    return ('+' + $z)
+}
+
+function Get-TelefonKurzwahl {
+    <#
+      Kurzwahl einer Nummer im Hausblock: 41419262373 -> 373. Liegt die Nummer ausserhalb des
+      Präfixes, kommt '' zurück.
+    #>
+    param([string]$Nummer, [string]$Praefix)
+    if (-not $Praefix) { $Praefix = $script:TelefonPraefixStandard }
+    $z = Get-TelefonZiffern $Nummer $Praefix
+    $p = ([string]$Praefix) -replace '[^\d]', ''
+    if ($z -eq '' -or $p -eq '') { return '' }
+    if (-not $z.StartsWith($p)) { return '' }
+    $rest = $z.Substring($p.Length)
+    if ($rest.Length -lt 1 -or $rest.Length -gt 4) { return '' }
+    return $rest
+}
+
+function Test-TelefonImBlock {
+    <# Liegt die Nummer im Nummernblock des Hauses? #>
+    param([string]$Nummer, [string]$Praefix)
+    return ((Get-TelefonKurzwahl $Nummer $Praefix) -ne '')
+}
+
+function Get-TelefonStatusNorm {
+    <# Status einer Telefonzeile vereinheitlichen: Aktiv, Inaktiv, Frei. Leer bleibt leer (gilt als Aktiv). #>
+    param([string]$Status)
+    if (-not $Status) { return '' }
+    $s = ([string]$Status).Trim()
+    if ($s -eq '') { return '' }
+    switch ($s.ToLowerInvariant()) {
+        'aktiv' { return 'Aktiv' }
+        'inaktiv' { return 'Inaktiv' }
+        'frei' { return 'Frei' }
+    }
+    return $s
+}
+
+# ---------------------------------------------------------------------------
+# 3b) Verlauf (mehrzeilige Klartextspalte mit einem JSON-Array)
+# ---------------------------------------------------------------------------
+# Format eines Eintrags:
+#   { "id": "<GUID>", "datum": "2026-09-03", "text": "Freitext",
+#     "quelle": "manuell" | "sync", "erstellt": "2026-09-03T14:05:00Z" }
+# Der Sync hängt nur an; er ändert oder löscht nie einen bestehenden Eintrag.
+
+function Format-VerlaufDatum {
+    <# Datum eines Verlaufseintrags als YYYY-MM-DD. Unlesbares oder fehlendes Datum -> heute. #>
+    param($Datum, $Heute)
+    if (-not $Heute) { $Heute = Get-Date }
+    if ($null -eq $Datum -or ($Datum -is [string] -and ([string]$Datum).Trim() -eq '')) { return ([datetime]$Heute).ToString('yyyy-MM-dd') }
+    if ($Datum -is [datetime]) { return ([datetime]$Datum).ToString('yyyy-MM-dd') }
+    $s = ([string]$Datum).Trim()
+    if ($s -match '^(\d{4}-\d{2}-\d{2})') { return $Matches[1] }
+    try { return ([datetime]::Parse($s, [Globalization.CultureInfo]::InvariantCulture)).ToString('yyyy-MM-dd') } catch { }
+    return ([datetime]$Heute).ToString('yyyy-MM-dd')
+}
+
+function ConvertFrom-Verlauf {
+    <#
+      Spaltentext -> Array von Verlaufseinträgen. Leerer Text ergibt ein leeres Array.
+      Ohne -Streng ist die Funktion robust: unlesbarer Inhalt ergibt ein leeres Array (fürs Lesen/Anzeigen).
+      Mit -Streng wirft sie einen Fehler – das braucht der Sync, damit er beim Schreiben keinen
+      kaputten (aber vielleicht rettbaren) Inhalt stillschweigend überschreibt.
+      PowerShell 5.1: ConvertFrom-Json liefert bei einem einzelnen Element kein Array, darum @().
+    #>
+    param([string]$Text, [switch]$Streng)
+    if ($null -eq $Text) { $Text = '' }
+    $t = ([string]$Text).Trim()
+    if ($t -eq '') { return @() }
+    $roh = $null
+    try { $roh = ConvertFrom-Json $t } catch {
+        if ($Streng) { throw "Verlauf ist kein gültiges JSON: $($_.Exception.Message)" }
+        return @()
+    }
+    if ($null -eq $roh) { return @() }
+    if ($Streng -and $t -notmatch '^\s*\[') { throw 'Verlauf ist kein JSON-Array.' }
+    $ergebnis = New-Object System.Collections.ArrayList
+    foreach ($e in @($roh)) {
+        if ($null -eq $e) { continue }
+        if ($e -is [string] -or $e -is [valuetype]) {
+            if ($Streng) { throw 'Verlauf enthält einen Eintrag, der kein Objekt ist.' }
+            continue
+        }
+        $id = Get-Text $e 'id'
+        if ($id -eq '') { $id = [guid]::NewGuid().ToString() }
+        [void]$ergebnis.Add([pscustomobject]@{
+                id       = $id
+                datum    = (Format-VerlaufDatum (Get-Text $e 'datum'))
+                text     = (Get-Text $e 'text')
+                quelle   = $(if ((Get-Text $e 'quelle') -eq '') { 'manuell' } else { (Get-Text $e 'quelle') })
+                erstellt = (Get-Text $e 'erstellt')
+            })
+    }
+    return @($ergebnis.ToArray())
+}
+
+function ConvertTo-Verlauf {
+    <#
+      Array von Verlaufseinträgen -> kompakter JSON-Text für die Spalte.
+      Jeder Eintrag wird einzeln serialisiert und von Hand zusammengesetzt, weil ConvertTo-Json
+      in PowerShell 5.1 aus einem einelementigen Array ein Objekt statt eines Arrays macht.
+    #>
+    param($Eintraege)
+    $liste = @(@($Eintraege) | Where-Object { $null -ne $_ })
+    if ($liste.Count -eq 0) { return '[]' }
+    $teile = New-Object System.Collections.ArrayList
+    foreach ($e in $liste) {
+        $o = [ordered]@{
+            id       = (Get-Text $e 'id')
+            datum    = (Get-Text $e 'datum')
+            text     = (Get-Text $e 'text')
+            quelle   = (Get-Text $e 'quelle')
+            erstellt = (Get-Text $e 'erstellt')
+        }
+        if ($o['id'] -eq '') { $o['id'] = [guid]::NewGuid().ToString() }
+        [void]$teile.Add(($o | ConvertTo-Json -Depth 4 -Compress))
+    }
+    return '[' + ($teile -join ',') + ']'
+}
+
+function Add-VerlaufEintrag {
+    <#
+      Hängt einen Eintrag an einen bestehenden Verlauf an und gibt den neuen Spaltentext zurück.
+      Bestehende Einträge bleiben unverändert; ist der bestehende Inhalt kein gültiges JSON,
+      wirft die Funktion (der Aufrufer loggt den Fehler und überspringt die Zeile).
+    #>
+    param(
+        [string]$Verlauf,
+        [Parameter(Mandatory = $true)][string]$Text,
+        $Datum,
+        [string]$Quelle = 'sync',
+        $Zeitpunkt
+    )
+    if (-not $Zeitpunkt) { $Zeitpunkt = Get-Date }
+    $bestehend = @(ConvertFrom-Verlauf -Text $Verlauf -Streng)
+    $neu = [pscustomobject]@{
+        id       = [guid]::NewGuid().ToString()
+        datum    = (Format-VerlaufDatum $Datum $Zeitpunkt)
+        text     = $Text
+        quelle   = $(if ($Quelle) { $Quelle } else { 'sync' })
+        erstellt = (ToIso $Zeitpunkt)
+    }
+    return (ConvertTo-Verlauf (@($bestehend) + @($neu)))
+}
+
+function Add-VerlaufEintraege {
+    <# Mehrere Texte auf einmal anhängen (gleiches Datum, gleiche Quelle). #>
+    param([string]$Verlauf, [string[]]$Texte, $Datum, [string]$Quelle = 'sync', $Zeitpunkt)
+    $t = $Verlauf
+    foreach ($x in @($Texte)) {
+        if (-not $x) { continue }
+        $t = Add-VerlaufEintrag -Verlauf $t -Text $x -Datum $Datum -Quelle $Quelle -Zeitpunkt $Zeitpunkt
+    }
+    return $t
+}
+
 function Read-JsonDatei {
     <# Liest eine JSON-Datei als UTF-8 ein. #>
     param([string]$Pfad)
@@ -354,7 +587,7 @@ function ConvertTo-GraphSpalte {
     $c = [ordered]@{ name = $Def.internal; displayName = $Def.display }
     if ($Def.description) { $c['description'] = [string]$Def.description }
     switch ([string]$Def.type) {
-        'Note'     { $c['text'] = @{ allowMultipleLines = $true; textType = 'plain'; maxLength = 0 } }
+        'Note'     { $c['text'] = @{ allowMultipleLines = $true; textType = 'plain' } }
         'Boolean'  { $c['boolean'] = @{} }
         'Number'   { $c['number'] = @{} }
         'DateTime' { $c['dateTime'] = @{ format = 'dateTime'; displayAs = 'default' } }

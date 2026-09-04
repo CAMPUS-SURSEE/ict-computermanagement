@@ -5,17 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gerät — Computer Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <!-- design.css liefert Tokens und Komponenten, geraet.css nur das
      Seitenlayout dieses Fensters. Reihenfolge ist wichtig.
      styles.css wird hier bewusst NICHT geladen. -->
 <link rel="stylesheet" href="design.css">
 <link rel="stylesheet" href="geraet.css">
+<!-- verlauf.css gehört zur Verlaufs-Zeitachse (verlauf.js) und wird von
+     beiden Detailfenstern geladen. -->
+<link rel="stylesheet" href="verlauf.css">
 </head>
 <body class="seite fenster g-seite">
 
-<!-- Band für den Vorführmodus, volle Breite. -->
-<div class="band band-warnung g-band" id="g-band" hidden></div>
-
+<!-- App-Leiste: Logo und Produktname links, Aktionen rechts. -->
 <header class="kopf">
   <div class="kopf-marke">
     <!-- Das Logo führt zurück zur Übersicht. Im Vorführmodus hängt
@@ -24,19 +28,28 @@
       <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
     </a>
     <div class="marke-text">
-      <h1 id="g-titel">Gerät wird geladen …</h1>
-      <p class="marke-unter" id="g-unter"></p>
+      <h1>Computer Inventar</h1>
     </div>
   </div>
-  <div class="chips g-status" id="g-status"></div>
   <div class="kopf-rechts" id="g-aktionen"></div>
 </header>
+
+<!-- Band für den Vorführmodus, volle Breite. -->
+<div class="band band-warnung g-band" id="g-band" hidden></div>
 
 <div class="fenster-rumpf">
 
   <nav class="fenster-nav" id="g-nav" hidden aria-label="Bereiche"></nav>
 
   <main class="fenster-inhalt" id="g-inhalt">
+
+    <!-- Titelzeile: Name des Geräts, Kennzeichnung und Statuschips. -->
+    <div class="seitenkopf">
+      <a class="seitenkopf-pfad" id="g-pfad" href="index.html#geraete">Geräte</a>
+      <h1 id="g-titel">Gerät wird geladen …</h1>
+      <p class="seitenkopf-unter" id="g-unter"></p>
+      <div class="chips g-status" id="g-status"></div>
+    </div>
 
     <div class="lade" id="g-laden">
       <div class="spinner" aria-hidden="true"></div>
@@ -59,7 +72,7 @@
 <div class="speicherleiste" id="g-speicherleiste" hidden>
   <span class="speicher-text" id="g-speicher-text"></span>
   <span class="speicher-fehler t-gefahr" id="g-speicher-fehler" hidden></span>
-  <button type="button" class="knopf" id="g-knopf-verwerfen">Verwerfen</button>
+  <button type="button" class="knopf knopf-leise" id="g-knopf-verwerfen">Verwerfen</button>
   <button type="button" class="knopf knopf-primaer" id="g-knopf-speichern">Speichern</button>
 </div>
 
@@ -82,6 +95,7 @@
 <script src="auth.js"></script>
 <script src="graph.js"></script>
 <script src="modell.js"></script>
+<script src="verlauf.js"></script>
 <script src="geraet.js"></script>
 
 </body>

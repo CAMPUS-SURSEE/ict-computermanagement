@@ -1,0 +1,158 @@
+/* verlauf.css — Zeitstrahl der Verlaufseinträge (verlauf.js).
+
+   Wird von geraet.html und benutzer.html NACH design.css geladen und
+   benutzt ausschliesslich dessen Tokens. Alle Klassen beginnen mit «vl-». */
+
+.vl { display: block; }
+
+
+/* ==================================================================
+   Kopfzeile und Formular
+   ================================================================== */
+
+.vl-werkzeuge {
+  display: flex;
+  align-items: center;
+  gap: var(--a3);
+  flex-wrap: wrap;
+  margin-bottom: var(--a3);
+}
+
+.vl-formular {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--r);
+  padding: var(--a4);
+  margin-bottom: var(--a4);
+}
+
+.vl-formular-zeile {
+  display: flex;
+  align-items: center;
+  gap: var(--a3);
+  flex-wrap: wrap;
+  margin-bottom: var(--a3);
+}
+
+.vl-feldname {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--a2);
+  font-size: var(--t-s);
+  color: var(--text-leise);
+}
+
+.vl-datum-feld, .vl-text-feld {
+  font: inherit;
+  font-size: var(--t-m);
+  min-height: 40px;
+  padding: var(--a2) var(--a3);
+  border: 1px solid var(--umriss);
+  border-radius: var(--r-klein);
+  background: var(--weiss);
+  color: var(--text);
+  transition: border-color .12s, box-shadow .12s;
+}
+.vl-datum-feld:hover, .vl-text-feld:hover { border-color: var(--text); }
+.vl-datum-feld:focus, .vl-text-feld:focus {
+  outline: none; border-color: var(--primaer); box-shadow: inset 0 0 0 1px var(--primaer);
+}
+
+.vl-text-feld {
+  width: 100%;
+  max-width: 560px;
+  min-height: 72px;
+  resize: vertical;
+}
+
+.vl-knoepfe, .vl-aktionen {
+  display: flex;
+  gap: var(--a2);
+  flex-wrap: wrap;
+  margin-top: var(--a2);
+}
+
+
+/* ==================================================================
+   Die Zeitachse
+   ================================================================== */
+
+.vl-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 24px;
+  position: relative;
+}
+
+.vl-liste::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--linie);
+}
+
+.vl-eintrag {
+  position: relative;
+  padding: var(--a3) 0;
+  border-bottom: 1px solid var(--linie-leicht);
+}
+.vl-eintrag:last-child { border-bottom: none; }
+
+.vl-eintrag::before {
+  content: "";
+  position: absolute;
+  left: -24px;
+  top: 19px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primaer);
+  box-shadow: 0 0 0 3px var(--weiss);
+}
+
+.vl-eintrag.vl-sync::before { background: var(--umriss-leicht); }
+
+.vl-kopf {
+  display: flex;
+  align-items: baseline;
+  gap: var(--a2);
+  flex-wrap: wrap;
+}
+
+.vl-datum {
+  font-size: var(--t-m);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vl-quelle {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--text-still);
+}
+.vl-eintrag.vl-sync .vl-quelle { color: var(--info); }
+
+.vl-erfasst { font-size: var(--t-xs); color: var(--text-still); }
+
+.vl-text {
+  font-size: var(--t-m);
+  margin-top: 2px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.vl-bearbeitet { padding: var(--a4) 0; }
+.vl-bearbeitet::before { background: var(--primaer); }
+
+
+@media (max-width: 760px) {
+  .vl-text-feld { max-width: none; }
+}
+
+@media print {
+  .vl-werkzeuge, .vl-aktionen, .vl-formular { display: none; }
+}

@@ -1,0 +1,68 @@
+/* telefon.css — Seitenlayout des Telefonfensters.
+
+   Wird NACH design.css geladen. Das gesamte Gerüst (App-Leiste, Titelzeile,
+   Seitennavigation, Karten, Datenzeilen, Eingabefelder, Speicherleiste,
+   Toast, Dialog) kommt aus design.css. Die Eingabefelder sind die
+   Material-Outlined-Felder des Design-Systems (.feld-eingabe, Styleguide
+   4.9); hier stehen nur Breiten, der Ungültig-Zustand und die wenigen
+   Muster, die es nur in diesem Fenster gibt. Alle eigenen Klassen beginnen
+   mit «tf-», alle Werte sind Tokens. */
+
+
+/* ==================================================================
+   Eingaben: Breiten und Zustände
+   ================================================================== */
+
+/* Die Kurzwahl ist der Schlüssel: kurzes Feld mit festen Ziffernbreiten. */
+.tf-eingabe-kurzwahl {
+  max-width: 160px;
+  font-size: var(--t-l);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Schmale Felder für Auswahlen (wie .g-eingabe-schmal im Gerätefenster). */
+.tf-eingabe-schmal { max-width: 200px; }
+
+/* Mehrzeiliger Text (Hinweis). */
+.tf-textarea { min-height: 88px; resize: vertical; }
+
+/* Ungültige Eingabe: roter Doppelrahmen, wie im Gerätefenster. */
+.feld-eingabe.tf-ungueltig {
+  border-color: var(--gefahr);
+  box-shadow: inset 0 0 0 1px var(--gefahr);
+}
+
+
+/* ==================================================================
+   Person aus dem Active Directory
+   ================================================================== */
+
+.tf-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--a2) var(--a3);
+}
+.tf-person-name { font-size: var(--t-l); font-weight: 500; overflow-wrap: anywhere; }
+.tf-person-unter { font-size: var(--t-s); color: var(--text-leise); overflow-wrap: anywhere; }
+
+.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
+
+
+/* ==================================================================
+   Schmale Fenster und Druck
+   ================================================================== */
+
+@media (max-width: 760px) {
+  .tf-eingabe-schmal { max-width: 200px; }
+  .tf-eingabe-kurzwahl { max-width: 160px; }
+}
+
+@media print {
+  body.tf-seite { background: var(--weiss); }
+  .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .band { display: none; }
+  .fenster-rumpf { grid-template-columns: 1fr; }
+  .fenster-inhalt { padding: 0; }
+  .karte, .kachel { break-inside: avoid; page-break-inside: avoid; }
+}

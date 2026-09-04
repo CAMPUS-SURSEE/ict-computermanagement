@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Styleguide — Computer Inventar</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<!-- Lebende Komponentenübersicht. Sie lädt dieselben Stilvorlagen wie die
+     Detailfenster und zeigt jede Komponente mit ihrem echten Markup. Kein
+     Skript, keine Daten: die Seite ist reine Dokumentation und kann ohne
+     Anmeldung geöffnet werden. Beschreibung in STYLEGUIDE.md. -->
+<link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="geraet.css">
+<link rel="stylesheet" href="benutzer.css">
+<link rel="stylesheet" href="verlauf.css">
+<style>
+  /* Nur für diese Seite: Musterflächen und Farbfelder. */
+  .sg-muster { display: flex; flex-wrap: wrap; gap: var(--a4); align-items: flex-start; }
+  .sg-farben { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--a3); }
+  .sg-farbe { border: 1px solid var(--linie); border-radius: var(--r); overflow: hidden; }
+  .sg-farbe > div { height: 56px; }
+  .sg-farbe > p { padding: var(--a2) var(--a3); font-size: var(--t-xs); color: var(--text-leise); }
+  .sg-farbe > p b { display: block; color: var(--text); font-weight: 500; font-size: var(--t-s); }
+  .sg-typo > * + * { margin-top: var(--a3); }
+  .sg-typo small { display: block; font-size: var(--t-xs); color: var(--text-still); font-family: var(--schrift); font-weight: 400; margin-top: 2px; }
+  .sg-abstand { display: flex; align-items: flex-end; gap: var(--a4); }
+  .sg-abstand div { background: var(--primaer-hell); border: 1px solid var(--primaer-container); }
+  .sg-abstand span { display: block; font-size: var(--t-xs); color: var(--text-leise); margin-top: var(--a1); text-align: center; }
+  .sg-schwebend { position: static !important; transform: none !important; margin: 0 !important; }
+  .sg-breite { max-width: 640px; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--flaeche-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body class="seite fenster">
+
+<header class="kopf">
+  <div class="kopf-marke">
+    <a class="logo-link" href="index.html" aria-label="Zur Übersicht">
+      <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    </a>
+    <div class="marke-text"><h1>Computer Inventar</h1></div>
+  </div>
+  <div class="kopf-rechts">
+    <span class="stand">Daten-Stand: 04.09.2026 05:15 (heute)</span>
+    <button type="button" class="knopf"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>Neu laden</button>
+    <button type="button" class="knopf knopf-leise">Abmelden</button>
+    <span class="konto">Vorführmodus</span>
+  </div>
+</header>
+
+<div class="band band-warnung">Ein Band über die volle Breite: Vorführmodus, Warnungen, Hinweise zur Verbindung. <button type="button" class="knopf knopf-leise">Aktion im Band</button></div>
+
+<div class="fenster-rumpf">
+
+  <nav class="fenster-nav" aria-label="Abschnitte">
+    <div class="fenster-nav-menue">
+      <a class="fenster-nav-knopf aktiv" href="#grundlagen">Grundlagen</a>
+      <a class="fenster-nav-knopf" href="#knoepfe">Knöpfe und Chips</a>
+      <a class="fenster-nav-knopf" href="#felder">Felder und Datenzeilen</a>
+      <a class="fenster-nav-knopf" href="#karten">Karten und Kacheln</a>
+      <a class="fenster-nav-knopf" href="#tabellen">Tabellen</a>
+      <a class="fenster-nav-knopf" href="#hinweise">Hinweise und Zustände</a>
+      <a class="fenster-nav-knopf" href="#schwebend">Panel, Dialog, Snackbar</a>
+      <a class="fenster-nav-knopf" href="#zeit">Zeitstrahl und Verlauf</a>
+      <a class="fenster-nav-knopf" href="#grenzfaelle">Grenzfälle <span class="fenster-nav-zahl">12</span></a>
+    </div>
+  </nav>
+
+  <main class="fenster-inhalt">
+
+    <div class="seitenkopf">
+      <a class="seitenkopf-pfad" href="index.html">Übersicht</a>
+      <h1>Styleguide</h1>
+      <p class="seitenkopf-unter">Jede Komponente mit echtem Markup · Material Design 3 · Roboto · Google-Blau #0b57d0 · Hairlines #dadce0</p>
+      <div class="chips">
+        <span class="chip chip-erfolg">Geprüft 360–1920 px</span>
+        <span class="chip chip-info">design.css</span>
+        <span class="chip">STYLEGUIDE.md</span>
+      </div>
+    </div>
+
+    <div class="fenster-bahn">
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="grundlagen">
+        <h2 class="bereich-titel">Grundlagen</h2>
+        <p class="bereich-unter">Farben, Schrift, Abstände und Form. Alles kommt aus den Tokens in design.css; Seiten-CSS definiert keine eigenen Werte.</p>
+
+        <div class="stapel">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Farben</h2><p class="karte-unter">Akzent, Status, Neutral. Status nur als Text- oder Chipfarbe.</p></div>
+            <div class="karte-inhalt">
+              <div class="sg-farben">
+                <div class="sg-farbe"><div style="background:#0b57d0"></div><p><b>--primaer</b>#0b57d0 · Aktionen, Auswahl, Links</p></div>
+                <div class="sg-farbe"><div style="background:#0842a0"></div><p><b>--primaer-dunkel</b>#0842a0 · Hover gefüllt</p></div>
+                <div class="sg-farbe"><div style="background:#e8f0fe"></div><p><b>--primaer-hell</b>#e8f0fe · aktive Navigation, Tonal</p></div>
+                <div class="sg-farbe"><div style="background:#a8c7fa"></div><p><b>--primaer-schwach</b>#a8c7fa · zweite Datenreihe</p></div>
+                <div class="sg-farbe"><div style="background:#137333"></div><p><b>--erfolg</b>#137333 · Fläche #e6f4ea</p></div>
+                <div class="sg-farbe"><div style="background:#b06000"></div><p><b>--warnung</b>#b06000 · Fläche #fef7e0</p></div>
+                <div class="sg-farbe"><div style="background:#b3261e"></div><p><b>--gefahr</b>#b3261e · Fläche #fce8e6</p></div>
+                <div class="sg-farbe"><div style="background:#1f1f1f"></div><p><b>--text</b>#1f1f1f · On-Surface</p></div>
+                <div class="sg-farbe"><div style="background:#444746"></div><p><b>--text-leise</b>#444746 · Beschriftungen</p></div>
+                <div class="sg-farbe"><div style="background:#747775"></div><p><b>--text-still / --umriss</b>#747775 · Nebensächliches, Rahmen</p></div>
+                <div class="sg-farbe"><div style="background:#c4c7c5"></div><p><b>--umriss-leicht</b>#c4c7c5 · Chip-Rahmen</p></div>
+                <div class="sg-farbe"><div style="background:#dadce0"></div><p><b>--linie</b>#dadce0 · Hairline</p></div>
+                <div class="sg-farbe"><div style="background:#e8eaed"></div><p><b>--linie-leicht / --flaeche-3</b>#e8eaed · Listenzeilen</p></div>
+                <div class="sg-farbe"><div style="background:#f1f3f4"></div><p><b>--flaeche-2</b>#f1f3f4 · Suchfeld, Hover Navigation</p></div>
+                <div class="sg-farbe"><div style="background:#f8f9fa"></div><p><b>--flaeche</b>#f8f9fa · Hover Zeilen, Banner</p></div>
+                <div class="sg-farbe"><div style="background:#ffffff"></div><p><b>--weiss</b>#ffffff · alle Flächen</p></div>
+              </div>
+            </div>
+          </section>
+
+          <div class="karten">
+            <section class="karte">
+              <div class="karte-kopf"><h2 class="karte-titel">Typografie</h2><p class="karte-unter">Roboto für Text, «Google Sans» (Fallback Roboto) für Titel, Knöpfe und Navigation.</p></div>
+              <div class="karte-inhalt sg-typo">
+                <div style="font-family:var(--schrift-titel);font-size:28px;line-height:36px">Seitentitel 28 / 36<small>.seitenkopf h1 · 400 · --text</small></div>
+                <div style="font-family:var(--schrift-titel);font-size:22px;line-height:28px;color:var(--text-leise)">Produktname 22 / 28<small>.marke-text h1 · 400 · --text-leise</small></div>
+                <div style="font-family:var(--schrift-titel);font-size:32px;line-height:40px">1 234<small>.kachel-wert · 400 · tabular-nums</small></div>
+                <div style="font-family:var(--schrift-titel);font-size:16px;line-height:24px;font-weight:500">Kartentitel 16 / 24<small>.karte-titel, .bereich-titel · 500</small></div>
+                <div style="font-size:14px;line-height:20px">Fliesstext und Werte 14 / 20<small>Standard · 400 · --text</small></div>
+                <div style="font-size:13px;line-height:18px;color:var(--text-leise)">Beschriftungen und Hinweise 13 / 18<small>.datenzeile-name, .hinweis · --text-leise</small></div>
+                <div style="font-size:12px;line-height:16px;font-weight:500;color:var(--text-leise)">TABELLENKOPF NICHT — Tabellenkopf 12 / 16<small>th, .feld-label · 500 · keine Grossbuchstaben</small></div>
+                <div style="font-size:12px;line-height:16px;color:var(--text-still)">Kleinste Angaben 12 / 16<small>.kachel-unter, .g-roh-intern · --text-still</small></div>
+              </div>
+            </section>
+
+            <section class="karte">
+              <div class="karte-kopf"><h2 class="karte-titel">Abstände und Form</h2><p class="karte-unter">8er-Raster. Radien 4 / 8 / 12 px und Pille.</p></div>
+              <div class="karte-inhalt">
+                <div class="sg-abstand">
+                  <div style="width:4px;height:4px"><span>4</span></div>
+                  <div style="width:8px;height:8px"><span>8</span></div>
+                  <div style="width:12px;height:12px"><span>12</span></div>
+                  <div style="width:16px;height:16px"><span>16</span></div>
+                  <div style="width:24px;height:24px"><span>24</span></div>
+                  <div style="width:32px;height:32px"><span>32</span></div>
+                  <div style="width:48px;height:48px"><span>48</span></div>
+                </div>
+                <p class="hinweis">--a1 bis --a7. Standard zwischen Blöcken in einer Karte: 16 px. Innenabstand von Karten: 24 px.</p>
+                <div class="sg-muster">
+                  <div style="width:96px;height:56px;border:1px solid var(--umriss);border-radius:var(--r-klein)"></div>
+                  <div style="width:96px;height:56px;border:1px solid var(--linie);border-radius:var(--r)"></div>
+                  <div style="width:96px;height:56px;border:1px solid var(--linie);border-radius:var(--r-gross);box-shadow:var(--schatten-dialog)"></div>
+                  <div style="width:96px;height:36px;border:1px solid var(--umriss);border-radius:var(--r-rund)"></div>
+                </div>
+                <p class="hinweis">4 px Eingabefeld · 8 px Karte, Chip, Panel · 12 px Dialog (mit Elevation 3) · Pille für Knöpfe und Navigation.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="knoepfe">
+        <h2 class="bereich-titel">Knöpfe und Chips</h2>
+        <p class="bereich-unter">Genau eine gefüllte Hauptaktion je Bereich. Nebenaktionen als Outlined oder Text.</p>
+
+        <div class="karten">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Knöpfe</h2><p class="karte-unter">Pille 36 px, Google Sans 14 px 500. Icons 18 px in currentColor.</p></div>
+            <div class="karte-inhalt">
+              <div class="sg-muster">
+                <button type="button" class="knopf">Outlined</button>
+                <button type="button" class="knopf knopf-primaer">Filled (Hauptaktion)</button>
+                <button type="button" class="knopf knopf-leise">Text</button>
+                <button type="button" class="knopf aktiv">Tonal (gedrückt)</button>
+                <button type="button" class="knopf knopf-gefahr">Gefahr</button>
+                <button type="button" class="knopf" disabled>Deaktiviert</button>
+              </div>
+              <div class="sg-muster">
+                <button type="button" class="knopf"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>Filter</button>
+                <button type="button" class="knopf"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M10 5v14"/><path d="M16 5v14"/></svg>Spalten <span class="zaehler">9</span></button>
+                <button type="button" class="knopf aktiv"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10H4z"/><path d="M3 5h18v4H3z"/><path d="M10 13h4"/></svg>Archivierte anzeigen</button>
+                <button type="button" class="knopf knopf-primaer"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Neues Gerät</button>
+                <button type="button" class="knopf">Spalten <span class="zaehler zaehler-still">0</span></button>
+              </div>
+              <div class="karte-aktionen">
+                <button type="button" class="knopf knopf-primaer">Hauptaktion</button>
+                <button type="button" class="knopf knopf-leise">Nebenaktion</button>
+                <span class="hinweis">.karte-aktionen: Fusszeile mit Hairline, 16 px Abstand</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Chips</h2><p class="karte-unter">Statusmarken 24 px ohne Rahmen; Filterchips 32 px mit Rahmen, umbrechend.</p></div>
+            <div class="karte-inhalt">
+              <div class="chips">
+                <span class="chip chip-erfolg">Online</span>
+                <span class="chip chip-erfolg">In SCCM</span>
+                <span class="chip chip-warnung">Ersatz in diesem GJ</span>
+                <span class="chip chip-gefahr">Ersatz überfällig</span>
+                <span class="chip chip-info">Co-Managed</span>
+                <span class="chip chip-marke">zugeordnet</span>
+                <span class="chip">Offline</span>
+                <span class="chip chip-leise">Archiviert</span>
+                <a class="chip" href="#knoepfe">Listen-ID 12 · Aktiv</a>
+              </div>
+              <div class="chips">
+                <button type="button" class="chip">Suche: latitude <span class="x">×</span></button>
+                <button type="button" class="chip chip-marke">Status: Lager <span class="x">×</span></button>
+                <button type="button" class="chip">Archivierte eingeblendet <span class="x">×</span></button>
+              </div>
+              <p class="hinweis">Töne: chip-erfolg, chip-warnung, chip-gefahr, chip-info, chip-marke, chip-leise. «Aktiv» bekommt keinen Chip — der Normalfall braucht keine Auszeichnung.</p>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Navigation</h2><p class="karte-unter">Pillen 40 px, aktiv in --primaer-hell. Auf dem Handy Reiter mit Unterstrich.</p></div>
+            <div class="karte-inhalt">
+              <div class="reiter" style="border:1px solid var(--linie);border-radius:var(--r);width:auto;max-width:280px">
+                <button type="button" class="reiter-knopf aktiv"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z"/></svg><span>Übersicht</span></button>
+                <button type="button" class="reiter-knopf"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v10H4z"/><path d="M2 19h20"/></svg><span>Geräte</span></button>
+                <button type="button" class="reiter-knopf"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5"/></svg><span>Benutzer</span></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Schalter (drei Zustände)</h2><p class="karte-unter">0 aus · 1 an · 2 an und gesperrt (aus AD-Gruppe, mit Schloss und Tooltip).</p></div>
+            <div class="karte-inhalt">
+              <div class="b-programme">
+                <div class="schalter-zeile"><button type="button" class="schalter" role="switch" aria-checked="false" aria-label="Project 2019"></button><span class="name">Project 2019</span><div class="b-programm-zusatz"></div></div>
+                <div class="schalter-zeile"><button type="button" class="schalter an" role="switch" aria-checked="true" aria-label="Presento"></button><span class="name">Presento <span class="chip chip-warnung">geändert</span></span><div class="b-programm-zusatz"></div></div>
+                <div class="schalter-zeile"><button type="button" class="schalter an gesperrt" role="switch" aria-checked="true" disabled title="Aus AD-Gruppe SW_M365"></button><span class="name">Microsoft 365</span><div class="b-programm-zusatz"><span class="chip chip-info">SW_M365</span></div></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="felder">
+        <h2 class="bereich-titel">Felder und Datenzeilen</h2>
+        <p class="bereich-unter">Lesen: Name links, Wert rechts. Bearbeiten: Beschriftung oben, Feld darunter in voller Breite.</p>
+
+        <div class="karten">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Lesemodus</h2><p class="karte-unter">.datenzeile — Hairline zwischen den Zeilen, Schloss bei Feldern aus dem Abgleich.</p></div>
+            <div class="karte-inhalt">
+              <div class="datenzeilen">
+                <div class="datenzeile"><div class="datenzeile-name">Hersteller <span class="schloss" title="Aus SCCM"></span></div><div class="datenzeile-wert">LENOVO</div></div>
+                <div class="datenzeile"><div class="datenzeile-name">Modell <span class="schloss"></span></div><div class="datenzeile-wert">ThinkPad X1 Carbon Gen 11 Ultraportable Business Notebook Edition</div></div>
+                <div class="datenzeile"><div class="datenzeile-name">Letzte Synchronisation <span class="schloss"></span></div><div class="datenzeile-wert">04.09.2026 05:15 <span class="datenzeile-neben">heute</span></div></div>
+                <div class="datenzeile"><div class="datenzeile-name">SMBIOS GUID <span class="schloss"></span></div><div class="datenzeile-wert leer">—</div></div>
+                <div class="datenzeile geaendert"><div class="datenzeile-name">Bemerkung</div><div class="datenzeile-wert">Geänderter, noch nicht gespeicherter Wert<div class="datenzeile-hinweis">Der blaue Punkt markiert die Änderung.</div></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Bearbeiten</h2><p class="karte-unter">.datenzeile.datenzeile-form — Outlined-Felder, Hinweis unter dem Feld.</p></div>
+            <div class="karte-inhalt">
+              <div class="datenzeilen">
+                <div class="datenzeile datenzeile-form geaendert"><div class="datenzeile-name">PC-Name</div><div class="datenzeile-wert"><input class="g-eingabe" type="text" value="CAMPUS-901" aria-label="PC-Name"><div class="datenzeile-hinweis">Schlüssel für den SCCM-Abgleich. Muss genau dem Gerätenamen in SCCM entsprechen.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Beschaffungsjahr</div><div class="datenzeile-wert"><input class="g-eingabe g-eingabe-schmal" type="text" value="2021/2022" aria-label="Beschaffungsjahr"><div class="datenzeile-hinweis">Auswahl 2015/2016 bis 2035/2036, freie Eingabe erlaubt.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Status</div><div class="datenzeile-wert"><select class="g-eingabe g-eingabe-schmal" aria-label="Status"><option>Aktiv</option><option>Lager</option><option>Archiviert</option></select><div class="datenzeile-hinweis t-leise">Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv».</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Ungültig</div><div class="datenzeile-wert"><input class="g-eingabe g-ungueltig" type="text" value="2021" aria-label="Ungültig"><div class="datenzeile-hinweis t-gefahr">Bitte ein Geschäftsjahr in der Form 2021/2022 eingeben.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Bemerkung</div><div class="datenzeile-wert"><textarea class="g-textarea" aria-label="Bemerkung">Freitext, mehrzeilig.</textarea></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Suche und Filterfelder</h2><p class="karte-unter">Suchpille 40 px mit Lupe; Filterfelder mit Beschriftung darüber.</p></div>
+            <div class="karte-inhalt">
+              <div class="toolbar">
+                <div class="suchfeld">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
+                  <input type="search" class="suche" placeholder="Geräte durchsuchen" aria-label="Geräte durchsuchen">
+                  <kbd class="kuerzel" aria-hidden="true">/</kbd>
+                </div>
+                <span class="anzahl">50 Geräte</span>
+              </div>
+              <div class="suchfeld"><input type="search" class="suche" placeholder="Ohne Lupe (Suchfeld aus Skript)" aria-label="Suche"></div>
+              <div class="filtergitter" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px 24px">
+                <div class="filterfeld"><label style="display:block;font-size:12px;font-weight:500;color:var(--text-leise);margin-bottom:4px">Status</label>
+                  <div class="mehrfach"><label><input type="checkbox" checked> Aktiv <span class="zahl">(40)</span></label><label><input type="checkbox"> Lager <span class="zahl">(5)</span></label><label><input type="checkbox"> Archiviert <span class="zahl">(4)</span></label></div></div>
+                <div class="filterfeld"><label style="display:block;font-size:12px;font-weight:500;color:var(--text-leise);margin-bottom:4px">Zuletzt aktiv</label>
+                  <select style="width:100%;font:inherit;min-height:40px;padding:8px 12px;border:1px solid var(--umriss);border-radius:4px;background:#fff"><option>alle</option><option>letzte 7 Tage</option></select></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="karten">
+        <h2 class="bereich-titel">Karten und Kacheln</h2>
+        <p class="bereich-unter">Karten mit Hairline, ohne Schatten. Kacheln mit Beschriftung oben und Zahl darunter; Farbe nur auf der Zahl.</p>
+
+        <div class="kacheln" style="margin-bottom:16px">
+          <button type="button" class="kachel"><div class="kachel-wert">46</div><div class="kachel-text">Geräte im Einsatz</div><div class="kachel-unter">ohne 4 archivierte</div></button>
+          <button type="button" class="kachel ton-erfolg"><div class="kachel-wert">9</div><div class="kachel-text">gerade online</div></button>
+          <button type="button" class="kachel ton-warnung"><div class="kachel-wert">4</div><div class="kachel-text">ohne Beschaffungsjahr</div></button>
+          <button type="button" class="kachel ton-gefahr"><div class="kachel-wert">16</div><div class="kachel-text">Ersatz überfällig</div><div class="kachel-unter">Ersatz geplant vor 2026/2027</div></button>
+          <div class="kachel ton-info" data-klickbar="nein"><div class="kachel-wert klein">10.0.19045</div><div class="kachel-text">OS-Version</div><div class="kachel-unter">Microsoft Windows 11 Enterprise</div></div>
+          <div class="kachel" data-klickbar="nein"><div class="kachel-wert klein">—</div><div class="kachel-text">Ohne Wert</div><div class="kachel-unter">immer «—», nie leer</div></div>
+        </div>
+
+        <div class="karten">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Karte mit Liste und Fusszeile</h2><p class="karte-unter">Personen als Zeilen, Aktionen pro Zeile als Text, Hauptaktion unten.</p></div>
+            <div class="karte-inhalt">
+              <div class="g-person"><div><a class="g-person-name" href="#karten">Urs Muster</a><div class="g-person-unter">muster.urs · Finanzen · Projektleiter/in</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Zuordnung lösen</button></div></div>
+              <div class="g-person"><div><a class="g-person-name" href="#karten">Anna-Katharina Müller-Hasenfratz von Oberwinterthur-Rickenbach</a><div class="g-person-unter">mueller-hasenfratz.anna-katharina · Abteilung Finanzen, Controlling und Beschaffungsmanagement · AD-Konto deaktiviert</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Zuordnung lösen</button></div></div>
+              <div class="karte-aktionen"><button type="button" class="knopf knopf-primaer">Benutzer zuordnen</button></div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><div class="karte-kopf-zeile"><div><h2 class="karte-titel">Karte mit Kopfzeile</h2><p class="karte-unter">Titel links, Zusatz rechts (.karte-kopf-zeile).</p></div><span class="chip chip-erfolg">10 von 33 aktiv</span></div></div>
+            <div class="karte-inhalt">
+              <div class="liste-zeile"><span><span class="verteilung-name" style="display:block;font-size:13px">Latitude 7440</span><span class="spur"><span class="fuell" style="width:100%"></span></span></span><span class="zusatz">18</span></div>
+              <div class="liste-zeile"><span><span class="verteilung-name" style="display:block;font-size:13px">Precision 3581</span><span class="spur"><span class="fuell" style="width:61%"></span></span></span><span class="zusatz">11</span></div>
+              <div class="liste-zeile"><span><span class="verteilung-name" style="display:block;font-size:13px">ThinkCentre M70q</span><span class="spur"><span class="fuell" style="width:39%"></span></span></span><span class="zusatz">7</span></div>
+              <p class="hinweis">und 3 weitere Werte mit zusammen 14 Zeilen</p>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Lebenszyklus-Zeile</h2><p class="karte-unter">Kompakte Kennzeile mit Fortschrittsbalken (Gerätefenster).</p></div>
+            <div class="karte-inhalt">
+              <div class="g-lz" style="border:none;padding:0">
+                <div class="g-lz-zeile"><div class="g-lz-daten"><span class="g-lz-teil"><span class="g-lz-name">Beschaffung</span><span class="g-lz-jahr">2021/2022</span></span><span class="g-lz-punkt">·</span><span class="g-lz-teil"><span class="g-lz-name">Ersatz geplant</span><span class="g-lz-jahr">2026/2027</span></span></div><span class="chip chip-warnung">im laufenden GJ</span></div>
+                <div class="g-lz-spur"><div class="g-lz-fuell g-lz-warnung" style="width:100%"></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Flottenvergleich</h2><p class="karte-unter">Wert rechts, Erklärung darunter, Mini-Verteilung höchstens 360 px breit.</p></div>
+            <div class="karte-inhalt">
+              <div class="g-vergleich"><div class="g-vergleich-name">Freier Speicher auf C:</div><div class="g-vergleich-wert">180.1 GB</div><div class="g-vergleich-neben">Median der Flotte: 152.5 GB · dieses Gerät liegt über 58 % der Geräte</div><div class="g-vergleich-neben"><div class="g-verteilung"><div class="g-verteilung-saeule" style="height:30%"></div><div class="g-verteilung-saeule" style="height:60%"></div><div class="g-verteilung-saeule" style="height:100%"></div><div class="g-verteilung-saeule g-hier" style="height:80%"></div><div class="g-verteilung-saeule" style="height:40%"></div><div class="g-verteilung-saeule" style="height:20%"></div></div></div></div>
+              <div class="g-vergleich"><div class="g-vergleich-name">Arbeitsspeicher</div><div class="g-vergleich-wert">16 GB</div><div class="g-vergleich-neben">Median der Flotte: 16 GB · dieses Gerät liegt über 73 % der Geräte</div></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="tabellen">
+        <h2 class="bereich-titel">Tabellen</h2>
+        <p class="bereich-unter">Listenansicht mit klebendem Kopf und erster Spalte; kurze Aufstellungen in Karten als .tabelle-schlicht.</p>
+
+        <div class="stapel">
+          <div class="tabelle-rahmen" style="max-height:280px;flex:none">
+            <table class="tabelle">
+              <thead><tr><th class="sortiert">PC-Name <span class="pfeil">↑</span></th><th>Status</th><th>Benutzer</th><th>Gebäude / Stock</th><th>Beschaffungsjahr</th><th>Ersatz geplant</th><th>Modell</th><th>OS-Version</th><th>Zuletzt aktiv</th></tr></thead>
+              <tbody>
+                <tr><td><span class="punkt"></span><a class="name-link" href="#tabellen">CAMPUS-901</a></td><td>Aktiv</td><td>Beat Blumer, Urs Muster</td><td>Haus C / UG</td><td class="zahl">2021/2022</td><td class="zahl">2026/2027</td><td>Latitude 7440</td><td>10.0.19045</td><td>heute</td></tr>
+                <tr><td><span class="punkt punkt-aus"></span><a class="name-link" href="#tabellen">CAMPUS-902</a></td><td class="t-still">Archiviert</td><td>Nina Beispiel</td><td>Haus B / 2. OG</td><td class="zahl">2022/2023</td><td class="zahl"></td><td>Precision 3581</td><td>10.0.26100</td><td>vor 3 Tagen</td></tr>
+                <tr><td><span class="punkt punkt-aus"></span><a class="name-link" href="#tabellen">CAMPUS-LANGER-GERAETENAME-OHNE-LEERZEICHEN-ABCDEFGHIJKLMNOP</a></td><td class="t-info">Lager</td><td>Fabian Probe, Tobias Zurflueh</td><td>Haus A / 1. OG</td><td class="zahl">2025/2026</td><td class="zahl">2030/2031</td><td>EliteBook 840 G10</td><td>10.0.19045</td><td>vor 12 Tagen</td></tr>
+                <tr><td><span class="punkt"></span><a class="name-link" href="#tabellen">CAMPUS-905</a></td><td>Aktiv</td><td>Petra Steiner</td><td>Haus C / UG</td><td class="zahl">2021/2022</td><td class="zahl">2026/2027</td><td>Precision 3581</td><td>10.0.26100</td><td>heute</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="karten">
+            <section class="karte">
+              <div class="karte-kopf"><h2 class="karte-titel">Aufstellung in einer Karte</h2><p class="karte-unter">.tabelle.tabelle-schlicht — kein klebender Kopf, Zellen dürfen umbrechen, Status als Chip.</p></div>
+              <div class="karte-inhalt">
+                <div class="tabelle-schlicht-rahmen"><table class="tabelle tabelle-schlicht">
+                  <thead><tr><th>Applikation</th><th>Sammlung</th><th>Zweck</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td>Adobe Acrobat Reader</td><td>Alle Desktops</td><td>Erforderlich</td><td><span class="chip chip-erfolg">Erfolgreich</span></td></tr>
+                    <tr><td>Citrix Workspace</td><td>Bildung</td><td>Erforderlich</td><td><span class="chip chip-warnung">Ausstehend</span></td></tr>
+                    <tr><td>Microsoft 365 Apps</td><td>Technischer Dienst</td><td>Erforderlich</td><td><span class="chip chip-gefahr">Fehlgeschlagen</span></td></tr>
+                  </tbody>
+                </table></div>
+              </div>
+            </section>
+            <section class="karte dicht">
+              <div class="karte-kopf"><h2 class="karte-titel">Kompakte Dichte</h2><p class="karte-unter">Klasse .dicht auf einem Vorfahren: 36 px Zeilen, 12 px Schrift.</p></div>
+              <div class="karte-inhalt">
+                <div class="tabelle-schlicht-rahmen"><table class="tabelle tabelle-schlicht">
+                  <thead><tr><th>Name</th><th>Version</th></tr></thead>
+                  <tbody><tr><td>7-Zip 24.09</td><td>1.0.0</td></tr><tr><td>Adobe Acrobat Reader</td><td>2.1.0</td></tr><tr><td>Google Chrome</td><td>3.2.0</td></tr></tbody>
+                </table></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="hinweise">
+        <h2 class="bereich-titel">Hinweise und Zustände</h2>
+        <p class="bereich-unter">Hinweisliste, Banner, Leer-, Lade- und Fehlerzustand. Nie ein leerer Bereich ohne Satz.</p>
+
+        <div class="karten">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Hinweisliste</h2><p class="karte-unter">Aus den aktuellen Werten abgeleitet. Die Farbe zeigt die Wichtigkeit.</p></div>
+            <div class="karte-inhalt">
+              <div class="g-hinweis t-gefahr"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20.5h19L12 3ZM12 10v4M12 17.5v.5"/></svg><div><div class="g-hinweis-titel">Defender-Signatur veraltet</div><div class="g-hinweis-text">Die Virensignatur ist 36 Tage alt. Normal ist höchstens ein Tag.</div></div></div>
+              <div class="g-hinweis t-warnung"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20.5h19L12 3ZM12 10v4M12 17.5v.5"/></svg><div><div class="g-hinweis-titel">Ersatz in diesem Geschäftsjahr</div><div class="g-hinweis-text">Der Ersatz ist für 2026/2027 geplant.</div></div></div>
+              <div class="g-hinweis t-info"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v6M12 7.5v.5"/></svg><div><div class="g-hinweis-titel">OS-Build veraltet</div><div class="g-hinweis-text">Dieses Gerät läuft auf 10.0.19045, der häufigste Build der Flotte ist 10.0.26100 (18 Geräte).</div></div></div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Banner</h2><p class="karte-unter">.b-hinweis — Ton nach dem Text darin; Knopf rechts, Chips auf eigener Zeile.</p></div>
+            <div class="karte-inhalt">
+              <div class="b-hinweis"><span class="t-warnung">SCCM meldet «CAMPUS-901» als Primärgerät, zugeordnet ist kein Gerät.</span><button type="button" class="knopf knopf-primaer">SCCM-Primärgerät übernehmen</button></div>
+              <div class="b-hinweis"><span class="t-warnung">2 Geräte heissen «CAMPUS-904». Die Zuordnung speichert nur den Namen und ist damit nicht eindeutig.</span><div class="chips"><a class="chip chip-marke" href="#hinweise">Listen-ID 4 · Aktiv</a><a class="chip" href="#hinweise">Listen-ID 61 · Archiviert</a></div></div>
+              <div class="b-hinweis"><span class="t-info">Neutraler Hinweis mit Erklärung.</span><button type="button" class="knopf knopf-leise">Im Abschnitt «Gerät» klären</button></div>
+              <p class="hinweis">Hinweistext .hinweis: 13 px, --text-leise — für Erklärungen und Leermeldungen.</p>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Leerzustand</h2></div>
+            <div class="karte-inhalt">
+              <div class="leerzustand"><p class="leer-titel">Kein Gerät zugeordnet</p><p class="leer-text">Unten ein Gerät suchen und «Zuordnen» wählen.</p></div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Laden</h2></div>
+            <div class="karte-inhalt">
+              <div class="lade"><div class="spinner" aria-hidden="true"></div><p class="lade-text">Daten werden geladen …</p><p class="lade-fortschritt">Geräte 50 / Benutzer 56 / Programme ✓</p></div>
+            </div>
+          </section>
+
+          <section class="karte karte-breit">
+            <div class="karte-kopf"><h2 class="karte-titel">Fehler</h2><p class="karte-unter">Zentriert in der Restfläche, Navigation ausgeblendet, Hauptaktion «Erneut laden».</p></div>
+            <div class="karte-inhalt">
+              <div class="fehler"><h2 class="fehler-titel">Die Daten konnten nicht geladen werden</h2><p class="fehler-text">Vorführ-Fehler (?fehler=1): so sieht die Seite aus, wenn Microsoft Graph nicht antwortet.</p><p class="fehler-hinweis">Zum Anschauen ohne Anmeldung die Seite mit ?mock=1 aufrufen.</p><button type="button" class="knopf knopf-primaer">Erneut laden</button></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="schwebend">
+        <h2 class="bereich-titel">Panel, Dialog, Snackbar, Speicherleiste</h2>
+        <p class="bereich-unter">Die einzigen Flächen mit Schatten. Hier eingebettet gezeigt; im Betrieb schweben sie.</p>
+
+        <div class="karten">
+          <div class="panel sg-schwebend" style="max-width:640px">
+            <div class="panel-kopf"><div><h2>Filter</h2><p class="hinweis">Die Zahl in Klammern zeigt, wie viele Zeilen den Wert haben.</p></div><button type="button" class="knopf knopf-leise" aria-label="Panel schliessen"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button></div>
+            <div class="panel-koerper">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px 24px">
+                <div class="filterfeld"><label style="display:block;font-size:12px;font-weight:500;color:var(--text-leise);margin-bottom:4px">Status</label><div class="mehrfach"><label><input type="checkbox" checked> Aktiv <span class="zahl">(40)</span></label><label><input type="checkbox"> Lager <span class="zahl">(5)</span></label></div></div>
+                <div class="filterfeld"><label style="display:block;font-size:12px;font-weight:500;color:var(--text-leise);margin-bottom:4px">Online</label><div class="mehrfach"><label><input type="checkbox"> Ja <span class="zahl">(9)</span></label><label><input type="checkbox"> Nein <span class="zahl">(36)</span></label></div></div>
+              </div>
+              <div class="werkzeugzeile" style="display:flex;gap:8px;margin-top:12px"><button type="button" class="knopf knopf-leise">Alle Filter zurücksetzen</button></div>
+            </div>
+          </div>
+
+          <div class="dialog sg-schwebend" role="dialog" aria-modal="false" style="width:auto;max-width:560px">
+            <h2>Zuordnung lösen</h2>
+            <p>«Urs Muster» ist diesem Gerät zugeordnet. Beim Lösen wird das Feld «Computer» dieses Benutzers geleert; das Gerät selbst bleibt unverändert.</p>
+            <div class="dialog-knoepfe"><button type="button" class="knopf">Abbrechen</button><button type="button" class="knopf knopf-gefahr">Zuordnung lösen</button></div>
+          </div>
+
+          <div class="dialog sg-schwebend" role="dialog" aria-modal="false" style="width:auto;max-width:560px">
+            <h2>Benutzer zuordnen</h2>
+            <p>Der gewählte Benutzer bekommt «CAMPUS-901» als Gerät.</p>
+            <input class="g-eingabe" type="search" placeholder="Name, Login oder Abteilung suchen …" aria-label="Benutzer suchen" style="max-width:none">
+            <div class="g-trefferliste">
+              <button type="button" class="g-treffer"><div class="g-person-name">Anna Ammann</div><div class="g-person-unter">ammann.anna · Bildung · aktuell: CAMPUS-934</div></button>
+              <button type="button" class="g-treffer"><div class="g-person-name">Anna Blumer</div><div class="g-person-unter">blumer.anna · Marketing · aktuell kein Gerät</div></button>
+              <button type="button" class="g-treffer"><div class="g-person-name">Anna Steiner</div><div class="g-person-unter">steiner.anna · ICT · aktuell: CAMPUS-923</div></button>
+            </div>
+            <div class="dialog-knoepfe"><button type="button" class="knopf">Abbrechen</button></div>
+          </div>
+
+          <div class="stapel">
+            <div class="toast sg-schwebend" role="status">Vorschlag 2026/2027 übernommen. Noch nicht gespeichert.</div>
+            <div class="toast toast-fehler sg-schwebend" role="status">Speichern fehlgeschlagen. Der Server hat mit 423 Locked geantwortet.</div>
+            <div class="speicherleiste sg-schwebend" style="border:1px solid var(--linie);border-radius:var(--r);box-shadow:none"><span class="speicher-text">3 Änderungen</span><span class="speicher-fehler t-gefahr">Feld «Beschaffungsjahr» ist ungültig.</span><button type="button" class="knopf knopf-leise">Verwerfen</button><button type="button" class="knopf knopf-primaer">Speichern</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="zeit">
+        <h2 class="bereich-titel">Zeitstrahl und Verlauf</h2>
+        <p class="bereich-unter">Diagrammfarben: Blau Beschaffung, Hellblau Ersatz, Rot überfällig, Gelb im laufenden Geschäftsjahr.</p>
+
+        <div class="stapel">
+          <div class="karte">
+            <div class="zeitstrahl">
+              <div class="zeitstrahl-achse">
+                <div class="zeitstrahl-tick vergangen klickbar"><div class="zeitstrahl-saeulen"><button type="button" class="saeule saeule-a" style="height:40%"></button><button type="button" class="saeule saeule-b gefahr" style="height:20%"></button></div><div class="zeitstrahl-linie"></div><div class="zeitstrahl-label">2019/2020</div><div class="zeitstrahl-werte">4 / 2</div></div>
+                <div class="zeitstrahl-tick vergangen klickbar"><div class="zeitstrahl-saeulen"><button type="button" class="saeule saeule-a" style="height:90%"></button><button type="button" class="saeule saeule-b gefahr" style="height:60%"></button></div><div class="zeitstrahl-linie"></div><div class="zeitstrahl-label">2021/2022</div><div class="zeitstrahl-werte">9 / 6</div></div>
+                <div class="zeitstrahl-tick aktuell klickbar"><div class="zeitstrahl-saeulen"><button type="button" class="saeule saeule-a" style="height:30%"></button><button type="button" class="saeule saeule-b warnung" style="height:100%"></button></div><div class="zeitstrahl-linie"></div><div class="zeitstrahl-label">2026/2027</div><div class="zeitstrahl-werte">3 / 10</div></div>
+                <div class="zeitstrahl-tick klickbar"><div class="zeitstrahl-saeulen"><div class="saeule saeule-a"></div><button type="button" class="saeule saeule-b" style="height:50%"></button></div><div class="zeitstrahl-linie"></div><div class="zeitstrahl-label">2028/2029</div><div class="zeitstrahl-werte">0 / 5</div></div>
+                <div class="zeitstrahl-tick klickbar"><div class="zeitstrahl-saeulen"><div class="saeule saeule-a"></div><button type="button" class="saeule saeule-b" style="height:20%"></button></div><div class="zeitstrahl-linie"></div><div class="zeitstrahl-label">2030/2031</div><div class="zeitstrahl-werte">0 / 2</div></div>
+              </div>
+            </div>
+            <div class="zeitstrahl-legende"><span class="zeitstrahl-marke">beschafft (linke Säule)</span><span class="zeitstrahl-marke info">Ersatz geplant (rechte Säule)</span><span class="zeitstrahl-marke gefahr">Ersatz überfällig</span><span class="zeitstrahl-marke warnung">im laufenden Geschäftsjahr</span><span class="zeitstrahl-marke stark">Laufendes Geschäftsjahr: 2026/2027</span></div>
+          </div>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Verlauf</h2><p class="karte-unter">Formular auf getönter Fläche, Zeitachse mit Punkten, Einträge des Abgleichs grau.</p></div>
+            <div class="karte-inhalt">
+              <div class="vl">
+                <div class="vl-werkzeuge"><button type="button" class="knopf knopf-primaer">Neuer Eintrag</button><span class="hinweis">3 Einträge</span></div>
+                <div class="vl-formular">
+                  <div class="vl-formular-zeile"><label class="vl-feldname">Datum <input class="vl-datum-feld" type="date" value="2026-09-04"></label></div>
+                  <textarea class="vl-text-feld" placeholder="Was ist passiert? Mehrere Zeilen sind erlaubt."></textarea>
+                  <div class="vl-knoepfe"><button type="button" class="knopf knopf-primaer">Hinzufügen</button><button type="button" class="knopf">Abbrechen</button></div>
+                </div>
+                <ol class="vl-liste">
+                  <li class="vl-eintrag"><div class="vl-kopf"><span class="vl-datum">04.09.2026</span><span class="vl-quelle">manuell</span><span class="vl-erfasst">erfasst 04.09.2026 08:24</span></div><div class="vl-text">Gerätewechsel: altes Notebook zurückgegeben.</div><div class="vl-aktionen"><button type="button" class="knopf knopf-leise">Bearbeiten</button><button type="button" class="knopf knopf-leise">Löschen</button></div></li>
+                  <li class="vl-eintrag vl-sync"><div class="vl-kopf"><span class="vl-datum">12.03.2026</span><span class="vl-quelle">Abgleich</span><span class="vl-erfasst">erfasst 12.03.2026 04:10</span></div><div class="vl-text">In SCCM umbenannt von CAMPUS-812 zu CAMPUS-901.</div></li>
+                  <li class="vl-eintrag"><div class="vl-kopf"><span class="vl-datum">01.08.2021</span><span class="vl-quelle">manuell</span></div><div class="vl-text">Beschaffung.</div></li>
+                </ol>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section class="bereich" id="grenzfaelle">
+        <h2 class="bereich-titel">Grenzfälle</h2>
+        <p class="bereich-unter">Was mit langen, leeren und vielen Werten passiert. Die Seite darf in keinem Fall waagrecht rollen.</p>
+
+        <div class="karten">
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Sehr lange Werte</h2></div>
+            <div class="karte-inhalt">
+              <div class="datenzeilen">
+                <div class="datenzeile"><div class="datenzeile-name">Ohne Leerzeichen</div><div class="datenzeile-wert">SASADMIN\xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div></div>
+                <div class="datenzeile"><div class="datenzeile-name">Sehr lange Beschriftung, die ebenfalls umbrechen darf</div><div class="datenzeile-wert">Wert</div></div>
+                <div class="datenzeile"><div class="datenzeile-name">Mehrzeilig</div><div class="datenzeile-wert">Zeile 1
+Zeile 2
+Zeile 3</div></div>
+              </div>
+              <div class="chips">
+                <span class="chip chip-info" title="Eine sehr lange Statusmarke wird gekürzt und trägt den vollen Text als Tooltip">Eine sehr lange Statusmarke wird gekürzt und trägt den vollen Text als Tooltip</span>
+                <button type="button" class="chip">Suche: ein sehr langer suchbegriff mit vielen woertern und zeichen der nirgends passt <span class="x">×</span></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Viele Chips, lange Programmnamen</h2></div>
+            <div class="karte-inhalt">
+              <div class="chips"><span class="chip chip-erfolg">Online</span><span class="chip chip-erfolg">In SCCM</span><span class="chip chip-erfolg">Client aktiv</span><span class="chip chip-info">Co-Managed</span><span class="chip chip-info">Virtuell</span><span class="chip chip-info">Lager</span><span class="chip">Offline</span><span class="chip chip-warnung">Nicht in SCCM</span><span class="chip chip-warnung">Client inaktiv</span><span class="chip chip-warnung">Ersatz in diesem GJ</span><span class="chip chip-gefahr">Ersatz überfällig</span><span class="chip chip-leise">Archiviert</span></div>
+              <div class="b-programme">
+                <div class="schalter-zeile"><button type="button" class="schalter an gesperrt" role="switch" aria-checked="true" disabled title="Aus AD-Gruppe"></button><span class="name">Microsoft 365 Apps for Enterprise inklusive Copilot Lizenz und Visio Plan 2 Zusatzmodul</span><div class="b-programm-zusatz"><span class="chip chip-info">CS_ALLE_MITARBEITENDE_CAMPUS_SURSEE_STANDARD</span><span class="chip chip-info">CS_FINANZEN_CONTROLLING_ERWEITERT</span><span class="chip chip-info">CS_PILOT_M365_COPILOT</span></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Leere Werte</h2><p class="karte-unter">Immer «—» oder ein Satz, nie eine Lücke.</p></div>
+            <div class="karte-inhalt">
+              <div class="datenzeilen">
+                <div class="datenzeile"><div class="datenzeile-name">SMBIOS GUID <span class="schloss"></span></div><div class="datenzeile-wert leer">—</div></div>
+                <div class="datenzeile"><div class="datenzeile-name">Akku <span class="schloss"></span></div><div class="datenzeile-wert leer">—</div></div>
+              </div>
+              <p class="hinweis">Keine Monitore erfasst.</p>
+              <div class="b-treffer"><p class="hinweis">Mindestens ein Zeichen eingeben. Die Liste umfasst 50 Geräte.</p></div>
+            </div>
+          </section>
+
+          <section class="karte">
+            <div class="karte-kopf"><h2 class="karte-titel">Kacheln mit langen Beschriftungen</h2></div>
+            <div class="karte-inhalt">
+              <div class="kacheln">
+                <div class="kachel" data-klickbar="nein"><div class="kachel-wert klein">9</div><div class="kachel-text">Geräte mit demselben Beschaffungsjahr</div><div class="kachel-unter">2021/2022</div></div>
+                <div class="kachel ton-gefahr" data-klickbar="nein"><div class="kachel-wert klein">16</div><div class="kachel-text">Ersatz überfällig (ganze Flotte)</div><div class="kachel-unter">von 50 Geräten</div></div>
+                <div class="kachel" data-klickbar="nein"><div class="kachel-wert">12 345</div><div class="kachel-text">Grosse Zahl</div></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

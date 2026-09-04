@@ -1,81 +1,52 @@
 /* benutzer.css — Seitenlayout des Benutzerfensters.
 
-   Wird NACH design.css geladen. Das gesamte Gerüst kommt aus design.css:
-   Kopf (.kopf, .logo-link), Rumpf mit Seitennavigation (.fenster-rumpf,
-   .fenster-nav, .fenster-nav-menue, .fenster-inhalt), Kartenraster
-   (.karten, .stapel), Datenzeilen (.datenzeilen, .datenzeile),
-   Tri-State-Schalter (.schalter, .schalter-zeile), Zustände (.lade,
-   .fehler, .leerzustand), Speicherleiste und Toast. Hier bleiben nur die
-   wenigen Muster, die es nur in diesem Fenster gibt: Statuszeile im Kopf,
-   Hinweiszeilen, Trefferliste der Gerätesuche und die Programmliste.
-
-   Alle eigenen Klassen beginnen mit «b-». Farben, Abstände, Radien und
-   Schatten kommen ausschliesslich aus den Variablen von design.css.
-
-   ------------------------------------------------------------------
-   SCROLLEN (wie im Gerätefenster)
-
-   body trägt .seite aus design.css: Flex-Spalte, min-height 100dvh, KEIN
-   overflow:hidden. Damit rollt die Seite senkrecht von selbst.
-
-   Waagrecht rollt die SEITE nie — auch nicht bei 375 px. Was zu breit
-   wird, rollt in seinem eigenen Behälter, zum Beispiel die Reiterleiste
-   auf dem Handy in .fenster-nav. Die Raster (.karten, .kacheln) fallen
-   über «minmax(min(…, 100%), 1fr)» von selbst auf eine Spalte zurück.
-   Früher stand hier eine min-width von 880 px auf dem body; sie hat auf
-   dem Handy einen Rollbalken über die ganze Seite erzwungen und ist
-   deshalb weg.
-
-   Ebenfalls weg sind die eigenen sticky-/align-self-Regeln für
-   .fenster-nav: die Spalte reicht heute über .fenster-rumpf immer bis
-   nach unten, klebend ist nur noch das Menü darin.
-   ------------------------------------------------------------------ */
+   Wird NACH design.css geladen. Das gesamte Gerüst kommt aus design.css.
+   Hier bleiben nur die wenigen Muster, die es nur in diesem Fenster gibt:
+   AD-Status in der Titelzeile, Hinweiszeilen, Trefferliste der Gerätesuche
+   und die Programmliste. Alle eigenen Klassen beginnen mit «b-». */
 
 
 /* ==================================================================
-   Kopfzeile
+   Titelzeile
    ================================================================== */
 
-/* Der AD-Status steht unter der Kennzeichnung, Farbe nur auf dem Text. */
-.b-status { font-size: var(--t-xs); font-weight: 600; margin-top: 2px; }
+.b-status { font-size: var(--t-s); font-weight: 500; margin-top: 2px; }
 .b-status:empty { display: none; }
 
 
 /* ==================================================================
    Hinweiszeilen
-
-   Text und Knopf nebeneinander; wird es eng, rutscht der Knopf auf eine
-   eigene Zeile, statt den Text zu zerquetschen.
    ================================================================== */
 
-.b-hinweis {
-  display: flex; align-items: center; gap: var(--a2);
-  flex-wrap: wrap;
-  font-size: var(--t-s);
-  margin-top: var(--a3);
-}
+/* Gestaltung in design.css (.b-hinweis). */
 
 
 /* ==================================================================
    Gerätesuche
    ================================================================== */
 
-.b-treffer { display: grid; gap: 2px; margin-top: var(--a3); }
+.b-treffer {
+  display: grid; gap: 0; margin-top: var(--a3);
+  border: 1px solid var(--linie); border-radius: var(--r-klein);
+  overflow: hidden;
+}
+/* Nur ein Hinweis, keine Treffer: dann kein leerer Rahmen. */
+.b-treffer:not(:has(.b-treffer-zeile)) { border: none; }
+.b-treffer > .hinweis { padding: var(--a1) 0; }
 
-/* Name links, Knopf oder Chip rechts. Die Namensspalte darf schrumpfen
-   (minmax(0, 1fr)), sonst wird die Zeile breiter als die Karte. */
 .b-treffer-zeile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--a2) var(--a3);
-  padding: 7px var(--a2);
-  border-radius: var(--r-klein);
+  padding: var(--a2) var(--a3);
+  border-bottom: 1px solid var(--linie-leicht);
 }
+.b-treffer-zeile:last-child { border-bottom: none; }
 .b-treffer-zeile:hover { background: var(--flaeche); }
-.b-treffer-name { font-size: var(--t-s); font-weight: 500; overflow-wrap: anywhere; }
-.b-treffer-unter { font-size: var(--t-xs); color: var(--text-leise); overflow-wrap: anywhere; }
-.b-treffer-zeile.aktuell { background: var(--marke-hell); }
+.b-treffer-name { font-size: var(--t-m); font-weight: 500; overflow-wrap: anywhere; }
+.b-treffer-unter { font-size: var(--t-s); color: var(--text-leise); overflow-wrap: anywhere; }
+.b-treffer-zeile.aktuell { background: var(--primaer-hell); }
 
 
 /* ==================================================================
@@ -87,7 +58,9 @@
   margin-bottom: var(--a4);
 }
 
-.b-programme { display: grid; gap: 1px; }
+.b-programme { display: grid; gap: 0; }
+.b-programme .schalter-zeile { border-radius: 0; border-bottom: 1px solid var(--linie-leicht); }
+.b-programme .schalter-zeile:last-child { border-bottom: none; }
 
 .b-programm-zusatz {
   display: flex; align-items: center; gap: var(--a1) var(--a2);
@@ -106,21 +79,9 @@
 
 /* ==================================================================
    Schmale Fenster
-
-   Bis 760 px macht design.css aus der Seitennavigation eine waagrecht
-   rollende Reiterleiste. Dazwischen (760–900 px) wird hier nur der
-   Innenabstand knapper, damit für den Inhalt mehr übrig bleibt.
    ================================================================== */
 
-@media (max-width: 900px) and (min-width: 761px) {
-  .fenster-inhalt { padding: var(--a4) var(--a4) 110px; }
-  .fenster-nav { padding: var(--a3) var(--a2) var(--a5); }
-}
-
 @media (max-width: 760px) {
-  /* Programmzeilen: der Name darf umbrechen (design.css kürzt ihn sonst
-     mit «…»), die AD-Gruppen-Chips rücken auf eine eigene Zeile unter den
-     Schalter. Die Zeile bleibt so hoch wie ein Tippziel. */
   .b-programme .schalter-zeile {
     flex-wrap: wrap;
     padding: var(--a2);
@@ -132,15 +93,11 @@
     text-overflow: clip;
     flex: 1 1 160px;
   }
-  /* 38 px Schalter plus dessen Abstand — die Chips stehen so bündig
-     unter der Beschriftung. */
   .b-programme .b-programm-zusatz {
     flex: 1 0 100%;
-    padding-left: calc(38px + var(--a3));
+    padding-left: calc(44px + var(--a3));
   }
 
-  /* Trefferzeilen: Name oben, Knopf darunter linksbündig — auf 375 px
-     bleibt für beides nebeneinander kein Platz. */
   .b-treffer-zeile {
     grid-template-columns: minmax(0, 1fr);
     justify-items: start;

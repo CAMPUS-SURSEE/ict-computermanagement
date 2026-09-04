@@ -3,29 +3,19 @@
    Alle Farben, Abstände und Komponenten stehen in design.css. Hier steht
    nur, wie die vier Ansichten der Hauptseite angeordnet sind.
 
-   Gerüst: body.seite ist eine Flex-Spalte über mindestens die volle
-   Fensterhöhe. Kopfzeile und Band sind fest, darunter genau eine Ansicht.
-   Die Tabellenansichten (.inhalt-fest) geben ihre Höhe an den
-   Tabellenrahmen weiter, der dann selbst rollt — waagrecht und senkrecht.
-   Gerollt wird immer INNEN: der Inhaltsbereich (.inhalt), der
-   Tabellenrahmen, der Zeitstrahl. Die Seite selbst rollt nie. */
+   Gerüst: body.seite ist eine Flex-Spalte über die volle Fensterhöhe.
+   Darunter liegt .rumpf mit der linken Navigation (.reiter) und der
+   Bühne (.buehne), in der genau eine Ansicht sichtbar ist. Die
+   Tabellenansichten (.inhalt-fest) geben ihre Höhe an den Tabellenrahmen
+   weiter, der dann selbst rollt. Gerollt wird immer INNEN, die Seite
+   selbst rollt nie. */
 
-/* Die Seite füllt genau das Fenster und rollt selbst nicht — weder
-   senkrecht noch waagrecht. Bewusst «overflow: hidden» und nicht nur
-   «overflow-x: hidden»: Letzteres macht aus dem Körper einen zweiten
-   senkrechten Rollbehälter (overflow-y wird dann automatisch zu «auto»),
-   der neben .inhalt liegt und Radereignisse abfangen kann. Alles, was zu
-   gross ist, rollt in seinem eigenen Behälter: .inhalt, .tabelle-rahmen,
-   #zeitstrahl, und die Zustandsflächen weiter unten. */
 body.seite { height: 100vh; overflow: hidden; }
 
-/* Die Ansichten teilen sich den Platz unter der Kopfzeile. */
 .ansicht { flex: 1 1 auto; min-height: 0; }
 
-/* Lade- und Fehlerzustand füllen die Restfläche unter der Kopfzeile und
-   stehen darin waagrecht wie senkrecht in der Mitte. */
-body.seite > .lade,
-body.seite > .fehler {
+.buehne > .lade,
+.buehne > .fehler {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
@@ -37,30 +27,6 @@ body.seite > .fehler {
    Kopfzeile
    ================================================================== */
 
-/* Das Logo ist ein Link zur Übersicht. Der Hover bleibt dezent: eine
-   leichte Fläche hinter dem Logo, kein Unterstrich. */
-.marke-logo {
-  display: inline-flex; align-items: center;
-  padding: var(--a1) var(--a1);
-  margin: calc(var(--a1) * -1) 0 calc(var(--a1) * -1) calc(var(--a1) * -1);
-  border-radius: var(--r-klein);
-  transition: background .12s;
-}
-.marke-logo:hover { background: var(--flaeche); text-decoration: none; }
-.marke-logo:active { background: var(--flaeche-2); }
-
-/* Marke und Aktionen dürfen umbrechen, statt abgeschnitten zu werden.
-   Bricht die Zeile doch einmal um, stehen die Zeilen eng beieinander
-   statt mit einer halbleeren zweiten Zeile auseinandergezogen. */
-.kopf { align-content: center; row-gap: var(--a2); }
-.kopf-marke { flex: 0 1 auto; }
-.kopf-rechts { flex: 0 0 auto; }
-
-/* Der Daten-Stand ist die längste, aber unwichtigste Angabe der Kopfzeile.
-   Unter 1200 px — dem üblichen Laptop-Fenster — drängt er Marke, Reiter
-   und Aktionen in eine zweite Zeile. Er weicht daher und ist stattdessen
-   als Kurzhinweis am Knopf «Neu laden» zu lesen (app.js setzt den Titel).
-   Ab 1200 px steht er wieder in der Zeile. */
 @media (max-width: 1200px) {
   .stand { display: none; }
 }
@@ -70,9 +36,6 @@ body.seite > .fehler {
    Übersicht
    ================================================================== */
 
-/* Zeitstrahl: die Säulen bekommen ihre Höhe per style-Attribut.
-   Der Behälter rollt waagrecht (design.css), damit die Säulen bei vielen
-   Geschäftsjahren nicht zusammengequetscht werden. */
 #zeitstrahl {
   padding-bottom: var(--a2);
   overscroll-behavior-x: contain;
@@ -83,31 +46,28 @@ body.seite > .fehler {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Kennzahl-Kacheln.
-
-   «auto-fit» statt «auto-fill» aus design.css: leere Spuren fallen weg,
-   darum füllt jede Reihe die volle Breite — die Geräte-Reihe mit sechs und
-   die Benutzer-Reihe mit fünf Kacheln schliessen beide bündig ab. Die
-   145 px Mindestbreite sind so gewählt, dass sechs Kacheln samt Abständen
-   (6×145 + 5×12 = 930 px) ab rund 1000 px Fensterbreite in eine Reihe
-   passen; darunter bricht das Raster von selbst um. */
-.kacheln { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
-
-/* Gleiche Höhe, damit Kacheln mit und ohne Unterzeile bündig stehen. */
-.kacheln .kachel { min-height: 92px; }
+/* Kennzahl-Kacheln: auto-fit, damit jede Reihe bündig abschliesst. */
+.kacheln { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.kacheln .kachel { min-height: 108px; }
 
 
 /* ==================================================================
-   Tabellenansichten (Geräte, Benutzer)
+   Tabellenansichten (Geräte, Benutzer, Telefonnummern)
    ================================================================== */
 
-/* Bezugspunkt für die schwebenden Panels «Filter» und «Spalten». */
+/* Nicht zugewiesene Telefonnummern: Status wird über Farbe gezeigt, nie
+   über Form oder Fläche (Styleguide 1). Darum bekommt die Zeile keinen
+   getönten Grund, sondern die Kurzwahl und die Nummer stehen in
+   --warnung; die Spalte «Zugewiesen» trägt dazu einen Chip. */
+.tabelle tbody tr.zeile-frei .name-link,
+.tabelle tbody tr.zeile-frei .zeile-frei-wert { color: var(--warnung); }
+
 .werkzeug-bereich {
   position: relative;
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: var(--a2);
+  gap: var(--a3);
 }
 
 .werkzeug-bereich .anzahl { margin-left: auto; }
@@ -120,127 +80,99 @@ body.seite > .fehler {
 
 .spaltengruppe { margin-bottom: var(--a4); }
 .spaltengruppe h3 {
-  color: var(--text-still); font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .5px; margin-bottom: var(--a1);
+  color: var(--text-leise); font-size: var(--t-xs); font-weight: 500;
+  margin-bottom: var(--a2);
 }
 .spaltengruppe .liste {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 0 var(--a4);
 }
-.spaltengruppe label { font-size: var(--t-s); cursor: pointer; display: block; padding: 1px 0; }
-.spaltengruppe input { accent-color: var(--marke); margin-right: 6px; }
+.spaltengruppe label { font-size: var(--t-m); cursor: pointer; display: block; padding: 3px 0; }
+.spaltengruppe input { margin-right: var(--a2); }
 
-.werkzeugzeile { display: flex; gap: var(--a2); margin-top: var(--a2); flex-wrap: wrap; }
+.werkzeugzeile { display: flex; gap: var(--a2); margin-top: var(--a3); flex-wrap: wrap; }
 
 .filterfeld > label {
-  display: block; font-size: var(--t-xs); font-weight: 600;
+  display: block; font-size: var(--t-xs); font-weight: 500;
   color: var(--text-leise); margin-bottom: var(--a1);
 }
 .filterfeld select {
-  width: 100%; font: inherit; font-size: var(--t-s);
-  border: none; border-radius: var(--r-klein);
-  background: var(--flaeche); color: var(--text); padding: 7px 8px;
+  width: 100%; font: inherit; font-size: var(--t-m);
+  min-height: 40px; padding: var(--a2) var(--a3);
+  border: 1px solid var(--umriss); border-radius: var(--r-klein);
+  background: var(--weiss); color: var(--text);
 }
-.filterfeld select:focus { outline: none; box-shadow: 0 0 0 2px var(--marke); }
+.filterfeld select:hover { border-color: var(--text); }
+.filterfeld select:focus { outline: none; border-color: var(--primaer); box-shadow: inset 0 0 0 1px var(--primaer); }
 
 
 /* ==================================================================
    Software
    ================================================================== */
 
-.sw-toolbar { margin-bottom: var(--a4); }
+.sw-toolbar { margin-bottom: var(--a5); }
 
-.sw-kategorie { margin-bottom: var(--a5); }
+.sw-kategorie { margin-bottom: var(--a6); }
 .sw-kategorie h2 {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
-  color: var(--text-still); margin-bottom: var(--a2);
+  font-size: var(--t-l); font-weight: 500;
+  color: var(--text); margin-bottom: var(--a3);
 }
 
 .sw-gitter {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--a3);
+  gap: var(--a4);
 }
 
 .sw-karte {
-  background: var(--weiss); border: none; border-radius: var(--r);
-  box-shadow: var(--schatten); padding: var(--a4);
+  background: var(--weiss); border: 1px solid var(--linie); border-radius: var(--r);
+  padding: var(--a4) var(--a5);
   font: inherit; color: var(--text); text-align: left;
   cursor: pointer; display: flex; flex-direction: column; gap: var(--a2);
-  transition: box-shadow .12s, transform .12s;
+  transition: background .12s, border-color .12s;
 }
-.sw-karte:hover { box-shadow: var(--schatten-hoch); transform: translateY(-1px); }
+.sw-karte:hover { background: var(--flaeche); border-color: var(--umriss-leicht); }
 
 .sw-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: var(--a3); }
-.sw-name { font-size: var(--t-m); font-weight: 600; overflow: hidden;
+.sw-name { font-size: var(--t-m); font-weight: 500; overflow: hidden;
            text-overflow: ellipsis; white-space: nowrap; }
-.sw-zahlen { display: flex; gap: var(--a4); font-size: var(--t-xs); }
+.sw-zahlen { display: flex; gap: var(--a4); font-size: var(--t-xs); color: var(--text-leise); }
 .sw-zahl { font-variant-numeric: tabular-nums; }
-.sw-zahl b { font-size: var(--t-l); font-weight: 600; display: block; line-height: 1.1; }
+.sw-zahl b { font-family: var(--schrift-titel); font-size: var(--t-xl); font-weight: 400;
+             color: var(--text); display: block; line-height: 1.2; }
 .sw-vorschlaege { font-size: var(--t-xs); color: var(--text-still); }
 
 
 /* ==================================================================
    Schmale Fenster
-
-   design.css bringt bereits die Grundanpassung unter 760 px (Reiter über
-   die ganze Breite, Kacheln enger, Raster einspaltig). Hier steht nur,
-   was die Hauptseite zusätzlich braucht: Umbruch der Kopfzeile, sichere
-   Fingerflächen und ein Zeitstrahl, der rollt statt zu schrumpfen.
    ================================================================== */
 
 @media (max-width: 760px) {
-
-  /* Kopfzeile: Marke links, Aktionen rechts, Reiter als eigene Zeile
-     darunter (Reihenfolge kommt aus design.css). Nichts wird
-     abgeschnitten, alles darf umbrechen. */
   .kopf-marke { flex: 1 1 auto; }
-  .kopf-rechts { flex: 0 0 auto; gap: var(--a2); }
-  .marke-text h1 { font-size: var(--t-m); }
+  .kopf-rechts { flex: 0 0 auto; }
 
-  /* Die Reiter werden zur rollenden Leiste, wenn sie nicht mehr in eine
-     Zeile passen — statt die Beschriftungen abzuschneiden. */
-  .reiter {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .reiter::-webkit-scrollbar { display: none; }
-  .reiter-knopf { flex: 1 0 auto; min-height: 40px; }
-
-  /* Fingerflächen: mindestens 40 px hoch. */
   .kopf .knopf,
   .toolbar .knopf,
   .toolbar .suche { min-height: 40px; }
 
-  /* Kennzahlen: genau zwei Spalten, damit die Zahlen lesbar bleiben. */
   .kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kacheln .kachel { min-height: 84px; padding: var(--a3); }
-  .kachel-wert { font-size: var(--t-xl); letter-spacing: -.3px; }
-  .kachel-wert.klein { font-size: var(--t-l); }
+  .kacheln .kachel { min-height: 92px; }
 
-  /* Zeitstrahl: rollen statt quetschen. */
   #zeitstrahl .zeitstrahl-tick,
   #zeitstrahl .zeitstrahl-zelle { min-width: 64px; }
 
-  /* Werkzeugleiste der Tabellen: die Anzahl rutscht in eine eigene Zeile,
-     der Knopf «Neues Gerät» bleibt rechts. */
   .werkzeug-bereich .anzahl { margin-left: 0; order: 99; flex-basis: 100%; }
-  .toolbar #knopf-neu { margin-left: auto; }
+  .toolbar #knopf-neu,
+  .toolbar #knopf-neu-telefon { margin-left: auto; }
 
-  /* Software: Karten dürfen schmaler werden als 300 px. */
   .sw-gitter { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
-  /* Filter- und Spaltenpanel: einspaltig, damit nichts überläuft. */
   .filtergitter,
   .spaltengruppe .liste { grid-template-columns: 1fr; }
 }
 
-/* Sehr schmal (unter 380 px): die Marke behält nur das Logo und den
-   Titel, die Kacheln werden noch etwas kompakter. */
 @media (max-width: 380px) {
-  .marke-text h1 { font-size: var(--t-s); }
+  .marke-text h1 { font-size: var(--t-m); }
   .kacheln { gap: var(--a2); }
-  .kachel-text { font-size: 11px; }
 }

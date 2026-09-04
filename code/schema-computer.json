@@ -36,6 +36,24 @@
         "description":  "Freitext"
     },
     {
+        "internal":  "Status",
+        "display":  "Status",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Aktiv, Lager oder Archiviert. Aktiv/Lager frei wählbar; Archiviert setzt der Sync, wenn das Gerät nicht mehr in SCCM ist (ein PC wird nie gelöscht). Leer gilt als Aktiv."
+    },
+    {
+        "internal":  "Verlauf",
+        "display":  "Verlauf",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; Pflege im Frontend als Timeline, der Sync ergänzt Einträge (Umbenennung, Archivierung)"
+    },
+    {
         "internal":  "Beschaffungsjahr",
         "display":  "Beschaffungsjahr",
         "type":  "Text",

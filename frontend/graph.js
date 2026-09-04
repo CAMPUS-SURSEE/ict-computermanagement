@@ -2,7 +2,7 @@
 
    Drei Teile:
      1. Hilfe   — Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
-     2. Daten   — Lesen und Schreiben der beiden SharePoint-Listen und der
+     2. Daten   — Lesen und Schreiben der drei SharePoint-Listen und der
                   Datei programme.json über Microsoft Graph.
      3. Mock    — Fantasie-Datensatz für den Modus ?mock=1.
 
@@ -12,12 +12,13 @@
    Öffentliche Schnittstelle (auch im Vorführmodus identisch):
      await Daten.computer(fortschritt)     → Array flacher Zeilen
      await Daten.benutzer(fortschritt)     → Array flacher Zeilen
+     await Daten.telefone(fortschritt)     → Array flacher Zeilen
      await Daten.programme()               → Objekt aus programme.json
      await Daten.zeile(liste, id)          → eine Zeile
      await Daten.speichern(liste, id, f)   → geänderte Zeile
      await Daten.anlegen(liste, felder)    → neue Zeile
      await Daten.loeschen(liste, id)       → true
-   «liste» ist immer "computer" oder "benutzer". «fortschritt» ist eine
+   «liste» ist "computer", "benutzer" oder "telefon". «fortschritt» ist eine
    Rückrufe-Funktion, die nach jeder geladenen Seite die bisherige Anzahl
    bekommt.
 
@@ -140,7 +141,7 @@ const Daten = (function () {
   const ABFRAGE = new URLSearchParams(location.search);
   const mockModus = ABFRAGE.get("mock") === "1";
 
-  const LISTEN_TITEL = { computer: "Computer", benutzer: "Benutzer" };
+  const LISTEN_TITEL = { computer: "Computer", benutzer: "Benutzer", telefon: "Telefonnummern" };
 
   function listenPfad(liste) {
     if (!KONFIG.listeBereit(liste)) {
@@ -239,6 +240,9 @@ const Daten = (function () {
 
   /** Alle Benutzer. */
   async function benutzer(fortschritt) { return alleZeilen("benutzer", fortschritt); }
+
+  /** Alle Telefonnummern. */
+  async function telefone(fortschritt) { return alleZeilen("telefon", fortschritt); }
 
   /* Verständliche Meldung, wenn programme.json nicht geladen werden kann. */
   function programmFehler(ursache) {
@@ -355,6 +359,7 @@ const Daten = (function () {
     mockModus: mockModus,
     computer: computer,
     benutzer: benutzer,
+    telefone: telefone,
     programme: programme,
     zeile: zeile,
     speichern: speichern,
@@ -556,12 +561,150 @@ const Mock = (function () {
   }
 
 
+  /* ---------- Telefonnummern ----------
+
+     Kurzwahlen 200 … 259 gehören den Benutzern 1 … 60 (siehe benutzerZeile),
+     dazu Dienste, Räume und HelpFons wie in der echten Liste. Ein paar
+     Nummern sind frei, ein paar inaktiv, und bei einigen weicht die
+     Person in der Liste vom AD ab — damit die Hinweise zu sehen sind. */
+
+  function kurzwahlVoll(kurz) {
+    const k = String(kurz).padStart(3, "0").slice(-3);
+    return "+41 41 926 2" + k.charAt(0) + " " + k.slice(1);
+  }
+
+  const DIENSTE = [
+    ["270", "Human Ressources", "Dienst"], ["279", "Technischer Dienst AA", "Dienst"],
+    ["301", "Securitas", "Dienst"], ["320", "Pikett UmgD", "Dienst"],
+    ["369", "Service-Desk ICT Campus AA", "Dienst"], ["370", "Informatik ICT-S", "Dienst"],
+    ["322", "Raum 17.3 Küche", "Raum"], ["325", "Lieferanteneingang", "Raum"],
+    ["374", "Raum 17.2 ICT", "Raum"], ["402", "HWS Portier1", "Raum"],
+    ["384", "HelpFon G32.230", "Notruf"], ["487", "HelpFon G20.4", "Notruf"],
+    ["488", "HelpFon G20.3", "Notruf"], ["527", "HelpFon G10.132", "Notruf"],
+    ["626", "Zentrale Campus Sursee AA", "Dienst"], ["828", "Zentrale Sportarena AA", "Dienst"]
+  ];
+  const INAKTIVE = [
+    ["300", "Sportteam", "nicht im Teams-Tenant (evtl. SIP-Apparat)"],
+    ["410", "Raum 20.320", "nicht im Teams-Tenant (evtl. SIP-Apparat)"],
+    ["504", "Schmid Martin", "nicht im Teams-Tenant (evtl. SIP-Apparat)"]
+  ];
+  const FREIE = [["222", "Egger Bernadette"], ["231", "Kreienbühl Rafaela"],
+                 ["267", "Itin Giulia"], ["318", "Auviso (Ersatz B+T)"], ["396", "Hecht Mathias"]];
+
+  function telefonZeile(r, nr, kurz, name, typ, status, benutzerLogin, hinweis, frueher) {
+    const z = leereZeile(SPALTEN_TELEFON);
+    z.id = String(nr);
+    z.Title = kurz;
+    z.Telefonnummer = kurzwahlVoll(kurz);
+    z.Name = name || "";
+    z.Typ = typ || "";
+    z.Status = status || "";
+    z.Benutzer = benutzerLogin || "";
+    z.ADLetzterSync = benutzerLogin ? vorTagen(0, 4) : "";
+    z.Apparat = typ === "Notruf" ? "HelpFon" : (typ === "Raum" ? "SIP-Apparat"
+      : (r() < 0.6 ? "Teams" : (r() < 0.5 ? "Tischtelefon" : "Headset")));
+    z.Standort = typ === "Raum" ? name : (r() < 0.3 ? waehle(r, GEBAEUDE) : "");
+    z.Hinweis = hinweis || "";
+    z.FruehererEintrag = frueher || "";
+    z.Verlauf = JSON.stringify([{
+      id: "mock-t-" + nr, datum: tagIso(35), quelle: "sync", erstellt: vorTagen(35, 9),
+      text: "Aus der Telefonliste S4B importiert (Stand 31.07.2026)"
+    }]);
+    return z;
+  }
+
+  function telefone(r, benutzer) {
+    const liste = [];
+    let nr = 1;
+    /* Personen: Kurzwahl = 200 + Benutzernummer, wie in benutzerZeile. */
+    for (const b of benutzer) {
+      if (!b.Telefon || b.Telefon.indexOf("+41 41 926 2") !== 0) continue;
+      const kurz = b.Telefon.replace(/\D/g, "").slice(-3);
+      /* Bei rund jedem zwölften stimmt der Name in der Liste nicht mehr mit
+         dem AD überein (Handwechsel), und der Sync ist noch nicht gelaufen. */
+      const veraltet = r() < 0.08;
+      const name = veraltet ? waehle(r, NACHNAMEN) + " " + waehle(r, VORNAMEN) : b.Anzeigename;
+      liste.push(telefonZeile(r, nr++, kurz, name, "Person", "Aktiv",
+        veraltet ? "" : b.Title, "", veraltet ? "" : ""));
+    }
+    for (const [kurz, name, typ] of DIENSTE) {
+      liste.push(telefonZeile(r, nr++, kurz, name, typ, "Aktiv", "", "", ""));
+    }
+    for (const [kurz, name, hinweis] of INAKTIVE) {
+      liste.push(telefonZeile(r, nr++, kurz, name, "", "Inaktiv", "", hinweis, ""));
+    }
+    for (const [kurz, frueher] of FREIE) {
+      liste.push(telefonZeile(r, nr++, kurz, "", "", "Frei", "", "frei - sofort vergebbar", frueher));
+    }
+    // Zwei Nummern ohne jede Angabe: weder Name noch Benutzer — nicht zugewiesen.
+    liste.push(telefonZeile(r, nr++, "398", "", "Person", "", "", "", ""));
+    liste.push(telefonZeile(r, nr++, "399", "", "", "", "", "Apparat im Lager", ""));
+    return liste;
+  }
+
   /* ---------- Grunddaten ---------- */
 
   function leereZeile(spalten) {
     const z = {};
     for (const s of spalten) z[s.i] = s.t === "Boolean" ? false : "";
     return z;
+  }
+
+  /* ---------- Verlauf ----------
+
+     Die Spalte «Verlauf» der beiden Listen enthält ein JSON-Array; das
+     Format steht in modell.js. Hier entstehen ein paar glaubwürdige
+     Einträge, damit sich die Zeitachse im Vorführmodus anschauen lässt —
+     gemischt aus «sync» (vom Abgleich) und «manuell» (von Hand). */
+
+  const VERLAUF_SYNC = [
+    "Umbenannt von CAMPUS-812 zu CAMPUS-905 (SCCM)",
+    "In SCCM nicht mehr vorhanden, archiviert",
+    "Neu in SCCM gefunden und mit der Liste verbunden",
+    "Modell laut SCCM gewechselt: Latitude 5540 statt OptiPlex 7010"
+  ];
+  const VERLAUF_MANUELL = [
+    "Gerät an neue Mitarbeiterin übergeben.",
+    "Akku ersetzt, Garantiefall über Dell abgewickelt.",
+    "Von Haus A ins Sportzentrum umgezogen.",
+    "Nach Wasserschaden neu aufgesetzt.\nDaten aus der Sicherung "
+      + "zurückgespielt, alles vollständig.",
+    "Ins Lager gestellt, wartet auf Wiederverwendung."
+  ];
+
+  /* Ein Datum vor n Tagen als «JJJJ-MM-TT». */
+  function tagIso(tage) {
+    const d = new Date();
+    d.setDate(d.getDate() - tage);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")
+      + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function mockVerlauf(r, immer) {
+    if (!immer && r() > 0.45) return "";
+    const anzahl = 1 + Math.floor(r() * 3);
+    const eintraege = [];
+    for (let i = 0; i < anzahl; i++) {
+      const sync = r() < 0.4;
+      const tage = 10 + Math.floor(r() * 700);
+      eintraege.push({
+        id: "mock-" + Math.floor(r() * 1e9).toString(16) + "-" + i,
+        datum: tagIso(tage),
+        text: sync ? waehle(r, VERLAUF_SYNC) : waehle(r, VERLAUF_MANUELL),
+        quelle: sync ? "sync" : "manuell",
+        erstellt: vorTagen(tage, 9)
+      });
+    }
+    if (immer) {
+      eintraege.push({
+        id: "mock-archiv-" + Math.floor(r() * 1e9).toString(16),
+        datum: tagIso(5 + Math.floor(r() * 60)),
+        text: "In SCCM nicht mehr vorhanden, archiviert",
+        quelle: "sync",
+        erstellt: vorTagen(5, 3)
+      });
+    }
+    return JSON.stringify(eintraege);
   }
 
   function geraet(r, nummer) {
@@ -573,6 +716,19 @@ const Mock = (function () {
     z.Seriennummer = "SN" + String(100000 + Math.floor(r() * 899999));
     z.GebaeudeStock = waehle(r, GEBAEUDE);
     z.Bemerkung = r() < 0.15 ? "Ersatzgerät, Rückgabe offen" : "";
+
+    /* Status: die grosse Mehrheit ist im Einsatz, ein paar liegen im Lager,
+       ein paar sind archiviert. Bewusst bleibt ein Teil der Zeilen leer —
+       so wird geprüft, dass ein leerer Wert als «Aktiv» durchgeht. */
+    const wStatus = r();
+    if (wStatus < 0.08) z.Status = "Archiviert";
+    else if (wStatus < 0.16) z.Status = "Lager";
+    else if (wStatus < 0.6) z.Status = "Aktiv";
+    else z.Status = "";
+
+    /* Verlauf: manche Geräte haben Einträge, gemischt aus Abgleich und
+       Handarbeit — sonst liesse sich die Zeitachse nie anschauen. */
+    z.Verlauf = mockVerlauf(r, z.Status === "Archiviert");
 
     // Rund jedes achte Gerät hat kein Beschaffungsjahr: alter Bestand.
     if (r() > 0.12) {
@@ -711,7 +867,14 @@ const Mock = (function () {
     z.Abteilung = waehle(r, ABTEILUNGEN);
     z.Funktion = waehle(r, FUNKTIONEN);
     z.Vorgesetzter = waehle(r, VORNAMEN) + " " + waehle(r, NACHNAMEN);
-    z.Telefon = "+41 41 926 " + (20 + Math.floor(r() * 79)) + " " + (10 + Math.floor(r() * 89));
+    /* Telefon: die meisten haben eine Kurzwahl aus dem Hausblock (Mock-
+       Telefonliste weiter unten), ein paar gar keine, ein paar eine
+       Mobilnummer — so lassen sich alle Fälle der Telefonansicht anschauen. */
+    const wTel = r();
+    if (wTel < 0.1) z.Telefon = "";
+    else if (wTel < 0.18) z.Telefon = "+41 79 " + (300 + Math.floor(r() * 600)) + " "
+      + (10 + Math.floor(r() * 89)) + " " + (10 + Math.floor(r() * 89));
+    else z.Telefon = kurzwahlVoll(200 + nummer);
     z.Firma = waehle(r, FIRMEN);
     z.ADAktiviert = r() < 0.92 ? "Ja" : "Nein";
     z.ADLetzterSync = vorTagen(0, 4);
@@ -719,6 +882,17 @@ const Mock = (function () {
     /* SCCMPrimaerGeraet setzt benutzerkontenAbgleichen(): meist gleich der
        Zuordnung, bei rund jedem zehnten Benutzer abweichend. */
     z.Bemerkung = r() < 0.1 ? "Zweitgerät im Homeoffice" : "";
+    z.Verlauf = r() < 0.3
+      ? JSON.stringify([{
+          id: "mock-b-" + nummer,
+          datum: tagIso(20 + Math.floor(r() * 500)),
+          text: r() < 0.5
+            ? "Gerätewechsel: altes Notebook zurückgegeben."
+            : "Abteilungswechsel, Berechtigungen angepasst.",
+          quelle: "manuell",
+          erstellt: vorTagen(20, 10)
+        }])
+      : "";
 
     // Berechtigungen: Stufe 2 nur dort, wo es auch AD-Gruppen gibt.
     for (const id of ids) {
@@ -843,7 +1017,10 @@ const Mock = (function () {
     // Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten.
     benutzerkontenAbgleichen(r, computer, benutzer);
 
-    zwischenspeicher = { computer: computer, benutzer: benutzer };
+    // Die Telefonliste hängt an den Benutzern (Kurzwahl = 200 + Nummer).
+    const telefon = telefone(r, benutzer);
+
+    zwischenspeicher = { computer: computer, benutzer: benutzer, telefon: telefon };
     return zwischenspeicher;
   }
 
@@ -855,20 +1032,31 @@ const Mock = (function () {
      localStorage, getrennt nach Liste:
 
        { computer: { geaendert:{}, neu:[], geloescht:[] },
-         benutzer: { … } }
+         benutzer: { … }, telefon: { … } }
 
      Mock.zuruecksetzen() räumt alles wieder weg. */
 
   const SCHLUESSEL = "computerinventar.mock.aenderungen.v2";
+  const LISTEN = ["computer", "benutzer", "telefon"];
+
+  /* Listenname auf die drei bekannten bringen; Unbekanntes gilt als Computer. */
+  function listenName(liste) {
+    return LISTEN.indexOf(liste) > -1 ? liste : "computer";
+  }
+
+  function spaltenVon(liste) {
+    if (liste === "benutzer") return SPALTEN_BENUTZER;
+    if (liste === "telefon") return SPALTEN_TELEFON;
+    return SPALTEN_COMPUTER;
+  }
 
   // Ersatzspeicher, falls localStorage nicht zur Verfügung steht.
   let ersatz = null;
 
   function leeresOverlay() {
-    return {
-      computer: { geaendert: {}, neu: [], geloescht: [] },
-      benutzer: { geaendert: {}, neu: [], geloescht: [] }
-    };
+    const o = {};
+    for (const l of LISTEN) o[l] = { geaendert: {}, neu: [], geloescht: [] };
+    return o;
   }
 
   function teilLesen(o, liste) {
@@ -882,7 +1070,9 @@ const Mock = (function () {
       const roh = window.localStorage.getItem(SCHLUESSEL);
       if (!roh) return leeresOverlay();
       const o = JSON.parse(roh);
-      return { computer: teilLesen(o, "computer"), benutzer: teilLesen(o, "benutzer") };
+      const ergebnis = {};
+      for (const l of LISTEN) ergebnis[l] = teilLesen(o, l);
+      return ergebnis;
     } catch (e) {
       return leeresOverlay();
     }
@@ -900,7 +1090,7 @@ const Mock = (function () {
   /* Alle Zeilen einer Liste mit angewandtem Overlay. */
   function zeilen(liste) {
     fehlerPruefen();
-    const l = liste === "benutzer" ? "benutzer" : "computer";
+    const l = listenName(liste);
     const o = overlayLesen()[l];
     const alle = grunddaten()[l]
       .filter(z => o.geloescht.indexOf(String(z.id)) === -1)
@@ -928,7 +1118,7 @@ const Mock = (function () {
   }
 
   function speichern(liste, id, felder) {
-    const l = liste === "benutzer" ? "benutzer" : "computer";
+    const l = listenName(liste);
     const o = overlayLesen();
     const s = String(id);
     o[l].geaendert[s] = Object.assign({}, o[l].geaendert[s] || {}, felder);
@@ -937,12 +1127,12 @@ const Mock = (function () {
   }
 
   function anlegen(liste, felder) {
-    const l = liste === "benutzer" ? "benutzer" : "computer";
+    const l = listenName(liste);
     const o = overlayLesen();
     let hoechste = 1000;
     for (const z of grunddaten()[l]) hoechste = Math.max(hoechste, Number(z.id) || 0);
     for (const z of o[l].neu) hoechste = Math.max(hoechste, Number(z.id) || 0);
-    const vorlage = leereZeile(l === "benutzer" ? SPALTEN_BENUTZER : SPALTEN_COMPUTER);
+    const vorlage = leereZeile(spaltenVon(l));
     if (l === "benutzer") for (const id of programmIds()) vorlage[id] = "0";
     const z = Object.assign(vorlage, felder);
     z.id = String(hoechste + 1);
@@ -952,7 +1142,7 @@ const Mock = (function () {
   }
 
   function loeschen(liste, id) {
-    const l = liste === "benutzer" ? "benutzer" : "computer";
+    const l = listenName(liste);
     const o = overlayLesen();
     const s = String(id);
     if (o[l].geloescht.indexOf(s) === -1) o[l].geloescht.push(s);
@@ -970,7 +1160,7 @@ const Mock = (function () {
   function anzahlAenderungen() {
     const o = overlayLesen();
     let n = 0;
-    for (const l of ["computer", "benutzer"]) {
+    for (const l of LISTEN) {
       n += Object.keys(o[l].geaendert).length + o[l].neu.length + o[l].geloescht.length;
     }
     return n;
@@ -980,6 +1170,7 @@ const Mock = (function () {
     zeilen: zeilen,
     computer: function () { return zeilen("computer"); },
     benutzer: function () { return zeilen("benutzer"); },
+    telefone: function () { return zeilen("telefon"); },
     programme: programme,
     zeile: zeile,
     speichern: speichern,

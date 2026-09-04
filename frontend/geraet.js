@@ -53,17 +53,23 @@ for (const s of SPALTEN) SPALTE[s.i] = s;
 const GRUPPEN = [];
 for (const s of SPALTEN) if (GRUPPEN.indexOf(s.g) === -1) GRUPPEN.push(s.g);
 
-/* Die Stammdaten dieses Fensters, in der Reihenfolge der Anzeige. */
+/* Die Stammdaten dieses Fensters, in der Reihenfolge der Anzeige.
+   «Status» steht nicht in dieser Liste: er bekommt ein Auswahlfeld statt
+   eines Textfelds und wird darum eigens gezeichnet (statusZeile). */
 const STAMM_SPALTEN = ["Title", "Seriennummer", "GebaeudeStock"].map(i => SPALTE[i]);
 const BEMERKUNG = SPALTE["Bemerkung"];
+const STATUS = SPALTE["Status"];
+const VERLAUF = SPALTE["Verlauf"];
 
 /* Spalten, die dieses Fenster schreiben darf. */
 function istBearbeitbar(spalte) {
   return !!spalte && spalte.q === "manuell";
 }
 
-/* Beim Duplizieren nicht übernehmen: alles, was ein Gerät eindeutig macht. */
-const NICHT_DUPLIZIEREN = ["Title", "Seriennummer"];
+/* Beim Duplizieren nicht übernehmen: alles, was ein Gerät eindeutig macht,
+   dazu Status und Verlauf — die Geschichte des einen Geräts ist nicht die
+   des anderen, und ein neues Gerät startet immer als «Aktiv». */
+const NICHT_DUPLIZIEREN = ["Title", "Seriennummer", "Status", "Verlauf"];
 
 
 /* ==================================================================
@@ -416,7 +422,7 @@ function eingabeFuer(spalte, optionen) {
     setzeWert(spalte.i, feld.value);
     const z = feld.closest ? feld.closest(".datenzeile") : null;
     if (z) z.classList.toggle("geaendert", istGeaendert(spalte.i));
-    if (spalte.i === "Title") titelZeichnen();
+    if (spalte.i === "Title") { titelZeichnen(); namensWarnungFuellen(); }
   });
   if (o.beiAenderung) feld.addEventListener("change", o.beiAenderung);
   return feld;
@@ -436,6 +442,9 @@ function formularZeile(spalte, optionen) {
   if (o.hinweis) huelle.appendChild(el("div", "datenzeile-hinweis", o.hinweis));
   if (o.zusatz) huelle.appendChild(o.zusatz);
   const z = feldZeileKnoten(o.name || spalte.d, huelle, false);
+  /* Bearbeitbare Felder stehen gestapelt: Beschriftung oben, Feld darunter
+     in voller Breite (design.css .datenzeile-form). */
+  z.classList.add("datenzeile-form");
   z.classList.toggle("geaendert", istGeaendert(spalte.i));
   return z;
 }
@@ -510,12 +519,40 @@ function ersatzStatus() {
   return Modell.ersatzStatus(textWert("ErsatzGeplant"), textWert("Beschaffungsjahr"));
 }
 
-/* Die zugeordneten Benutzer dieses Geräts (aus der Liste «Benutzer»). */
+/* Der Betriebsstatus, ebenfalls aus dem angezeigten Wert: leer gilt als
+   «Aktiv». */
+function geraeteStatus() {
+  return Modell.status(wert("Status"));
+}
+
+/* Andere Geräte mit demselben PC-Namen. PC-Namen sind kein Schlüssel: ein
+   ersetztes Gerät bleibt archiviert liegen und heisst weiterhin gleich.
+   Genau deshalb wird dieses Fenster über die Listen-ID geöffnet. */
+function namensZwillinge() {
+  const name = textWert("Title").trim();
+  if (!name || !zeile) return [];
+  const k = Modell.schluessel(name);
+  return alleGeraete.filter(z =>
+    Modell.schluessel(z.Title) === k && String(z.id) !== String(zeile.id));
+}
+
+/* Die zugeordneten Benutzer dieses Geräts (aus der Liste «Benutzer»).
+
+   Die Zuordnung steht dort als Freitext im Feld «Computer» und kann darum
+   nur über den Namen aufgelöst werden. Heissen mehrere Geräte gleich, so
+   zeigt Modell.anreichern die Person dem nicht archivierten Gerät zu; hier
+   wird dieselbe Entscheidung nachvollzogen, damit beide Seiten dasselbe
+   sagen. */
 function zugeordneteBenutzer() {
   if (!zeile) return [];
   const name = String(zeile.Title || "").trim();
   if (!name) return [];
-  return alleBenutzer.filter(b => Modell.schluessel(b.Computer) === Modell.schluessel(name));
+  const k = Modell.schluessel(name);
+  const passend = alleBenutzer.filter(b => Modell.schluessel(b.Computer) === k);
+  if (!namensZwillinge().length) return passend;
+  /* Mehrdeutig: nur die Personen zeigen, die Modell.anreichern wirklich
+     diesem Gerät zugewiesen hat. */
+  return passend.filter(b => b.__computer && String(b.__computer.id) === String(zeile.id));
 }
 
 /* Die Hinweise. Schlichte Liste, Wichtigkeit nur über die Farbe:
@@ -526,6 +563,30 @@ function hinweise() {
   const gefahr  = (t, e) => b.push({ stufe: "gefahr", titel: t, text: e });
   const warnung = (t, e) => b.push({ stufe: "warnung", titel: t, text: e });
   const info    = (t, e) => b.push({ stufe: "info", titel: t, text: e });
+
+  /* --- Status und Namensdubletten --- */
+  const betrieb = geraeteStatus();
+  if (betrieb === "Archiviert") {
+    info("Gerät ist archiviert", "Es steht nicht mehr im Einsatz und ist in der "
+      + "Geräteliste standardmässig ausgeblendet. Über den Filter «Archivierte "
+      + "anzeigen» wird es wieder sichtbar.");
+  } else if (betrieb === "Lager") {
+    info("Gerät liegt im Lager", "Es ist einsatzbereit, aber niemandem zugeteilt.");
+  }
+
+  const zwillinge = namensZwillinge();
+  if (zwillinge.length) {
+    const aktive = zwillinge.filter(z => !z.__archiviert).length;
+    warnung(zwillinge.length === 1
+      ? "Noch ein Gerät heisst gleich"
+      : zwillinge.length + " weitere Geräte heissen gleich",
+      "In der Liste steht der PC-Name «" + textWert("Title").trim() + "» "
+      + (zwillinge.length + 1) + " Mal"
+      + (aktive ? "" : ", die übrigen sind archiviert")
+      + ". Die Benutzerzuordnung läuft über den Namen und ist damit "
+      + "mehrdeutig; das nicht archivierte Gerät bekommt den Vorzug. "
+      + "Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren.");
+  }
 
   /* --- Beschaffung und Ersatz --- */
   const beschaffung = textWert("Beschaffungsjahr").trim();
@@ -899,6 +960,7 @@ function bereichBeschaffung(ziel) {
   ersatzHuelle.appendChild(knoepfe);
 
   const zErsatz = feldZeileKnoten("Ersatz geplant", ersatzHuelle, false);
+  zErsatz.classList.add("datenzeile-form");
   zErsatz.classList.toggle("geaendert", istGeaendert("ErsatzGeplant"));
   felder.appendChild(zErsatz);
   k.inhalt.appendChild(felder);
@@ -911,7 +973,7 @@ function bereichBeschaffung(ziel) {
   };
   const ton = status === "ueberfaellig" ? "t-gefahr"
     : (status === "bald" ? "t-warnung" : (status === "ok" ? "t-erfolg" : "t-leise"));
-  const statusZeile = el("p", "datenzeile-hinweis " + ton, statusText[status]);
+  const statusZeile = el("p", "hinweis " + ton, statusText[status]);
   k.inhalt.appendChild(statusZeile);
   gitter.appendChild(k);
 
@@ -954,6 +1016,24 @@ function bereichBenutzer(ziel) {
     "Alle Benutzer, deren Feld «Computer» auf «" + textWert("Title")
     + "» zeigt. Die Zuordnung wird in der Liste «Benutzer» gespeichert.");
 
+  /* Die Zuordnung ist ein Freitext-Name, keine Verknüpfung auf die
+     Listen-ID. Gibt es den Namen mehrfach, kann sie nicht eindeutig
+     aufgelöst werden — das gehört sichtbar gesagt. */
+  const zwillinge = namensZwillinge();
+  if (zwillinge.length) {
+    const z = el("div", "g-hinweis t-warnung");
+    z.appendChild(symbol(SYMBOL_ACHTUNG, 16));
+    const rechts = el("div");
+    rechts.appendChild(el("div", "g-hinweis-titel", "Zuordnung ist mehrdeutig"));
+    rechts.appendChild(el("div", "g-hinweis-text",
+      "Der PC-Name kommt in der Geräteliste " + (zwillinge.length + 1)
+      + " Mal vor. Weil die Benutzerliste nur den Namen speichert, zeigt die "
+      + "Zuordnung auf das nicht archivierte Gerät. Gezeigt werden hier nur "
+      + "die Personen, die diesem Gerät zugerechnet werden."));
+    z.appendChild(rechts);
+    k.inhalt.appendChild(z);
+  }
+
   if (!personen.length) {
     k.inhalt.appendChild(leerHinweis("Diesem Gerät ist zurzeit kein Benutzer zugeordnet."));
   } else {
@@ -978,7 +1058,7 @@ function bereichBenutzer(ziel) {
       z.appendChild(links);
 
       const knoepfe = el("div", "g-person-knoepfe");
-      knoepfe.appendChild(knopf("Benutzerfenster", null, function () {
+      knoepfe.appendChild(knopf("Benutzerfenster", "knopf-leise", function () {
         benutzerFensterOeffnen(b.id);
       }));
       knoepfe.appendChild(knopf("Zuordnung lösen", "knopf-leise", function () {
@@ -989,7 +1069,7 @@ function bereichBenutzer(ziel) {
     }
   }
 
-  const aktionen = el("div", "datenzeile-zeile");
+  const aktionen = el("div", "karte-aktionen");
   aktionen.appendChild(knopf("Benutzer zuordnen", "knopf-primaer", zuordnenDialog));
   k.inhalt.appendChild(aktionen);
   gitter.appendChild(k);
@@ -1038,6 +1118,86 @@ function bereichBenutzer(ziel) {
 
 /* ---------- Stammdaten ---------- */
 
+/* Das Auswahlfeld «Status». Ein leerer Wert wird als «Aktiv» angezeigt;
+   geschrieben wird erst, wenn jemand tatsächlich etwas wählt — dann aber
+   immer einer der drei erlaubten Werte, nie eine leere Zeichenkette. */
+function statusZeile() {
+  const wahl = el("select", "g-eingabe g-eingabe-schmal");
+  wahl.id = "g-eingabe-Status";
+  wahl.setAttribute("aria-label", STATUS.d);
+  /* Nur der Wert steht im Auswahlfeld — die Erklärung darunter im Hinweis.
+     Ein langer Optionstext wird im schmalen Feld ohnehin abgeschnitten. */
+  for (const s of Modell.STATUS_WERTE) {
+    const o = el("option", null, s);
+    o.value = s;
+    wahl.appendChild(o);
+  }
+  wahl.value = geraeteStatus();
+
+  const huelle = el("div");
+  huelle.appendChild(wahl);
+  const hinweisText = el("div", "datenzeile-hinweis");
+  huelle.appendChild(hinweisText);
+
+  const hinweisSetzen = function () {
+    const s = Modell.status(wahl.value);
+    hinweisText.className = "datenzeile-hinweis "
+      + (Modell.statusKlasse(s) || "t-leise");
+    hinweisText.textContent = s === "Archiviert"
+      ? "Ausser Betrieb. Archivierte Geräte sind in der Geräteliste und in "
+        + "den Kennzahlen der Übersicht standardmässig ausgeblendet. Achtung: "
+        + "Solange das Gerät noch in SCCM steht, setzt der nächste Abgleich es "
+        + "wieder auf «Aktiv» — für eingelagerte Geräte «Lager» wählen."
+      : (s === "Lager"
+          ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Geräteliste."
+          : "Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv».");
+  };
+  hinweisSetzen();
+
+  wahl.addEventListener("change", function () {
+    setzeWert("Status", wahl.value);
+    hinweisSetzen();
+    // Der Statuschip im Kopf hängt daran.
+    kopfZeichnen();
+    const z = wahl.closest ? wahl.closest(".datenzeile") : null;
+    if (z) z.classList.toggle("geaendert", istGeaendert("Status"));
+  });
+
+  const zeileStatus = feldZeileKnoten(STATUS.d, huelle, false);
+  zeileStatus.classList.add("datenzeile-form");
+  zeileStatus.classList.toggle("geaendert", istGeaendert("Status"));
+  return zeileStatus;
+}
+
+/* Warnt, wenn schon ein anderes Gerät genauso heisst. Bewusst nur ein
+   Hinweis: gleiche Namen sind erlaubt (etwa ein archiviertes Altgerät),
+   und ein blockierender Zwang hätte hier nur das Erfassen verhindert.
+
+   Der Knoten steht immer da und ist leer, solange es nichts zu melden
+   gibt; so lässt er sich beim Tippen im Namensfeld nachführen, ohne dass
+   die ganze Karte neu gezeichnet werden müsste. */
+function namensWarnung() {
+  const w = el("div", "datenzeile-hinweis t-warnung");
+  w.id = "g-namenswarnung";
+  namensWarnungFuellen(w);
+  return w;
+}
+
+function namensWarnungFuellen(knoten) {
+  const w = knoten || $("g-namenswarnung");
+  if (!w) return;
+  const zwillinge = namensZwillinge();
+  if (!zwillinge.length) { w.textContent = ""; w.hidden = true; return; }
+  const teile = zwillinge.map(z => (z.__archiviert ? "archiviert" : Modell.status(z.Status))
+    + ", Listen-ID " + z.id);
+  w.hidden = false;
+  w.textContent =
+    (zwillinge.length === 1 ? "Ein weiteres Gerät heisst bereits so ("
+                            : zwillinge.length + " weitere Geräte heissen bereits so (")
+    + teile.join("; ") + "). Erlaubt, aber die Benutzerzuordnung läuft über "
+    + "den Namen und wird damit mehrdeutig.";
+}
+
 function bereichStammdaten(ziel) {
   const gitter = kartenGitter();
 
@@ -1047,9 +1207,11 @@ function bereichStammdaten(ziel) {
   for (const s of STAMM_SPALTEN) {
     felder.appendChild(formularZeile(s, s.i === "Title" ? {
       hinweis: "Schlüssel für den SCCM-Abgleich und für die Zuordnung der "
-        + "Benutzer. Muss genau dem Gerätenamen in SCCM entsprechen."
+        + "Benutzer. Muss genau dem Gerätenamen in SCCM entsprechen.",
+      zusatz: namensWarnung()
     } : null));
   }
+  felder.appendChild(statusZeile());
   k.inhalt.appendChild(felder);
   gitter.appendChild(k);
 
@@ -1059,6 +1221,20 @@ function bereichStammdaten(ziel) {
   huelle.appendChild(feld);
   kBemerkung.inhalt.appendChild(huelle);
   gitter.appendChild(kBemerkung);
+
+  /* Verlauf. Er wird über denselben Entwurf gespeichert wie alle anderen
+     Felder: verlauf.js meldet die fertige Zeichenkette, setzeWert legt sie
+     in den Entwurf, der Speichern-Knopf schreibt sie nach SharePoint. */
+  const kVerlauf = karte("Verlauf",
+    "Was mit diesem Gerät passiert ist — Handwechsel, Reparatur, Umzug. "
+    + "Der Abgleich hängt eigene Einträge an; sie lassen sich hier ebenso "
+    + "ändern oder löschen.", true);
+  Verlauf.zeichnen(kVerlauf.inhalt, {
+    schluessel: "geraet",
+    wert: wert("Verlauf"),
+    beiAenderung: function (json) { setzeWert("Verlauf", json); }
+  });
+  gitter.appendChild(kVerlauf);
 
   if (!neuModus) {
     const kHerkunft = karte("Herkunft der Daten",
@@ -1644,6 +1820,13 @@ function kopfZeichnen() {
 
   const status = leeren($("g-status"));
   if (!neuModus && zeile) {
+    /* Der Betriebsstatus steht zuvorderst: er entscheidet, ob die übrigen
+       Angaben überhaupt noch etwas über den Alltag sagen. «Aktiv» bekommt
+       keinen Chip — der Normalfall braucht keine Auszeichnung. */
+    const betrieb = geraeteStatus();
+    if (betrieb === "Archiviert") status.appendChild(chip("Archiviert", "leise"));
+    else if (betrieb === "Lager") status.appendChild(chip("Lager", "info"));
+
     const inSccm = Hilfe.istJa(zeile.SCCM_Found);
     status.appendChild(chip(Hilfe.istJa(zeile.SCCM_Online) ? "Online" : "Offline",
       Hilfe.istJa(zeile.SCCM_Online) ? "erfolg" : null));
@@ -1693,6 +1876,9 @@ function logoZeichnen() {
   const verweis = $("g-logo");
   if (!verweis) return;
   verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
+  // Der Pfad über dem Titel führt in die Geräteliste.
+  const pfad = $("g-pfad");
+  if (pfad) pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#geraete";
 }
 
 function adresseFuer(id) {
@@ -1810,6 +1996,9 @@ function leereZeile() {
 function abgeleiteteFelder(z) {
   z.__benutzer = [];
   z.__benutzerNamen = "";
+  z.__status = Modell.status(z.Status);
+  z.__archiviert = z.__status === "Archiviert";
+  z.__namensDublette = false;
   z.__inSccm = false;
   z.__online = false;
   z.__ersatzJahr = String(z.ErsatzGeplant || "").trim()
@@ -1906,6 +2095,13 @@ function pruefen() {
         + "der Form «2023/2024» sein (zwei aufeinanderfolgende Jahre)." };
     }
   }
+
+  const status = textWert("Status").trim();
+  if (status && Modell.STATUS_WERTE.indexOf(status) === -1) {
+    return { feld: "Status", text: "«Status» muss «"
+      + Modell.STATUS_WERTE.join("», «") + "» oder leer sein." };
+  }
+
   return null;
 }
 
@@ -1933,6 +2129,16 @@ async function speichern() {
     if (feld) { feld.classList.add("g-ungueltig"); feld.focus(); }
     return;
   }
+
+  /* Gleichlautende PC-Namen sind erlaubt — ein ersetztes Gerät bleibt
+     archiviert liegen und heisst weiter gleich. Deshalb wird hier nur
+     gewarnt und nie blockiert; der Hinweis hängt sich an die
+     Erfolgsmeldung, damit nicht zwei Meldungen um denselben Platz streiten. */
+  const dubletten = namensZwillinge().length;
+  const dublettenHinweis = dubletten
+    ? " Achtung: «" + textWert("Title").trim() + "» steht jetzt "
+      + (dubletten + 1) + " Mal in der Liste."
+    : "";
 
   const felder = {};
   if (neuModus) {
@@ -1963,7 +2169,7 @@ async function speichern() {
       zeileWaehlen();
       zeigeInhalt();
       zeichnenAlles();
-      toast("Gerät angelegt.");
+      toast("Gerät angelegt." + dublettenHinweis);
       return;
     }
 
@@ -1976,7 +2182,8 @@ async function speichern() {
     zeileWaehlen();
     zeigeInhalt();
     zeichnenAlles();
-    toast(anzahl === 1 ? "Änderung gespeichert." : anzahl + " Änderungen gespeichert.");
+    toast((anzahl === 1 ? "Änderung gespeichert."
+                        : anzahl + " Änderungen gespeichert.") + dublettenHinweis);
 
   } catch (e) {
     speichertGerade = false;

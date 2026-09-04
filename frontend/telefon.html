@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telefonnummer — Computer Inventar</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<!-- design.css liefert Tokens und Komponenten, telefon.css nur das
+     Seitenlayout dieses Fensters. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="telefon.css">
+<!-- verlauf.css gehört zur Verlaufs-Zeitachse (verlauf.js). -->
+<link rel="stylesheet" href="verlauf.css">
+</head>
+<body class="seite fenster tf-seite">
+
+<!-- App-Leiste: Logo und Produktname links, Aktionen rechts. -->
+<header class="kopf">
+  <div class="kopf-marke">
+    <!-- Das Logo führt zurück zur Übersicht. Im Vorführmodus hängt
+         telefon.js den Parameter ?mock=1 an die Adresse. -->
+    <a class="logo-link" id="tf-logo" href="index.html" aria-label="Zur Übersicht">
+      <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+    </a>
+    <div class="marke-text">
+      <h1>Computer Inventar</h1>
+    </div>
+  </div>
+  <div class="kopf-rechts" id="tf-aktionen"></div>
+</header>
+
+<!-- Band für den Vorführmodus (?mock=1). -->
+<div class="band band-warnung" id="tf-band" hidden></div>
+
+<div class="fenster-rumpf">
+
+  <nav class="fenster-nav" id="tf-nav" hidden aria-label="Bereiche"></nav>
+
+  <main class="fenster-inhalt">
+
+    <!-- Titelzeile: Kurzwahl, Name und Statuschips. -->
+    <div class="seitenkopf">
+      <a class="seitenkopf-pfad" id="tf-pfad" href="index.html#telefone">Telefonnummern</a>
+      <h1 id="tf-titel">Telefonnummer wird geladen …</h1>
+      <p class="seitenkopf-unter" id="tf-unter"></p>
+      <div class="chips" id="tf-status"></div>
+    </div>
+
+    <div class="lade" id="tf-laden">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="lade-text" id="tf-laden-text">Anmeldung wird geprüft …</p>
+      <p class="lade-fortschritt" id="tf-laden-fortschritt"></p>
+    </div>
+
+    <div class="fehler" id="tf-fehler" hidden>
+      <h2 class="fehler-titel" id="tf-fehler-titel">Es ist ein Fehler aufgetreten</h2>
+      <p class="fehler-text" id="tf-fehler-text"></p>
+      <p class="fehler-hinweis" id="tf-fehler-hinweis"></p>
+      <button type="button" class="knopf knopf-primaer" id="tf-knopf-nochmal">Erneut laden</button>
+    </div>
+
+    <div class="fenster-bahn" id="tf-bereich" hidden></div>
+
+  </main>
+</div>
+
+<div class="speicherleiste" id="tf-speicherleiste" hidden>
+  <span class="speicher-text" id="tf-speicher-text"></span>
+  <span class="speicher-fehler t-gefahr" id="tf-speicher-fehler" hidden></span>
+  <button type="button" class="knopf knopf-leise" id="tf-knopf-verwerfen">Verwerfen</button>
+  <button type="button" class="knopf knopf-primaer" id="tf-knopf-speichern">Speichern</button>
+</div>
+
+<div class="toast" id="tf-toast" hidden role="status" aria-live="polite"></div>
+
+<div class="dialog-hintergrund" id="tf-dialog-hintergrund" hidden></div>
+<div class="dialog" id="tf-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="tf-dialog-titel">
+  <h2 id="tf-dialog-titel"></h2>
+  <div id="tf-dialog-inhalt"></div>
+  <div class="dialog-knoepfe" id="tf-dialog-knoepfe"></div>
+</div>
+
+<div id="tf-datenlisten" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
+        integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="konfig.js"></script>
+<script src="spalten.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="modell.js"></script>
+<script src="verlauf.js"></script>
+<script src="telefon.js"></script>
+
+</body>
+</html>

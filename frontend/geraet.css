@@ -1,139 +1,104 @@
 /* geraet.css — Seitenlayout des Gerätefensters.
 
-   Das gesamte Gerüst kommt aus design.css: Kopf (.kopf, .logo-link), Rumpf
-   mit Seitennavigation (.fenster-rumpf, .fenster-nav, .fenster-nav-menue,
-   .fenster-inhalt), Kartenraster (.karten, .karte-breit), Datenzeilen
-   (.datenzeilen, .datenzeile), kurze Tabellen (.tabelle-schlicht),
-   Zustände (.lade, .fehler, .leerzustand), Speicherleiste, Toast und
-   Dialog. Hier steht nur noch, was es genau in diesem Fenster gibt —
-   Hinweise, Lebenszyklus-Zeile, Benutzerliste, Rohdaten, Zeitachse und
-   Flottenvergleich.
+   Das gesamte Gerüst kommt aus design.css: App-Leiste (.kopf), Titelzeile
+   (.seitenkopf), Rumpf mit Seitennavigation (.fenster-rumpf, .fenster-nav,
+   .fenster-inhalt), Kartenraster, Datenzeilen, Tabellen, Zustände,
+   Speicherleiste, Toast und Dialog. Hier steht nur, was es genau in
+   diesem Fenster gibt. Alle eigenen Klassen beginnen mit «g-».
 
-   Alle eigenen Klassen beginnen mit «g-», damit sie sich nie mit den
-   Klassen des Design-Systems oder der Hauptseite beissen.
-
-   ------------------------------------------------------------------
-   SCROLLEN (Spezifikation 3.3)
-
-   body trägt .seite aus design.css: Flex-Spalte, min-height 100dvh, KEIN
-   overflow:hidden. Damit rollt die Seite senkrecht von selbst.
-
-   Waagrecht rollt die SEITE nie — auch nicht bei 375 px. Was zu breit
-   wird, rollt in seinem eigenen Behälter: Tabellen in
-   .tabelle-schlicht-rahmen, die Reiterleiste auf dem Handy in
-   .fenster-nav. Die Raster (.karten, .kacheln) fallen über
-   «minmax(min(…, 100%), 1fr)» von selbst auf eine Spalte zurück.
-   Früher stand hier eine min-width von 880 px auf dem body; sie hat auf
-   dem Handy einen Rollbalken über die ganze Seite erzwungen und ist
-   deshalb weg.
-   ------------------------------------------------------------------ */
+   Die Seite rollt senkrecht von selbst (kein overflow:hidden auf body),
+   waagrecht rollt sie nie; Tabellen rollen in ihrem eigenen Rahmen. */
 
 
 /* ==================================================================
-   Kopfzeile
+   Band, Werkzeugzeilen, Zwischenüberschriften
    ================================================================== */
 
-/* Die Statuschips stehen im Raster der Kopfzeile (design.css) unter dem
-   Titel und dürfen dort umbrechen. Eine eigene Ausrichtung brauchen sie
-   nicht mehr — früher war die Kopfzeile eine Flex-Reihe. */
 .g-band { display: flex; align-items: center; gap: var(--a3); flex-wrap: wrap; }
-
-
-/* ==================================================================
-   Werkzeugzeilen und Zwischenüberschriften in den Karten
-   ================================================================== */
 
 .g-werkzeuge {
   display: flex;
   gap: var(--a2);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: var(--a3);
+  margin-bottom: var(--a4);
 }
 .g-werkzeuge .g-eingabe { max-width: 320px; }
 
 .g-schalterchen {
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--t-xs); color: var(--text-leise); cursor: pointer;
+  display: flex; align-items: center; gap: var(--a2);
+  font-size: var(--t-s); color: var(--text-leise); cursor: pointer;
 }
-.g-schalterchen input { accent-color: var(--marke); }
 
 .g-untertitel {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
-  color: var(--text-still); font-weight: 600;
-  margin: var(--a4) 0 var(--a2);
+  font-size: var(--t-xs); font-weight: 500;
+  color: var(--text-leise);
+  margin: var(--a5) 0 var(--a2);
 }
 
 .fenster-inhalt .kacheln { margin-bottom: var(--a5); }
 
 
 /* ==================================================================
-   Eingaben
-
-   Die Feldzeilen selbst kommen aus design.css (.datenzeile); hier stehen
-   nur die Eingabefelder, weil sie eine eigene Höchstbreite brauchen.
+   Eingaben (Material Outlined)
    ================================================================== */
 
 .g-eingabe, .g-textarea {
   font: inherit;
-  font-size: var(--t-s);
+  font-size: var(--t-m);
   width: 100%;
   max-width: 420px;
-  padding: 7px 10px;
-  border: none;
+  min-height: 40px;
+  padding: var(--a2) var(--a3);
+  border: 1px solid var(--umriss);
   border-radius: var(--r-klein);
-  background: var(--flaeche);
+  background: var(--weiss);
   color: var(--text);
+  transition: border-color .12s, box-shadow .12s;
 }
-.g-textarea { max-width: 560px; min-height: 78px; resize: vertical; }
+.g-textarea { max-width: 560px; min-height: 88px; resize: vertical; }
+.g-eingabe:hover, .g-textarea:hover { border-color: var(--text); }
 .g-eingabe:focus, .g-textarea:focus {
   outline: none;
-  background: var(--weiss);
-  box-shadow: 0 0 0 2px var(--marke);
+  border-color: var(--primaer);
+  box-shadow: inset 0 0 0 1px var(--primaer);
 }
 .g-eingabe.g-ungueltig, .g-textarea.g-ungueltig {
-  background: var(--gefahr-hell);
-  box-shadow: 0 0 0 2px var(--gefahr);
+  border-color: var(--gefahr);
+  box-shadow: inset 0 0 0 1px var(--gefahr);
 }
-.g-eingabe-schmal { max-width: 190px; }
+.g-eingabe-schmal { max-width: 200px; }
 
 
 /* ==================================================================
-   Hinweise (frühere «Auffälligkeiten», ohne Punkte und ohne Stufenrahmen)
+   Hinweise
    ================================================================== */
 
 .g-hinweis {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: var(--a3);
-  padding: 7px 0;
+  padding: var(--a2) 0;
   align-items: start;
+  border-bottom: 1px solid var(--linie-leicht);
 }
-.g-hinweis + .g-hinweis { box-shadow: inset 0 1px 0 var(--linie); }
+.g-hinweis:last-child { border-bottom: none; }
 .g-hinweis .icon { margin-top: 2px; }
-.g-hinweis-titel { font-size: var(--t-s); font-weight: 600; }
-.g-hinweis-text { font-size: var(--t-xs); color: var(--text-leise); margin-top: 1px; }
+.g-hinweis-titel { font-size: var(--t-m); font-weight: 500; }
+.g-hinweis-text { font-size: var(--t-s); color: var(--text-leise); margin-top: 1px; }
 
 
 /* ==================================================================
    Lebenszyklus
-
-   Eine einzige schmale Zeile statt des früheren Zeitstrahls: Beschaffung
-   und geplanter Ersatz als Text, daneben ein Status-Chip, darunter ein
-   sehr schmaler Balken für den Anteil der verstrichenen Zeit. Sie sieht
-   aus wie eine Karte, ist aber nur so hoch wie nötig.
    ================================================================== */
 
-/* Der ganze Block: Zeile plus (falls nötig) Erfassungsfeld. Er hält den
-   Abstand zur nächsten Karte, damit die Zeile selbst ohne Aussenabstand
-   auskommt. */
 .g-lebenszyklus { margin-bottom: var(--a5); }
 
 .g-lz {
   background: var(--weiss);
+  border: 1px solid var(--linie);
   border-radius: var(--r);
-  box-shadow: var(--schatten);
-  padding: var(--a3) var(--a4);
+  padding: var(--a4) var(--a5);
 }
 
 .g-lz-zeile {
@@ -148,34 +113,32 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: var(--a1) var(--a2);
+  gap: var(--a1) var(--a3);
   min-width: 0;
 }
 .g-lz-teil { display: inline-flex; align-items: baseline; gap: 6px; }
-.g-lz-name { font-size: var(--t-xs); color: var(--text-leise); }
+.g-lz-name { font-size: var(--t-s); color: var(--text-leise); }
 .g-lz-jahr {
-  font-size: var(--t-s); font-weight: 600;
+  font-size: var(--t-m); font-weight: 500;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .g-lz-punkt { color: var(--text-still); }
 
-/* Der Balken: 3 px hoch, damit er einordnet, ohne sich vorzudrängen. */
 .g-lz-spur {
-  height: 3px;
-  margin-top: var(--a2);
+  height: 4px;
+  margin-top: var(--a3);
   border-radius: 2px;
-  background: var(--flaeche-2);
+  background: var(--flaeche-3);
   overflow: hidden;
 }
 .g-lz-fuell {
   height: 100%;
   border-radius: 2px;
-  background: var(--marke);
+  background: var(--primaer);
 }
-.g-lz-fuell.g-lz-warnung { background: var(--warnung); }
-.g-lz-fuell.g-lz-gefahr  { background: var(--gefahr); }
+.g-lz-fuell.g-lz-warnung { background: #f9ab00; }
+.g-lz-fuell.g-lz-gefahr  { background: #d93025; }
 
-/* Fehlt das Beschaffungsjahr, steht die Eingabe gleich darunter. */
 .g-lz-erfassen {
   display: flex;
   align-items: center;
@@ -189,34 +152,33 @@
    Benutzerliste des Geräts
    ================================================================== */
 
-/* Name links, Knöpfe rechts — in schmalen Karten rutschen die Knöpfe
-   auf eine eigene Zeile, statt den Namen zu zerquetschen. */
 .g-person {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: var(--a1) var(--a3);
-  padding: var(--a2) 0;
+  padding: var(--a3) 0;
+  border-bottom: 1px solid var(--linie-leicht);
 }
+.g-person:last-child { border-bottom: none; }
 .g-person > div:first-child { flex: 1 1 220px; min-width: 0; }
-.g-person + .g-person { box-shadow: inset 0 1px 0 var(--linie); }
 .g-person-name { font-size: var(--t-m); font-weight: 500; }
-.g-person-unter { font-size: var(--t-xs); color: var(--text-leise); }
+.g-person-unter { font-size: var(--t-s); color: var(--text-leise); }
 .g-person-knoepfe { display: flex; gap: var(--a2); flex-wrap: wrap; }
 
-/* Trefferliste im Dialog «Benutzer zuordnen». */
 .g-trefferliste {
   max-height: 260px;
   overflow-y: auto;
   margin-top: var(--a2);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-klein);
 }
 .g-treffer {
   display: block; width: 100%;
   font: inherit; text-align: left;
   background: none; border: none;
-  border-radius: var(--r-klein);
-  padding: 6px var(--a2);
+  padding: var(--a2) var(--a3);
   cursor: pointer;
 }
 .g-treffer:hover { background: var(--flaeche); }
@@ -227,53 +189,52 @@
    Rohdaten («Alle Felder»)
    ================================================================== */
 
-/* Name, Wert, Kopierknopf. Die Namensspalte darf schrumpfen — sonst wird
-   die Zeile in einer schmalen Karte breiter als ihr Platz. */
 .g-roh-zeile {
   display: grid;
   grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
   gap: var(--a3);
-  padding: 5px 0;
+  padding: var(--a2) 0;
   align-items: start;
+  border-bottom: 1px solid var(--linie-leicht);
 }
-.g-roh-zeile + .g-roh-zeile { box-shadow: inset 0 1px 0 var(--linie); }
-.g-roh-name { color: var(--text-leise); font-size: var(--t-xs); }
-.g-roh-intern { display: block; font-size: 11px; color: var(--text-still); }
-.g-roh-wert { font-size: var(--t-s); white-space: pre-wrap; overflow-wrap: anywhere; }
+.g-roh-zeile:last-child { border-bottom: none; }
+.g-roh-name { color: var(--text-leise); font-size: var(--t-s); }
+.g-roh-intern { display: block; font-size: var(--t-xs); color: var(--text-still); }
+.g-roh-wert { font-size: var(--t-m); white-space: pre-wrap; overflow-wrap: anywhere; }
 .g-kopierknopf {
-  font: inherit; font-size: 11px;
+  font: inherit; font-size: var(--t-xs); font-weight: 500;
   background: none; border: none;
-  border-radius: var(--r-klein);
-  color: var(--text-still);
-  padding: 2px 7px; cursor: pointer;
+  border-radius: var(--r-rund);
+  color: var(--primaer);
+  padding: 4px 10px; cursor: pointer;
 }
-.g-kopierknopf:hover { background: var(--flaeche); color: var(--text); }
+.g-kopierknopf:hover { background: rgba(11,87,208,.08); }
 
 
 /* ==================================================================
    Zeitachse der SCCM-Zeitstempel
    ================================================================== */
 
-.g-achse { position: relative; margin-left: 6px; padding-left: 18px; }
+.g-achse { position: relative; margin-left: 6px; padding-left: 20px; }
 .g-achse::before {
   content: "";
   position: absolute;
   left: 3px; top: 8px; bottom: 8px;
   width: 2px;
-  background: var(--flaeche-2);
+  background: var(--linie);
 }
 .g-achse-punkt { position: relative; padding: 6px 0; }
 .g-achse-punkt::before {
   content: "";
   position: absolute;
-  left: -18px; top: 12px;
+  left: -20px; top: 12px;
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--marke);
+  background: var(--primaer);
 }
-.g-achse-punkt.g-alt::before { background: var(--flaeche-2); }
-.g-achse-titel { font-size: var(--t-s); }
-.g-achse-zeit { color: var(--text-leise); font-size: var(--t-xs); }
+.g-achse-punkt.g-alt::before { background: var(--umriss-leicht); }
+.g-achse-titel { font-size: var(--t-m); }
+.g-achse-zeit { color: var(--text-leise); font-size: var(--t-s); }
 
 
 /* ==================================================================
@@ -285,53 +246,40 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px var(--a3);
   padding: var(--a2) 0;
+  border-bottom: 1px solid var(--linie-leicht);
 }
-.g-vergleich + .g-vergleich { box-shadow: inset 0 1px 0 var(--linie); }
-.g-vergleich-name { font-size: var(--t-s); }
+.g-vergleich:last-child { border-bottom: none; }
+.g-vergleich-name { font-size: var(--t-m); }
 .g-vergleich-wert {
-  font-size: var(--t-s); font-weight: 600; text-align: right;
+  font-size: var(--t-m); font-weight: 500; text-align: right;
   white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.g-vergleich-neben { grid-column: 1 / -1; color: var(--text-leise); font-size: var(--t-xs); }
+.g-vergleich-neben { grid-column: 1 / -1; color: var(--text-leise); font-size: var(--t-s); }
 
-.g-verteilung { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 6px; }
+.g-verteilung { display: flex; align-items: flex-end; gap: 2px; height: 36px; margin-top: 6px; max-width: 360px; }
 .g-verteilung-saeule {
-  flex: 1 1 0; background: var(--flaeche-2);
+  flex: 1 1 0; background: var(--flaeche-3);
   border-radius: 2px 2px 0 0; min-height: 2px;
 }
-.g-verteilung-saeule.g-hier { background: var(--marke); }
+.g-verteilung-saeule.g-hier { background: var(--primaer); }
 
 
 /* ==================================================================
    Schmale Fenster
-
-   Bis 760 px macht design.css aus der Seitennavigation eine waagrecht
-   rollende Reiterleiste. Dazwischen (760–900 px) wird hier nur der
-   Innenabstand knapper, damit für den Inhalt mehr übrig bleibt.
    ================================================================== */
 
-@media (max-width: 900px) and (min-width: 761px) {
-  .fenster-inhalt { padding: var(--a4) var(--a4) 96px; }
-  .fenster-nav { padding: var(--a3) var(--a2) var(--a5); }
-}
-
 @media (max-width: 760px) {
-  /* Name und Wert untereinander, der Kopierknopf rechts daneben. */
   .g-roh-zeile { grid-template-columns: minmax(0, 1fr) auto; }
   .g-roh-name { grid-column: 1 / -1; }
 
   .g-werkzeuge .g-eingabe { max-width: none; }
   .g-eingabe, .g-textarea { max-width: none; }
-  .g-eingabe-schmal { max-width: 190px; }
+  .g-eingabe-schmal { max-width: 200px; }
 }
 
 
 /* ==================================================================
    Druck
-
-   Der Knopf «Drucken» ist aus der Kopfzeile verschwunden; über Ctrl+P
-   lässt sich das Fenster aber weiterhin ausdrucken, und dann soll es
-   ordentlich aussehen.
    ================================================================== */
 
 @media print {
@@ -340,8 +288,6 @@
   .g-werkzeuge, .g-kopierknopf, .g-person-knoepfe { display: none; }
   .fenster-rumpf { grid-template-columns: 1fr; }
   .fenster-inhalt { padding: 0; }
-  .karte, .kachel, .g-lz {
-    box-shadow: none; break-inside: avoid; page-break-inside: avoid;
-  }
+  .karte, .kachel, .g-lz { break-inside: avoid; page-break-inside: avoid; }
   .karten { grid-template-columns: 1fr 1fr; }
 }

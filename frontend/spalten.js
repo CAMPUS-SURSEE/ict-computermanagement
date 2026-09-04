@@ -1,6 +1,6 @@
-/* spalten.js — Spaltendefinition der SharePoint-Listen «Computer» und «Benutzer».
-   Erzeugt aus code/schema-computer.json und code/schema-benutzer.json durch
-   code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
+/* spalten.js — Spaltendefinition der SharePoint-Listen «Computer», «Benutzer» und
+   «Telefonnummern». Erzeugt aus code/schema-computer.json, code/schema-benutzer.json und
+   code/schema-telefon.json durch code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
 
    i = interner Name in Graph, d = Anzeigename, t = Typ
    (Title|Text|Note|Boolean|Number|DateTime), g = Gruppe,
@@ -8,8 +8,8 @@
                sccm    = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
                ad      = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt).
 
-   Die Titelspalte heisst in Graph «Title»; sie wird in der Computer-Liste als «PC-Name»
-   und in der Benutzer-Liste als «Login» angezeigt.
+   Die Titelspalte heisst in Graph «Title»; sie wird in der Computer-Liste als «PC-Name»,
+   in der Benutzer-Liste als «Login» und in der Telefonliste als «Kurzwahl» angezeigt.
 
    Die Programmspalten der Benutzer-Liste stehen NICHT hier, sondern in programme.json
    (Ablage in SharePoint: Inventar/programme.json); modell.js ergänzt sie zur Laufzeit.
@@ -19,6 +19,8 @@ const SPALTEN_COMPUTER = [
   { i: "Seriennummer", d: "Seriennummer", t: "Text", g: "Stammdaten", q: "manuell" },
   { i: "GebaeudeStock", d: "Gebäude / Stock", t: "Text", g: "Stammdaten", q: "manuell" },
   { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" },
+  { i: "Status", d: "Status", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "Beschaffungsjahr", d: "Beschaffungsjahr", t: "Text", g: "Beschaffung", q: "manuell" },
   { i: "ErsatzGeplant", d: "Ersatz geplant", t: "Text", g: "Beschaffung", q: "manuell" },
   { i: "SCCM_Name", d: "SCCM Gerätename", t: "Text", g: "SCCM", q: "sccm" },
@@ -115,5 +117,21 @@ const SPALTEN_BENUTZER = [
   { i: "ADLetzterSync", d: "Letzter AD-Sync", t: "DateTime", g: "AD", q: "ad" },
   { i: "SCCMPrimaerGeraet", d: "Primärgerät (SCCM)", t: "Text", g: "SCCM", q: "sccm" },
   { i: "Computer", d: "Computer", t: "Text", g: "Zuordnung", q: "manuell" },
-  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Zuordnung", q: "manuell" }
+  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Zuordnung", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Zuordnung", q: "manuell" }
+];
+
+const SPALTEN_TELEFON = [
+  { i: "Title", d: "Kurzwahl", t: "Title", g: "Stammdaten", q: "manuell" },
+  { i: "Telefonnummer", d: "Telefonnummer", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Name", d: "Name", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Typ", d: "Typ", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Status", d: "Status", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Benutzer", d: "Benutzer (AD)", t: "Text", g: "AD", q: "ad" },
+  { i: "ADLetzterSync", d: "Letzter AD-Sync", t: "DateTime", g: "AD", q: "ad" },
+  { i: "Apparat", d: "Apparat", t: "Text", g: "Ausstattung", q: "manuell" },
+  { i: "Standort", d: "Standort", t: "Text", g: "Ausstattung", q: "manuell" },
+  { i: "Hinweis", d: "Hinweis", t: "Note", g: "Zuordnung", q: "manuell" },
+  { i: "FruehererEintrag", d: "Früherer Eintrag", t: "Text", g: "Zuordnung", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Zuordnung", q: "manuell" }
 ];

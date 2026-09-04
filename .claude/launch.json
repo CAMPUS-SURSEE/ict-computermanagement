@@ -12,6 +12,12 @@
       "runtimeExecutable": "powershell",
       "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "code/serve.ps1", "-Port", "8766"],
       "port": 8766
+    },
+    {
+      "name": "inventar-telefon",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "code/serve.ps1", "-Port", "8767"],
+      "port": 8767
     }
   ]
 }

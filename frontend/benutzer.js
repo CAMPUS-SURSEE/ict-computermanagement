@@ -260,12 +260,39 @@ function feldFrei(beschriftung, knoten, mitSchloss) {
   return f;
 }
 
-/* Link in das Gerätefenster. Öffnet je Gerät ein eigenes Fenster. */
+/* Ein kleiner Chip für den Gerätestatus, oder null bei «Aktiv» — der
+   Normalfall braucht keine Auszeichnung. */
+function statusMarke(computerZeile) {
+  const status = Modell.status(computerZeile && computerZeile.Status);
+  if (status === "Aktiv") return null;
+  const c = el("span", "chip " + (status === "Archiviert" ? "chip-leise" : "chip-info"),
+    status);
+  c.title = status === "Archiviert"
+    ? "Dieses Gerät ist archiviert und in der Geräteliste ausgeblendet."
+    : "Dieses Gerät liegt im Lager.";
+  return c;
+}
+
+/* Link in das Gerätefenster. Öffnet je Gerät ein eigenes Fenster.
+   Geöffnet wird immer über die Listen-ID, nie über den Namen: Namen sind
+   nicht eindeutig.
+
+   Ist das Gerät nicht «Aktiv», steht der Status daneben — sonst wundert
+   man sich, warum es in der Geräteliste nicht auftaucht. */
 function geraetLink(computerZeile) {
+  const huelle = el("span", "b-geraetlink");
   const a = el("a", "name-link", computerZeile.Title);
   a.href = "geraet.html?id=" + encodeURIComponent(computerZeile.id) + MOCK_ANHANG;
   a.target = "geraet-" + computerZeile.id;
-  return a;
+  a.title = "Listen-ID " + computerZeile.id + " — Gerätefenster öffnen";
+  huelle.appendChild(a);
+
+  const marke = statusMarke(computerZeile);
+  if (marke) {
+    huelle.appendChild(document.createTextNode(" "));
+    huelle.appendChild(marke);
+  }
+  return huelle;
 }
 
 function suchfeld(id, platzhalter, startwert, beiEingabe) {
@@ -298,12 +325,48 @@ function rechteZaehlen() {
   return { manuell: manuell, ausAd: ausAd, aktiv: manuell + ausAd, gesamt: pSpalten.length };
 }
 
-/* Das aktuell zugeordnete Gerät als Zeile der Computer-Liste, oder null. */
-function zugeordnetesGeraet() {
+/* Alle Geräte mit dem zugeordneten Namen.
+
+   Die Zuordnung ist ein Freitext-Name, keine Verknüpfung auf die Listen-ID:
+   heissen zwei Geräte gleich (etwa weil das ersetzte archiviert liegen
+   bleibt), passen beide. Deshalb liefert diese Funktion eine Liste. */
+function zugeordneteGeraete() {
   const name = textWert("Computer").trim();
-  if (!name) return null;
+  if (!name) return [];
   const k = Modell.schluessel(name);
-  return alleComputer.filter(c => Modell.schluessel(c.Title) === k)[0] || null;
+  return alleComputer.filter(c => Modell.schluessel(c.Title) === k);
+}
+
+/* Das gemeinte Gerät, oder null. Bei mehreren gleichnamigen gewinnt das
+   nicht archivierte — dieselbe Wahl trifft Modell.anreichern. */
+function zugeordnetesGeraet() {
+  const treffer = zugeordneteGeraete();
+  return treffer.filter(c => !c.__archiviert)[0] || treffer[0] || null;
+}
+
+/* Hinweiszeile bei mehrdeutiger Zuordnung, sonst null. */
+function mehrdeutigHinweis() {
+  const treffer = zugeordneteGeraete();
+  if (treffer.length < 2) return null;
+  const gewaehlt = zugeordnetesGeraet();
+
+  const kasten = el("div", "b-hinweis");
+  kasten.appendChild(el("span", "t-warnung",
+    treffer.length + " Geräte heissen «" + textWert("Computer").trim()
+    + "». Die Zuordnung speichert nur den Namen und ist damit nicht "
+    + "eindeutig; angezeigt wird das nicht archivierte Gerät."));
+  const liste = el("div", "chips");
+  for (const c of treffer) {
+    const a = el("a", "chip" + (c === gewaehlt ? " chip-marke" : ""),
+      "Listen-ID " + c.id + " · " + Modell.status(c.Status));
+    a.href = "geraet.html?id=" + encodeURIComponent(c.id) + MOCK_ANHANG;
+    a.target = "geraet-" + c.id;
+    a.title = (c === gewaehlt ? "Wird hier angezeigt. " : "")
+      + "Gerätefenster in eigenem Fenster öffnen";
+    liste.appendChild(a);
+  }
+  kasten.appendChild(liste);
+  return kasten;
 }
 
 /* Weicht das SCCM-Primärgerät von der Zuordnung ab? Der Entwurf zählt mit,
@@ -360,6 +423,9 @@ function bereichUebersicht(ziel) {
 
   felder.appendChild(feldGesperrt("Primärgerät (SCCM)", zeile.SCCMPrimaerGeraet));
   kZuordnung.inhalt.appendChild(felder);
+
+  const mehrdeutig = mehrdeutigHinweis();
+  if (mehrdeutig) kZuordnung.inhalt.appendChild(mehrdeutig);
 
   if (primaerAbweichung()) {
     const hinweis = el("div", "b-hinweis");
@@ -422,6 +488,9 @@ function bereichGeraet(ziel) {
     const felder = el("div", "datenzeilen");
     if (geraet) {
       felder.appendChild(feldFrei("Computer", geraetLink(geraet)));
+      const status = Modell.status(geraet.Status);
+      const statusText = el("span", Modell.statusKlasse(status) || null, status);
+      felder.appendChild(feldFrei("Status des Geräts", statusText, true));
       felder.appendChild(feldGesperrt("Modell", geraet.SCCM_Model));
       felder.appendChild(feldGesperrt("Gebäude / Stock", geraet.GebaeudeStock));
       const andere = andereBenutzerVon(geraet);
@@ -433,7 +502,10 @@ function bereichGeraet(ziel) {
     }
     kAktuell.inhalt.appendChild(felder);
 
-    const knoepfe = el("div", "b-hinweis");
+    const mehrdeutig = mehrdeutigHinweis();
+    if (mehrdeutig) kAktuell.inhalt.appendChild(mehrdeutig);
+
+    const knoepfe = el("div", "karte-aktionen");
     knoepfe.appendChild(knopf("Zuordnung lösen", null, geraetLoesen));
     if (geraet) {
       knoepfe.appendChild(knopf("Gerät öffnen", null, function () {
@@ -473,7 +545,10 @@ function bereichGeraet(ziel) {
   const treffer = alleComputer.filter(function (c) {
     if (!suchbegriff) return false;
     return String(c.__such || "").indexOf(suchbegriff) > -1;
-  }).sort((a, b) => Hilfe.vergleiche(a.Title, b.Title));
+    /* Archivierte Geräte zuletzt: sie sind zwar auffindbar, aber selten
+       gemeint. */
+  }).sort((a, b) => (a.__archiviert ? 1 : 0) - (b.__archiviert ? 1 : 0)
+    || Hilfe.vergleiche(a.Title, b.Title));
 
   const liste = el("div", "b-treffer");
   if (!suchbegriff) {
@@ -484,10 +559,22 @@ function bereichGeraet(ziel) {
     liste.appendChild(el("p", "hinweis", "Kein Gerät passt zur Suche."));
   } else {
     for (const c of treffer.slice(0, 40)) {
-      const istAktuell = Modell.schluessel(c.Title) === Modell.schluessel(name);
+      /* «zugeordnet» darf nur an dem Gerät stehen, das die Zuordnung
+         wirklich meint — bei gleichnamigen Geräten sonst an allen. */
+      const gewaehlt = zugeordnetesGeraet();
+      const istAktuell = !!gewaehlt && String(gewaehlt.id) === String(c.id);
       const z = el("div", "b-treffer-zeile" + (istAktuell ? " aktuell" : ""));
       const links = el("div");
-      links.appendChild(el("div", "b-treffer-name", c.Title));
+      const nameZeile = el("div", "b-treffer-name", c.Title);
+      /* Der Name allein reicht nicht: es kann mehrere gleichnamige Geräte
+         geben. Listen-ID und Status machen den Treffer eindeutig. */
+      nameZeile.title = "Listen-ID " + c.id;
+      const marke = statusMarke(c);
+      if (marke) {
+        nameZeile.appendChild(document.createTextNode(" "));
+        nameZeile.appendChild(marke);
+      }
+      links.appendChild(nameZeile);
       const teile = [];
       if (c.SCCM_Model) teile.push(text(c.SCCM_Model));
       if (c.GebaeudeStock) teile.push(text(c.GebaeudeStock));
@@ -620,6 +707,8 @@ function programmZeile(spalte) {
 /* ---------- Bemerkung ---------- */
 
 function bereichBemerkung(ziel) {
+  const stapel = el("div", "stapel");
+
   const k = karte("Bemerkung", "Freier Text zu dieser Person. Wird nicht überschrieben.");
   const f = el("div", "datenzeile-breit");
   const label = el("div", "datenzeile-name", "Bemerkung");
@@ -634,7 +723,23 @@ function bereichBemerkung(ziel) {
   });
   f.appendChild(eingabe);
   k.inhalt.appendChild(f);
-  ziel.appendChild(k);
+  stapel.appendChild(k);
+
+  /* Verlauf. Er hängt am selben Entwurf wie alle anderen Felder:
+     verlauf.js meldet die fertige Zeichenkette, setzeWert legt sie in den
+     Entwurf, der Speichern-Knopf schreibt sie nach SharePoint. */
+  const kVerlauf = karte("Verlauf",
+    "Was rund um diese Person passiert ist — Gerätewechsel, Eintritt, "
+    + "Austritt. Der Abgleich hängt eigene Einträge an; sie lassen sich "
+    + "hier ebenso ändern oder löschen.");
+  Verlauf.zeichnen(kVerlauf.inhalt, {
+    schluessel: "benutzer",
+    wert: wert("Verlauf"),
+    beiAenderung: function (json) { setzeWert("Verlauf", json); }
+  });
+  stapel.appendChild(kVerlauf);
+
+  ziel.appendChild(stapel);
 }
 
 
@@ -676,6 +781,9 @@ function logoZeichnen() {
   const verweis = $("b-logo");
   if (!verweis) return;
   verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
+  // Der Pfad über dem Titel führt in die Benutzerliste.
+  const pfad = $("b-pfad");
+  if (pfad) pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#benutzer";
 }
 
 /* Die Seitennavigation. Die Spalte selbst (.fenster-nav) reicht bis zum
