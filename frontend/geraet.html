@@ -7,7 +7,7 @@
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Archivo:wdth,wght@112,500..700&display=swap">
 <!-- design.css liefert Tokens und Komponenten, geraet.css nur das
      Seitenlayout dieses Fensters. Reihenfolge ist wichtig.
      styles.css wird hier bewusst NICHT geladen. -->
@@ -19,17 +19,14 @@
 </head>
 <body class="seite fenster g-seite">
 
-<!-- App-Leiste: Logo und Produktname links, Aktionen rechts. -->
+<!-- App-Leiste: Wortmarke links, Aktionen rechts. -->
 <header class="kopf">
   <div class="kopf-marke">
-    <!-- Das Logo führt zurück zur Übersicht. Im Vorführmodus hängt
+    <!-- Die Wortmarke führt zurück zur Übersicht. Im Vorführmodus hängt
          geraet.js den Parameter ?mock=1 an die Adresse. -->
     <a class="logo-link" id="g-logo" href="index.html" aria-label="Zur Übersicht">
-      <img class="logo" src="https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg" alt="Campus Sursee">
+      <span class="wortmarke">ICT<span class="wortmarke-punkt">.</span>INVENTAR</span>
     </a>
-    <div class="marke-text">
-      <h1>Computer Inventar</h1>
-    </div>
   </div>
   <div class="kopf-rechts" id="g-aktionen"></div>
 </header>

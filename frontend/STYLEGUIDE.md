@@ -64,7 +64,7 @@ Schrift: **Roboto** (Google Fonts, 400/500/700) für Text, `"Google Sans"` mit R
 | Rolle | Grösse / Zeile | Gewicht | Farbe | Wo |
 |---|---|---|---|---|
 | Seitentitel (Detailfenster) | 28 / 36 px | 400 | `--text` | `.seitenkopf h1` |
-| Produktname (App-Leiste) | 22 / 28 px | 400 | `--text-leise` | `.marke-text h1` |
+| Wortmarke «ICT.INVENTAR» (App-Leiste) | 22 / 28 px (18 / 24 unter 760 px) | 650, Archivo 112 % breit, Versalien | `--text`, Punkt `--campus-gruen` | `.wortmarke`, `.wortmarke-punkt` |
 | Dialogtitel, Fehlertitel | 22 / 28 px | 400 | `--text` | `.dialog h2`, `.fehler-titel` |
 | Kennzahl | 32 / 40 px | 400 | `--text` oder Ton | `.kachel-wert` (`.klein`: 22 / 32 px) |
 | Kartentitel, Abschnittstitel | 16 / 24 px | 500 | `--text` | `.karte-titel`, `.bereich-titel` |
@@ -133,7 +133,7 @@ Maximale Textbreite `.bahn` und `.fenster-bahn`: 1400 px.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ App-Leiste: Logo · «Computer Inventar»          Aktionen      │
+│ App-Leiste: ICT.INVENTAR                        Aktionen      │
 ├──────────────────────────────────────────────────────────────┤
 │ Band (Vorführmodus)                                           │
 ├────────────┬─────────────────────────────────────────────────┤
@@ -160,7 +160,7 @@ Maximale Textbreite `.bahn` und `.fenster-bahn`: 1400 px.
 | ≥ 1200 px | Vollständige App-Leiste inkl. Datenstand. Kacheln der Übersicht in einer Reihe. |
 | 1100–1200 px | Datenstand weicht. |
 | 760–1100 px | Navigation 200 px, Seitenränder 24 px, Kartenraster meist einspaltig. |
-| < 760 px | App-Leiste 56 px ohne Produktname, Reiterleiste statt Navigation, Kacheln zweispaltig, Karten einspaltig, Suchfeld volle Breite, Dialog randlos. |
+| < 760 px | App-Leiste 56 px mit kleinerer Wortmarke, Reiterleiste statt Navigation, Kacheln zweispaltig, Karten einspaltig, Suchfeld volle Breite, Dialog randlos. |
 
 Geprüft: 360, 375, 768, 1024, 1280, 1440, 1920 px sowie 200 % Zoom (entspricht 720 px).
 
@@ -172,8 +172,8 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 
 ### 4.1 App-Leiste `.kopf`
 - 64 px hoch (56 px auf dem Handy), weiss, Hairline unten.
-- Links `.kopf-marke`: Logo (28 px) als Link zur Übersicht, daneben `.marke-text h1` «Computer Inventar» in 22 px `--text-leise`.
-- Rechts `.kopf-rechts`: Datenstand, Knöpfe, Konto-Pille. Auf dem Handy in einer Zeile, rollt notfalls waagrecht, Produktname ausgeblendet.
+- Links `.kopf-marke`: Wortmarke `.wortmarke` «ICT.INVENTAR» als Link zur Übersicht (Archivo 650, 112 % breit, Versalien, 22 px `--text`); der Punkt `.wortmarke-punkt` steht in `--campus-gruen` (#84b819, das Grün aus dem Logo von Campus Sursee) und ist wie im Logo ein satter Kreis auf der Grundlinie (0.3 em, als Fläche gezeichnet, nicht als Schriftzeichen). Das Campus-Logo selbst wird nicht mehr gezeigt.
+- Rechts `.kopf-rechts`: Datenstand, Knöpfe, Konto-Pille. Auf dem Handy in einer Zeile, rollt notfalls waagrecht, Wortmarke 18 px.
 - Enthält **nie** den Titel des Datensatzes; der steht in `.seitenkopf`.
 
 ### 4.2 Navigation `.reiter` / `.fenster-nav`

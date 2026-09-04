@@ -7,9 +7,14 @@
    Aktivität, Flottenvergleich und alle Rohdaten.
 
    Bearbeitbar sind genau die von Hand gepflegten Spalten (q = "manuell" in
-   spalten.js): Title, Seriennummer, GebaeudeStock, Bemerkung,
+   spalten.js): Title, GebaeudeStock, Bemerkung, Status, Verlauf,
    Beschaffungsjahr, ErsatzGeplant. Alle SCCM-Spalten sind schreibgeschützt
-   und tragen ein Schloss — der Abgleich überschreibt sie ohnehin.
+   und tragen ein Schloss — der Abgleich überschreibt sie ohnehin. Die
+   Seriennummer kommt ausschliesslich aus SCCM (SCCM_SerialNumber).
+
+   Ein neues Gerät (?neu=1) bekommt keine Bereichsnavigation, sondern ein
+   einziges kurzes Formular (bereichNeu) mit den Angaben, die ein Mensch
+   beim Anlegen wirklich kennt: Name, Standort, Beschaffung, Bemerkung.
 
    Die Benutzerzuordnung steht in der Liste «Benutzer» (Spalte «Computer»).
    Dieses Fenster schreibt sie dort und meldet die Änderung über den
@@ -56,7 +61,7 @@ for (const s of SPALTEN) if (GRUPPEN.indexOf(s.g) === -1) GRUPPEN.push(s.g);
 /* Die Stammdaten dieses Fensters, in der Reihenfolge der Anzeige.
    «Status» steht nicht in dieser Liste: er bekommt ein Auswahlfeld statt
    eines Textfelds und wird darum eigens gezeichnet (statusZeile). */
-const STAMM_SPALTEN = ["Title", "Seriennummer", "GebaeudeStock"].map(i => SPALTE[i]);
+const STAMM_SPALTEN = ["Title", "GebaeudeStock"].map(i => SPALTE[i]);
 const BEMERKUNG = SPALTE["Bemerkung"];
 const STATUS = SPALTE["Status"];
 const VERLAUF = SPALTE["Verlauf"];
@@ -69,7 +74,7 @@ function istBearbeitbar(spalte) {
 /* Beim Duplizieren nicht übernehmen: alles, was ein Gerät eindeutig macht,
    dazu Status und Verlauf — die Geschichte des einen Geräts ist nicht die
    des anderen, und ein neues Gerät startet immer als «Aktiv». */
-const NICHT_DUPLIZIEREN = ["Title", "Seriennummer", "Status", "Verlauf"];
+const NICHT_DUPLIZIEREN = ["Title", "Status", "Verlauf"];
 
 
 /* ==================================================================
@@ -155,9 +160,13 @@ const BEREICHE = [
   { k: "felder",      d: "Alle Felder",      f: bereichFelder,      immer: true  }
 ];
 
+/* Das Anlegen ist ein einziges Formular ohne Navigation. */
+const BEREICH_NEU = { k: "neu", d: "Neues Gerät", f: bereichNeu, immer: true };
+
 function sichtbareBereiche() {
-  // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch Benutzer.
-  return neuModus ? BEREICHE.filter(b => b.immer) : BEREICHE;
+  // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch Benutzer —
+  // und auch keine Bereiche: nur das eine Formular.
+  return neuModus ? [BEREICH_NEU] : BEREICHE;
 }
 
 /* ---------- Werte lesen und schreiben ---------- */
@@ -686,14 +695,6 @@ function hinweise() {
       + " (" + flottenBuild.anzahl + " Geräte).");
   }
 
-  const snInventar = textWert("Seriennummer").trim();
-  const snSccm = String(zeile.SCCM_SerialNumber || "").trim();
-  if (snInventar && snSccm && snInventar.toLowerCase() !== snSccm.toLowerCase()) {
-    warnung("Seriennummer stimmt nicht überein", "Inventar: «" + snInventar
-      + "», SCCM: «" + snSccm + "». Vermutlich wurde das Gerät ersetzt, "
-      + "ohne die Liste nachzuführen.");
-  }
-
   const nameInventar = textWert("Title").trim();
   const nameSccm = String(zeile.SCCM_Name || "").trim();
   if (nameInventar && nameSccm && nameInventar.toLowerCase() !== nameSccm.toLowerCase()) {
@@ -1198,8 +1199,23 @@ function namensWarnungFuellen(knoten) {
     + "den Namen und wird damit mehrdeutig.";
 }
 
+/* Die Karte «Bemerkung». Das Textfeld füllt die ganze Karte aus, damit sie
+   neben den Stammdaten gleich hoch steht (geraet.css .g-bemerkung). */
+function bemerkungKarte() {
+  const k = karte("Bemerkung", "Freitext, mehrzeilig.");
+  k.classList.add("g-bemerkung");
+  const feld = eingabeFuer(BEMERKUNG);
+  const huelle = el("div", "g-bemerkung-huelle");
+  huelle.appendChild(feld);
+  k.inhalt.appendChild(huelle);
+  return k;
+}
+
 function bereichStammdaten(ziel) {
-  const gitter = kartenGitter();
+  /* Oben eine Reihe aus zwei oder drei gleich hohen Karten über die volle
+     Breite: Stammdaten, Bemerkung und — bei gespeicherten Geräten — die
+     Herkunft der Daten. Darunter der Verlauf über die ganze Breite. */
+  const reihe = el("div", "karten g-stamm-reihe");
 
   const k = karte("Stammdaten",
     "Von Hand gepflegte Felder. Der SCCM-Abgleich fasst sie nie an.");
@@ -1213,18 +1229,30 @@ function bereichStammdaten(ziel) {
   }
   felder.appendChild(statusZeile());
   k.inhalt.appendChild(felder);
-  gitter.appendChild(k);
+  reihe.appendChild(k);
 
-  const kBemerkung = karte("Bemerkung", "Freitext, mehrzeilig.");
-  const feld = eingabeFuer(BEMERKUNG);
-  const huelle = el("div");
-  huelle.appendChild(feld);
-  kBemerkung.inhalt.appendChild(huelle);
-  gitter.appendChild(kBemerkung);
+  reihe.appendChild(bemerkungKarte());
+
+  if (!neuModus) {
+    const kHerkunft = karte("Herkunft der Daten",
+      "Was der SCCM-Abgleich zu diesem Gerät weiss.");
+    const f = el("div", "datenzeilen");
+    f.appendChild(feldZeile("SCCM Gerätename", zeile.SCCM_Name, null, true));
+    f.appendChild(feldZeile("Seriennummer", zeile.SCCM_SerialNumber, null, true));
+    f.appendChild(feldZeile("In SCCM vorhanden", zeile.SCCM_Found, null, true));
+    f.appendChild(datumZeile("Letzte Synchronisation", zeile.SCCM_LastSync));
+    f.appendChild(feldZeile("Listen-ID (SharePoint)", zeile.id, null, true));
+    kHerkunft.inhalt.appendChild(f);
+    reihe.appendChild(kHerkunft);
+    reihe.classList.add("g-stamm-reihe-3");
+  }
+
+  ziel.appendChild(reihe);
 
   /* Verlauf. Er wird über denselben Entwurf gespeichert wie alle anderen
      Felder: verlauf.js meldet die fertige Zeichenkette, setzeWert legt sie
      in den Entwurf, der Speichern-Knopf schreibt sie nach SharePoint. */
+  const gitter = kartenGitter();
   const kVerlauf = karte("Verlauf",
     "Was mit diesem Gerät passiert ist — Handwechsel, Reparatur, Umzug. "
     + "Der Abgleich hängt eigene Einträge an; sie lassen sich hier ebenso "
@@ -1235,19 +1263,48 @@ function bereichStammdaten(ziel) {
     beiAenderung: function (json) { setzeWert("Verlauf", json); }
   });
   gitter.appendChild(kVerlauf);
+  ziel.appendChild(gitter);
+}
 
-  if (!neuModus) {
-    const kHerkunft = karte("Herkunft der Daten",
-      "Zum Vergleich die entsprechenden Werte aus SCCM.");
-    const f = el("div", "datenzeilen");
-    f.appendChild(feldZeile("SCCM Gerätename", zeile.SCCM_Name, null, true));
-    f.appendChild(feldZeile("Seriennummer (SCCM)", zeile.SCCM_SerialNumber, null, true));
-    f.appendChild(feldZeile("In SCCM vorhanden", zeile.SCCM_Found, null, true));
-    f.appendChild(datumZeile("Letzte Synchronisation", zeile.SCCM_LastSync));
-    f.appendChild(feldZeile("Listen-ID (SharePoint)", zeile.id, null, true));
-    kHerkunft.inhalt.appendChild(f);
-    gitter.appendChild(kHerkunft);
+/* ---------- Neues Gerät: ein einziges Formular ---------- */
+
+/* Beim Anlegen braucht es keine Bereiche: Name, Standort, Beschaffung und
+   eine Bemerkung reichen. Status bleibt «Aktiv» (leer), der Verlauf leer;
+   alles Weitere lässt sich nach dem Anlegen im normalen Fenster pflegen. */
+function bereichNeu(ziel) {
+  const gitter = kartenGitter();
+
+  const k = karte("Neues Gerät",
+    "Nur die Angaben, die beim Anlegen bekannt sind. Alles Weitere — "
+    + "Status, Verlauf, Benutzer — folgt nach dem Anlegen.", true);
+  const felder = el("div", "datenzeilen");
+  for (const s of STAMM_SPALTEN) {
+    felder.appendChild(formularZeile(s, s.i === "Title" ? {
+      hinweis: "Muss genau dem Gerätenamen in SCCM entsprechen; darüber "
+        + "laufen der Abgleich und die Zuordnung der Benutzer.",
+      zusatz: namensWarnung()
+    } : null));
   }
+  felder.appendChild(formularZeile(SPALTE["Beschaffungsjahr"], {
+    liste: Modell.gjAuswahl(),
+    schmal: true,
+    hinweis: "Geschäftsjahr in der Form «2023/2024» (1. August bis 31. Juli).",
+    beiAenderung: function () { zeichneBereich(true); }
+  }));
+
+  /* Ersatzjahr: leer bedeutet «Beschaffung + 5», das zeigt der Hinweis. */
+  const vorschlag = Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
+  felder.appendChild(formularZeile(SPALTE["ErsatzGeplant"], {
+    liste: Modell.gjAuswahl(),
+    schmal: true,
+    hinweis: vorschlag
+      ? "Leer lassen heisst " + vorschlag + " (Beschaffung + 5 Jahre)."
+      : "Kann leer bleiben; ohne Beschaffungsjahr gibt es keinen Vorschlag.",
+    beiAenderung: function () { zeichneBereich(true); }
+  }));
+  felder.appendChild(formularZeile(BEMERKUNG));
+  k.inhalt.appendChild(felder);
+  gitter.appendChild(k);
 
   ziel.appendChild(gitter);
 }
@@ -1343,8 +1400,7 @@ function bereichHardware(ziel) {
   f1.appendChild(feldZeile("Hersteller", zeile.SCCM_Manufacturer, null, true));
   f1.appendChild(feldZeile("Modell", zeile.SCCM_Model, null, true));
   f1.appendChild(feldZeile("Gehäusetyp", zeile.SCCM_ChassisType, null, true));
-  f1.appendChild(feldZeile("Seriennummer (Inventar)", textWert("Seriennummer"), null, false));
-  f1.appendChild(feldZeile("Seriennummer (SCCM)", zeile.SCCM_SerialNumber, null, true));
+  f1.appendChild(feldZeile("Seriennummer", zeile.SCCM_SerialNumber, null, true));
   f1.appendChild(feldZeile("SMBIOS GUID", zeile.SCCM_SMBIOSGUID, null, true));
   f1.appendChild(feldZeile("Virtuelle Maschine", zeile.SCCM_IsVirtual, null, true));
   kGeraet.inhalt.appendChild(f1);
@@ -1883,7 +1939,10 @@ function adresseFuer(id) {
    Fenstern zur waagrecht rollenden Reiterleiste wird. */
 function navZeichnen() {
   const nav = leeren($("g-nav"));
-  nav.hidden = false;
+  /* Ein neues Gerät hat nur das eine Formular — keine Navigation. */
+  nav.hidden = neuModus;
+  document.body.classList.toggle("g-ohne-nav", neuModus);
+  if (neuModus) return;
   const menue = el("div", "fenster-nav-menue");
   for (const b of sichtbareBereiche()) {
     const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""), b.d);
@@ -2203,7 +2262,10 @@ async function speichern() {
       elementId = String(neueZeile.id);
       neuModus = false;
       entwurf = {};
-      history.replaceState(null, "", adresseFuer(elementId));
+      // Vom Formular ins normale Fenster: die Stammdaten sind der nächste
+      // sinnvolle Ort — Status, Verlauf und Herkunft stehen dort.
+      aktiverBereich = "stammdaten";
+      history.replaceState(null, "", adresseFuer(elementId) + "#stammdaten");
       melden("zeile-neu", elementId);
       speichertGerade = false;
       await datenLaden(true);

@@ -265,10 +265,53 @@
 
 
 /* ==================================================================
+   Stammdaten: Reihe gleich hoher Karten
+   ================================================================== */
+
+/* Stammdaten, Bemerkung und (bei gespeicherten Geräten) Herkunft stehen
+   nebeneinander über die volle Breite und sind gleich hoch. Das Textfeld
+   der Bemerkung wächst mit der Karte. Darunter folgt der Verlauf. */
+.g-stamm-reihe {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  margin-bottom: var(--a4);
+}
+.g-stamm-reihe-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g-stamm-reihe .g-eingabe { max-width: none; }
+.g-stamm-reihe .g-eingabe-schmal { max-width: 200px; }
+
+.g-bemerkung { display: flex; flex-direction: column; }
+.g-bemerkung .karte-inhalt { flex: 1 1 auto; display: flex; flex-direction: column; }
+.g-bemerkung-huelle { flex: 1 1 auto; display: flex; }
+.g-bemerkung .g-textarea {
+  flex: 1 1 auto;
+  max-width: none;
+  min-height: 160px;
+  resize: none;
+}
+
+@media (max-width: 1100px) {
+  .g-stamm-reihe-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+
+/* ==================================================================
+   Neues Gerät: ein Formular ohne Navigation
+   ================================================================== */
+
+.g-ohne-nav .fenster-rumpf { grid-template-columns: minmax(0, 1fr); }
+.g-ohne-nav .fenster-inhalt { grid-column: 1; }
+.g-ohne-nav .fenster-bahn { max-width: 720px; }
+
+
+/* ==================================================================
    Schmale Fenster
    ================================================================== */
 
 @media (max-width: 760px) {
+  .g-stamm-reihe, .g-stamm-reihe-3 { grid-template-columns: 1fr; }
+  .g-bemerkung .g-textarea { min-height: 120px; }
+
   .g-roh-zeile { grid-template-columns: minmax(0, 1fr) auto; }
   .g-roh-name { grid-column: 1 / -1; }
 

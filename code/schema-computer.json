@@ -9,15 +9,6 @@
         "description":  "Gerätename in Grossbuchstaben, eindeutig; Schlüssel für den SCCM-Abgleich"
     },
     {
-        "internal":  "Seriennummer",
-        "display":  "Seriennummer",
-        "type":  "Text",
-        "group":  "Stammdaten",
-        "source":  "manuell",
-        "inDefaultView":  true,
-        "description":  "Von Hand erfasste Seriennummer, vor allem für Geräte ohne SCCM"
-    },
-    {
         "internal":  "GebaeudeStock",
         "display":  "Gebäude / Stock",
         "type":  "Text",

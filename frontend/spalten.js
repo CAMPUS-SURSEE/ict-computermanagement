@@ -16,7 +16,6 @@
 */
 const SPALTEN_COMPUTER = [
   { i: "Title", d: "PC-Name", t: "Title", g: "Stammdaten", q: "manuell" },
-  { i: "Seriennummer", d: "Seriennummer", t: "Text", g: "Stammdaten", q: "manuell" },
   { i: "GebaeudeStock", d: "Gebäude / Stock", t: "Text", g: "Stammdaten", q: "manuell" },
   { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "Status", d: "Status", t: "Text", g: "Stammdaten", q: "manuell" },

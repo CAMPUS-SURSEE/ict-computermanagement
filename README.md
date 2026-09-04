@@ -35,7 +35,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 
 | Baustein | Inhalt | Wer schreibt |
 |---|---|---|
-| Liste **Computer** | Titel = PC-Name, dazu Seriennummer, Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
+| Liste **Computer** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), Computer-Zuordnung, Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, Früherer Eintrag, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | **programme.json** | die Programmliste mit Kategorie und AD-Gruppen; liegt in `Dokumente/Inventar/` auf der Site | von Hand, hochgeladen mit `Upload-Programme.ps1` |
@@ -161,13 +161,13 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
    oder von Hand in den Listeneinstellungen (Abschnitt 4).
 2. SCCM per WMI lesen.
 3. **Zuordnung über die Seriennummer**, nicht über den Namen. Verglichen wird die SCCM-Seriennummer
-   mit der Spalte `SCCM_SerialNumber`, ersatzweise mit der manuellen Spalte `Seriennummer` (beides
-   getrimmt und gross geschrieben). Platzhalter wie `To be filled by O.E.M.`, `Default string`,
+   mit der Spalte `SCCM_SerialNumber` (beides getrimmt und gross geschrieben); eine manuelle
+   Seriennummer-Spalte gibt es seit dem 4. September 2026 nicht mehr. Platzhalter wie `To be filled by O.E.M.`, `Default string`,
    `System Serial Number`, `0`, `None` oder reine Füllmuster gelten als **keine** Seriennummer.
 4. **Namensfallback**: Findet sich zur Seriennummer keine Zeile – oder hat das Gerät gar keine
    brauchbare Seriennummer (typisch bei VMs) –, wird über den PC-Namen zugeordnet, aber nur gegen
    Zeilen, die **selbst keine gültige Seriennummer** tragen und **nicht `Archiviert`** sind. So
-   finden Altzeilen aus der Zeit vor der Seriennummer-Spalte ihr Gerät (und erben dessen Nummer),
+   finden von Hand angelegte Zeilen ihr Gerät (und erben dessen Nummer),
    während ein neu aufgesetztes Gerät nie die archivierte Leiche gleichen Namens erbt.
 5. **Mehrere Geräte mit demselben Namen sind erlaubt**, in der Liste wie in SCCM. Nichts im Sync
    setzt voraus, dass der Titel eindeutig ist; bei gleichen Namen wird der Reihe nach zugeteilt,
@@ -418,8 +418,8 @@ entfernt, zieht sie dort nach.
 | `programme.json konnte nicht geladen werden` | Datei fehlt in SharePoint oder Pfad stimmt nicht | `Upload-Programme.ps1` ausführen; bis dahin nutzt der Sync die lokale Kopie |
 | `Get-WmiObject … Zugriff verweigert` | Konto ohne SCCM-Rechte oder DCOM blockiert | Konto als «Read-only Analyst» eintragen, Firewall prüfen |
 | `Archivschutz greift: …` | SCCM lieferte nichts oder zu viele Zeilen würden archiviert | SCCM-Provider und WMI-Rechte prüfen; bei einer echten Massenausmusterung `LoeschSchutzProzent` bewusst erhöhen |
-| Viele Zeilen plötzlich «Archiviert» | die Seriennummern stimmen nicht überein (z. B. Mainboardtausch, Platzhalter im BIOS) | `SCCM_SerialNumber` und `Seriennummer` der betroffenen Zeilen vergleichen; notfalls die manuelle Seriennummer nachtragen und den Status wieder auf `Aktiv` setzen |
-| Ein Gerät wird doppelt angelegt statt zugeordnet | die Zeile trägt eine andere Seriennummer als das SCCM-Gerät, deshalb greift auch der Namensfallback nicht | Seriennummer in der Zeile korrigieren oder leeren; die überzählige Zeile archivieren |
+| Viele Zeilen plötzlich «Archiviert» | die Seriennummern stimmen nicht überein (z. B. Mainboardtausch, Platzhalter im BIOS) | `SCCM_SerialNumber` der betroffenen Zeilen mit SCCM vergleichen; den Status wieder auf `Aktiv` setzen, der nächste Lauf ordnet über den Namen neu zu |
+| Ein Gerät wird doppelt angelegt statt zugeordnet | die Zeile trägt in `SCCM_SerialNumber` eine andere Seriennummer als das SCCM-Gerät, deshalb greift auch der Namensfallback nicht | `SCCM_SerialNumber` in der Zeile leeren; die überzählige Zeile archivieren |
 | `Verlauf von '…' ist unbrauchbar – Zeile übersprungen` | der Inhalt der Spalte `Verlauf` ist kein gültiges JSON-Array (von Hand bearbeitet?) | Inhalt in der Zeile sichten und auf `[]` oder ein gültiges Array setzen; der Sync überschreibt ihn absichtlich nicht |
 | Ein PC fehlt in der Liste | er wurde nie gelöscht – die Computer-Phase löscht nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen |
 | `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | `TelefonListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Telefonnummern» eintragen (steht auch in `frontend/konfig.js`) |

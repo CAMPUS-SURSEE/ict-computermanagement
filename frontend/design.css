@@ -37,8 +37,8 @@
 
    Kopfzeile und Navigation
      .kopf                  Obere App-Leiste, 64 px, Hairline unten.
-     .kopf-marke .logo .marke-text
-     .logo-link             Das Logo als Verweis zur Übersicht.
+     .kopf-marke .wortmarke .wortmarke-punkt
+     .logo-link .marke-logo Die Wortmarke als Verweis zur Übersicht.
      .kopf-rechts .stand .konto
      .reiter > .reiter-knopf[.aktiv]        Linke Navigation (Hauptseite).
      .band .band-warnung .band-info         Volle Breite, Hinweisband oben.
@@ -113,7 +113,9 @@
   --primaer-schwach:   #a8c7fa;   /* zweite Datenreihe */
 
   /* Kompatibilität: ältere Regeln sprechen von der «Marke». Sie ist
-     jetzt der Akzent. Das Campus-Grün lebt nur noch im Logo. */
+     jetzt der Akzent. Das Campus-Grün lebt nur noch im Punkt der
+     Wortmarke «ICT.INVENTAR»; der Wert ist der des Logos von Campus Sursee. */
+  --campus-gruen: #84b819;
   --marke:        var(--primaer);
   --marke-dunkel: var(--primaer-dunkel);
   --marke-hell:   var(--primaer-hell);
@@ -164,6 +166,10 @@
   /* Typografie */
   --schrift: Roboto, "Helvetica Neue", Arial, sans-serif;
   --schrift-titel: "Google Sans", "Google Sans Text", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Wortmarke: Das Logo von Campus Sursee ist in «Trade Gothic Next» gesetzt
+     (Adobe-Lizenz, nur auf campus-sursee.ch ladbar). Archivo (Google Fonts) in
+     112 % Breite und Gewicht 650 kommt dem Schriftzug am nächsten. */
+  --schrift-marke: Archivo, "Trade Gothic Next", "Helvetica Neue", Arial, sans-serif;
   --t-xs: 12px;
   --t-s:  13px;
   --t-m:  14px;
@@ -294,7 +300,35 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 }
 
 .kopf-marke { display: flex; align-items: center; gap: var(--a3); min-width: 0; }
-.logo { height: 28px; width: auto; display: block; }
+
+/* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
+   Logo von Campus Sursee, der Punkt im Campus-Grün. */
+.wortmarke {
+  font-family: var(--schrift-marke);
+  font-stretch: 112%;
+  font-weight: 650;
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+}
+/* Der Punkt ist wie im Logo ein satter Kreis, der auf der Grundlinie sitzt
+   und deutlich schwerer ist als die Buchstaben. Er wird als Fläche gezeichnet
+   und nicht als Schriftzeichen, damit Grösse und Lage nicht von der Schrift
+   abhängen. Das «.» bleibt im Text (Vorlesen, Kopieren), ist aber unsichtbar. */
+.wortmarke-punkt {
+  display: inline-block;
+  width: 0.3em;
+  height: 0.3em;
+  margin: 0 0.08em 0 -0.04em;
+  border-radius: 50%;
+  background: var(--campus-gruen);
+  color: transparent;
+  overflow: hidden;
+  vertical-align: baseline;
+}
 
 .logo-link, .marke-logo {
   display: inline-flex;
@@ -308,16 +342,6 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .logo-link:hover, .marke-logo:hover { background: var(--flaeche-2); text-decoration: none; }
 .logo-link:active, .marke-logo:active { background: var(--flaeche-3); }
 
-.marke-text { min-width: 0; display: flex; align-items: baseline; gap: var(--a2); }
-.marke-text h1 {
-  font-family: var(--schrift-titel);
-  font-size: var(--t-xl);
-  font-weight: 400;
-  color: var(--text-leise);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .marke-unter {
   font-size: var(--t-xs); color: var(--text-still);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1288,8 +1312,8 @@ button.liste-zeile:hover { background: var(--flaeche); }
 @media (max-width: 760px) {
   :root { --kopf-hoch: 56px; }
 
-  /* App-Leiste: nur Logo und Aktionen; der Produktname weicht, die
-     Aktionen bleiben in einer Zeile und rollen notfalls waagrecht. */
+  /* App-Leiste: Wortmarke etwas kleiner; die Aktionen bleiben in einer
+     Zeile und rollen notfalls waagrecht. */
   .kopf { padding: 0 var(--a3); gap: var(--a2); }
   .kopf-rechts {
     gap: var(--a1); flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
@@ -1297,8 +1321,7 @@ button.liste-zeile:hover { background: var(--flaeche); }
   }
   .kopf-rechts::-webkit-scrollbar { display: none; }
   .kopf-rechts .knopf { padding-left: var(--a3); padding-right: var(--a3); }
-  .logo { height: 22px; }
-  .marke-text { display: none; }
+  .wortmarke { font-size: 18px; line-height: 24px; }
   .stand { display: none; }
 
   /* Hauptseite: aus der linken Navigation wird eine Reiterleiste. */

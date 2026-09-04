@@ -169,6 +169,5 @@ body.seite { height: 100vh; overflow: hidden; }
 }
 
 @media (max-width: 380px) {
-  .marke-text h1 { font-size: var(--t-m); }
   .kacheln { gap: var(--a2); }
 }

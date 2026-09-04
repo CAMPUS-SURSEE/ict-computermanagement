@@ -173,9 +173,9 @@ Pruefe 'Status leer bleibt leer'  ''           (Get-StatusNorm '')
 Pruefe 'Status klein geschrieben' 'Archiviert' (Get-StatusNorm 'archiviert')
 Pruefe 'Status Lager'             'Lager'      (Get-StatusNorm '  Lager ')
 Pruefe 'Status unbekannt bleibt'  'Defekt'     (Get-StatusNorm 'Defekt')
-Pruefe 'Zeilenserie: SCCM zuerst' 'SN1' (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = 'sn1'; Seriennummer = 'SN2' }))
-Pruefe 'Zeilenserie: Fallback'    'SN2' (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = '0'; Seriennummer = 'sn2' }))
-Pruefe 'Zeilenserie: keine'       ''    (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = 'Default string'; Seriennummer = '' }))
+Pruefe 'Zeilenserie: SCCM'          'SN1' (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = 'sn1'; Seriennummer = 'SN2' }))
+Pruefe 'Zeilenserie: kein Fallback' ''    (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = '0'; Seriennummer = 'sn2' }))
+Pruefe 'Zeilenserie: keine'         ''    (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = 'Default string' }))
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Zuordnung SCCM <-> Computer-Liste'
@@ -240,9 +240,10 @@ Pruefe 'Doppelter Name: nichts neu'        0 $p.Neu.Count
 $zuJung = @($p.Zuordnungen | Where-Object { $_.ZeileId -eq '10' })[0]
 Pruefe 'Jüngstes Gerät zuerst' '1' $zuJung.Geraet.ResourceId
 
-# i) Manuelle Seriennummer als Rückfallebene
+# i) Eine manuelle Spalte «Seriennummer» gibt es nicht mehr – ein solcher Wert zählt nicht.
 $p = Get-ComputerZuordnung @((Geraet 1 'PC8' 'SN-F' '2026-09-01')) @((Zeile 10 'ALT8' '' 'sn-f' 'Aktiv'))
-Pruefe 'Treffer über manuelle Seriennummer' '10' $p.Zuordnungen[0].ZeileId
+Pruefe 'Manuelle Seriennummer zählt nicht'  0 $p.Zuordnungen.Count
+Pruefe 'Gerät wird neu angelegt'           1 $p.Neu.Count
 
 # j) Leere Zeile (weder Titel noch Seriennummer) wird ignoriert
 $p = Get-ComputerZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'), (Zeile 11 '' '' '' ''))
@@ -350,7 +351,7 @@ $schemaC = @(Read-JsonDatei (Join-Path $TestDir 'schema-computer.json'))
 $schemaB = @(Read-JsonDatei (Join-Path $TestDir 'schema-benutzer.json'))
 $schemaT = @(Read-JsonDatei (Join-Path $TestDir 'schema-telefon.json'))
 $prg = Read-JsonDatei (Join-Path $ServerDir 'programme.json')
-Pruefe 'Computer-Schema: 8 manuelle Spalten' 8 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
+Pruefe 'Computer-Schema: 7 manuelle Spalten' 7 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
 Pruefe 'Computer-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
 Pruefe 'Benutzer-Schema: 14 Spalten'        14 $schemaB.Count
 Pruefe 'Telefon-Schema: 12 Spalten'         12 $schemaT.Count

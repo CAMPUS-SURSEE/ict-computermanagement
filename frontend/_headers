@@ -23,13 +23,16 @@
 #   style-src 'unsafe-inline'   Die Balken der Übersicht bekommen ihre Breite
 #                               über style.width gesetzt. Für Stile ist das
 #                               ungefährlich, für Skripte wäre es das nicht.
-#   style-src fonts.googleapis  Roboto (Google Fonts): das Stylesheet kommt von
-#   font-src fonts.gstatic      fonts.googleapis.com, die Schriftdateien von
-#                               fonts.gstatic.com. Fällt beides weg, greift
-#                               der Fallback (Helvetica/Arial), nichts bricht.
-#   img-src campus-sursee.ch    Nur für das Logo und das Favicon. Beide werden
-#                               bewusst direkt von der Hauptseite geladen und
-#                               nicht ins Repository kopiert.
+#   style-src fonts.googleapis  Roboto und Archivo (Google Fonts): das
+#   font-src fonts.gstatic      Stylesheet kommt von fonts.googleapis.com, die
+#                               Schriftdateien von fonts.gstatic.com. Fällt
+#                               beides weg, greift der Fallback
+#                               (Helvetica/Arial), nichts bricht. Archivo ist
+#                               nur für die Wortmarke «ICT.INVENTAR».
+#   img-src campus-sursee.ch    Nur für das Favicon. Es wird bewusst direkt
+#                               von der Hauptseite geladen und nicht ins
+#                               Repository kopiert. (Das Campus-Logo in der
+#                               App-Leiste ist der Wortmarke gewichen.)
 #   connect-src                 Microsoft Graph liefert die Listendaten,
 #                               login.microsoftonline.com die Token.
 #   connect-src sharepoint      Nur für «Inventar/programme.json». Graph liefert

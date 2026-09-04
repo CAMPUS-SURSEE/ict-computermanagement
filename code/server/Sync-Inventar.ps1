@@ -185,12 +185,11 @@ function Get-StatusNorm {
 }
 
 function Get-ZeilenSeriennummer {
-    <# Gültige Seriennummer einer Zeile: SCCM_SerialNumber vor der manuellen Spalte Seriennummer. #>
+    <# Gültige Seriennummer einer Zeile: ausschliesslich SCCM_SerialNumber.
+       Eine manuelle Spalte «Seriennummer» gibt es seit 2026-09-04 nicht mehr. #>
     param($Zeile)
     $a = NormSeriennummer (Get-Text $Zeile 'SCCM_SerialNumber')
     if (Test-Seriennummer $a) { return $a }
-    $b = NormSeriennummer (Get-Text $Zeile 'Seriennummer')
-    if (Test-Seriennummer $b) { return $b }
     return ''
 }
 
@@ -247,7 +246,7 @@ function Get-ComputerZuordnung {
       SCCM und ohne Graph geprüft werden kann.
 
       $SccmGeraete: Objekte mit ResourceId, Name, Seriennummer, Aktivitaet (jüngste SCCM-Aktivität)
-      $Zeilen     : Objekte mit Id, Title, Seriennummer, SCCM_SerialNumber, Status
+      $Zeilen     : Objekte mit Id, Title, SCCM_SerialNumber, Status
 
       Regeln:
        1. Schlüssel ist die Seriennummer (Platzhalter zählen nicht als Seriennummer).
@@ -861,7 +860,7 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
     $hatVerlauf = $cSpalten.ContainsKey('Verlauf')
     if (-not $hatStatus) { Log 'Ohne Spalte «Status» werden Archivierung und Reaktivierung nicht festgehalten.' 'WARN' }
     if (-not $hatVerlauf) { Log 'Ohne Spalte «Verlauf» werden keine Verlaufseinträge geschrieben.' 'WARN' }
-    $zusatz = @('Title', 'Seriennummer')
+    $zusatz = @('Title')
     if ($hatStatus) { $zusatz += 'Status' }
     if ($hatVerlauf) { $zusatz += 'Verlauf' }
     $sccmFieldNames = (Build-SccmFields $systems[0]).Keys

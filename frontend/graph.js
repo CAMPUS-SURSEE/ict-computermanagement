@@ -713,7 +713,6 @@ const Mock = (function () {
 
     z.id = String(nummer);
     z.Title = name;
-    z.Seriennummer = "SN" + String(100000 + Math.floor(r() * 899999));
     z.GebaeudeStock = waehle(r, GEBAEUDE);
     z.Bemerkung = r() < 0.15 ? "Ersatzgerät, Rückgabe offen" : "";
 
@@ -783,7 +782,7 @@ const Mock = (function () {
 
     z.SCCM_Manufacturer = waehle(r, HERSTELLER);
     z.SCCM_Model = waehle(r, MODELLE);
-    z.SCCM_SerialNumber = z.Seriennummer;
+    z.SCCM_SerialNumber = "SN" + String(100000 + Math.floor(r() * 899999));
     z.SCCM_ChassisType = waehle(r, GEHAEUSE);
     z.SCCM_IsVirtual = "Nein";
     z.SCCM_CPU = "Intel(R) Core(TM) i" + waehle(r, ["5", "5", "7"]) + "-1345U";
