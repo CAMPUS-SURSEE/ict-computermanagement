@@ -1,0 +1,44 @@
+# Cloudflare-Pages-Konfiguration für das Computer Inventar
+#
+# Ausgeliefert wird der Ordner `frontend`, und zwar unverändert. Die Webseite
+# ist reines HTML, CSS und JavaScript. Es gibt keinen Bauprozess, keine
+# Abhängigkeiten und keinen Zwischenschritt: Was in `frontend` liegt, ist genau
+# das, was im Netz steht. Der Baubefehl im Cloudflare-Dashboard bleibt deshalb
+# leer, und «Framework-Voreinstellung» steht auf «None».
+#
+# WICHTIG: `name` muss auf den Namen des Pages-Projekts im Dashboard passen.
+# Stimmt er nicht überein, bricht der Build mit einer entsprechenden Meldung ab.
+# Wer das Projekt anders nennt, führt den Namen hier nach. Sobald diese Datei da
+# ist, ist «Build-Ausgabeverzeichnis» im Dashboard nur noch lesbar – gepflegt
+# wird es hier, im Repository.
+#
+# WICHTIG: Sicherheitsheader und Content Security Policy stehen NICHT hier,
+# sondern in `frontend/_headers`. Cloudflare Pages liest diese Datei im
+# Wurzelverzeichnis der Ausgabe – also genau dort, wo sie liegt – und liefert
+# sie selbst nicht aus. Bitte ausschliesslich dort nachführen. Zwei Fassungen
+# derselben Richtlinie führen zu Fehlern, die sich kaum finden lassen, weil der
+# Browser blockierte Aufrufe stillschweigend verwirft. Die Erläuterung zu jeder
+# einzelnen Regel steht als Kommentar in jener Datei.
+#
+# Es werden keine Assets nachbearbeitet, nichts minimiert und nichts neu
+# geschrieben. Das ist wichtig, weil die Seite MSAL mit fester Version und
+# Prüfsumme (integrity="sha384-…") einbindet: ausgeliefert wird Byte für Byte
+# das, was im Repository steht.
+#
+# Vorschau-Deploys aus Pull Requests und aus anderen Zweigen laufen mit
+# denselben Einstellungen. Sie erhalten eine eigene Adresse bei `pages.dev`.
+# Damit dort die Anmeldung funktioniert, müsste die jeweilige Adresse in der
+# Entra-ID-App-Registrierung als Umleitungsadresse eingetragen sein; ohne diesen
+# Eintrag lassen sich Vorschauen nur mit `?mock=1` anschauen.
+#
+# Eigenheit von Cloudflare Pages: Seiten werden ohne die Endung `.html`
+# ausgeliefert. Ein Aufruf von `/geraet.html?id=…` wird auf `/geraet?id=…`
+# umgeleitet (308; die Abfragezeichenfolge bleibt erhalten, das Rautezeichen
+# sowieso). Die Verweise im Frontend dürfen weiterhin `geraet.html` heissen, es
+# kommt nur ein Umleitungsschritt dazu. Die Umleitungsadresse der Anmeldung ist
+# davon nicht betroffen: `auth.js` nimmt immer die Wurzel
+# (`location.origin + "/"`), nie einen Dateinamen.
+
+name = "campussursee-ictinventar"
+pages_build_output_dir = "frontend"
+compatibility_date = "2026-09-04"

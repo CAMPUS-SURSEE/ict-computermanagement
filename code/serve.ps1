@@ -2,7 +2,7 @@
 #
 # Startet einen HTTP-Listener auf Port 8123 und liefert den Ordner
 # ..\frontend aus. Nur zum Anschauen waehrend der Entwicklung; produktiv
-# uebernimmt Netlify die Auslieferung.
+# uebernimmt Cloudflare Pages die Auslieferung.
 #
 #   .\serve.ps1              dann http://localhost:8123/?mock=1 im Browser oeffnen
 #   .\serve.ps1 -Port 8765   falls 8123 auf dem Rechner belegt oder reserviert ist

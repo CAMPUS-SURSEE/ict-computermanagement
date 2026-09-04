@@ -14,13 +14,14 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **ein Programm hinzufügen oder ändern** | `programme.json` bearbeiten → `Upload-Programme.ps1` → `Ergaenze-Spalten.ps1` legt die Spalte an (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | in `programme.json` unter `adGruppen` eintragen → `Upload-Programme.ps1` (Abschnitt 3) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-computer.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `199 bestanden, 0 fehlgeschlagen` |
+| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `200 bestanden, 0 fehlgeschlagen` |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
 | **archivierte Geräte im Frontend sehen** | in der Geräteliste den Schalter **«Archivierte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
 | **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
+| **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
 | **das abgelaufene Zertifikat erneuern** | neues Zertifikat erzeugen und an der App hinterlegen (Abschnitt 7.1) |
 
@@ -566,6 +567,55 @@ Entra-Connect-Zyklus (Standard 30 Minuten).
 Einzutragen: `displayName` = `Nachtdienst 2 (Spät)`, `mobile` = `+41 79 376 41 98`.
 Von 52 Kontakten in der OU haben 3 kein `displayName` oder `mail`.
 
+### 7.4 Cloudflare Pages (Hosting des Frontends)
+
+Der Ordner `frontend` wird von **Cloudflare Pages** direkt aus GitHub ausgeliefert – ohne
+Bauprozess. Die Einstellungen, die im Repository stehen können, stehen in `wrangler.toml`; alles
+Übrige wird einmalig im Cloudflare-Dashboard gesetzt.
+
+**1 – Projekt anlegen**: Cloudflare-Dashboard → **Workers & Pages** → **Create** → **Pages** →
+**Connect to Git** → Repository `CAMPUS-SURSEE/ict-computermanagement` auswählen.
+
+**2 – Projektname**: `campussursee-ictinventar`. Cloudflare schlägt beim Anlegen den
+Repository-Namen vor (`ict-computermanagement`) – der ist zu überschreiben. Der Projektname muss mit
+`name` in `wrangler.toml` übereinstimmen, sonst bricht der Build ab. Wer einen anderen Namen will,
+führt ihn in `wrangler.toml` nach.
+
+**3 – Build-Einstellungen**:
+
+| Feld | Wert |
+|---|---|
+| Production branch | `main` |
+| Framework preset | *None* |
+| Build command | **leer lassen** |
+| Build output directory | `frontend` (kommt aus `wrangler.toml` und ist deshalb nur lesbar) |
+| Root directory | `/` |
+
+Es gibt keine Umgebungsvariablen. Client-ID, Mandant und die Listen-IDs stehen offen in
+`frontend/konfig.js` – das ist bei einer SPA so vorgesehen, der Schutz kommt aus der Anmeldung und
+aus den SharePoint-Berechtigungen (Abschnitt 7.2).
+
+**4 – Eigene Domain**: Projekt → **Custom domains** → **Set up a custom domain** →
+`inventar.campus-sursee.ch`. Liegt die Zone bei Cloudflare, wird der CNAME automatisch gesetzt;
+sonst den angezeigten CNAME auf `campussursee-ictinventar.pages.dev` beim DNS-Anbieter eintragen. Das
+Zertifikat stellt Cloudflare selbst aus. Erst wenn die Domain aktiv ist, passt sie zur
+Umleitungsadresse `https://inventar.campus-sursee.ch/` aus der App-Registrierung (Abschnitt 7.2).
+
+**5 – Veröffentlichen**: Jeder Push auf `main` löst einen Deploy aus, meist in unter einer Minute.
+Ein Push auf einen anderen Zweig oder ein Pull Request erzeugt eine Vorschau unter einer eigenen
+`*.pages.dev`-Adresse. Dort scheitert die Anmeldung, weil die Adresse nicht in der
+App-Registrierung steht – Vorschauen deshalb mit `?mock=1` anschauen oder die Adresse dort ergänzen.
+
+**Sicherheitsheader** kommen aus `frontend/_headers`. Cloudflare Pages liest diese Datei im
+Wurzelverzeichnis der Ausgabe – genau dort liegt sie – und liefert sie selbst nicht aus. Das Format
+ist dasselbe wie zuvor bei Netlify; geändert wird ausschliesslich dort, nie im Dashboard und nie in
+`wrangler.toml`.
+
+**Eigenheit**: Cloudflare Pages liefert Seiten ohne die Endung `.html` aus und leitet
+`/geraet.html?id=…` mit 308 auf `/geraet?id=…` um. Die Abfragezeichenfolge bleibt erhalten, die
+Verweise im Frontend dürfen weiter `geraet.html` heissen. Die Anmeldung ist davon nicht betroffen:
+`auth.js` benutzt als Umleitungsadresse immer die Wurzel, nie einen Dateinamen.
+
 ---
 
 ## 8. Entfernen
@@ -573,3 +623,4 @@ Von 52 Kontakten in der OU haben 3 kein `displayName` oder `mail`.
 1. Geplante Aufgabe löschen: `Unregister-ScheduledTask -TaskName 'Computer Inventar Sync' -Confirm:$false`
 2. App-Registrierungen «SCCM-SharePoint-Sync» und «Computer Inventar Frontend» im Entra Admin Center löschen.
 3. Zertifikat in `certlm.msc` löschen, Ordner `C:\ComputerInventar` entfernen.
+4. Pages-Projekt «campussursee-ictinventar» im Cloudflare-Dashboard löschen und den CNAME für `inventar.campus-sursee.ch` im DNS entfernen.
