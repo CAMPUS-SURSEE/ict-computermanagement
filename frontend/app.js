@@ -469,7 +469,6 @@ const SINNBILDER = {
   csv:        ["M12 4v10", "M8 11l4 4 4-4", "M5 19h14"],
   archiv:     ["M4 9h16v10H4z", "M3 5h18v4H3z", "M10 13h4"],
   plus:       ["M12 5v14", "M5 12h14"],
-  neuladen:   ["M20 12a8 8 0 1 1-2.6-5.9", "M20 4v5h-5"],
   abmelden:   ["M15 5H6v14h9", "M14 12h7", "M18 9l3 3-3 3"],
   schliessen: ["M6 6l12 12", "M18 6L6 18"]
 };
@@ -793,9 +792,21 @@ function zelle(tab, zeile, schluessel) {
         : (st === "Inaktiv" ? "Inaktiv — vorhanden, aber nicht in Teams" : "In Betrieb");
       return td;
     }
+    /* «Zugewiesen» ist der Normalfall und bleibt schwarz; nur die nicht
+       zugewiesene Nummer bekommt einen Chip (Styleguide 4.7). */
     if (schluessel === "__zugewiesenText") {
-      td.appendChild(zeile.__zugewiesen ? el("span", "t-erfolg", "Ja") : el("span", "t-warnung", "Nein"));
-      td.title = zeile.__zugewiesen ? "Nummer ist vergeben" : "Nummer ist niemandem zugewiesen";
+      if (zeile.__zugewiesen) {
+        td.textContent = "Ja";
+        td.title = "Nummer ist vergeben";
+      } else {
+        td.appendChild(el("span", "chip chip-warnung", "Nicht zugewiesen"));
+        td.title = "Nummer ist niemandem zugewiesen";
+      }
+      return td;
+    }
+    /* Die Nummer einer nicht zugewiesenen Zeile in --warnung (styles.css). */
+    if (schluessel === "Telefonnummer" && !zeile.__zugewiesen) {
+      td.appendChild(el("span", "zeile-frei-wert", wert === null || wert === undefined ? "" : String(wert)));
       return td;
     }
     if (schluessel === "__nameAbweichungText") {
@@ -913,8 +924,9 @@ function zeichneTabelle(tab) {
 
   for (const zeile of sichtbar[tab]) {
     const tr = el("tr");
-    /* Nicht zugewiesene Telefonnummern fallen in der Liste auf: das ist der
-       Hauptzweck der Ansicht (freie Nummern finden). */
+    /* Nicht zugewiesene Telefonnummern fallen in der Liste auf: Kurzwahl
+       und Nummer in --warnung, dazu der Chip in der Spalte «Zugewiesen».
+       Farbe nur auf Text, nie als Fläche (Styleguide 1). */
     if (tab === "telefone" && !zeile.__zugewiesen) {
       tr.className = "zeile-frei";
       tr.title = "Nicht zugewiesen";
@@ -1521,14 +1533,15 @@ function zeichneUebersicht() {
   const nichtZugewiesen = telefone.length - zugewiesen;
   const frei = zaehle(telefone, t => t.__status === "Frei");
   const inaktivT = zaehle(telefone, t => t.__status === "Inaktiv");
-  const mitPerson = zaehle(telefone, t => !!t.__benutzerZeile);
   const nameWeicht = zaehle(telefone, t => t.__nameAbweichung);
   const ohneTelefon = zaehle(benutzer, b => b.__adAktiv && !b.__hatTelefon);
 
+  /* Sieben Kacheln wie bei den Geräten, damit sie in eine Reihe passen
+     (Styleguide 4.5). «zugewiesen» ist der Normalfall und bleibt schwarz. */
   const kachelnT = [
     [telefone.length, "Telefonnummern", null, null,
       () => springeMitFilter("telefone", function () { })],
-    [zugewiesen, "zugewiesen", zugewiesen ? "erfolg" : null, null,
+    [zugewiesen, "zugewiesen", null, null,
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__zugewiesenText", "Ja"))],
     [nichtZugewiesen, "nicht zugewiesen", nichtZugewiesen ? "warnung" : null,
       "in der Liste hervorgehoben",
@@ -1537,9 +1550,6 @@ function zeichneUebersicht() {
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__statusText", "Frei"))],
     [inaktivT, "inaktiv", null, "nicht in Teams",
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__statusText", "Inaktiv"))],
-    [mitPerson, "mit Person aus dem AD", null, "über die AD-Telefonnummer",
-      () => springeMitFilter("telefone", z => facetteSetzen(z, "__benutzerQuelleText",
-        TELEFON_QUELLE_TEXT.telefon))],
     [nameWeicht, "Name weicht vom AD ab", nameWeicht ? "warnung" : null,
       "Liste und AD nennen verschiedene Personen",
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__nameAbweichungText", "Ja"))],
@@ -1895,10 +1905,15 @@ function hinweisZeigen(text) {
   hinweisZeitgeber = setTimeout(function () { band.hidden = true; }, 2600);
 }
 
-/* Still nachladen, ohne Filter, Sortierung oder Rollposition zu verlieren. */
-let ladeLaeuft = false;
+/* Still nachladen, ohne Filter, Sortierung oder Rollposition zu verlieren.
 
-async function stillNeuLaden() {
+   «leise» ist der automatische Takt: Er meldet weder Erfolg noch Misserfolg,
+   weil niemand danach gefragt hat. Ein Nachladen, das eine Änderung aus
+   einem Detailfenster einsammelt, sagt dagegen kurz Bescheid. */
+let ladeLaeuft = false;
+let letzteAktualisierung = Date.now();
+
+async function stillNeuLaden(leise) {
   if (ladeLaeuft) return;
   ladeLaeuft = true;
   const rahmen = $(zustand.ansicht + "-rahmen");
@@ -1909,16 +1924,38 @@ async function stillNeuLaden() {
     alleNeuBerechnen();
     zeichneAnsicht();
     if (rahmen) rahmen.scrollTop = rollen;
-    hinweisZeigen("Liste aktualisiert");
+    if (!leise) hinweisZeigen("Liste aktualisiert");
   } catch (fehler) {
-    hinweisZeigen("Die Liste konnte nicht aktualisiert werden");
+    /* Beim automatischen Takt bleibt der bisherige Stand einfach stehen:
+       eine kurze Störung soll die Liste nicht mit Meldungen zupflastern.
+       Der nächste Takt versucht es wieder. */
+    if (!leise) hinweisZeigen("Die Liste konnte nicht aktualisiert werden");
   } finally {
     ladeLaeuft = false;
+    letzteAktualisierung = Date.now();
   }
 }
 
+/* Der automatische Takt ersetzt den früheren Knopf «Neu laden». Geprüft wird
+   oft, nachgeladen selten: nur wenn das Fenster sichtbar ist und der Takt
+   abgelaufen ist. In einem Hintergrund-Tab wird gar nicht geholt — dafür
+   sofort, sobald er wieder nach vorne kommt und die Daten alt sind. */
+function autoNachladenPruefen() {
+  if (document.hidden) return;
+  if ($("reiter").hidden) return;   // noch am Laden oder im Fehlerbild
+  if (Date.now() - letzteAktualisierung < KONFIG.autoTaktMs) return;
+  stillNeuLaden(true);
+}
+
+function autoNachladenStarten() {
+  letzteAktualisierung = Date.now();
+  setInterval(autoNachladenPruefen, KONFIG.autoPruefTaktMs);
+  document.addEventListener("visibilitychange", autoNachladenPruefen);
+}
+
 /* Auf Meldungen aus den Detailfenstern hören. Fehlt BroadcastChannel im
-   Browser, bleibt die Seite still: dann hilft «Neu laden». */
+   Browser, bleibt die Seite still: dann holt sie die Änderung erst mit dem
+   nächsten automatischen Takt. */
 const MELDUNGEN = ["zeile-geaendert", "zeile-neu", "zeile-geloescht",
                    "benutzer-geaendert", "benutzer-neu", "benutzer-geloescht",
                    "telefon-geaendert", "telefon-neu", "telefon-geloescht"];
@@ -2016,11 +2053,9 @@ function standAnzeigen() {
     ? "Daten Stand: " + Hilfe.datumZeitText(letzterSync) + " (" + Hilfe.relativText(letzterSync) + ")"
     : "Daten Stand: unbekannt";
   $("stand").textContent = text;
-
-  /* In schmaleren Fenstern blendet styles.css den Daten-Stand aus, damit
-     die Kopfzeile einzeilig bleibt. Damit die Angabe trotzdem erreichbar
-     ist, hängt sie als Titel am Knopf «Neu laden». */
-  $("knopf-neuladen").title = text + " — Daten neu laden";
+  $("stand").title = text
+    + " — die Liste lädt sich alle "
+    + Math.round(KONFIG.autoTaktMs / 60000) + " Minuten selbst nach";
 }
 
 function mockBandZeigen() {
@@ -2146,7 +2181,6 @@ function ereignisseVerbinden() {
 
   knopfSinnbild("knopf-neu", "plus");
   knopfSinnbild("knopf-neu-telefon", "plus");
-  knopfSinnbild("knopf-neuladen", "neuladen");
   knopfSinnbild("knopf-abmelden", "abmelden");
   $("knopf-neu").title = "Ein neues Gerät in einem eigenen Fenster erfassen";
   $("knopf-neu-telefon").title = "Eine neue Telefonnummer in einem eigenen Fenster erfassen";
@@ -2167,19 +2201,6 @@ function ereignisseVerbinden() {
   });
 
   $("knopf-neu").addEventListener("click", neuesGeraetOeffnen);
-
-  $("knopf-neuladen").addEventListener("click", async function () {
-    try {
-      await datenLaden();
-      standAnzeigen();
-      alleNeuBerechnen();
-      zeigeInhalt();
-      zeichneAnsicht();
-    } catch (fehler) {
-      zeigeFehler("Die Daten konnten nicht neu geladen werden",
-        fehler && fehler.message ? fehler.message : String(fehler), "");
-    }
-  });
 
   $("knopf-abmelden").addEventListener("click", function () { Auth.abmelden(); });
   $("knopf-nochmal").addEventListener("click", function () { location.reload(); });
@@ -2213,6 +2234,7 @@ function ereignisseVerbinden() {
   });
 
   kanalVerbinden();
+  autoNachladenStarten();
 }
 
 spaltenIndexAufbauen();

@@ -48,10 +48,6 @@ function istBearbeitbar(spalte) {
   return !!spalte && spalte.q === "manuell";
 }
 
-/* Die Textfelder des Formulars in der Reihenfolge der Anzeige. Kurzwahl,
-   Typ und Status werden eigens gezeichnet (Schlüssel, Auswahlfelder). */
-const FORM_TEXT = ["Telefonnummer", "Name", "Apparat", "Standort"].map(i => SPALTE[i]);
-
 
 /* ==================================================================
    2. Kleine DOM-Helfer
@@ -195,7 +191,7 @@ function melden(typ, id) {
     kanal.close();
   } catch (e) {
     // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten «Neu laden» auf dem alten Stand.
+    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
   }
 }
 
@@ -656,9 +652,11 @@ function kopfZeichnen() {
   const status = leeren($("tf-status"));
   if (!neuModus && zeile) {
     const s = statusWert();
+    /* Der Normalfall (Aktiv, zugewiesen) bekommt keinen Chip — nur was
+       auffällt: Frei, Inaktiv, nicht zugewiesen, dazu die Person aus dem AD. */
     if (s === "Frei") status.appendChild(chip("Frei", "warnung"));
     else if (s === "Inaktiv") status.appendChild(chip("Inaktiv", "leise"));
-    status.appendChild(istZugewiesen() ? chip("Zugewiesen", "erfolg") : chip("Nicht zugewiesen", "warnung"));
+    if (!istZugewiesen()) status.appendChild(chip("Nicht zugewiesen", "warnung"));
     const b = person();
     if (b) status.appendChild(chip(b.__name || b.Title, "info"));
   }
@@ -668,15 +666,6 @@ function kopfZeichnen() {
 function aktionenZeichnen() {
   const ziel = leeren($("tf-aktionen"));
   if (geloescht) return;
-
-  ziel.appendChild(knopf("Neu laden", null, function () {
-    if (anzahlAenderungen() && !window.confirm(
-        "Es gibt ungespeicherte Änderungen. Beim Neuladen gehen sie verloren. "
-        + "Trotzdem neu laden?")) return;
-    entwurf = {};
-    nummerVonHand = false;
-    neuLaden();
-  }));
 
   if (!neuModus) {
     ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
@@ -849,6 +838,55 @@ function ladefehlerZeigen(fehler) {
   }
   zeigeFehler("Die Daten konnten nicht geladen werden", meldung,
     mockModus ? "" : "Zum Anschauen ohne Anmeldung dieses Fenster mit &mock=1 aufrufen.");
+}
+
+/* ---------- Automatisch nachladen ---------- */
+
+/* Statt eines Knopfes «Neu laden» holt sich dieses Fenster den Stand in
+   ruhigen Abständen selbst — still, ohne den Inhalt gegen den Spinner zu
+   tauschen. Wer sofort einen frischen Stand will, lädt die Seite neu.
+
+   Übersprungen wird, sobald Nachladen mehr stören als nützen würde: bei
+   ungespeicherten Änderungen (sie gingen verloren), beim Anlegen, während
+   des Speicherns, bei offenem Dialog, nach dem Löschen und in einem
+   Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
+let autoLetzte = Date.now();
+let autoLaeuft = false;
+
+function autoErlaubt() {
+  if (autoLaeuft || document.hidden) return false;
+  if (neuModus || geloescht || speichertGerade) return false;
+  if (anzahlAenderungen()) return false;
+  if (!$("tf-dialog").hidden) return false;
+  return true;
+}
+
+async function autoNachladen() {
+  autoLaeuft = true;
+  try {
+    await datenLaden(true);
+    zeileWaehlen();
+    zeigeInhalt();
+    zeichnenAlles();
+  } catch (fehler) {
+    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
+       wegen einer kurzen Störung. */
+  } finally {
+    autoLaeuft = false;
+    autoLetzte = Date.now();
+  }
+}
+
+function autoPruefen() {
+  if (!autoErlaubt()) return;
+  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
+  autoNachladen();
+}
+
+function autoStarten() {
+  autoLetzte = Date.now();
+  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
+  document.addEventListener("visibilitychange", autoPruefen);
 }
 
 /* ---------- Prüfen ---------- */
@@ -1095,6 +1133,8 @@ async function start() {
 $("tf-knopf-speichern").addEventListener("click", speichern);
 $("tf-knopf-verwerfen").addEventListener("click", verwerfen);
 $("tf-dialog-hintergrund").addEventListener("click", dialogSchliessen);
+
+autoStarten();
 
 window.addEventListener("hashchange", function () {
   const h = (location.hash || "").replace(/^#/, "");

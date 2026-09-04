@@ -70,7 +70,7 @@
 
    Tabellen
      .tabelle-rahmen .tabelle th.sortiert>.pfeil .dicht .tabelle-leer
-     .tabelle-schlicht(-rahmen)
+     .tabelle-schlicht(-rahmen) tr.zeile-frei .zeile-frei-wert
 
    Schalter
      .schalter[.an|.gesperrt] .schalter-zeile
@@ -855,6 +855,13 @@ input[type="checkbox"], input[type="radio"] {
 
 .name-link { font-weight: 500; color: var(--text); }
 .tabelle tbody tr:hover .name-link { color: var(--primaer); }
+
+/* Auffällige Zeile (Telefonliste: nicht zugewiesene Nummer). Status wird
+   über Farbe gezeigt, nie über Form oder Fläche: kein getönter Grund,
+   sondern Name und markierte Werte in --warnung; dazu ein Chip in der
+   Zeile. Die Hover-Fläche bleibt --flaeche. */
+.tabelle tbody tr.zeile-frei .name-link,
+.tabelle tbody tr.zeile-frei .zeile-frei-wert { color: var(--warnung); }
 
 .punkt {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;

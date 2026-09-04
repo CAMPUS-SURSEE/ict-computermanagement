@@ -1,6 +1,6 @@
 # Styleguide «Computer Inventar»
 
-Stand: 04.09.2026 · Gilt für alle Seiten unter `frontend/` (index.html, geraet.html, benutzer.html).
+Stand: 04.09.2026 · Gilt für alle Seiten unter `frontend/` (index.html, geraet.html, benutzer.html, telefon.html).
 Lebende Komponentenübersicht mit echtem Markup: **[styleguide.html](styleguide.html)** (lokal über `code\serve.ps1` öffnen).
 
 Das Design folgt **Google Material Design 3**, so wie Google es in seinen eigenen Konsolen einsetzt
@@ -119,15 +119,17 @@ Maximale Textbreite `.bahn` und `.fenster-bahn`: 1400 px.
 │ 240 px     │   Übersicht   → rollt selbst (.inhalt)           │
 │ Pillen mit │   Geräte      → Werkzeugleiste + Tabelle, die    │
 │ Icon       │   Benutzer      selbst rollt (.inhalt-fest)      │
+│            │   Telefonnummern                                 │
 │            │   Software    → rollt selbst                     │
 └────────────┴─────────────────────────────────────────────────┘
 ```
 
 - `body.seite` ist genau fensterhoch und rollt **nie**; gerollt wird in `.inhalt` oder `.tabelle-rahmen`.
 - Unter 760 px wird die Navigation zur Reiterleiste (Text, blauer Unterstrich) über dem Inhalt.
-- Der Datenstand (`.stand`) ist ab 1200 px sichtbar, darunter steht er als Tooltip am Knopf «Neu laden».
+- Der Datenstand (`.stand`) ist ab 1000 px sichtbar; sein Tooltip nennt zusätzlich den automatischen Nachlade-Takt.
+- Es gibt **keinen** Knopf «Neu laden». Alle Seiten holen den Stand selbst nach (`KONFIG.autoTaktMs`, still und nur im sichtbaren Fenster); für sofort frische Daten lädt man die Seite neu.
 
-### 3.2 Detailfenster (geraet.html, benutzer.html)
+### 3.2 Detailfenster (geraet.html, benutzer.html, telefon.html)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -235,7 +237,8 @@ Töne: `chip-erfolg`, `chip-warnung`, `chip-gefahr`, `chip-info`, `chip-marke`, 
 - 40 px hoch, 14 px, 1 px `--umriss`, 4 px Radius, weiss.
 - Hover Rahmen `--text`, Fokus Rahmen `--primaer` doppelt (1 px + 1 px innen), ungültig `--gefahr` doppelt.
 - Schreibgeschützt: `--flaeche` mit `--linie`-Rahmen und `--text-leise`.
-- Gilt für `.g-eingabe`, `.g-textarea`, `.feld input/select/textarea`, `.vl-datum-feld`, `.vl-text-feld`, `.filterfeld select`, `.datenzeile-breit textarea`.
+- Gilt für `.feld-eingabe` (das Feld des Design-Systems, auch für `select` und `textarea`), `.g-eingabe`, `.g-textarea`, `.feld input/select/textarea`, `.vl-datum-feld`, `.vl-text-feld`, `.filterfeld select`, `.datenzeile-breit textarea`.
+- Neue Seiten nehmen `.feld-eingabe` aus design.css und ergänzen in ihrem Seiten-CSS nur Breiten und den Ungültig-Zustand (Beispiel: `.tf-eingabe-schmal`, `.tf-ungueltig` in telefon.css).
 - Checkboxen und Radios: `accent-color: --primaer`.
 
 ### 4.10 Datenzeilen `.datenzeilen > .datenzeile`
@@ -252,6 +255,7 @@ Töne: `chip-erfolg`, `chip-warnung`, `chip-gefahr`, `chip-info`, `chip-marke`, 
 - Zeilen 48 px (13 px Schrift), Trennlinie `--linie-leicht`, Hover `--flaeche`. **Kein Zebra.**
 - Kompakt (`.dicht` auf einem Vorfahren): 36 px Zeilen, 12 px Schrift.
 - Zellen einzeilig mit «…» bis 280 px; die erste Spalte mindestens 180 px.
+- **Auffällige Zeilen** (Telefonliste: nicht zugewiesene Nummern, Klasse `.zeile-frei`): Kurzwahl und Nummer in `--warnung`, dazu ein Chip `chip-warnung` in der Spalte «Zugewiesen». **Kein getönter Zeilenhintergrund** — Status kommt über Text- und Chipfarbe, die Hover-Fläche bleibt `--flaeche`.
 - In Karten `.tabelle-schlicht`: kein klebender Kopf, keine Handzeiger, Zellen dürfen umbrechen.
 - Leerzustand `.tabelle-leer` zentriert im Rahmen.
 
@@ -351,6 +355,7 @@ Automatisch geprüft (Sonde in jeder Ansicht: kein waagrechtes Rollen der Seite,
 | Keine Treffer (Geräte, Benutzer, Software, Programme) | Leerzustand mit Satz |
 | Kein Gerät zugeordnet / kein Benutzer zugeordnet | Leerzustand in der Karte, Hauptaktion bleibt |
 | Ladezustand, Fehlerzustand (`?fehler=1`), unbekannte ID, Neu-Modus (`?neu=1`) | zentriert, Navigation ausgeblendet |
+| Telefonliste: 74 Nummern, 7 nicht zugewiesen, Filter «Zugewiesen: Nein», Telefonfenster mit und ohne AD-Person, `telefon.html?neu=1` | Warnfarbe nur auf Text und Chip, Kacheln in einer Reihe, Formular mit Design-System-Feldern |
 | Dialog «Benutzer zuordnen» mit Trefferliste auf 360 px | randlos, Liste rollt innen |
 | Speicherleiste mit Toast gleichzeitig | Toast liegt 80 px über der Leiste |
 | Verlaufsformular offen, Zeile in Bearbeitung | Felder Outlined, Knöpfe in Formularzeile |
@@ -361,7 +366,7 @@ Automatisch geprüft (Sonde in jeder Ansicht: kein waagrechtes Rollen der Seite,
 
 ## 8. Regeln für neue Seiten und Bereiche
 
-1. `design.css` zuerst laden, Seitenlayout in eine eigene Datei mit Präfix (`g-`, `b-`, `vl-`).
+1. `design.css` zuerst laden, Seitenlayout in eine eigene Datei mit Präfix (`g-`, `b-`, `tf-`, `vl-`).
 2. Nur Tokens verwenden; keine neuen Farben, Radien oder Schatten.
 3. Jede neue Ansicht bekommt: Titelzeile (`.seitenkopf` oder `.bereich-titel`), Karten, Leerzustand, Fehlerzustand.
 4. Genau eine gefüllte Hauptaktion je Bereich; alles andere Outlined oder Text.

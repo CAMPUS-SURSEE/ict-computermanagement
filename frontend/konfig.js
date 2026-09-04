@@ -38,6 +38,18 @@ const KONFIG = {
      Graph: GET /sites/{siteId}/drive/root:/{programmeDateiPfad}:/content */
   programmeDateiPfad: "Inventar/programme.json",
 
+  /* ---- Automatisches Nachladen ----
+     Es gibt keinen Knopf «Neu laden» mehr. Stattdessen holen sich die Liste
+     und die Detailfenster ihre Daten in diesem Abstand still selbst nach —
+     aber nur, wenn das Fenster sichtbar ist und nichts Ungespeichertes offen
+     steht. Wer sofort einen frischen Stand will, lädt die Seite neu. */
+  autoTaktMs: 5 * 60 * 1000,
+
+  /* Wie oft geprüft wird, ob der Takt abgelaufen ist. Kurz genug, damit ein
+     Fenster nach der Rückkehr aus dem Hintergrund rasch aktuell ist; das
+     Prüfen selbst löst keine Abfrage aus. */
+  autoPruefTaktMs: 30 * 1000,
+
   /* ---- Logo und Favicon ---- */
   logoUrl: "https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg"
 };

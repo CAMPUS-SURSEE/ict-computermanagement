@@ -197,7 +197,7 @@ function melden(typ, id) {
     kanal.close();
   } catch (e) {
     // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten «Neu laden» auf dem alten Stand.
+    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
   }
 }
 
@@ -973,6 +973,52 @@ function ladefehlerZeigen(fehler) {
     mockModus ? "" : "Zum Anschauen ohne Anmeldung dieses Fenster mit &mock=1 aufrufen.");
 }
 
+/* ---------- Automatisch nachladen ---------- */
+
+/* Wie in der Liste und im Gerätefenster: kein Knopf «Neu laden», sondern ein
+   ruhiger Takt, der den Stand still nachholt. Wer sofort einen frischen
+   Stand will, lädt die Seite neu.
+
+   Übersprungen wird, sobald Nachladen mehr stören als nützen würde: bei
+   ungespeicherten Änderungen (sie gingen verloren), während des Speicherns
+   und in einem Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
+let autoLetzte = Date.now();
+let autoLaeuft = false;
+
+function autoErlaubt() {
+  if (autoLaeuft || document.hidden) return false;
+  if (speichertGerade || anzahlAenderungen()) return false;
+  return true;
+}
+
+async function autoNachladen() {
+  autoLaeuft = true;
+  try {
+    await datenLaden(true);
+    zeileWaehlen();
+    zeigeInhalt();
+    zeichnenAlles();
+  } catch (fehler) {
+    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
+       wegen einer kurzen Störung. */
+  } finally {
+    autoLaeuft = false;
+    autoLetzte = Date.now();
+  }
+}
+
+function autoPruefen() {
+  if (!autoErlaubt()) return;
+  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
+  autoNachladen();
+}
+
+function autoStarten() {
+  autoLetzte = Date.now();
+  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
+  document.addEventListener("visibilitychange", autoPruefen);
+}
+
 /* Werte so aufbereiten, wie Graph sie erwartet. Programmwerte sind immer
    Zeichenketten «0» oder «1»; «2» schreibt dieses Fenster nie.
 
@@ -1107,6 +1153,8 @@ async function start() {
 
 $("b-knopf-speichern").addEventListener("click", speichern);
 $("b-knopf-verwerfen").addEventListener("click", verwerfen);
+
+autoStarten();
 
 window.addEventListener("hashchange", function () {
   const h = (location.hash || "").replace(/^#/, "");

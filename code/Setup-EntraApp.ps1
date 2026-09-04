@@ -2,6 +2,8 @@
 .SYNOPSIS
   Einmalige Einrichtung: App-Registrierung "SCCM-SharePoint-Sync" in Entra ID mit Zertifikat,
   Berechtigung Sites.Selected (Application) inkl. Admin-Consent und Schreibrecht nur auf die Site mgmts-ict-s.
+  Kann jederzeit erneut ausgeführt werden: bestehende Werte bleiben erhalten, eine zu schwache
+  Site-Rolle («write») wird auf «manage» angehoben.
 
 .DESCRIPTION
   Auf dem Rechner ausführen, der später den Sync ausführt (z. B. adminsrv319), damit das Zertifikat
@@ -12,7 +14,7 @@
    1. Selbstsigniertes Zertifikat (5 Jahre) erzeugen
    2. App-Registrierung anlegen, öffentlichen Schlüssel hinterlegen
    3. Service Principal anlegen, Sites.Selected zuweisen (= Admin-Consent)
-   4. Der App Schreibrecht ("write") auf die SharePoint-Site erteilen
+   4. Der App die Rolle "manage" auf die SharePoint-Site erteilen (Zeilen UND Spalten schreiben)
    5. Konfigurationsdatei Sync-Inventar.config.json schreiben (bestehende Werte bleiben erhalten)
 
 .NOTES
@@ -134,13 +136,22 @@ if (-not $assigned) {
     G POST "/servicePrincipals/$($sp.id)/appRoleAssignments" @{ principalId = $sp.id; resourceId = $graphSp.id; appRoleId = $sitesSelected.id } | Out-Null
 }
 
-# --- 4) Site-Berechtigung (write) ---------------------------------------------
+# --- 4) Site-Berechtigung (manage) --------------------------------------------
+# «write» reicht nur für Zeilen. Der Sync legt auch fehlende Spalten an (Status, Verlauf,
+# Programmspalten, Telefonspalten); das verlangt die Rolle «manage», sonst antwortet Graph
+# beim Anlegen einer Spalte mit 403 und jeder PATCH mit «Field … is not recognized».
+$SiteRolle = 'manage'
 $u = [uri]$SiteUrl; $site = G GET "/sites/$($u.Host):$($u.AbsolutePath)"
-$perms = (G GET "/sites/$($site.id)/permissions").value | Where-Object { $_.grantedToIdentitiesV2.application.id -eq $appId -or $_.grantedToIdentities.application.id -eq $appId }
+$perms = @((G GET "/sites/$($site.id)/permissions").value | Where-Object { $_.grantedToIdentitiesV2.application.id -eq $appId -or $_.grantedToIdentities.application.id -eq $appId })
 if (-not $perms) {
-    Write-Host "Erteile der App Schreibrecht auf $SiteUrl ..."
-    G POST "/sites/$($site.id)/permissions" @{ roles = @('write'); grantedToIdentities = @(@{ application = @{ id = $appId; displayName = $AppName } }) } | Out-Null
-} else { Write-Host "Site-Berechtigung existiert bereits: $($perms.roles -join ',')" }
+    Write-Host "Erteile der App die Rolle «$SiteRolle» auf $SiteUrl ..."
+    G POST "/sites/$($site.id)/permissions" @{ roles = @($SiteRolle); grantedToIdentities = @(@{ application = @{ id = $appId; displayName = $AppName } }) } | Out-Null
+} elseif ($perms[0].roles -contains $SiteRolle -or $perms[0].roles -contains 'fullcontrol' -or $perms[0].roles -contains 'owner') {
+    Write-Host "Site-Berechtigung existiert bereits: $($perms[0].roles -join ',')"
+} else {
+    Write-Host "Hebe die Site-Berechtigung von «$($perms[0].roles -join ',')» auf «$SiteRolle» an (nötig zum Anlegen von Spalten) ..."
+    G PATCH "/sites/$($site.id)/permissions/$($perms[0].id)" @{ roles = @($SiteRolle) } | Out-Null
+}
 
 # --- 5) Konfiguration schreiben ------------------------------------------------
 # Bestehende Konfiguration nicht überschreiben, sondern nur die Anmeldedaten nachführen.
@@ -161,6 +172,9 @@ $cfg = [ordered]@{
     # Listen-IDs aus der Migration vom 02.09.2026 (Site mgmts-ict-s); identisch mit frontend/konfig.js.
     ComputerListId      = (AltWert 'ComputerListId' '7870205c-bfa6-4d18-8035-d16d0a082637')
     BenutzerListId      = (AltWert 'BenutzerListId' '7db0cf44-7a2a-4937-b982-03236858b4b9')
+    # TelefonListId gibt Import-Telefonliste.ps1 aus; leer lassen schaltet die Telefon-Phase ab.
+    TelefonListId       = (AltWert 'TelefonListId' '')
+    TelefonPraefix      = (AltWert 'TelefonPraefix' '+41 41 926 2')
     ProgrammeDateiPfad  = (AltWert 'ProgrammeDateiPfad' 'Inventar/programme.json')
     SmsProvider         = $SmsProvider
     SiteCode            = $SiteCode

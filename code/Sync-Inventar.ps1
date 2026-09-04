@@ -828,7 +828,10 @@ function Confirm-InventarSpalten {
     <#
       Legt fehlende Spalten in einer Liste an. Geprüft wird über den internen Namen und den
       Anzeigenamen; Graph übernimmt «name» als internen Namen. Idempotent, -WhatIf-fähig.
-      Rückgabe: Hashtable der vorhandenen Spaltennamen (vor dem Anlegen).
+      Rückgabe: Hashtable der Spalten, die danach wirklich vorhanden sind – neu angelegte
+      eingeschlossen, nicht angelegte (-WhatIf, fehlende Berechtigung) nicht. Der Aufrufer
+      schreibt nur Felder, die darin stehen; sonst weist Graph den ganzen PATCH mit
+      «Field … is not recognized» zurück und eine fehlende Spalte kostet alle Zeilen.
     #>
     param([string]$ListId, $Spalten)
     $vorhanden = @{}
@@ -847,9 +850,14 @@ function Confirm-InventarSpalten {
         if ($vorhanden.ContainsKey([string]$s.name) -or $vorhanden.ContainsKey([string]$s.displayName)) { continue }
         if ($WhatIf) { Log "WHATIF: Spalte '$($s.name)' würde in der Liste angelegt."; continue }
         try {
-            Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$ListId/columns" -Body $s | Out-Null
+            $angelegt = Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$ListId/columns" -Body $s
+            $vorhanden[[string]$s.name] = $angelegt
+            if ($s.displayName) { $vorhanden[[string]$s.displayName] = $angelegt }
             Log "Spalte angelegt: $($s.name)"
-        } catch { Log "Fehler beim Anlegen der Spalte '$($s.name)': $_" 'ERROR'; $script:fehler++ }
+        } catch {
+            Log "Spalte '$($s.name)' fehlt in der Liste $ListId und konnte nicht angelegt werden – ihre Felder werden diesmal nicht geschrieben: $_$(Get-SpaltenHinweis $_)" 'ERROR'
+            $script:fehler++
+        }
     }
     return $vorhanden
 }
@@ -867,9 +875,15 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
         (New-NoteSpalte 'Verlauf' 'Verlauf' 'JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]. Nicht von Hand bearbeiten.')
     )
 
-    # Mit -WhatIf werden fehlende Spalten nicht angelegt; dann dürfen sie auch nicht abgefragt werden.
+    # Nur Spalten abfragen und schreiben, die es wirklich gibt: mit -WhatIf und bei fehlender
+    # Berechtigung wurden sie oben nicht angelegt.
+    $hatStatus = $cSpalten.ContainsKey('Status')
+    $hatVerlauf = $cSpalten.ContainsKey('Verlauf')
+    if (-not $hatStatus) { Log 'Spalte «Status» fehlt in der Computer-Liste – Archivierung und Reaktivierung werden diesmal nicht geschrieben.' 'WARN' }
+    if (-not $hatVerlauf) { Log 'Spalte «Verlauf» fehlt in der Computer-Liste – es werden diesmal keine Verlaufseinträge geschrieben.' 'WARN' }
     $zusatz = @('Title', 'Seriennummer')
-    foreach ($n in @('Status', 'Verlauf')) { if (-not $WhatIf -or $cSpalten.ContainsKey($n)) { $zusatz += $n } }
+    if ($hatStatus) { $zusatz += 'Status' }
+    if ($hatVerlauf) { $zusatz += 'Verlauf' }
     $sccmFieldNames = (Build-SccmFields $systems[0]).Keys
     $select = ($zusatz -join ',') + ',' + ($sccmFieldNames -join ',')
     $items = Get-GraphAlle "$itemsBase`?`$expand=fields(`$select=$select)&`$top=500"
@@ -930,8 +944,8 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
         }
         # Title ist eine manuelle Spalte: Der Sync schreibt sie einzig bei einer Umbenennung in SCCM.
         if ($zu.Umbenennen) { $delta['Title'] = $zu.NeuerTitel }
-        if ($zu.StatusNeu -ne '' -and $zu.StatusNeu -ne $zu.StatusAlt) { $delta['Status'] = $zu.StatusNeu }
-        if ($zu.VerlaufTexte.Count -gt 0) {
+        if ($hatStatus -and $zu.StatusNeu -ne '' -and $zu.StatusNeu -ne $zu.StatusAlt) { $delta['Status'] = $zu.StatusNeu }
+        if ($hatVerlauf -and $zu.VerlaufTexte.Count -gt 0) {
             try {
                 $delta['Verlauf'] = Add-VerlaufEintraege -Verlauf ([string]$it.fields.Verlauf) -Texte $zu.VerlaufTexte -Datum $now -Quelle 'sync' -Zeitpunkt $now
             } catch {
@@ -951,9 +965,10 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
     # --- Neue Geräte ----------------------------------------------------------
     foreach ($n in $plan.Neu) {
         try { $fields = Build-SccmFields $n.Geraet.Sys } catch { Log "Fehler beim Aufbereiten von $($n.Name): $_" 'ERROR'; $fehler++; continue }
-        $new = [ordered]@{ Title = ([string]$n.Name).ToUpperInvariant(); Status = $n.Status }
+        $new = [ordered]@{ Title = ([string]$n.Name).ToUpperInvariant() }
+        if ($hatStatus) { $new['Status'] = $n.Status }
         foreach ($k in $fields.Keys) { if ($null -ne $fields[$k]) { $new[$k] = $fields[$k] } }
-        $new['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text $n.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now
+        if ($hatVerlauf) { $new['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text $n.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
         if ($WhatIf) { Log "WHATIF Neu: $($n.Name)"; $stats.created++; continue }
         try { $r = Invoke-Graph -Method POST -Uri $itemsBase -Body @{ fields = $new }; $stats.created++; Log "Neu angelegt: $($n.Name) (ID $($r.id))" }
         catch { Log "Anlage-Fehler $($n.Name): $_" 'ERROR'; $fehler++ }
@@ -971,15 +986,17 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
             foreach ($a in $plan.Archivieren) {
                 $it = $a.Zeile.Item
                 $body = [ordered]@{
-                    Status          = 'Archiviert'
                     SCCM_Found      = 'Nein'
                     SCCM_SyncStatus = "Kein SCCM-Gerät zu '$($a.Titel)'"
                     SCCM_LastSync   = (ToIso $now)
                 }
-                try { $body['Verlauf'] = Add-VerlaufEintrag -Verlauf ([string]$it.fields.Verlauf) -Text $a.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
-                catch {
-                    Log "Verlauf von '$($a.Titel)' (ID $($a.ZeileId)) ist unbrauchbar – Zeile übersprungen: $_" 'ERROR'
-                    $fehler++; $stats.uebersprungen++; continue
+                if ($hatStatus) { $body['Status'] = 'Archiviert' }
+                if ($hatVerlauf) {
+                    try { $body['Verlauf'] = Add-VerlaufEintrag -Verlauf ([string]$it.fields.Verlauf) -Text $a.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
+                    catch {
+                        Log "Verlauf von '$($a.Titel)' (ID $($a.ZeileId)) ist unbrauchbar – Zeile übersprungen: $_" 'ERROR'
+                        $fehler++; $stats.uebersprungen++; continue
+                    }
                 }
                 if ($WhatIf) { Log "WHATIF Archivieren (nicht mehr in SCCM): $($a.Titel)"; $stats.archiviert++; continue }
                 try { Invoke-Graph -Method PATCH -Uri "$itemsBase/$($a.ZeileId)/fields" -Body $body | Out-Null; $stats.archiviert++; Log "Archiviert (nicht mehr in SCCM): $($a.Titel)" }
@@ -1171,8 +1188,7 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
         Log 'Verwende lokale Kopie code\programme.json' 'WARN'
         $programme = Read-JsonDatei (Join-Path $ScriptDir 'programme.json')
     }
-    $programmIds = @($programme.programme | ForEach-Object { $_.id })
-    Log "Programme: $($programmIds.Count)"
+    Log "Programme: $(@($programme.programme).Count)"
 
     # 2) fehlende Spalten anlegen: zuerst Verlauf, dann die Programmspalten
     $spalten = Confirm-InventarSpalten $BenutzerListId @(
@@ -1182,9 +1198,17 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
         if ($spalten.ContainsKey($p.id)) { continue }
         if ($WhatIf) { Log "WHATIF: Programmspalte '$($p.id)' würde angelegt."; continue }
         try {
-            Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$BenutzerListId/columns" -Body (New-ProgrammSpalte $p) | Out-Null
+            $spalten[[string]$p.id] = Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$BenutzerListId/columns" -Body (New-ProgrammSpalte $p)
             Log "Programmspalte angelegt: $($p.id) ($($p.name))"
-        } catch { Log "Fehler beim Anlegen der Programmspalte '$($p.id)': $_" 'ERROR'; $fehler++ }
+        } catch {
+            Log "Programmspalte '$($p.id)' ($($p.name)) fehlt und konnte nicht angelegt werden – die Stufe wird diesmal nicht geschrieben: $_$(Get-SpaltenHinweis $_)" 'ERROR'
+            $fehler++
+        }
+    }
+    # Nur Programme abgleichen, deren Spalte es in der Liste wirklich gibt.
+    $programmIds = @($programme.programme | Where-Object { $spalten.ContainsKey([string]$_.id) } | ForEach-Object { $_.id })
+    if ($programmIds.Count -lt @($programme.programme).Count) {
+        Log "Programmspalten: $($programmIds.Count) von $(@($programme.programme).Count) vorhanden – die übrigen werden übersprungen." 'WARN'
     }
 
     # 3) AD-Benutzer lesen
@@ -1269,7 +1293,7 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
         } else {
             $neu = [ordered]@{}
             foreach ($f in $felder.Keys) { if ($null -ne $felder[$f] -and [string]$felder[$f] -ne '') { $neu[$f] = $felder[$f] } }
-            foreach ($id in $mitgliedIds) { $neu[$id] = '2' }
+            foreach ($id in $mitgliedIds) { if ($programmIds -contains $id) { $neu[$id] = '2' } }
             if ($WhatIf) { Log "WHATIF Benutzer neu: $($u.Login)"; $bstats.created++; continue }
             try { Invoke-Graph -Method POST -Uri $benutzerBase -Body @{ fields = $neu } | Out-Null; $bstats.created++; Log "Benutzer neu: $($u.Login)" }
             catch { Log "Benutzer-Anlage-Fehler $($u.Login): $_" 'ERROR'; $fehler++ }
@@ -1311,7 +1335,7 @@ if (-not $OnlyComputers -and -not $OnlyBenutzer) {
         # 1) Fehlende Spalten anlegen (idempotent) – alle ausser der Titelspalte aus schema-telefon.json
         $tSchema = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-telefon.json'))
         $tSpalten = @($tSchema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
-        [void](Confirm-InventarSpalten $TelefonListId $tSpalten)
+        $tVorhanden = Confirm-InventarSpalten $TelefonListId $tSpalten
 
         # 2) AD-Benutzer (aus der Benutzer-Phase, sonst jetzt lesen)
         $adBenutzer = Get-AdBenutzerAlle
@@ -1350,6 +1374,8 @@ if (-not $OnlyComputers -and -not $OnlyBenutzer) {
                     $fehler++; $tstats.uebersprungen++; continue
                 }
             }
+            $body = Select-VorhandeneFelder $tVorhanden $body
+            if ($body.Count -eq 0) { $tstats.uebersprungen++; continue }
             if ($WhatIf) { Log "WHATIF Telefon-Update $($u.Titel) (ID $($u.ZeileId)): $($u.Felder.Keys -join ', ')"; $tstats.updated++; continue }
             try { Invoke-Graph -Method PATCH -Uri "$telefonBase/$($u.ZeileId)/fields" -Body $body | Out-Null; $tstats.updated++; Log "Telefon-Update $($u.Titel): $($u.Felder.Keys -join ', ')" }
             catch { Log "Telefon-Update-Fehler $($u.Titel): $_" 'ERROR'; $fehler++ }
@@ -1360,6 +1386,7 @@ if (-not $OnlyComputers -and -not $OnlyBenutzer) {
             foreach ($k in $n.Felder.Keys) { if ($null -ne $n.Felder[$k] -and [string]$n.Felder[$k] -ne '') { $body[$k] = $n.Felder[$k] } }
             $body['ADLetzterSync'] = (ToIso $now)
             $body['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text $n.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now
+            $body = Select-VorhandeneFelder $tVorhanden $body
             if ($WhatIf) { Log "WHATIF Telefon neu: $($n.Felder.Title) ($($n.Felder.Benutzer))"; $tstats.created++; continue }
             try { Invoke-Graph -Method POST -Uri $telefonBase -Body @{ fields = $body } | Out-Null; $tstats.created++; Log "Telefon neu: $($n.Felder.Title) ($($n.Felder.Benutzer))" }
             catch { Log "Telefon-Anlage-Fehler $($n.Felder.Title): $_" 'ERROR'; $fehler++ }

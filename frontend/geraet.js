@@ -249,7 +249,7 @@ function melden(typ, id) {
     kanal.close();
   } catch (e) {
     // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten «Neu laden» auf dem alten Stand.
+    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
   }
 }
 
@@ -1851,14 +1851,6 @@ function aktionenZeichnen() {
   const ziel = leeren($("g-aktionen"));
   if (geloescht) return;
 
-  ziel.appendChild(knopf("Neu laden", null, function () {
-    if (anzahlAenderungen() && !window.confirm(
-        "Es gibt ungespeicherte Änderungen. Beim Neuladen gehen sie verloren. "
-        + "Trotzdem neu laden?")) return;
-    entwurf = {};
-    neuLaden();
-  }));
-
   if (!neuModus) {
     ziel.appendChild(knopf("Duplizieren", "knopf-leise", function () {
       const adresse = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
@@ -2080,6 +2072,55 @@ function ladeFehlerZeigen(fehler) {
   const meldung = fehler && fehler.message ? fehler.message : String(fehler);
   zeigeFehler("Die Daten konnten nicht geladen werden", meldung,
     mockModus ? "" : "Zum Anschauen ohne Anmeldung dieses Fenster mit &mock=1 aufrufen.");
+}
+
+/* ---------- Automatisch nachladen ---------- */
+
+/* Statt eines Knopfes «Neu laden» holt sich dieses Fenster den Stand in
+   ruhigen Abständen selbst — still, ohne den Inhalt gegen den Spinner zu
+   tauschen. Wer sofort einen frischen Stand will, lädt die Seite neu.
+
+   Übersprungen wird, sobald Nachladen mehr stören als nützen würde: bei
+   ungespeicherten Änderungen (sie gingen verloren), beim Anlegen, während
+   des Speicherns, bei offenem Dialog, nach dem Löschen und in einem
+   Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
+let autoLetzte = Date.now();
+let autoLaeuft = false;
+
+function autoErlaubt() {
+  if (autoLaeuft || document.hidden) return false;
+  if (neuModus || geloescht || speichertGerade) return false;
+  if (anzahlAenderungen()) return false;
+  if (!$("g-dialog").hidden) return false;
+  return true;
+}
+
+async function autoNachladen() {
+  autoLaeuft = true;
+  try {
+    await datenLaden(true);
+    zeileWaehlen();
+    zeigeInhalt();
+    zeichnenAlles();
+  } catch (fehler) {
+    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
+       wegen einer kurzen Störung. */
+  } finally {
+    autoLaeuft = false;
+    autoLetzte = Date.now();
+  }
+}
+
+function autoPruefen() {
+  if (!autoErlaubt()) return;
+  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
+  autoNachladen();
+}
+
+function autoStarten() {
+  autoLetzte = Date.now();
+  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
+  document.addEventListener("visibilitychange", autoPruefen);
 }
 
 /* ---------- Prüfen ---------- */
@@ -2456,6 +2497,8 @@ async function start() {
 $("g-knopf-speichern").addEventListener("click", speichern);
 $("g-knopf-verwerfen").addEventListener("click", verwerfen);
 $("g-dialog-hintergrund").addEventListener("click", dialogSchliessen);
+
+autoStarten();
 
 window.addEventListener("hashchange", function () {
   const h = (location.hash || "").replace(/^#/, "");

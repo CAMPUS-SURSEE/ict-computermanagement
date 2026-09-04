@@ -596,6 +596,35 @@ function ConvertTo-GraphSpalte {
     return $c
 }
 
+function Get-SpaltenHinweis {
+    <#
+      Ergänzt eine Graph-Fehlermeldung um den Weg zur Lösung, wenn das Anlegen einer Spalte an
+      der Berechtigung scheitert: Sites.Selected mit der Rolle «write» darf Zeilen schreiben,
+      aber keine Spalten anlegen – dafür braucht die App mindestens die Rolle «manage».
+    #>
+    param($Fehler)
+    if ("$Fehler" -match '\(403\)|accessDenied|Access denied') {
+        return ' -> Die App darf auf dieser Site keine Spalten anlegen. Setup-EntraApp.ps1 erneut ausführen (hebt die Site-Rolle auf «manage») oder die Spalte von Hand in den Listeneinstellungen anlegen.'
+    }
+    return ''
+}
+
+function Select-VorhandeneFelder {
+    <#
+      Filtert die Felder eines Schreibvorgangs auf die Spalten, die es in der Liste wirklich gibt.
+      Title existiert immer. Fehlt eine Spalte, fällt nur ihr Feld weg – ohne den Filter weist
+      Graph den ganzen PATCH mit «Field … is not recognized» zurück und eine fehlende Spalte
+      kostet alle Zeilen.
+    #>
+    param($Vorhanden, $Felder)
+    $gefiltert = [ordered]@{}
+    if ($null -eq $Felder) { return $gefiltert }
+    foreach ($k in @($Felder.Keys)) {
+        if ($k -eq 'Title' -or ($Vorhanden -and $Vorhanden.ContainsKey([string]$k))) { $gefiltert[$k] = $Felder[$k] }
+    }
+    return $gefiltert
+}
+
 function New-ProgrammSpalte {
     <# Spaltendefinition für ein Programm in der Benutzer-Liste (Textspalte mit 0/1/2). #>
     param($Programm)

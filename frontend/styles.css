@@ -27,7 +27,10 @@ body.seite { height: 100vh; overflow: hidden; }
    Kopfzeile
    ================================================================== */
 
-@media (max-width: 1200px) {
+/* Der Daten-Stand weicht erst spät: Seit der Knopf «Neu laden» weg ist, hat
+   die Kopfzeile mehr Platz, und der Stand ist die einzige Stelle, an der man
+   sieht, wie frisch die Daten sind. */
+@media (max-width: 1000px) {
   .stand { display: none; }
 }
 
@@ -54,13 +57,6 @@ body.seite { height: 100vh; overflow: hidden; }
 /* ==================================================================
    Tabellenansichten (Geräte, Benutzer, Telefonnummern)
    ================================================================== */
-
-/* Nicht zugewiesene Telefonnummern: Status wird über Farbe gezeigt, nie
-   über Form oder Fläche (Styleguide 1). Darum bekommt die Zeile keinen
-   getönten Grund, sondern die Kurzwahl und die Nummer stehen in
-   --warnung; die Spalte «Zugewiesen» trägt dazu einen Chip. */
-.tabelle tbody tr.zeile-frei .name-link,
-.tabelle tbody tr.zeile-frei .zeile-frei-wert { color: var(--warnung); }
 
 .werkzeug-bereich {
   position: relative;

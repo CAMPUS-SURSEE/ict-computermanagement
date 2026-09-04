@@ -147,7 +147,10 @@ wird von `Setup-EntraApp.ps1` erzeugt):
 
 **Phase Computer**:
 
-1. Fehlende Spalten `Status` und `Verlauf` in der Computer-Liste anlegen (idempotent).
+1. Fehlende Spalten `Status` und `Verlauf` in der Computer-Liste anlegen (idempotent). Klappt das
+   nicht (fehlende Berechtigung), meldet der Sync das **einmal** und schreibt die Felder dieser
+   Spalte für den Rest des Laufs nicht – alles andere läuft normal weiter. Dasselbe gilt in allen
+   drei Phasen: eine fehlende Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile.
 2. SCCM per WMI lesen.
 3. **Zuordnung über die Seriennummer**, nicht über den Namen. Verglichen wird die SCCM-Seriennummer
    mit der Spalte `SCCM_SerialNumber`, ersatzweise mit der manuellen Spalte `Seriennummer` (beides
@@ -378,6 +381,7 @@ entfernt, zieht sie dort nach.
 | `invalid_client` / `AADSTS700027` | Zertifikat abgelaufen oder nicht mehr an der App | `Setup-EntraApp.ps1` erneut ausführen |
 | `Kein Zugriff auf den privaten Schlüssel` | Task-Konto darf den Schlüssel nicht lesen | in `certlm.msc` Leserecht vergeben oder als SYSTEM laufen lassen |
 | Graph `403` beim Schreiben | Site-Berechtigung fehlt | `Setup-EntraApp.ps1` erneut ausführen |
+| `Spalte '…' fehlt … und konnte nicht angelegt werden` mit `403` | die App hat auf der Site nur die Rolle `write`; Spalten anlegen verlangt `manage` | `Setup-EntraApp.ps1` erneut ausführen (hebt die Rolle an) oder die Spalte von Hand in den Listeneinstellungen anlegen. Bis dahin läuft der Sync weiter und lässt nur die Felder dieser Spalte aus |
 | Graph `404` bei einer Liste | `ComputerListId`/`BenutzerListId` falsch | IDs aus den Listeneinstellungen in SharePoint übernehmen |
 | `field … is not recognized` | Spalte fehlt oder wurde umbenannt | Spalte wiederherstellen oder Eintrag im Skript entfernen |
 | `Löschschutz greift: …` | AD lieferte nichts oder zu viele Löschungen | OU-DNs und AD-Verbindung prüfen; bei einer echten Massenmutation `LoeschSchutzProzent` bewusst erhöhen |
@@ -408,8 +412,11 @@ Aufgabenplanung zeigt dann «0x1». Details stehen immer im Log.
 Beides ist eingerichtet und nur bei Zertifikatsablauf, neuer Frontend-Adresse oder Neuaufbau nötig.
 
 - **`Setup-EntraApp.ps1`** – Zertifikat, App-Registrierung «SCCM-SharePoint-Sync», Admin-Consent,
-  Site-Berechtigung (`Sites.Selected`) und `Sync-Inventar.config.json`. Erneut ausführen, wenn das
-  Zertifikat abläuft oder die Site-Berechtigung fehlt. Danach `AdUserOUs` in der Konfiguration prüfen.
+  Site-Berechtigung (`Sites.Selected`, Rolle `manage`) und `Sync-Inventar.config.json`. Erneut
+  ausführen, wenn das Zertifikat abläuft oder die Site-Berechtigung fehlt; eine bestehende Rolle
+  `write` wird dabei auf `manage` angehoben. Die Rolle `write` reicht nur für Zeilen – der Sync legt
+  auch fehlende Spalten an (`Status`, `Verlauf`, Programm- und Telefonspalten) und braucht dafür
+  `manage`. Danach `AdUserOUs` in der Konfiguration prüfen.
 - **`Setup-FrontendApp.ps1`** – App-Registrierung «Computer Inventar Frontend» (SPA) mit den
   delegierten Rechten `User.Read` und `Sites.ReadWrite.All`. Erneut ausführen, wenn eine
   Umleitungsadresse dazukommt (`-RedirectUris`). Die Adresse muss **exakt** so eingetragen sein, wie

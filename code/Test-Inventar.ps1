@@ -415,6 +415,22 @@ $zuLang = @($ids | Where-Object { $_.Length -gt 30 })
 Pruefe 'Programm-Ids max. 30 Zeichen' 0 $zuLang.Count
 
 # ---------------------------------------------------------------------------
+Abschnitt 'Fehlende Spalten'
+$spaltenDa = @{ Title = 1; Status = 1; SCCM_Found = 1 }
+$gef = Select-VorhandeneFelder $spaltenDa ([ordered]@{ Title = 'PC-1'; Status = 'Aktiv'; Verlauf = '[]'; SCCM_Found = 'Ja' })
+Pruefe 'Filter: drei Felder bleiben'      3      $gef.Count
+Pruefe 'Filter: Verlauf fällt weg'        'False' ($gef.Contains('Verlauf'))
+Pruefe 'Filter: Status bleibt'            'Aktiv' $gef['Status']
+Pruefe 'Filter: Title bleibt immer'       'PC-1'  ((Select-VorhandeneFelder @{} ([ordered]@{ Title = 'PC-1'; Status = 'Aktiv' }))['Title'])
+Pruefe 'Filter: nur Title übrig'          1      (Select-VorhandeneFelder @{} ([ordered]@{ Title = 'PC-1'; Status = 'Aktiv' })).Count
+Pruefe 'Filter: leere Felder'             0      (Select-VorhandeneFelder $spaltenDa ([ordered]@{})).Count
+Pruefe 'Filter: null Felder'              0      (Select-VorhandeneFelder $spaltenDa $null).Count
+Pruefe 'Hinweis bei 403'                  'True' ((Get-SpaltenHinweis 'Graph POST … fehlgeschlagen: (403) Forbidden.') -match 'manage').ToString()
+Pruefe 'Hinweis bei accessDenied'         'True' ((Get-SpaltenHinweis '{"error":{"code":"accessDenied"}}') -ne '').ToString()
+Pruefe 'Kein Hinweis bei 400'             ''     (Get-SpaltenHinweis 'Graph PATCH … (400) Bad Request.')
+Pruefe 'Kein Hinweis bei leerem Fehler'   ''     (Get-SpaltenHinweis $null)
+
+# ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'
 foreach ($f in (Get-ChildItem -Path $ScriptDir -Filter '*.ps1' | Sort-Object Name)) {
     $tokens = $null; $parseFehler = $null
