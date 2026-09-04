@@ -31,8 +31,11 @@
 
   <div class="kopf-rechts">
     <span class="stand" id="stand"></span>
-    <button type="button" class="knopf knopf-leise" id="knopf-abmelden" hidden>Abmelden</button>
     <span class="konto" id="konto"></span>
+    <!-- Abmelden steht rechts aussen und zeigt nur das Sinnbild; der Zweck
+         steht in title und aria-label. -->
+    <button type="button" class="knopf knopf-still knopf-sinnbild" id="knopf-abmelden"
+            title="Abmelden" aria-label="Abmelden" hidden></button>
   </div>
 
 </header>

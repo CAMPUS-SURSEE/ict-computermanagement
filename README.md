@@ -20,6 +20,7 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
 | **archivierte Geräte im Frontend sehen** | in der Geräteliste den Schalter **«Archivierte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
 | **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
+| **den Inhaber eines Geräts ändern** | Gerätefenster → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8) |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
@@ -37,7 +38,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 | Baustein | Inhalt | Wer schreibt |
 |---|---|---|
 | Liste **Computer** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
-| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), Computer-Zuordnung, Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
+| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, Früherer Eintrag, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | **programme.json** | die Programmliste mit Kategorie und AD-Gruppen; liegt in `Dokumente/Inventar/` auf der Site | von Hand, hochgeladen mit `Upload-Programme.ps1` |
 
@@ -305,6 +306,35 @@ Die Liste wurde am 04.09.2026 aus der Excel-Datei aufgebaut (307 Nummern, Stand 
 Importskript dafür war einmalig und ist entfernt; wer den Ablauf nachlesen will, findet es in der
 Git-Historie (`git log -- code/Import-Telefonliste.ps1`). Gepflegt wird die Liste seither im
 Frontend, ergänzt vom Sync.
+
+### 2.8 Inhaberschaft (wem ein Gerät gehört)
+
+Jedes Gerät hat **genau einen Inhaber**: die Person, der es formal gehört. Gespeichert wird das in
+der Spalte `Computer` der Benutzer-Liste – dort steht der PC-Name. Daraus folgt beides zugleich:
+eine Person ist Inhaberin von höchstens einem Gerät, und ein Gerät hat höchstens eine Inhaberin.
+
+**Nur von Hand.** Der Sync fasst `Computer` **nie** an; `ConvertTo-BenutzerFelder` schreibt die
+Spalte gar nicht erst. Gepflegt wird sie ausschliesslich im Frontend:
+
+| Wo | Was |
+|---|---|
+| Gerätefenster → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
+| Benutzerfenster → Bereich **«Gerät»** | «Inhaber werden» für ein gesuchtes Gerät, «Inhaberschaft aufheben» |
+| Geräteliste, Spalte **«Inhaber»** | Anzeige mit Verweis ins Benutzerfenster; Facette «Inhaber gesetzt» |
+
+**SCCM ist nur Hinweisgeber.** `SCCM_PrimaryUser`, `SCCM_LastLogonUser`, `SCCM_CurrentLogonUser`,
+`SCCM_TopConsoleUser` und `SCCMPrimaerGeraet` sagen, wer an einem Gerät *arbeitet* – nicht, wem es
+*gehört*. Weichen sie vom Inhaber ab, zeigt das Gerätefenster einen Hinweis («Primärer Benutzer
+(SCCM) ist nicht der Inhaber»); geändert wird nichts. Das SCCM-Primärgerät lässt sich im
+Benutzerfenster auf Klick übernehmen.
+
+**Altlasten.** Weil die Spalte nur den *Namen* speichert, kann sie mehrdeutig werden:
+
+| Fall | Was das Frontend tut |
+|---|---|
+| Zwei Personen tragen denselben PC-Namen | Gerätefenster meldet «Mehr als ein Inhaber» (rot), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Geräteliste steht ein `+n`-Chip neben dem Namen. |
+| Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; beide Fenster sagen das als Warnung. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
+| Der PC-Name existiert gar nicht | Benutzerfenster zeigt «kein Gerät mit diesem Namen in der Liste» |
 
 ---
 

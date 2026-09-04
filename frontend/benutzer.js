@@ -4,9 +4,15 @@
    zeigt eine einzelne Zeile der Benutzer-Liste in vier Abschnitten:
 
      Übersicht        AD-Felder (schreibgeschützt), Gerät, Kennzahlen
-     Gerät            Zuordnung ändern, lösen, SCCM-Primärgerät übernehmen
+     Gerät            Inhaberschaft ändern, aufheben, SCCM-Primärgerät
+                      übernehmen
      Berechtigungen   alle Programme aus programme.json, Tri-State-Schalter
      Bemerkung        freier Text
+
+   Das Feld «Computer» hält das Gerät, dessen Inhaber diese Person ist —
+   die Person, der es formal gehört. Höchstens eines je Person, höchstens
+   eine Person je Gerät, und ausschliesslich von Hand gepflegt: SCCM meldet
+   zwar ein Primärgerät, der Abgleich schreibt «Computer» aber nie.
 
    Bearbeitbar sind genau «Computer», «Bemerkung» und die Programmspalten mit
    Stufe 0 oder 1. Alles, was aus dem Active Directory oder aus SCCM kommt,
@@ -325,35 +331,36 @@ function rechteZaehlen() {
   return { manuell: manuell, ausAd: ausAd, aktiv: manuell + ausAd, gesamt: pSpalten.length };
 }
 
-/* Alle Geräte mit dem zugeordneten Namen.
+/* Alle Geräte, die den eingetragenen Namen tragen.
 
-   Die Zuordnung ist ein Freitext-Name, keine Verknüpfung auf die Listen-ID:
-   heissen zwei Geräte gleich (etwa weil das ersetzte archiviert liegen
-   bleibt), passen beide. Deshalb liefert diese Funktion eine Liste. */
-function zugeordneteGeraete() {
+   Die Inhaberschaft ist ein Freitext-Name, keine Verknüpfung auf die
+   Listen-ID: heissen zwei Geräte gleich (etwa weil das ersetzte archiviert
+   liegen bleibt), passen beide. Deshalb liefert diese Funktion eine Liste. */
+function geraeteMitDiesemNamen() {
   const name = textWert("Computer").trim();
   if (!name) return [];
   const k = Modell.schluessel(name);
   return alleComputer.filter(c => Modell.schluessel(c.Title) === k);
 }
 
-/* Das gemeinte Gerät, oder null. Bei mehreren gleichnamigen gewinnt das
-   nicht archivierte — dieselbe Wahl trifft Modell.anreichern. */
-function zugeordnetesGeraet() {
-  const treffer = zugeordneteGeraete();
+/* Das Gerät, dessen Inhaber diese Person ist, oder null. Bei mehreren
+   gleichnamigen gewinnt das nicht archivierte — dieselbe Wahl trifft
+   Modell.anreichern. */
+function inhaberGeraet() {
+  const treffer = geraeteMitDiesemNamen();
   return treffer.filter(c => !c.__archiviert)[0] || treffer[0] || null;
 }
 
-/* Hinweiszeile bei mehrdeutiger Zuordnung, sonst null. */
+/* Hinweiszeile bei mehrdeutigem Gerätenamen, sonst null. */
 function mehrdeutigHinweis() {
-  const treffer = zugeordneteGeraete();
+  const treffer = geraeteMitDiesemNamen();
   if (treffer.length < 2) return null;
-  const gewaehlt = zugeordnetesGeraet();
+  const gewaehlt = inhaberGeraet();
 
   const kasten = el("div", "b-hinweis");
   kasten.appendChild(el("span", "t-warnung",
     treffer.length + " Geräte heissen «" + textWert("Computer").trim()
-    + "». Die Zuordnung speichert nur den Namen und ist damit nicht "
+    + "». Die Inhaberschaft speichert nur den Namen und ist damit nicht "
     + "eindeutig; angezeigt wird das nicht archivierte Gerät."));
   const liste = el("div", "chips");
   for (const c of treffer) {
@@ -369,17 +376,21 @@ function mehrdeutigHinweis() {
   return kasten;
 }
 
-/* Weicht das SCCM-Primärgerät von der Zuordnung ab? Der Entwurf zählt mit,
-   damit der Hinweis verschwindet, sobald die Zuordnung korrigiert ist. */
+/* Weicht das SCCM-Primärgerät vom Gerät dieser Person ab? Der Entwurf
+   zählt mit, damit der Hinweis verschwindet, sobald es korrigiert ist.
+   SCCM bleibt dabei Hinweisgeber: übernommen wird nur auf Klick. */
 function primaerAbweichung() {
   return Modell.primaerWeichtAb(zeile ? zeile.SCCMPrimaerGeraet : "",
                                 textWert("Computer"));
 }
 
-/* Anzeigenamen der Benutzer, die einem Gerät zugeordnet sind — ohne die
-   Person dieses Fensters, denn die steht ohnehin oben. */
+/* Anzeigenamen der übrigen Personen, die dasselbe Gerät tragen — ohne die
+   Person dieses Fensters, denn die steht ohnehin oben.
+
+   Ein Gerät hat genau einen Inhaber; kommt hier etwas zurück, ist das ein
+   zu bereinigender Datenfehler und wird als Warnung gezeigt. */
 function andereBenutzerVon(computerZeile) {
-  return (computerZeile.__benutzer || [])
+  return (computerZeile.__inhaberAlle || [])
     .filter(b => String(b.id) !== String(zeile.id))
     .map(b => b.__name);
 }
@@ -404,43 +415,46 @@ function bereichUebersicht(ziel) {
     "Stufe 2 — gesperrt", zahlen.ausAd ? "info" : null));
   ziel.appendChild(kacheln);
 
-  // Zuordnung
-  const geraet = zugeordnetesGeraet();
+  // Inhaberschaft
+  const geraet = inhaberGeraet();
   const name = textWert("Computer").trim();
-  const kZuordnung = karte("Zuordnung", "Von Hand gepflegt, im Abschnitt «Gerät» änderbar.");
+  const kInhaber = karte("Inhaberschaft",
+    "Das Gerät, dessen Inhaber diese Person ist — höchstens eines. Von Hand "
+    + "gepflegt, im Abschnitt «Gerät» änderbar; kein Abgleich schreibt es.");
   const felder = el("div", "datenzeilen");
 
   if (geraet) {
-    felder.appendChild(feldFrei("Computer", geraetLink(geraet)));
+    felder.appendChild(feldFrei("Inhaber von", geraetLink(geraet)));
   } else if (name) {
     const hinweis = el("span", "t-warnung",
       name + " — kein Gerät mit diesem Namen in der Liste");
-    felder.appendChild(feldFrei("Computer", hinweis));
+    felder.appendChild(feldFrei("Inhaber von", hinweis));
   } else {
-    felder.appendChild(feldFrei("Computer",
-      el("span", "t-still", "kein Gerät zugeordnet")));
+    felder.appendChild(feldFrei("Inhaber von",
+      el("span", "t-still", "kein Gerät")));
   }
 
   felder.appendChild(feldGesperrt("Primärgerät (SCCM)", zeile.SCCMPrimaerGeraet));
-  kZuordnung.inhalt.appendChild(felder);
+  kInhaber.inhalt.appendChild(felder);
 
   const mehrdeutig = mehrdeutigHinweis();
-  if (mehrdeutig) kZuordnung.inhalt.appendChild(mehrdeutig);
+  if (mehrdeutig) kInhaber.inhalt.appendChild(mehrdeutig);
 
   if (primaerAbweichung()) {
     const hinweis = el("div", "b-hinweis");
     const primaer = text(zeile.SCCMPrimaerGeraet).trim();
     hinweis.appendChild(el("span", "t-warnung",
       "SCCM meldet «" + primaer + "» als Primärgerät"
-      + (name ? ", zugeordnet ist «" + name + "»." : ", zugeordnet ist kein Gerät.")));
+      + (name ? ", Inhaber ist die Person von «" + name + "»."
+              : ", Inhaber ist die Person keines Geräts.")));
     hinweis.appendChild(knopf("Im Abschnitt «Gerät» klären", "knopf-leise", function () {
       bereichWechseln("geraet");
     }));
-    kZuordnung.inhalt.appendChild(hinweis);
+    kInhaber.inhalt.appendChild(hinweis);
   }
 
   const gitter = el("div", "karten b-abstand");
-  gitter.appendChild(kZuordnung);
+  gitter.appendChild(kInhaber);
 
   // AD-Felder, alle schreibgeschützt
   const kAd = karte("Angaben aus dem Active Directory",
@@ -460,84 +474,94 @@ function bereichUebersicht(ziel) {
 
 /* ---------- Gerät ---------- */
 
-/* Nach jeder Änderung der Zuordnung auch die Kopfzeile neu zeichnen: der
-   Knopf «Gerät öffnen» hängt daran. */
-function zuordnungSetzen(pcName) {
+/* Nach jeder Änderung der Inhaberschaft auch die Kopfzeile neu zeichnen:
+   der Knopf «Gerät öffnen» hängt daran. */
+function inhaberschaftSetzen(pcName) {
   setzeWert("Computer", pcName);
   kopfZeichnen();
   zeichneBereich();
 }
 
-function geraetZuordnen(computerZeile) {
+function inhaberWerden(computerZeile) {
   geraeteSuche = "";
-  zuordnungSetzen(computerZeile.Title);
+  inhaberschaftSetzen(computerZeile.Title);
 }
 
-function geraetLoesen() {
-  zuordnungSetzen("");
+function inhaberschaftAufheben() {
+  inhaberschaftSetzen("");
 }
 
 function bereichGeraet(ziel) {
-  const geraet = zugeordnetesGeraet();
+  const geraet = inhaberGeraet();
   const name = textWert("Computer").trim();
 
-  const kAktuell = karte("Aktuelle Zuordnung",
-    "Das Feld «Computer» der Benutzer-Liste. Ein Gerät kann mehrere Benutzer haben.");
+  const kAktuell = karte("Gerät dieser Person",
+    "Das Feld «Computer» der Benutzer-Liste: das Gerät, dessen Inhaber diese "
+    + "Person ist. Höchstens eines je Person, höchstens eine Person je Gerät.");
 
   if (name) {
     const felder = el("div", "datenzeilen");
     if (geraet) {
-      felder.appendChild(feldFrei("Computer", geraetLink(geraet)));
+      felder.appendChild(feldFrei("Inhaber von", geraetLink(geraet)));
       const status = Modell.status(geraet.Status);
       const statusText = el("span", Modell.statusKlasse(status) || null, status);
       felder.appendChild(feldFrei("Status des Geräts", statusText, true));
       felder.appendChild(feldGesperrt("Modell", geraet.SCCM_Model));
       felder.appendChild(feldGesperrt("Gebäude / Stock", geraet.GebaeudeStock));
       const andere = andereBenutzerVon(geraet);
-      felder.appendChild(feldGesperrt("Weitere Benutzer",
-        andere.length ? andere.join(", ") : ""));
+      if (andere.length) {
+        const doppelt = el("span", "t-gefahr", andere.join(", "));
+        felder.appendChild(feldFrei("Trägt dieses Gerät ebenfalls", doppelt));
+      }
     } else {
-      felder.appendChild(feldFrei("Computer",
+      felder.appendChild(feldFrei("Inhaber von",
         el("span", "t-warnung", name + " — kein Gerät mit diesem Namen in der Liste")));
     }
     kAktuell.inhalt.appendChild(felder);
 
     const mehrdeutig = mehrdeutigHinweis();
     if (mehrdeutig) kAktuell.inhalt.appendChild(mehrdeutig);
-
-    const knoepfe = el("div", "karte-aktionen");
-    knoepfe.appendChild(knopf("Zuordnung lösen", null, geraetLoesen));
-    if (geraet) {
-      knoepfe.appendChild(knopf("Gerät öffnen", null, function () {
-        geraetFensterOeffnen(geraet);
-      }));
-    }
-    kAktuell.inhalt.appendChild(knoepfe);
   } else {
     const leer = el("div", "leerzustand");
-    leer.appendChild(el("p", "leer-titel", "Kein Gerät zugeordnet"));
+    leer.appendChild(el("p", "leer-titel", "Inhaber keines Geräts"));
     leer.appendChild(el("p", "leer-text",
-      "Unten ein Gerät suchen und «Zuordnen» wählen."));
+      "Unten ein Gerät suchen und «Inhaber werden» wählen."));
     kAktuell.inhalt.appendChild(leer);
   }
 
-  // Vorschlag aus SCCM
+  /* Vorschlag aus SCCM. Nur ein Vorschlag: übernommen wird auf Klick, der
+     Abgleich selbst schreibt die Inhaberschaft nie. */
   if (primaerAbweichung()) {
     const primaer = text(zeile.SCCMPrimaerGeraet).trim();
     const hinweis = el("div", "b-hinweis");
     hinweis.appendChild(el("span", "t-warnung",
       "SCCM meldet «" + primaer + "» als Primärgerät dieser Person."));
     hinweis.appendChild(knopf("SCCM-Primärgerät übernehmen", "knopf-primaer", function () {
-      zuordnungSetzen(primaer);
+      inhaberschaftSetzen(primaer);
     }));
     kAktuell.inhalt.appendChild(hinweis);
+  }
+
+  /* Die Fusszeile steht zuunterst — sonst trennt ihre Linie mitten in der
+     Karte, statt die Aktionen abzuschliessen. */
+  if (name) {
+    const knoepfe = el("div", "karte-aktionen");
+    knoepfe.appendChild(knopf("Inhaberschaft aufheben", null, inhaberschaftAufheben));
+    if (geraet) {
+      knoepfe.appendChild(knopf("Gerät öffnen", null, function () {
+        geraetFensterOeffnen(geraet);
+      }));
+    }
+    kAktuell.inhalt.appendChild(knoepfe);
   }
 
   ziel.appendChild(kAktuell);
 
   // Suche über die Computer-Liste
-  const kSuche = karte("Gerät zuordnen",
-    "Suche über PC-Name, Modell, Seriennummer und Gebäude.");
+  const kSuche = karte("Gerät wählen",
+    "Suche über PC-Name, Modell, Seriennummer und Gebäude. Wer schon einen "
+    + "Inhaber hat, ist unten vermerkt — die Wahl ersetzt ihn nicht von "
+    + "selbst, das geschieht im Gerätefenster.");
   kSuche.inhalt.appendChild(suchfeld("b-suche-geraet", "Gerät suchen …", geraeteSuche,
     function (v) { geraeteSuche = v; zeichneBereich(); }));
 
@@ -559,9 +583,9 @@ function bereichGeraet(ziel) {
     liste.appendChild(el("p", "hinweis", "Kein Gerät passt zur Suche."));
   } else {
     for (const c of treffer.slice(0, 40)) {
-      /* «zugeordnet» darf nur an dem Gerät stehen, das die Zuordnung
-         wirklich meint — bei gleichnamigen Geräten sonst an allen. */
-      const gewaehlt = zugeordnetesGeraet();
+      /* «Inhaber» darf nur an dem Gerät stehen, das der Eintrag wirklich
+         meint — bei gleichnamigen Geräten sonst an allen. */
+      const gewaehlt = inhaberGeraet();
       const istAktuell = !!gewaehlt && String(gewaehlt.id) === String(c.id);
       const z = el("div", "b-treffer-zeile" + (istAktuell ? " aktuell" : ""));
       const links = el("div");
@@ -579,13 +603,13 @@ function bereichGeraet(ziel) {
       if (c.SCCM_Model) teile.push(text(c.SCCM_Model));
       if (c.GebaeudeStock) teile.push(text(c.GebaeudeStock));
       const andere = andereBenutzerVon(c);
-      if (andere.length) teile.push("bereits zugeordnet: " + andere.join(", "));
+      if (andere.length) teile.push("Inhaber: " + andere.join(", "));
       links.appendChild(el("div", "b-treffer-unter", teile.join(" · ") || "—"));
       z.appendChild(links);
       if (istAktuell) {
-        z.appendChild(el("span", "chip chip-marke", "zugeordnet"));
+        z.appendChild(el("span", "chip chip-marke", "Inhaber"));
       } else {
-        z.appendChild(knopf("Zuordnen", null, function () { geraetZuordnen(c); }));
+        z.appendChild(knopf("Inhaber werden", null, function () { inhaberWerden(c); }));
       }
       liste.appendChild(z);
     }
@@ -767,7 +791,7 @@ function kopfZeichnen() {
 
   const aktionen = leeren($("b-aktionen"));
 
-  const geraet = zugeordnetesGeraet();
+  const geraet = inhaberGeraet();
   if (geraet) {
     aktionen.appendChild(knopf("Gerät öffnen", null, function () {
       geraetFensterOeffnen(geraet);
@@ -1022,10 +1046,10 @@ function autoStarten() {
 /* Werte so aufbereiten, wie Graph sie erwartet. Programmwerte sind immer
    Zeichenketten «0» oder «1»; «2» schreibt dieses Fenster nie.
 
-   Sonderfall «Computer»: eine gelöste Zuordnung wird als null gesendet.
-   Graph löscht das Feld damit wirklich; eine leere Zeichenkette lässt in
-   SharePoint je nach Spaltentyp einen leeren, aber gesetzten Wert zurück.
-   Das Gerätefenster (zuordnungSchreiben) macht es genauso. */
+   Sonderfall «Computer»: eine aufgehobene Inhaberschaft wird als null
+   gesendet. Graph löscht das Feld damit wirklich; eine leere Zeichenkette
+   lässt in SharePoint je nach Spaltentyp einen leeren, aber gesetzten Wert
+   zurück. Das Gerätefenster (inhaberSchreiben) macht es genauso. */
 function fuerGraph(feld, roh) {
   if (pSpalte[feld]) {
     return Modell.stufe(roh) === 1 ? "1" : "0";

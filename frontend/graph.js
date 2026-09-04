@@ -379,9 +379,9 @@ const Daten = (function () {
    dieselben Daten.
 
    Enthalten sind bewusst auch die Sonderfälle:
-     - Benutzer ohne Gerät
-     - Geräte ohne Benutzer
-     - Geräte mit zwei Benutzern
+     - Benutzer, die Inhaber keines Geräts sind
+     - Geräte ohne Inhaber
+     - Geräte mit zwei Inhaber-Einträgen (die zu bereinigende Altlast)
      - Programme mit Stufe 0, 1 und 2 sowie Vorschlägen
      - Geräte ohne Beschaffungsjahr und mit überfälligem Ersatz
 
@@ -905,19 +905,21 @@ const Mock = (function () {
     return z;
   }
 
-  /* ---------- SCCM-Konten aus den Zuordnungen ableiten ----------
+  /* ---------- SCCM-Konten aus der Inhaberschaft ableiten ----------
 
      Im echten SCCM stehen in SCCM_PrimaryUser, SCCM_LastLogonUser und
      SCCM_CurrentLogonUser die Konten, die an diesem Gerät wirklich
-     arbeiten — also normalerweise die zugeordnete Person, geschrieben als
+     arbeiten — also normalerweise der Inhaber, geschrieben als
      «DOMAENE\login». Umgekehrt meldet SMS_UserMachineRelationship für jede
      Person ihr Primärgerät; das landet in SCCMPrimaerGeraet.
 
-     «Normalerweise»: bei rund jedem zehnten Datensatz weicht ein Feld ab —
-     Handwechsel nicht nachgeführt, Support-Anmeldung, Zweitgerät. Genau
-     diese Abweichungen erzeugen im Frontend die Hinweise «Primärer Benutzer
-     ist nicht zugeordnet» und «SCCM meldet ein anderes Primärgerät». Ohne
-     sie wären die Hinweise nie zu sehen, mit zu vielen wären sie unglaubwürdig. */
+     SCCM schreibt die Inhaberschaft nie: die Felder hier sind Beobachtung,
+     die Spalte «Computer» bleibt Handarbeit. Bei rund jedem zehnten
+     Datensatz weicht darum ein Feld ab — Handwechsel nicht nachgeführt,
+     Support-Anmeldung, Zweitgerät. Genau diese Abweichungen erzeugen im
+     Frontend die Hinweise «Primärer Benutzer ist nicht der Inhaber» und
+     «SCCM meldet ein anderes Primärgerät». Ohne sie wären die Hinweise nie
+     zu sehen, mit zu vielen wären sie unglaubwürdig. */
 
   const DOMAENE = "SASADMIN";
 
@@ -953,8 +955,8 @@ const Mock = (function () {
         primaer = r() < 0.1 ? fremd : logins[0];
       }
 
-      // Der zuletzt angemeldete Benutzer ist meist derselbe; sonst der
-      // zweite zugeordnete Benutzer oder der Support.
+      // Der zuletzt angemeldete Benutzer ist meist derselbe; sonst ein
+      // überzähliger Eintrag oder der Support.
       const letzter = r() < 0.1 ? (logins[1] || "ict.support") : primaer;
 
       z.SCCM_PrimaryUser = konto(primaer);
@@ -978,7 +980,7 @@ const Mock = (function () {
     for (const b of benutzer) {
       const zugeordnet = String(b.Computer || "").trim();
       if (!zugeordnet) {
-        // Ohne Zuordnung meldet SCCM manchmal trotzdem ein Primärgerät.
+        // Ohne eigenes Gerät meldet SCCM manchmal trotzdem ein Primärgerät.
         b.SCCMPrimaerGeraet = r() < 0.25 && inSccm.length
           ? inSccm[Math.floor(r() * inSccm.length)].Title : "";
         continue;
@@ -1007,11 +1009,15 @@ const Mock = (function () {
 
     const benutzer = [];
     let nr = 1;
-    // Die ersten 42 Geräte bekommen einen Benutzer, sechs davon einen zweiten.
+    // Die ersten 42 Geräte bekommen ihren Inhaber.
     for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, computer[i].Title, ids));
-    for (let i = 0; i < 6; i++) benutzer.push(benutzerZeile(r, nr++, computer[i * 3].Title, ids));
-    // Acht Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Benutzer.
-    for (let i = 0; i < 8; i++) benutzer.push(benutzerZeile(r, nr++, "", ids));
+    /* Zwei Altlasten: hier trägt eine zweite Person dasselbe Gerät. Ein
+       Gerät hat genau einen Inhaber, darum zeigt das Frontend darauf den
+       Fehler «Mehr als ein Inhaber» — ohne solche Zeilen wäre er im
+       Vorführmodus nie zu sehen. */
+    for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, computer[i * 3].Title, ids));
+    // Zwölf Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Inhaber.
+    for (let i = 0; i < 12; i++) benutzer.push(benutzerZeile(r, nr++, "", ids));
 
     // Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten.
     benutzerkontenAbgleichen(r, computer, benutzer);

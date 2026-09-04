@@ -105,7 +105,7 @@
         "group":  "Zuordnung",
         "source":  "manuell",
         "inDefaultView":  true,
-        "description":  "PC-Name aus der Liste «Computer»; leer bedeutet kein zugeordnetes Gerät"
+        "description":  "Inhaberschaft: PC-Name aus der Liste «Computer» — das Gerät, dem diese Person formal vorsteht. Höchstens eines je Person, höchstens eine Person je Gerät. Nur im Frontend von Hand gepflegt; der Sync schreibt diese Spalte nie. Leer bedeutet: Inhaber keines Geräts"
     },
     {
         "internal":  "Bemerkung",

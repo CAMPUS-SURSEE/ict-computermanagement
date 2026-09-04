@@ -402,15 +402,17 @@ const Modell = (function () {
   }
 
   /**
-   * Weicht das SCCM-Primärgerät von der Zuordnung ab?
+   * Weicht das SCCM-Primärgerät von der Inhaberschaft ab?
    *
    * Nur ein gesetztes Primärgerät kann abweichen: ohne Angabe aus SCCM gibt
-   * es nichts zu vergleichen. Ist dagegen ein Primärgerät gemeldet und kein
-   * Gerät zugeordnet, ist das sehr wohl eine Abweichung — dann fehlt die
-   * Zuordnung.
+   * es nichts zu vergleichen. Ist dagegen ein Primärgerät gemeldet und die
+   * Person Inhaberin keines Geräts, ist das sehr wohl eine Abweichung.
+   *
+   * SCCM ist dabei nur Hinweisgeber: die Inhaberschaft wird ausschliesslich
+   * von Hand gepflegt, kein Abgleich schreibt sie.
    *
    * @param {string} primaer   Wert von SCCMPrimaerGeraet
-   * @param {string} computer  Wert von Computer (die Zuordnung)
+   * @param {string} computer  Wert von Computer (das Gerät der Person)
    * @returns {boolean}
    */
   function primaerWeichtAb(primaer, computer) {
@@ -444,8 +446,13 @@ const Modell = (function () {
    * Verändert die übergebenen Objekte in place und gibt sie zurück.
    *
    * Computer bekommen:
-   *   __benutzer      Array der zugeordneten Benutzerzeilen
-   *   __benutzerNamen Anzeigenamen, Komma-getrennt (Tabellenspalte «Benutzer»)
+   *   __inhaber       Benutzerzeile des Inhabers, sonst null
+   *   __inhaberName   Anzeigename des Inhabers, sonst "" (Tabellenspalte
+   *                   «Inhaber»)
+   *   __inhaberAlle   alle Benutzerzeilen, deren Feld «Computer» auf dieses
+   *                   Gerät zeigt — im Normalfall keine oder genau eine
+   *   __mehrfachInhaber true, wenn mehr als eine Person darauf zeigt; das
+   *                   ist ein zu bereinigender Datenfehler, kein Zustand
    *   __status        "Aktiv" | "Lager" | "Archiviert" (leer gilt als Aktiv)
    *   __archiviert    true/false
    *   __namensDublette true, wenn ein weiteres Gerät genauso heisst
@@ -457,7 +464,8 @@ const Modell = (function () {
    *
    * Benutzer bekommen:
    *   __computer      Computerzeile oder null (bevorzugt ein nicht
-   *                   archiviertes Gerät, wenn mehrere gleich heissen)
+   *                   archiviertes Gerät, wenn mehrere gleich heissen);
+   *                   das Gerät, dessen Inhaber die Person ist
    *   __computerAlle  alle Computerzeilen mit diesem Namen
    *   __computerMehrdeutig true, wenn es mehr als eine ist
    *   __hatGeraet     true/false
@@ -481,7 +489,7 @@ const Modell = (function () {
        Deshalb steht unter jedem Namen eine LISTE. */
     const nachName = new Map();
     for (const c of geraete) {
-      c.__benutzer = [];
+      c.__inhaberAlle = [];
       c.__status = status(c.Status);
       c.__archiviert = c.__status === "Archiviert";
       const k = schluessel(c.Title);
@@ -506,18 +514,26 @@ const Modell = (function () {
       b.__adAktiv = Hilfe.istJa(b.ADAktiviert);
       b.__primaerAbweichung = primaerWeichtAb(b.SCCMPrimaerGeraet, pcName);
       b.__such = suchtext(b, SPALTEN_BENUTZER);
-      if (c) c.__benutzer.push(b);
+      if (c) c.__inhaberAlle.push(b);
     }
 
     for (const c of geraete) {
-      c.__benutzer.sort((a, b) => Hilfe.vergleiche(a.__name, b.__name));
-      c.__benutzerNamen = c.__benutzer.map(b => b.__name).join(", ");
+      /* Ein Gerät hat genau einen Inhaber. Zeigen mehrere Personen darauf,
+         ist das ein Altlast- oder Tippfehler: der erste Name gilt als
+         Inhaber, die übrigen meldet das Gerätefenster zur Bereinigung. */
+      c.__inhaberAlle.sort((a, b) => Hilfe.vergleiche(a.__name, b.__name));
+      c.__inhaber = c.__inhaberAlle[0] || null;
+      c.__inhaberName = c.__inhaber ? c.__inhaber.__name : "";
+      c.__mehrfachInhaber = c.__inhaberAlle.length > 1;
       c.__inSccm = Hilfe.istJa(c.SCCM_Found);
       c.__online = Hilfe.istJa(c.SCCM_Online);
       c.__ersatzJahr = String(c.ErsatzGeplant || "").trim()
         || ersatzVorschlag(c.Beschaffungsjahr);
       c.__ersatzStatus = ersatzStatus(c.ErsatzGeplant, c.Beschaffungsjahr);
-      c.__such = (suchtext(c, SPALTEN_COMPUTER) + "  " + c.__benutzerNamen).toLowerCase();
+      /* Der Volltext kennt alle Namen, auch die überzähligen — sonst wäre
+         eine falsche Zuordnung nicht auffindbar. */
+      c.__such = (suchtext(c, SPALTEN_COMPUTER) + "  "
+        + c.__inhaberAlle.map(b => b.__name).join(", ")).toLowerCase();
     }
 
     return { computer: geraete, benutzer: leute, programmSpalten: pSpalten };

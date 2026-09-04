@@ -45,8 +45,8 @@
   </div>
   <div class="kopf-rechts">
     <span class="stand">Daten-Stand: 04.09.2026 05:15 (heute)</span>
-    <button type="button" class="knopf knopf-leise">Abmelden</button>
     <span class="konto">Vorführmodus</span>
+    <button type="button" class="knopf knopf-still knopf-sinnbild" title="Abmelden" aria-label="Abmelden"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5H6v14h9"/><path d="M14 12h7"/><path d="M18 9l3 3-3 3"/></svg></button>
   </div>
 </header>
 
@@ -169,6 +169,8 @@
                 <button type="button" class="knopf knopf-leise">Text</button>
                 <button type="button" class="knopf aktiv">Tonal (gedrückt)</button>
                 <button type="button" class="knopf knopf-gefahr">Gefahr</button>
+                <button type="button" class="knopf knopf-still">Neutral (grau)</button>
+                <button type="button" class="knopf knopf-still knopf-sinnbild" title="Abmelden" aria-label="Abmelden"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5H6v14h9"/><path d="M14 12h7"/><path d="M18 9l3 3-3 3"/></svg></button>
                 <button type="button" class="knopf" disabled>Deaktiviert</button>
               </div>
               <div class="sg-muster">
@@ -305,11 +307,11 @@
 
         <div class="karten">
           <section class="karte">
-            <div class="karte-kopf"><h2 class="karte-titel">Karte mit Liste und Fusszeile</h2><p class="karte-unter">Personen als Zeilen, Aktionen pro Zeile als Text, Hauptaktion unten.</p></div>
+            <div class="karte-kopf"><h2 class="karte-titel">Karte mit Liste und Fusszeile</h2><p class="karte-unter">Personen als Zeilen, Aktionen pro Zeile als Text, Hauptaktion unten. Die letzte Zeile vor der Fusszeile gibt ihre Linie ab — nie zwei dicht nebeneinander.</p></div>
             <div class="karte-inhalt">
-              <div class="g-person"><div><a class="g-person-name" href="#karten">Urs Muster</a><div class="g-person-unter">muster.urs · Finanzen · Projektleiter/in</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Zuordnung lösen</button></div></div>
-              <div class="g-person"><div><a class="g-person-name" href="#karten">Anna-Katharina Müller-Hasenfratz von Oberwinterthur-Rickenbach</a><div class="g-person-unter">mueller-hasenfratz.anna-katharina · Abteilung Finanzen, Controlling und Beschaffungsmanagement · AD-Konto deaktiviert</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Zuordnung lösen</button></div></div>
-              <div class="karte-aktionen"><button type="button" class="knopf knopf-primaer">Benutzer zuordnen</button></div>
+              <div class="g-person"><div><a class="g-person-name" href="#karten">Urs Muster</a><div class="g-person-unter">muster.urs · Finanzen · Projektleiter/in</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Inhaber entfernen</button></div></div>
+              <div class="g-person"><div><a class="g-person-name" href="#karten">Anna-Katharina Müller-Hasenfratz von Oberwinterthur-Rickenbach</a><div class="g-person-unter">mueller-hasenfratz.anna-katharina · Abteilung Finanzen, Controlling und Beschaffungsmanagement · AD-Konto deaktiviert</div></div><div class="g-person-knoepfe"><button type="button" class="knopf knopf-leise">Benutzerfenster</button><button type="button" class="knopf knopf-leise">Eintrag entfernen</button></div></div>
+              <div class="karte-aktionen"><button type="button" class="knopf knopf-primaer">Inhaber wechseln</button></div>
             </div>
           </section>
 
@@ -418,7 +420,7 @@
           <section class="karte">
             <div class="karte-kopf"><h2 class="karte-titel">Banner</h2><p class="karte-unter">.b-hinweis — Ton nach dem Text darin; Knopf rechts, Chips auf eigener Zeile.</p></div>
             <div class="karte-inhalt">
-              <div class="b-hinweis"><span class="t-warnung">SCCM meldet «CAMPUS-901» als Primärgerät, zugeordnet ist kein Gerät.</span><button type="button" class="knopf knopf-primaer">SCCM-Primärgerät übernehmen</button></div>
+              <div class="b-hinweis"><span class="t-warnung">SCCM meldet «CAMPUS-901» als Primärgerät, Inhaber ist die Person keines Geräts.</span><button type="button" class="knopf knopf-primaer">SCCM-Primärgerät übernehmen</button></div>
               <div class="b-hinweis"><span class="t-warnung">2 Geräte heissen «CAMPUS-904». Die Zuordnung speichert nur den Namen und ist damit nicht eindeutig.</span><div class="chips"><a class="chip chip-marke" href="#hinweise">Listen-ID 4 · Aktiv</a><a class="chip" href="#hinweise">Listen-ID 61 · Archiviert</a></div></div>
               <div class="b-hinweis"><span class="t-info">Neutraler Hinweis mit Erklärung.</span><button type="button" class="knopf knopf-leise">Im Abschnitt «Gerät» klären</button></div>
               <p class="hinweis">Hinweistext .hinweis: 13 px, --text-leise — für Erklärungen und Leermeldungen.</p>
@@ -466,14 +468,14 @@
           </div>
 
           <div class="dialog sg-schwebend" role="dialog" aria-modal="false" style="width:auto;max-width:560px">
-            <h2>Zuordnung lösen</h2>
-            <p>«Urs Muster» ist diesem Gerät zugeordnet. Beim Lösen wird das Feld «Computer» dieses Benutzers geleert; das Gerät selbst bleibt unverändert.</p>
-            <div class="dialog-knoepfe"><button type="button" class="knopf">Abbrechen</button><button type="button" class="knopf knopf-gefahr">Zuordnung lösen</button></div>
+            <h2>Inhaber entfernen</h2>
+            <p>«Urs Muster» ist Inhaber dieses Geräts. Beim Entfernen wird das Feld «Computer» dieser Person geleert; das Gerät selbst bleibt unverändert.</p>
+            <div class="dialog-knoepfe"><button type="button" class="knopf">Abbrechen</button><button type="button" class="knopf knopf-gefahr">Inhaber entfernen</button></div>
           </div>
 
           <div class="dialog sg-schwebend" role="dialog" aria-modal="false" style="width:auto;max-width:560px">
-            <h2>Benutzer zuordnen</h2>
-            <p>Der gewählte Benutzer bekommt «CAMPUS-901» als Gerät.</p>
+            <h2>Inhaber wechseln</h2>
+            <p>Die gewählte Person wird Inhaberin von «CAMPUS-901». «Urs Muster» gibt das Gerät dabei ab — ein Gerät hat genau einen Inhaber.</p>
             <input class="g-eingabe" type="search" placeholder="Name, Login oder Abteilung suchen …" aria-label="Benutzer suchen" style="max-width:none">
             <div class="g-trefferliste">
               <button type="button" class="g-treffer"><div class="g-person-name">Anna Ammann</div><div class="g-person-unter">ammann.anna · Bildung · aktuell: CAMPUS-934</div></button>

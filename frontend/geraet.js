@@ -2,8 +2,8 @@
 
    Wird von der Hauptseite mit window.open("geraet.html?id=…", "geraet-<id>")
    geöffnet und zeigt ein einzelnes Gerät der Liste «Computer»: Übersicht mit
-   Kennzahlen, kompaktem Lebenszyklus und Hinweisen, Beschaffung, zugeordnete
-   Benutzer, Stammdaten, Software aus SCCM, Hardware, System, Sicherheit,
+   Kennzahlen, kompaktem Lebenszyklus und Hinweisen, Beschaffung, Inhaber,
+   Stammdaten, Software aus SCCM, Hardware, System, Sicherheit,
    Aktivität, Flottenvergleich und alle Rohdaten.
 
    Bearbeitbar sind genau die von Hand gepflegten Spalten (q = "manuell" in
@@ -16,9 +16,13 @@
    einziges kurzes Formular (bereichNeu) mit den Angaben, die ein Mensch
    beim Anlegen wirklich kennt: Name, Standort, Beschaffung, Bemerkung.
 
-   Die Benutzerzuordnung steht in der Liste «Benutzer» (Spalte «Computer»).
-   Dieses Fenster schreibt sie dort und meldet die Änderung über den
-   BroadcastChannel als «benutzer-geaendert».
+   Der Inhaber — die Person, der das Gerät formal gehört — steht in der
+   Liste «Benutzer» (Spalte «Computer»). Jedes Gerät hat höchstens einen;
+   gepflegt wird er ausschliesslich von Hand. SCCM meldet zwar Primär- und
+   Anmeldebenutzer, schreibt die Inhaberschaft aber nie: der Abgleich rührt
+   die Spalte «Computer» nicht an. Weichen die SCCM-Konten vom Inhaber ab,
+   gibt es hier nur einen Hinweis. Dieses Fenster schreibt die Spalte und
+   meldet die Änderung über den BroadcastChannel als «benutzer-geaendert».
 
    Aufbau:
      1. Parameter und Spaltenwissen
@@ -28,7 +32,7 @@
      5. Auswertung (Hinweise, Flotte)
      6. Die Bereiche
      7. Kopf, Navigation, Aktionen
-     8. Laden, Speichern, Anlegen, Löschen, Zuordnung
+     8. Laden, Speichern, Anlegen, Löschen, Inhaberschaft
      9. Start und Tastatur
 
    Grundsätze: kein Framework, keine globalen Variablen ausser den Modulen
@@ -149,7 +153,7 @@ let aktiverBereich = "uebersicht";
 const BEREICHE = [
   { k: "uebersicht",  d: "Übersicht",        f: bereichUebersicht,  immer: false },
   { k: "beschaffung", d: "Beschaffung",      f: bereichBeschaffung, immer: true  },
-  { k: "benutzer",    d: "Benutzer",         f: bereichBenutzer,    immer: false },
+  { k: "inhaber",     d: "Inhaber",          f: bereichInhaber,     immer: false },
   { k: "stammdaten",  d: "Stammdaten",       f: bereichStammdaten,  immer: true  },
   { k: "software",    d: "Software (SCCM)",  f: bereichSoftware,    immer: false },
   { k: "hardware",    d: "Hardware",         f: bereichHardware,    immer: false },
@@ -164,8 +168,8 @@ const BEREICHE = [
 const BEREICH_NEU = { k: "neu", d: "Neues Gerät", f: bereichNeu, immer: true };
 
 function sichtbareBereiche() {
-  // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch Benutzer —
-  // und auch keine Bereiche: nur das eine Formular.
+  // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch einen
+  // Inhaber — und auch keine Bereiche: nur das eine Formular.
   return neuModus ? [BEREICH_NEU] : BEREICHE;
 }
 
@@ -545,23 +549,45 @@ function namensZwillinge() {
     Modell.schluessel(z.Title) === k && String(z.id) !== String(zeile.id));
 }
 
-/* Die zugeordneten Benutzer dieses Geräts (aus der Liste «Benutzer»).
+/* Alle Personen, deren Feld «Computer» auf dieses Gerät zeigt.
 
-   Die Zuordnung steht dort als Freitext im Feld «Computer» und kann darum
-   nur über den Namen aufgelöst werden. Heissen mehrere Geräte gleich, so
-   zeigt Modell.anreichern die Person dem nicht archivierten Gerät zu; hier
-   wird dieselbe Entscheidung nachvollzogen, damit beide Seiten dasselbe
-   sagen. */
-function zugeordneteBenutzer() {
+   Die Inhaberschaft steht dort als Freitext im Feld «Computer» und kann
+   darum nur über den Namen aufgelöst werden. Heissen mehrere Geräte gleich,
+   so zeigt Modell.anreichern die Person dem nicht archivierten Gerät zu;
+   hier wird dieselbe Entscheidung nachvollzogen, damit beide Seiten
+   dasselbe sagen.
+
+   Ein Gerät hat genau einen Inhaber. Kommt hier mehr als eine Person
+   zurück, ist das ein zu bereinigender Datenfehler — siehe inhaber(). */
+function inhaberAlle() {
   if (!zeile) return [];
   const name = String(zeile.Title || "").trim();
   if (!name) return [];
   const k = Modell.schluessel(name);
   const passend = alleBenutzer.filter(b => Modell.schluessel(b.Computer) === k);
-  if (!namensZwillinge().length) return passend;
-  /* Mehrdeutig: nur die Personen zeigen, die Modell.anreichern wirklich
-     diesem Gerät zugewiesen hat. */
-  return passend.filter(b => b.__computer && String(b.__computer.id) === String(zeile.id));
+  const gefunden = namensZwillinge().length
+    /* Mehrdeutig: nur die Personen zeigen, die Modell.anreichern wirklich
+       diesem Gerät zugewiesen hat. */
+    ? passend.filter(b => b.__computer && String(b.__computer.id) === String(zeile.id))
+    : passend;
+  return gefunden.slice()
+    .sort((a, b) => Hilfe.vergleiche(a.__name || a.Title, b.__name || b.Title));
+}
+
+/* Der Inhaber dieses Geräts, sonst null. Bei mehreren Kandidaten gewinnt
+   der erste Name — dieselbe Wahl trifft Modell.anreichern. */
+function inhaber() {
+  return inhaberAlle()[0] || null;
+}
+
+/* Die überzähligen Personen: alles ausser dem Inhaber. Normalerweise leer. */
+function weitereInhaber() {
+  return inhaberAlle().slice(1);
+}
+
+/* Anzeigename einer Benutzerzeile. */
+function personName(b) {
+  return b ? (b.__name || b.Title || "") : "";
 }
 
 /* Die Hinweise. Schlichte Liste, Wichtigkeit nur über die Farbe:
@@ -592,7 +618,7 @@ function hinweise() {
       "In der Liste steht der PC-Name «" + textWert("Title").trim() + "» "
       + (zwillinge.length + 1) + " Mal"
       + (aktive ? "" : ", die übrigen sind archiviert")
-      + ". Die Benutzerzuordnung läuft über den Namen und ist damit "
+      + ". Die Inhaberschaft läuft über den Namen und ist damit "
       + "mehrdeutig; das nicht archivierte Gerät bekommt den Vorzug. "
       + "Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren.");
   }
@@ -702,8 +728,16 @@ function hinweise() {
       + nameSccm + "».");
   }
 
-  /* --- Benutzer --- */
-  for (const a of benutzerAbweichungen()) info(a.titel, a.text);
+  /* --- Inhaber --- */
+  const ueberzaehlig = weitereInhaber();
+  if (ueberzaehlig.length) {
+    gefahr("Mehr als ein Inhaber",
+      "Ein Gerät hat genau einen Inhaber, hier zeigen aber "
+      + (ueberzaehlig.length + 1) + " Personen mit ihrem Feld «Computer» "
+      + "darauf: " + inhaberAlle().map(personName).join(", ")
+      + ". Im Bereich «Inhaber» die überzähligen Einträge entfernen.");
+  }
+  for (const a of inhaberAbweichungen()) info(a.titel, a.text);
 
   const akku = akkuProzent();
   if (akku !== null && akku < 50) {
@@ -714,25 +748,28 @@ function hinweise() {
   return b;
 }
 
-/* Weicht der SCCM-Primärbenutzer oder der letzte angemeldete Benutzer von
-   den zugeordneten Benutzern ab? */
-function benutzerAbweichungen() {
+/* Weicht der SCCM-Primärbenutzer oder der letzte angemeldete Benutzer vom
+   Inhaber ab?
+
+   Das bleibt bewusst ein Hinweis: SCCM sieht, wer an einem Gerät arbeitet,
+   nicht, wem es gehört. Die Inhaberschaft wird nur von Hand gesetzt, kein
+   Abgleich überschreibt sie. */
+function inhaberAbweichungen() {
   const treffer = [];
   if (neuModus || !zeile) return treffer;
-  const logins = zugeordneteBenutzer().map(b => Modell.schluessel(b.Title));
+  const logins = inhaberAlle().map(b => Modell.schluessel(b.Title));
 
   const pruefe = function (feld, bezeichnung) {
     const konto = kontoKurz(zeile[feld]);
     if (!konto) return;
     if (logins.indexOf(konto) > -1) return;
     treffer.push({
-      titel: bezeichnung + " ist nicht zugeordnet",
+      titel: bezeichnung + " ist nicht der Inhaber",
       text: "SCCM meldet «" + konto + "»"
         + (logins.length
-            ? ", zugeordnet " + (logins.length === 1 ? "ist" : "sind") + " «"
-              + logins.join("», «") + "»."
-            : ", diesem Gerät ist aber kein Benutzer zugeordnet.")
-        + " Bei einem Handwechsel gehört die Zuordnung nachgeführt."
+            ? ", Inhaber ist «" + logins[0] + "»."
+            : ", dieses Gerät hat aber keinen Inhaber.")
+        + " Bei einem Handwechsel gehört der Inhaber nachgeführt."
     });
   };
   pruefe("SCCM_PrimaryUser", "Primärer Benutzer (SCCM)");
@@ -794,9 +831,14 @@ function bereichUebersicht(ziel) {
     textWert("ErsatzGeplant") ? null : "Vorschlag (+5)",
     status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : null)));
 
-  kacheln.appendChild(kachel("Zugeordnete Benutzer",
-    String(zugeordneteBenutzer().length),
-    zugeordneteBenutzer().map(b => b.__name || b.Title).join(", ")));
+  const wem = inhaber();
+  const zuviele = weitereInhaber();
+  kacheln.appendChild(kachel("Inhaber",
+    wem ? personName(wem) : "",
+    zuviele.length
+      ? "und " + zuviele.length + " überzählige Einträge"
+      : (wem ? String(wem.Title || "") : "kein Inhaber gesetzt"),
+    zuviele.length ? "gefahr" : (wem ? null : "warnung")));
 
   ziel.appendChild(kacheln);
 
@@ -1001,7 +1043,7 @@ function bereichBeschaffung(ziel) {
   ziel.appendChild(gitter);
 }
 
-/* ---------- Benutzer ---------- */
+/* ---------- Inhaber ---------- */
 
 function benutzerFensterOeffnen(id) {
   const adresse = "benutzer.html?id=" + encodeURIComponent(id)
@@ -1009,15 +1051,49 @@ function benutzerFensterOeffnen(id) {
   window.open(adresse, "benutzer-" + id);
 }
 
-function bereichBenutzer(ziel) {
+/* Eine Personenzeile mit Namen, Kurzangaben und Knöpfen. */
+function personenZeile(b, entfernenText) {
+  const z = el("div", "g-person");
+
+  const links = el("div");
+  const name = el("a", "g-person-name", personName(b));
+  name.href = "benutzer.html?id=" + encodeURIComponent(b.id)
+    + (mockModus ? "&mock=1" : "");
+  name.addEventListener("click", function (e) {
+    e.preventDefault();
+    benutzerFensterOeffnen(b.id);
+  });
+  links.appendChild(name);
+  const unter = [];
+  unter.push(String(b.Title || "").trim() || "ohne Login");
+  if (String(b.Abteilung || "").trim()) unter.push(String(b.Abteilung).trim());
+  if (String(b.Funktion || "").trim()) unter.push(String(b.Funktion).trim());
+  if (!b.__adAktiv) unter.push("AD-Konto deaktiviert");
+  links.appendChild(el("div", "g-person-unter", unter.join(" · ")));
+  z.appendChild(links);
+
+  const knoepfe = el("div", "g-person-knoepfe");
+  knoepfe.appendChild(knopf("Benutzerfenster", "knopf-leise", function () {
+    benutzerFensterOeffnen(b.id);
+  }));
+  knoepfe.appendChild(knopf(entfernenText, "knopf-leise", function () {
+    inhaberEntfernenDialog(b);
+  }));
+  z.appendChild(knoepfe);
+  return z;
+}
+
+function bereichInhaber(ziel) {
   const gitter = kartenGitter();
-  const personen = zugeordneteBenutzer();
+  const wem = inhaber();
+  const zuviele = weitereInhaber();
 
-  const k = karte("Zugeordnete Benutzer",
-    "Alle Benutzer, deren Feld «Computer» auf «" + textWert("Title")
-    + "» zeigt. Die Zuordnung wird in der Liste «Benutzer» gespeichert.");
+  const k = karte("Inhaber",
+    "Die Person, der «" + textWert("Title") + "» formal gehört — genau eine "
+    + "je Gerät. Gespeichert im Feld «Computer» der Liste «Benutzer» und "
+    + "ausschliesslich von Hand gepflegt: kein Abgleich mit SCCM schreibt sie.");
 
-  /* Die Zuordnung ist ein Freitext-Name, keine Verknüpfung auf die
+  /* Die Inhaberschaft ist ein Freitext-Name, keine Verknüpfung auf die
      Listen-ID. Gibt es den Namen mehrfach, kann sie nicht eindeutig
      aufgelöst werden — das gehört sichtbar gesagt. */
   const zwillinge = namensZwillinge();
@@ -1025,61 +1101,59 @@ function bereichBenutzer(ziel) {
     const z = el("div", "g-hinweis t-warnung");
     z.appendChild(symbol(SYMBOL_ACHTUNG, 16));
     const rechts = el("div");
-    rechts.appendChild(el("div", "g-hinweis-titel", "Zuordnung ist mehrdeutig"));
+    rechts.appendChild(el("div", "g-hinweis-titel", "PC-Name ist nicht eindeutig"));
     rechts.appendChild(el("div", "g-hinweis-text",
       "Der PC-Name kommt in der Geräteliste " + (zwillinge.length + 1)
-      + " Mal vor. Weil die Benutzerliste nur den Namen speichert, zeigt die "
-      + "Zuordnung auf das nicht archivierte Gerät. Gezeigt werden hier nur "
-      + "die Personen, die diesem Gerät zugerechnet werden."));
+      + " Mal vor. Weil die Benutzerliste nur den Namen speichert, zählt der "
+      + "Eintrag zum nicht archivierten Gerät. Gezeigt wird hier nur, wer "
+      + "diesem Gerät zugerechnet wird."));
     z.appendChild(rechts);
     k.inhalt.appendChild(z);
   }
 
-  if (!personen.length) {
-    k.inhalt.appendChild(leerHinweis("Diesem Gerät ist zurzeit kein Benutzer zugeordnet."));
+  /* Mehr als eine Person auf demselben Gerät ist kein Zustand, sondern eine
+     Altlast: sie wird als Fehler gezeigt und lässt sich hier bereinigen. */
+  if (zuviele.length) {
+    const z = el("div", "g-hinweis t-gefahr");
+    z.appendChild(symbol(SYMBOL_ACHTUNG, 16));
+    const rechts = el("div");
+    rechts.appendChild(el("div", "g-hinweis-titel", "Mehr als ein Inhaber"));
+    rechts.appendChild(el("div", "g-hinweis-text",
+      (zuviele.length + 1) + " Personen tragen dieses Gerät im Feld «Computer». "
+      + "Als Inhaber gilt der erste Name; die übrigen stehen darunter und "
+      + "gehören entfernt."));
+    z.appendChild(rechts);
+    k.inhalt.appendChild(z);
+  }
+
+  if (!wem) {
+    k.inhalt.appendChild(leerHinweis("Dieses Gerät hat zurzeit keinen Inhaber."));
   } else {
-    for (const b of personen) {
-      const z = el("div", "g-person");
-
-      const links = el("div");
-      const name = el("a", "g-person-name", b.__name || b.Title);
-      name.href = "benutzer.html?id=" + encodeURIComponent(b.id)
-        + (mockModus ? "&mock=1" : "");
-      name.addEventListener("click", function (e) {
-        e.preventDefault();
-        benutzerFensterOeffnen(b.id);
-      });
-      links.appendChild(name);
-      const unter = [];
-      unter.push(String(b.Title || "").trim() || "ohne Login");
-      if (String(b.Abteilung || "").trim()) unter.push(String(b.Abteilung).trim());
-      if (String(b.Funktion || "").trim()) unter.push(String(b.Funktion).trim());
-      if (!b.__adAktiv) unter.push("AD-Konto deaktiviert");
-      links.appendChild(el("div", "g-person-unter", unter.join(" · ")));
-      z.appendChild(links);
-
-      const knoepfe = el("div", "g-person-knoepfe");
-      knoepfe.appendChild(knopf("Benutzerfenster", "knopf-leise", function () {
-        benutzerFensterOeffnen(b.id);
-      }));
-      knoepfe.appendChild(knopf("Zuordnung lösen", "knopf-leise", function () {
-        zuordnungLoesenDialog(b);
-      }));
-      z.appendChild(knoepfe);
-      k.inhalt.appendChild(z);
-    }
+    k.inhalt.appendChild(personenZeile(wem, "Inhaber entfernen"));
   }
 
   const aktionen = el("div", "karte-aktionen");
-  aktionen.appendChild(knopf("Benutzer zuordnen", "knopf-primaer", zuordnenDialog));
+  aktionen.appendChild(knopf(wem ? "Inhaber wechseln" : "Inhaber festlegen",
+    "knopf-primaer", inhaberWaehlenDialog));
   k.inhalt.appendChild(aktionen);
   gitter.appendChild(k);
 
-  /* Was SCCM über die Benutzer dieses Geräts weiss. */
-  const kSccm = karte("Benutzer laut SCCM",
-    "Schreibgeschützt. Weicht ein Konto von der Zuordnung ab, steht hier ein Hinweis.");
+  if (zuviele.length) {
+    const kZuviel = karte("Überzählige Einträge",
+      "Diese Personen tragen dasselbe Gerät, sind aber nicht sein Inhaber. "
+      + "Entfernen leert ihr Feld «Computer».");
+    for (const b of zuviele) kZuviel.inhalt.appendChild(personenZeile(b, "Eintrag entfernen"));
+    gitter.appendChild(kZuviel);
+  }
 
-  const abweichungen = benutzerAbweichungen();
+  /* Was SCCM über die Benutzer dieses Geräts weiss. Reine Beobachtung:
+     die Inhaberschaft wird davon nie überschrieben. */
+  const kSccm = karte("Benutzer laut SCCM",
+    "Schreibgeschützt und nur ein Hinweis: SCCM sieht, wer an diesem Gerät "
+    + "arbeitet, nicht, wem es gehört. Weicht ein Konto vom Inhaber ab, steht "
+    + "hier eine Zeile dazu.");
+
+  const abweichungen = inhaberAbweichungen();
   for (const a of abweichungen) {
     const z = el("div", "g-hinweis t-info");
     z.appendChild(symbol(SYMBOL_INFO, 16));
@@ -1195,7 +1269,7 @@ function namensWarnungFuellen(knoten) {
   w.textContent =
     (zwillinge.length === 1 ? "Ein weiteres Gerät heisst bereits so ("
                             : zwillinge.length + " weitere Geräte heissen bereits so (")
-    + teile.join("; ") + "). Erlaubt, aber die Benutzerzuordnung läuft über "
+    + teile.join("; ") + "). Erlaubt, aber die Inhaberschaft läuft über "
     + "den Namen und wird damit mehrdeutig.";
 }
 
@@ -1222,8 +1296,8 @@ function bereichStammdaten(ziel) {
   const felder = el("div", "datenzeilen");
   for (const s of STAMM_SPALTEN) {
     felder.appendChild(formularZeile(s, s.i === "Title" ? {
-      hinweis: "Schlüssel für den SCCM-Abgleich und für die Zuordnung der "
-        + "Benutzer. Muss genau dem Gerätenamen in SCCM entsprechen.",
+      hinweis: "Schlüssel für den SCCM-Abgleich und für den Inhaber. "
+        + "Muss genau dem Gerätenamen in SCCM entsprechen.",
       zusatz: namensWarnung()
     } : null));
   }
@@ -1276,12 +1350,12 @@ function bereichNeu(ziel) {
 
   const k = karte("Neues Gerät",
     "Nur die Angaben, die beim Anlegen bekannt sind. Alles Weitere — "
-    + "Status, Verlauf, Benutzer — folgt nach dem Anlegen.", true);
+    + "Status, Verlauf, Inhaber — folgt nach dem Anlegen.", true);
   const felder = el("div", "datenzeilen");
   for (const s of STAMM_SPALTEN) {
     felder.appendChild(formularZeile(s, s.i === "Title" ? {
       hinweis: "Muss genau dem Gerätenamen in SCCM entsprechen; darüber "
-        + "laufen der Abgleich und die Zuordnung der Benutzer.",
+        + "laufen der Abgleich und die Inhaberschaft.",
       zusatz: namensWarnung()
     } : null));
   }
@@ -1863,8 +1937,8 @@ function kopfZeichnen() {
   } else {
     if (textWert("GebaeudeStock")) unter.push(textWert("GebaeudeStock"));
     if (zeile && zeile.SCCM_Model) unter.push(String(zeile.SCCM_Model));
-    const personen = zugeordneteBenutzer();
-    if (personen.length) unter.push(personen.map(b => b.__name || b.Title).join(", "));
+    const wem = inhaber();
+    if (wem) unter.push(personName(wem));
     if (zeile && zeile.id) unter.push("Listen-ID " + zeile.id);
   }
   /* Der Untertitel wird in einer schmalen Kopfzeile mit «…» gekürzt
@@ -2002,7 +2076,7 @@ function zeichnenAlles() {
 
 
 /* ==================================================================
-   8. Laden, Speichern, Anlegen, Löschen, Zuordnung
+   8. Laden, Speichern, Anlegen, Löschen, Inhaberschaft
    ================================================================== */
 
 function zeigeLaden(text) {
@@ -2045,8 +2119,10 @@ function leereZeile() {
    steht. Modell.anreichern läuft immer über die ganzen Listen und darf
    deshalb hier nicht aufgerufen werden. */
 function abgeleiteteFelder(z) {
-  z.__benutzer = [];
-  z.__benutzerNamen = "";
+  z.__inhaberAlle = [];
+  z.__inhaber = null;
+  z.__inhaberName = "";
+  z.__mehrfachInhaber = false;
   z.__status = Modell.status(z.Status);
   z.__archiviert = z.__status === "Archiviert";
   z.__namensDublette = false;
@@ -2327,17 +2403,25 @@ function dialogOeffnen(titel) {
   };
 }
 
-/* ---------- Benutzer zuordnen und lösen ---------- */
+/* ---------- Inhaber festlegen, wechseln und entfernen ---------- */
 
-/* Schreibt das Feld «Computer» eines Benutzers und lädt danach nach.
+/* Schreibt das Feld «Computer» einer oder mehrerer Personen und lädt danach
+   nach. Jeder Eintrag ist ein Paar {benutzer, pcName}; ein leerer pcName
+   entfernt die Inhaberschaft.
 
-   Beim Lösen wird bewusst null gesendet, nicht "": Graph löscht das Feld
-   damit wirklich. Das Benutzerfenster (fuerGraph) macht es genauso. */
-async function zuordnungSchreiben(benutzer, pcName, meldung) {
-  const wertFuerGraph = String(pcName || "").trim() || null;
+   Beim Entfernen wird bewusst null gesendet, nicht "": Graph löscht das
+   Feld damit wirklich. Das Benutzerfenster (fuerGraph) macht es genauso.
+
+   Der Inhaberwechsel schreibt zwei Zeilen — erst wird der bisherige
+   Inhaber gelöst, dann der neue gesetzt. Nur so bleibt die Regel «genau
+   ein Inhaber je Gerät» auch in den Daten wahr. */
+async function inhaberSchreiben(schritte, meldung) {
   try {
-    await Daten.speichern("benutzer", benutzer.id, { Computer: wertFuerGraph });
-    melden("benutzer-geaendert", benutzer.id);
+    for (const schritt of schritte) {
+      const wertFuerGraph = String(schritt.pcName || "").trim() || null;
+      await Daten.speichern("benutzer", schritt.benutzer.id, { Computer: wertFuerGraph });
+      melden("benutzer-geaendert", schritt.benutzer.id);
+    }
     await datenLaden(true);
     zeileWaehlen();
     zeigeInhalt();
@@ -2348,34 +2432,42 @@ async function zuordnungSchreiben(benutzer, pcName, meldung) {
   }
 }
 
-function zuordnungLoesenDialog(benutzer) {
-  const d = dialogOeffnen("Zuordnung lösen");
+function inhaberEntfernenDialog(benutzer) {
+  const istInhaber = inhaber() && String(inhaber().id) === String(benutzer.id);
+  const titel = istInhaber ? "Inhaber entfernen" : "Eintrag entfernen";
+  const d = dialogOeffnen(titel);
   d.inhalt.appendChild(el("p", null,
-    "«" + (benutzer.__name || benutzer.Title) + "» ist diesem Gerät zugeordnet. "
-    + "Beim Lösen wird das Feld «Computer» dieses Benutzers geleert; das Gerät "
-    + "selbst bleibt unverändert."));
+    "«" + personName(benutzer) + "» "
+    + (istInhaber ? "ist Inhaber dieses Geräts. " : "trägt dieses Gerät. ")
+    + "Beim Entfernen wird das Feld «Computer» dieser Person geleert; das "
+    + "Gerät selbst bleibt unverändert."));
   d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
-  d.knoepfe.appendChild(knopf("Zuordnung lösen", "knopf-gefahr", function () {
+  d.knoepfe.appendChild(knopf(titel, "knopf-gefahr", function () {
     dialogSchliessen();
-    zuordnungSchreiben(benutzer, "",
-      "Zuordnung von «" + (benutzer.__name || benutzer.Title) + "» gelöst.");
+    inhaberSchreiben([{ benutzer: benutzer, pcName: "" }],
+      "«" + personName(benutzer) + "» ist nicht mehr eingetragen.");
   }));
 }
 
-function zuordnenDialog() {
+function inhaberWaehlenDialog() {
   const pcName = textWert("Title").trim();
   if (!pcName) {
-    toast("Ohne PC-Name lässt sich kein Benutzer zuordnen.", true);
+    toast("Ohne PC-Name lässt sich kein Inhaber festlegen.", true);
     return;
   }
-  const d = dialogOeffnen("Benutzer zuordnen");
+  const bisheriger = inhaber();
+  const titel = bisheriger ? "Inhaber wechseln" : "Inhaber festlegen";
+  const d = dialogOeffnen(titel);
   d.inhalt.appendChild(el("p", null,
-    "Der gewählte Benutzer bekommt «" + pcName + "» als Gerät. Ein bisher "
-    + "hinterlegtes Gerät wird dabei ersetzt."));
+    "Die gewählte Person wird Inhaberin von «" + pcName + "»."
+    + (bisheriger
+        ? " «" + personName(bisheriger) + "» gibt das Gerät dabei ab — ein "
+          + "Gerät hat genau einen Inhaber."
+        : "")));
 
   const suche = el("input", "g-eingabe");
   suche.type = "search";
-  suche.id = "g-zuordnen-suche";
+  suche.id = "g-inhaber-suche";
   suche.placeholder = "Name, Login oder Abteilung suchen …";
   suche.autocomplete = "off";
   suche.setAttribute("aria-label", "Benutzer suchen");
@@ -2400,7 +2492,7 @@ function zuordnenDialog() {
     for (const b of passend.slice(0, 40)) {
       const k = el("button", "g-treffer");
       k.type = "button";
-      k.appendChild(el("div", "g-person-name", b.__name || b.Title));
+      k.appendChild(el("div", "g-person-name", personName(b)));
       const unter = [String(b.Title || "").trim() || "ohne Login"];
       if (String(b.Abteilung || "").trim()) unter.push(String(b.Abteilung).trim());
       unter.push(String(b.Computer || "").trim()
@@ -2416,22 +2508,40 @@ function zuordnenDialog() {
   };
 
   const bestaetigen = function (b) {
-    const d2 = dialogOeffnen("Benutzer zuordnen");
+    const d2 = dialogOeffnen(titel);
     const bisher = String(b.Computer || "").trim();
+    /* Alle, die das Gerät dabei abgeben: der bisherige Inhaber und — falls
+       vorhanden — die überzähligen Einträge. Sie stehen im Dialog, denn
+       das Speichern leert ihr Feld «Computer». */
+    const abgebende = inhaberAlle().filter(a => String(a.id) !== String(b.id));
+
     d2.inhalt.appendChild(el("p", null,
-      "«" + (b.__name || b.Title) + "» (" + b.Title + ")"
+      "«" + personName(b) + "» (" + b.Title + ")"
       + (String(b.Abteilung || "").trim() ? ", " + String(b.Abteilung).trim() : "")
-      + " wird dem Gerät «" + pcName + "» zugeordnet."));
+      + " wird Inhaberin von «" + pcName + "»."));
+    if (abgebende.length) {
+      d2.inhalt.appendChild(el("p", "t-warnung",
+        (abgebende.length === 1
+          ? "«" + personName(abgebende[0]) + "» gibt das Gerät ab; das Feld "
+            + "«Computer» dieser Person wird geleert."
+          : "Diese " + abgebende.length + " Personen geben das Gerät ab; ihr "
+            + "Feld «Computer» wird geleert: "
+            + abgebende.map(personName).join(", ") + ".")));
+    }
     d2.inhalt.appendChild(el("p", bisher ? "t-warnung" : "t-leise", bisher
-      ? "Aktuelles Gerät dieses Benutzers: «" + bisher
-        + "». Diese Zuordnung wird ersetzt."
-      : "Diesem Benutzer ist zurzeit kein Gerät zugeordnet."));
-    d2.knoepfe.appendChild(knopf("Zurück", null, zuordnenDialog));
-    d2.knoepfe.appendChild(knopf("Zuordnen", "knopf-primaer", function () {
-      dialogSchliessen();
-      zuordnungSchreiben(b, pcName,
-        "«" + (b.__name || b.Title) + "» ist jetzt diesem Gerät zugeordnet.");
-    }));
+      ? "Aktuelles Gerät dieser Person: «" + bisher + "». Dieser Eintrag wird ersetzt."
+      : "Dieser Person ist zurzeit kein Gerät zugeordnet."));
+    d2.knoepfe.appendChild(knopf("Zurück", null, inhaberWaehlenDialog));
+    d2.knoepfe.appendChild(knopf(bisheriger ? "Wechseln" : "Festlegen", "knopf-primaer",
+      function () {
+        dialogSchliessen();
+        /* Erst lösen, dann setzen: dazwischen hat das Gerät keinen
+           Inhaber, aber nie zwei. */
+        const schritte = abgebende.map(a => ({ benutzer: a, pcName: "" }));
+        schritte.push({ benutzer: b, pcName: pcName });
+        inhaberSchreiben(schritte,
+          "«" + personName(b) + "» ist jetzt Inhaber dieses Geräts.");
+      }));
   };
 
   suche.addEventListener("input", zeichneTreffer);
@@ -2450,14 +2560,14 @@ function loeschenDialog() {
   d.inhalt.appendChild(el("p", null,
     "Die Zeile wird aus der Liste «Computer» entfernt und landet im Papierkorb "
     + "der SharePoint-Site. Von dort lässt sie sich 93 Tage lang zurückholen."));
-  const personen = zugeordneteBenutzer();
+  const personen = inhaberAlle();
   if (personen.length) {
     d.inhalt.appendChild(el("p", "t-warnung",
       personen.length === 1
-        ? "Achtung: einem Benutzer ist dieses Gerät zugeordnet. Die Zuordnung "
-          + "bleibt bestehen und zeigt danach ins Leere."
-        : "Achtung: " + personen.length + " Benutzern ist dieses Gerät zugeordnet. "
-          + "Die Zuordnungen bleiben bestehen und zeigen danach ins Leere."));
+        ? "Achtung: «" + personName(personen[0]) + "» ist Inhaber dieses "
+          + "Geräts. Der Eintrag bleibt bestehen und zeigt danach ins Leere."
+        : "Achtung: " + personen.length + " Personen tragen dieses Gerät. "
+          + "Die Einträge bleiben bestehen und zeigen danach ins Leere."));
   }
   d.inhalt.appendChild(el("p", null,
     "Zur Bestätigung bitte den PC-Namen genau abtippen: " + name));

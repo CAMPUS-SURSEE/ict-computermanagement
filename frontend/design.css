@@ -91,7 +91,8 @@
 
    Toolbar und Formulare
      .toolbar .toolbar-teil .suchfeld .suche .kuerzel .anzahl
-     .knopf .knopf-primaer .knopf-leise .knopf.aktiv .zaehler
+     .knopf .knopf-primaer .knopf-leise .knopf-still .knopf-sinnbild
+     .knopf.aktiv .zaehler
      .feld .feld-label .feld-eingabe .feld-hinweis .schloss
      .panel .panel-kopf .panel-koerper .mehrfach
 
@@ -356,14 +357,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 .konto {
   font-size: var(--t-m); color: var(--text);
-  display: inline-flex; align-items: center; gap: var(--a2);
-  height: 32px; padding: 0 var(--a3) 0 var(--a2);
+  display: inline-flex; align-items: center;
+  height: 32px; padding: 0 var(--a3);
   border: 1px solid var(--linie); border-radius: var(--r-rund);
   max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.konto::before {
-  content: ""; width: 20px; height: 20px; border-radius: 50%; flex: none;
-  background: var(--primaer);
 }
 .konto:empty { display: none; }
 
@@ -486,6 +483,13 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   border-top: 1px solid var(--linie-leicht);
 }
 .karte-inhalt > .karte-aktionen:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+/* Zeilenlisten (.g-person, .g-hinweis, .datenzeile …) nehmen der letzten
+   Zeile die Linie über :last-child. Folgt eine Fusszeile, ist die letzte
+   Zeile aber nicht mehr das letzte Kind — dann stünden ihre Linie und die
+   der Fusszeile dicht nebeneinander. Wer vor der Fusszeile steht, gibt
+   seine Linie ab; es bleibt genau eine. */
+.karte-inhalt > *:has(+ .karte-aktionen) { border-bottom: none; }
 
 .karten {
   display: grid;
@@ -626,7 +630,7 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
   border-color: transparent; cursor: default;
 }
 .knopf .icon { color: currentColor; width: 18px; height: 18px; }
-.knopf:has(> .icon:first-child) { padding-left: var(--a3); }
+.knopf:has(> .icon:first-child):not(.knopf-sinnbild) { padding-left: var(--a3); }
 
 .knopf-primaer {
   background: var(--primaer); color: var(--weiss); border-color: transparent;
@@ -636,6 +640,17 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
 
 .knopf-leise { background: none; border-color: transparent; color: var(--primaer); }
 .knopf-leise:hover { background: rgba(11,87,208,.08); }
+
+/* Neutral (grau): Nebensächliches, das keine Aktion in Markenfarbe
+   verdient — etwa «Abmelden» in der Kopfzeile. */
+.knopf-still { background: none; border-color: transparent; color: var(--text-leise); }
+.knopf-still:hover  { background: var(--flaeche-2); }
+.knopf-still:active { background: var(--flaeche-3); }
+
+/* Nur Sinnbild, kein Text: quadratisch. Der Zweck gehört zwingend in
+   title und aria-label, sonst ist der Knopf nicht benennbar. */
+.knopf-sinnbild { width: 36px; padding: 0; gap: 0; flex: none; }
+.knopf-sinnbild .icon { width: 20px; height: 20px; }
 
 /* Gedrückter Zustand (Filter offen, Kompakt an, Archiv an): tonal. */
 .knopf.aktiv { background: var(--primaer-hell); border-color: transparent; color: var(--primaer); }
@@ -1320,7 +1335,7 @@ button.liste-zeile:hover { background: var(--flaeche); }
     scrollbar-width: none; min-width: 0;
   }
   .kopf-rechts::-webkit-scrollbar { display: none; }
-  .kopf-rechts .knopf { padding-left: var(--a3); padding-right: var(--a3); }
+  .kopf-rechts .knopf:not(.knopf-sinnbild) { padding-left: var(--a3); padding-right: var(--a3); }
   .wortmarke { font-size: 18px; line-height: 24px; }
   .stand { display: none; }
 
@@ -1353,6 +1368,7 @@ button.liste-zeile:hover { background: var(--flaeche); }
   }
 
   .knopf { min-height: var(--tippziel); }
+  .knopf-sinnbild { width: var(--tippziel); }
 
   .inhalt { padding: var(--a4) var(--a4) var(--a6); }
   .inhalt-fest { padding: var(--a3); }

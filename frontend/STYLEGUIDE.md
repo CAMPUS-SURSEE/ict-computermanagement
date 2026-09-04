@@ -111,7 +111,7 @@ Maximale Textbreite `.bahn` und `.fenster-bahn`: 1400 px.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ App-Leiste 64 px: Logo · Produktname          Stand · Knöpfe · Konto │
+│ App-Leiste 64 px: Logo · Produktname       Stand · Konto · Abmelden │
 ├──────────────────────────────────────────────────────────────┤
 │ Band (nur im Vorführmodus / bei Warnungen)                    │
 ├────────────┬─────────────────────────────────────────────────┤
@@ -173,7 +173,7 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 ### 4.1 App-Leiste `.kopf`
 - 64 px hoch (56 px auf dem Handy), weiss, Hairline unten.
 - Links `.kopf-marke`: Wortmarke `.wortmarke` «ICT.INVENTAR» als Link zur Übersicht (Archivo 650, 112 % breit, Versalien, 22 px `--text`); der Punkt `.wortmarke-punkt` steht in `--campus-gruen` (#84b819, das Grün aus dem Logo von Campus Sursee) und ist wie im Logo ein satter Kreis auf der Grundlinie (0.3 em, als Fläche gezeichnet, nicht als Schriftzeichen). Das Campus-Logo selbst wird nicht mehr gezeigt.
-- Rechts `.kopf-rechts`: Datenstand, Knöpfe, Konto-Pille. Auf dem Handy in einer Zeile, rollt notfalls waagrecht, Wortmarke 18 px.
+- Rechts `.kopf-rechts`, in dieser Reihenfolge: Datenstand, Konto-Pille `.konto` (nur der Name, ohne Profilbild), ganz aussen «Abmelden» als grauer Nur-Icon-Knopf (`.knopf-still.knopf-sinnbild`, Zweck in `title` und `aria-label`). Auf dem Handy in einer Zeile, rollt notfalls waagrecht, Wortmarke 18 px.
 - Enthält **nie** den Titel des Datensatzes; der steht in `.seitenkopf`.
 
 ### 4.2 Navigation `.reiter` / `.fenster-nav`
@@ -191,7 +191,7 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 - Weiss, 1 px `--linie`, 8 px Radius, kein Schatten.
 - `.karte-kopf` (16 px oben, 24 px seitlich): `.karte-titel` 16 px 500 und optional `.karte-unter` 13 px `--text-leise`.
 - `.karte-inhalt` (24 px seitlich und unten). **Jeder Block darin hat 16 px Abstand zum vorherigen** (`.karte-inhalt > * + *`). Zeilen derselben Liste (Datenzeilen, Personen, Hinweise, Rohdaten) sind davon ausgenommen.
-- `.karte-aktionen`: Fusszeile mit Knöpfen, 16 px Abstand, Hairline oben. Hauptaktion gefüllt, Nebenaktionen als Text.
+- `.karte-aktionen`: Fusszeile mit Knöpfen, 16 px Abstand, Hairline oben. Hauptaktion gefüllt, Nebenaktionen als Text. Steht sie hinter einer Zeilenliste, gibt die letzte Zeile ihre Linie ab (`.karte-inhalt > *:has(+ .karte-aktionen)`) — **nie zwei Hairlines dicht nebeneinander**. Die Fusszeile steht immer zuunterst in der Karte, nie zwischen zwei Blöcken.
 - Raster `.karten`: auto-fit, mindestens 420 px je Spalte, 16 px Lücke; `.karte-breit` über alle Spalten.
 - Karten strecken sich **nicht** auf gleiche Höhe (`align-items: start`).
 
@@ -205,10 +205,12 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 | Variante | Klasse | Aussehen | Einsatz |
 |---|---|---|---|
 | Outlined | `.knopf` | weiss, 1 px `--umriss`, blauer Text, Pille 36 px | Standardaktion |
-| Filled | `.knopf-primaer` | blau, weisser Text | **genau eine** Hauptaktion je Bereich (Speichern, Neues Gerät, Benutzer zuordnen) |
+| Filled | `.knopf-primaer` | blau, weisser Text | **genau eine** Hauptaktion je Bereich (Speichern, Neues Gerät, Inhaber festlegen) |
 | Text | `.knopf-leise` | nur blauer Text | Nebenaktionen, Aktionen pro Zeile, Abbrechen |
 | Tonal | `.knopf.aktiv` | `--primaer-hell`, blauer Text | gedrückter Schalter (Filter offen, Kompakt, Archiv) |
 | Gefahr | `.knopf-gefahr` | rot, weisser Text | zerstörende Bestätigung im Dialog |
+| Neutral | `.knopf-still` | grauer Text `--text-leise`, kein Rahmen | Nebensächliches ohne Markenfarbe (Abmelden) |
+| Nur Icon | `.knopf-sinnbild` | quadratisch 36 px (Handy 40 px), kein Text | mit `.knopf-still` kombiniert; `title` **und** `aria-label` sind Pflicht |
 | Deaktiviert | `[disabled]` | grau 6 %, Text 38 % | |
 
 - Höhe 36 px (Handy 40 px), Schrift 14 px 500 `--schrift-titel`, Innenabstand 16 px (mit Icon links 12 px).
@@ -356,7 +358,7 @@ Automatisch geprüft (Sonde in jeder Ansicht: kein waagrechtes Rollen der Seite,
 | Kein Gerät zugeordnet / kein Benutzer zugeordnet | Leerzustand in der Karte, Hauptaktion bleibt |
 | Ladezustand, Fehlerzustand (`?fehler=1`), unbekannte ID, Neu-Modus (`?neu=1`) | zentriert, Navigation ausgeblendet |
 | Telefonliste: 74 Nummern, 7 nicht zugewiesen, Filter «Zugewiesen: Nein», Telefonfenster mit und ohne AD-Person, `telefon.html?neu=1` | Warnfarbe nur auf Text und Chip, Kacheln in einer Reihe, Formular mit Design-System-Feldern |
-| Dialog «Benutzer zuordnen» mit Trefferliste auf 360 px | randlos, Liste rollt innen |
+| Dialog «Inhaber wechseln» mit Trefferliste auf 360 px | randlos, Liste rollt innen |
 | Speicherleiste mit Toast gleichzeitig | Toast liegt 80 px über der Leiste |
 | Verlaufsformular offen, Zeile in Bearbeitung | Felder Outlined, Knöpfe in Formularzeile |
 | Filter- und Spaltenpanel auf 360 px | volle Breite, rollt innen |

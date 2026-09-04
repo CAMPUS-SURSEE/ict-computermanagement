@@ -39,13 +39,13 @@
 /* Abgeleitete Spalten der Geräte-Tabelle. Sie stehen nicht in SharePoint;
    modell.js rechnet sie beim Anreichern aus. */
 const GERAETE_ZUSATZ = [
-  { i: "__benutzerNamen", d: "Benutzer", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__inhaberName",   d: "Inhaber", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   /* «Status» als abgeleitete Spalte, damit ein leeres Feld überall als
      «Aktiv» erscheint — filtern, sortieren und exportieren inbegriffen.
      Die rohe Spalte «Status» bleibt in der Spaltenwahl erreichbar. */
   { i: "__statusText",    d: "Status", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__ersatzText",    d: "Ersatzstatus", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
-  { i: "__hatBenutzer",   d: "Benutzer zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
+  { i: "__hatInhaber",    d: "Inhaber gesetzt", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
 ];
 
 const BENUTZER_ZUSATZ = [
@@ -105,7 +105,7 @@ const TAB = {
   geraete: {
     schluessel: "geraete",
     namensSpalte: "Title",
-    standard: ["Title", "__statusText", "__benutzerNamen", "GebaeudeStock",
+    standard: ["Title", "__statusText", "__inhaberName", "GebaeudeStock",
                "Beschaffungsjahr", "ErsatzGeplant", "SCCM_Model",
                "SCCM_OSVersion", "SCCM_LastActive"],
     sortSpalte: "Title",
@@ -115,7 +115,7 @@ const TAB = {
       { k: "ErsatzGeplant",     d: "Ersatz geplant" },
       { k: "__ersatzText",      d: "Ersatzstatus" },
       { k: "GebaeudeStock",     d: "Gebäude / Stock" },
-      { k: "__hatBenutzer",     d: "Benutzer zugeordnet" },
+      { k: "__hatInhaber",      d: "Inhaber gesetzt" },
       { k: "SCCM_Found",        d: "In SCCM" },
       { k: "SCCM_Online",       d: "Online" },
       { k: "SCCM_ClientActive", d: "Client aktiv" },
@@ -389,7 +389,11 @@ function hashLesen() {
   }
 }
 
-/* Gemerkte Spalten und Dichte aus dem Browser holen. */
+/* Gemerkte Spalten und Dichte aus dem Browser holen.
+
+   Namen, die es nicht mehr gibt — etwa das umbenannte «__benutzerNamen» —
+   räumt spaltenPruefen() weg, sobald auch die Programmspalten geladen
+   sind. Hier wird darum noch nicht gefiltert. */
 function einstellungenLaden() {
   for (const tab of TABELLEN) {
     try {
@@ -535,7 +539,7 @@ function zeigeInhalt() {
 function nachbereiten() {
   for (const c of geraete) {
     c.__ersatzText = ERSATZ_TEXT[c.__ersatzStatus] || "unbekannt";
-    c.__hatBenutzer = c.__benutzer.length ? "Ja" : "Nein";
+    c.__hatInhaber = c.__inhaber ? "Ja" : "Nein";
     // __status setzt Modell.anreichern; hier nur als Facettenwert gespiegelt.
     c.__statusText = c.__status;
   }
@@ -839,6 +843,33 @@ function zelle(tab, zeile, schluessel) {
     td.title = s === "Archiviert"
       ? "Archiviert — standardmässig ausgeblendet"
       : (s === "Lager" ? "Im Lager, niemandem zugeteilt" : "Im Einsatz");
+    return td;
+  }
+
+  /* Der Inhaber ist genau eine Person; sie bekommt einen Verweis ins
+     Benutzerfenster. Zeigen mehrere Personen auf dasselbe Gerät, ist das
+     ein zu bereinigender Datenfehler und wird als Chip angezeigt. */
+  if (tab === "geraete" && schluessel === "__inhaberName") {
+    if (!zeile.__inhaber) {
+      td.appendChild(el("span", "t-still", "–"));
+      td.title = "Kein Inhaber gesetzt";
+      return td;
+    }
+    const b = zeile.__inhaber;
+    const link = el("a", "name-link", zeile.__inhaberName);
+    link.href = benutzerUrl(b.id);
+    link.target = "benutzer-" + b.id;
+    link.rel = "noopener";
+    link.title = (b.Title || "") + " — Benutzerfenster öffnen";
+    td.appendChild(link);
+    if (zeile.__mehrfachInhaber) {
+      td.appendChild(document.createTextNode(" "));
+      const chip = el("span", "chip chip-warnung",
+        "+" + (zeile.__inhaberAlle.length - 1));
+      chip.title = "Mehrere Personen zeigen auf dieses Gerät: "
+        + zeile.__inhaberAlle.map(p => p.__name).join(", ");
+      td.appendChild(chip);
+    }
     return td;
   }
 
@@ -1475,7 +1506,7 @@ function zeichneUebersicht() {
   const ohneSccm = zaehle(imEinsatz, z => !z.__inSccm);
   const ueberfaellig = zaehle(imEinsatz, z => z.__ersatzStatus === "ueberfaellig");
   const ohneJahr = zaehle(imEinsatz, z => !String(z.Beschaffungsjahr || "").trim());
-  const ohneBenutzer = zaehle(imEinsatz, z => z.__benutzer.length === 0);
+  const ohneInhaber = zaehle(imEinsatz, z => !z.__inhaber);
 
   /* Ein Sprung in die Geräteliste mit einer Facette blendet die
      archivierten weiter aus — genau wie die Kachel sie nicht mitzählt. */
@@ -1492,8 +1523,8 @@ function zeichneUebersicht() {
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig))],
     [ohneJahr, "ohne Beschaffungsjahr", ohneJahr ? "warnung" : null, null,
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.unbekannt))],
-    [ohneBenutzer, "ohne Benutzer", null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatBenutzer", "Nein"))],
+    [ohneInhaber, "ohne Inhaber", null, null,
+      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatInhaber", "Nein"))],
     [archiviert, "archiviert", null, "in der Liste ausgeblendet",
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__statusText", ARCHIVIERT))]
   ];
@@ -1514,12 +1545,12 @@ function zeichneUebersicht() {
       () => springeMitFilter("benutzer", function () { })],
     [ohneGeraet, "ohne Gerät", null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "__hatGeraetText", "Nein"))],
-    [ohneBenutzer, "Geräte ohne Benutzer", null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatBenutzer", "Nein"))],
+    [ohneInhaber, "Geräte ohne Inhaber", null, null,
+      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatInhaber", "Nein"))],
     [inaktiv, "AD-Konto deaktiviert", inaktiv ? "gefahr" : null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "ADAktiviert", "Nein"))],
     [abweichung, "Primärgerät weicht ab", abweichung ? "warnung" : null,
-      "SCCM-Primärgerät ≠ zugeordnetes Gerät", null]
+      "SCCM-Primärgerät ≠ Gerät der Person", null]
   ];
   for (const [w, t, ton, unter, aktion] of kachelnB) {
     zielB.appendChild(kachel(w, t, ton, unter, aktion));
