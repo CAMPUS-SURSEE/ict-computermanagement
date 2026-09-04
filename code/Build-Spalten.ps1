@@ -24,7 +24,8 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
-. (Join-Path $ScriptDir 'Inventar-Gemeinsam.ps1')
+$ServerDir = Join-Path $ScriptDir 'server'
+. (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 
 if (-not $ComputerSchema) { $ComputerSchema = Join-Path $ScriptDir 'schema-computer.json' }
 if (-not $BenutzerSchema) { $BenutzerSchema = Join-Path $ScriptDir 'schema-benutzer.json' }

@@ -10,24 +10,24 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | Ich möchte … | Das ist zu tun |
 |---|---|
 | **wissen, ob der Sync läuft** | Log unter `C:\ComputerInventar\Sync-Inventar.log` ansehen; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
-| **den Sync von Hand starten** | `powershell -ExecutionPolicy Bypass -File .\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
-| **ein Programm hinzufügen oder ändern** | `programme.json` bearbeiten → `Upload-Programme.ps1` → nächster Sync legt die Spalte an (Abschnitt 3) |
+| **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
+| **ein Programm hinzufügen oder ändern** | `programme.json` bearbeiten → `Upload-Programme.ps1` → `Ergaenze-Spalten.ps1` legt die Spalte an (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | in `programme.json` unter `adGruppen` eintragen → `Upload-Programme.ps1` (Abschnitt 3) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-computer.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `210 bestanden, 0 fehlgeschlagen` |
-| **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.6) |
+| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `199 bestanden, 0 fehlgeschlagen` |
+| **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
-| **die Telefonliste (neu) aus der Excel-Datei aufbauen** | `Import-Telefonliste.ps1 -WhatIf`, dann ohne `-WhatIf` und mit `-UpdateKonfig` (Abschnitt 2.6) |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
 | **archivierte Geräte im Frontend sehen** | in der Geräteliste den Schalter **«Archivierte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
 | **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
-| **das abgelaufene Zertifikat erneuern** | `Setup-EntraApp.ps1` erneut ausführen (Abschnitt 7) |
+| **das abgelaufene Zertifikat erneuern** | neues Zertifikat erzeugen und an der App hinterlegen (Abschnitt 7.1) |
 
-Alle Befehle laufen im Ordner `C:\ComputerInventar` auf dem SCCM-Site-Server (`adminsrv319`).
-Die Skripte brauchen **Windows PowerShell 5.1** und kein Zusatzmodul; `ActiveDirectory` wird benutzt,
-wenn es da ist, sonst greift der ADSI-Fallback.
+Der Sync läuft im Ordner `C:\ComputerInventar` auf dem SCCM-Site-Server (`adminsrv319`); dessen
+Inhalt ist `code/server/` aus diesem Repository. Die Werkzeuge daneben (Spalten, Programme, Tests)
+laufen von einem Arbeitsplatz aus dem Ordner `code/`. Die Skripte brauchen **Windows PowerShell 5.1**
+und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst greift der ADSI-Fallback.
 
 ---
 
@@ -100,21 +100,29 @@ Geschäftsjahr `Jahr/Jahr+1`, sonst `Jahr-1/Jahr`. Die Helfer stehen in `Inventa
 
 ### Dateien im Ordner `code`
 
-| Datei | Zweck |
+`code/server/` ist der **Inhalt von `C:\ComputerInventar\`** auf `adminsrv319`: genau diese Dateien
+gehören auf den SCCM-Server, sonst keine. Alles andere in `code/` läuft von einem Arbeitsplatz aus
+und wird nie auf den Server kopiert.
+
+| `code/server/` – gehört auf den SCCM-Server | Zweck |
 |---|---|
-| `Sync-Inventar.ps1` | der laufende Sync (SCCM → Computer, AD → Benutzer) |
-| `Sync-Inventar.config.json` | Konfiguration; bleibt lokal, Vorlage: `Sync-Inventar.config.example.json` |
+| `Sync-Inventar.ps1` | der laufende Sync (SCCM → Computer, AD → Benutzer, AD → Telefonnummern) |
 | `Inventar-Gemeinsam.ps1` | gemeinsame Funktionen: Log, Geschäftsjahr, Graph, Spaltendefinitionen |
-| `programme.json` | Programmliste; produktiv gilt die Fassung in SharePoint |
-| `Upload-Programme.ps1` | lädt `programme.json` nach SharePoint (mit Sicherung und Kontrolle) |
+| `Sync-Inventar.config.json` | Konfiguration; bleibt lokal, Vorlage: `Sync-Inventar.config.example.json` |
+| `programme.json` | Programmliste; produktiv gilt die Fassung in SharePoint, diese ist der Rückfall |
+
+| `code/` – läuft vom Arbeitsplatz | Zweck |
+|---|---|
 | `schema-computer.json` / `schema-benutzer.json` / `schema-telefon.json` | Spalten der drei Listen (Quelle der Wahrheit) |
 | `Build-Spalten.ps1` | erzeugt `frontend/spalten.js` aus den Schemadateien |
-| `Import-Telefonliste.ps1` | legt die Liste «Telefonnummern» an und übernimmt die alte Excel-Telefonliste (einmalig, wiederholbar; Abschnitt 2.6) |
-| `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte |
-| `Setup-EntraApp.ps1` | Zertifikat, App-Registrierung, Site-Berechtigung, Konfiguration |
-| `Setup-FrontendApp.ps1` | App-Registrierung des Web-Frontends (SPA) |
-| `Add-Kontakte.ps1` | prüft und ergänzt die Telefonkontakte im AD (`OU=Contacts Sync`), die per Entra Connect nach Teams laufen; braucht ein Konto mit Schreibrecht auf der OU |
+| `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und `programme.json` fehlen – der einzige Ort, an dem Spalten entstehen (Abschnitt 4) |
+| `Upload-Programme.ps1` | lädt `server/programme.json` nach SharePoint (mit Sicherung und Kontrolle) |
+| `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
+
+Die Arbeitsplatz-Skripte laden `Inventar-Gemeinsam.ps1` und die Konfiguration aus `server/` – es gibt
+keine zweite Kopie. Auf dem Server liegt alles flach nebeneinander, dort greift derselbe Code über
+`$ScriptDir`.
 
 `Sync-Inventar.ps1` definiert zuerst seine reinen Funktionen und prüft danach `$InventarNurFunktionen`.
 Wer es mit `$InventarNurFunktionen = $true` dot-sourced, bekommt nur die Funktionen und keinen
@@ -126,8 +134,7 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 ### 2.1 Konfiguration
 
-`Sync-Inventar.config.json` neben dem Skript (Vorlage: `Sync-Inventar.config.example.json`,
-wird von `Setup-EntraApp.ps1` erzeugt):
+`Sync-Inventar.config.json` neben dem Skript (Vorlage: `Sync-Inventar.config.example.json`):
 
 | Schlüssel | Bedeutung |
 |---|---|
@@ -147,10 +154,11 @@ wird von `Setup-EntraApp.ps1` erzeugt):
 
 **Phase Computer**:
 
-1. Fehlende Spalten `Status` und `Verlauf` in der Computer-Liste anlegen (idempotent). Klappt das
-   nicht (fehlende Berechtigung), meldet der Sync das **einmal** und schreibt die Felder dieser
-   Spalte für den Rest des Laufs nicht – alles andere läuft normal weiter. Dasselbe gilt in allen
-   drei Phasen: eine fehlende Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile.
+1. Prüfen, ob die Computer-Liste `Status` und `Verlauf` hat. Der Sync **legt keine Spalten an** –
+   er füllt nur Daten. Fehlt eine Spalte, meldet er das **einmal** als WARN und lässt genau ihre
+   Felder aus; alles andere läuft normal weiter. Das gilt in allen drei Phasen: eine fehlende
+   Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile. Anlegen: `Ergaenze-Spalten.ps1`
+   oder von Hand in den Listeneinstellungen (Abschnitt 4).
 2. SCCM per WMI lesen.
 3. **Zuordnung über die Seriennummer**, nicht über den Namen. Verglichen wird die SCCM-Seriennummer
    mit der Spalte `SCCM_SerialNumber`, ersatzweise mit der manuellen Spalte `Seriennummer` (beides
@@ -184,8 +192,8 @@ wird von `Setup-EntraApp.ps1` erzeugt):
 **Phase Benutzer**:
 
 1. `programme.json` aus SharePoint laden (Fallback: lokale Kopie).
-2. Fehlende Spalten in der Benutzer-Liste anlegen: `Verlauf` (mehrzeilig, Klartext) und je Programm
-   eine Textspalte mit den Stufen in der Beschreibung.
+2. Prüfen, welche Spalten die Benutzer-Liste hat: `Verlauf` und je Programm eine Textspalte.
+   Programme ohne Spalte werden übersprungen und gemeldet.
 3. AD-Benutzer der konfigurierten OUs lesen (Subtree), Manager-DN in den Anzeigenamen auflösen (Cache).
 4. Je Programm mit hinterlegten AD-Gruppen die Mitglieder **rekursiv** ermitteln. Bevorzugt eine
    einzige LDAP-Abfrage je Gruppe mit `memberOf:1.2.840.113556.1.4.1941:=<Gruppen-DN>`; schlägt das
@@ -197,7 +205,7 @@ wird von `Setup-EntraApp.ps1` erzeugt):
 
 **Phase Telefonnummern** (nur wenn `TelefonListId` gesetzt ist):
 
-1. Fehlende Spalten der Liste «Telefonnummern» aus `schema-telefon.json` anlegen (idempotent).
+1. Prüfen, welche Spalten aus `schema-telefon.json` die Liste «Telefonnummern» hat.
 2. Dieselben AD-Benutzer wie in der Benutzer-Phase verwenden (werden nur einmal gelesen).
 3. Jede Zeile über die **Ziffernfolge** vergleichen (`+41 41 926 23 73`, `041 926 23 73` und die
    Kurzwahl `373` sind dieselbe Nummer). Steht die Nummer im AD-Feld `telephoneNumber` eines
@@ -243,7 +251,21 @@ Sync-Inventar.ps1 [-ConfigPath <json>] [-WhatIf] [-IncludeServers]
 | `-IncludeServers` | Server-Betriebssysteme mitnehmen |
 | `-OnlyDevices` | nur diese Geräte (zum Testen) |
 
-### 2.5 Geplante Aufgabe
+### 2.5 Auf den Server bringen
+
+`C:\ComputerInventar\` auf `adminsrv319` ist eine flache Kopie von `code/server/`. Nach einer
+Änderung am Sync die fünf Dateien dorthin kopieren – **ohne** `Sync-Inventar.config.json`, die
+gehört dem Server und enthält Zertifikat-Thumbprint und ClientId:
+
+```powershell
+robocopy .\code\server \\adminsrv319\C$\ComputerInventar /XF Sync-Inventar.config.json
+```
+
+Danach auf dem Server einmal `Sync-Inventar.ps1 -WhatIf` laufen lassen. Die Werkzeuge aus `code/`
+gehören **nicht** dorthin: sie ändern Listenstrukturen und Programmlisten und werden bewusst von
+Hand von einem Arbeitsplatz aus gestartet.
+
+### 2.6 Geplante Aufgabe
 
 Läuft als **SYSTEM** alle 4 Stunden. Das funktioniert auf dem Site-Server, weil das Computerkonto
 sowohl SCCM- als auch AD-Leserechte hat. Auf einem anderen Server ein Dienstkonto mit SCCM-Rolle
@@ -258,7 +280,7 @@ $t = New-ScheduledTaskTrigger -Once -At 06:00 -RepetitionInterval (New-TimeSpan 
 Register-ScheduledTask -TaskName 'Computer Inventar Sync' -Action $a -Trigger $t -User 'SYSTEM' -RunLevel Highest
 ```
 
-### 2.6 Telefonnummern
+### 2.7 Telefonnummern
 
 Die Liste «Telefonnummern» ersetzt die Excel-Datei «Telefonnummerm S4B.xlsx» (Blatt «Telefonnummer»).
 Schlüssel ist die **Kurzwahl** (Titelspalte, z. B. `373`); die vollständige Nummer
@@ -278,18 +300,10 @@ Zeilen sind in der Liste gelb hervorgehoben, die Übersicht zählt sie in einer 
 Weitere Kacheln: «Name weicht vom AD ab» (Liste und AD nennen verschiedene Personen) und «Benutzer
 ohne Nummer» (aktive AD-Konten ohne Telefonnummer).
 
-**Einmalige Einrichtung** (im Ordner `code`, Anmeldung als Person per Device-Code):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Import-Telefonliste.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\Import-Telefonliste.ps1 -UpdateKonfig
-```
-
-Das Skript liest die Excel-Datei ohne Excel, legt die Liste mit den Spalten aus `schema-telefon.json`
-an, übernimmt alle Zeilen (Status-Umrechnung: `aktiv` → Aktiv, `inaktiv` mit Hinweis «frei» oder ohne
-Namen → Frei, sonst Inaktiv; «FREI» als Name wird zu leer) und trägt die Listen-ID in
-`frontend/konfig.js` ein. Die ID gehört danach auch als `TelefonListId` in `Sync-Inventar.config.json`.
-Ein zweiter Lauf legt nichts doppelt an (Schlüssel: Kurzwahl).
+Die Liste wurde am 04.09.2026 aus der Excel-Datei aufgebaut (307 Nummern, Stand 31.07.2026). Das
+Importskript dafür war einmalig und ist entfernt; wer den Ablauf nachlesen will, findet es in der
+Git-Historie (`git log -- code/Import-Telefonliste.ps1`). Gepflegt wird die Liste seither im
+Frontend, ergänzt vom Sync.
 
 ---
 
@@ -316,12 +330,14 @@ Ein zweiter Lauf legt nichts doppelt an (Schlüssel: Kurzwahl).
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Upload-Programme.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\Upload-Programme.ps1
-powershell -ExecutionPolicy Bypass -File .\Sync-Inventar.ps1 -OnlyBenutzer -WhatIf
+powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -Listen Benutzer
+powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -OnlyBenutzer -WhatIf
 ```
 
 Zuerst `programme.json` bearbeiten, dann mit `-WhatIf` vergleichen, hochladen (die bisherige Fassung
-wird als `programme.sicherung.<Zeitstempel>.json` gesichert) und zuletzt die Wirkung ansehen, bevor
-der Sync wirklich schreibt. Der nächste Sync legt fehlende Programmspalten automatisch an.
+wird als `programme.sicherung.<Zeitstempel>.json` gesichert), die neue Programmspalte anlegen und
+zuletzt die Wirkung ansehen, bevor der Sync wirklich schreibt. Ohne den Schritt mit
+`Ergaenze-Spalten.ps1` meldet der Sync die fehlende Spalte und überspringt das Programm.
 
 **Ein Programm entfernen**: Eintrag aus `programme.json` löschen und hochladen. Die Spalte in der
 Benutzer-Liste bleibt mit ihren Werten stehen; der Sync ignoriert sie. Wer sie wirklich loswerden
@@ -337,16 +353,29 @@ setzen.
 ## 4. Spalten ändern
 
 - **Manuelle Spalte** ändern: Eintrag in `schema-computer.json`, `schema-benutzer.json` bzw.
-  `schema-telefon.json` anpassen, Spalte in SharePoint anlegen/umbenennen, dann `Build-Spalten.ps1`
-  ausführen (erzeugt `frontend/spalten.js` neu). Fehlende Spalten der Telefonliste legt der Sync
-  selbst an.
+  `schema-telefon.json` anpassen, Spalte in SharePoint anlegen/umbenennen (siehe unten), dann
+  `Build-Spalten.ps1` ausführen (erzeugt `frontend/spalten.js` neu).
 - **SCCM-Spalte hinzufügen**: (1) Eintrag in `schema-computer.json`, (2) Spalte in der Liste «Computer»
   anlegen (`SCCM_`-Präfix), (3) Feld in `Build-SccmFields` in `Sync-Inventar.ps1` ergänzen,
   (4) `-DumpOnly -OnlyDevices` prüfen, (5) `-WhatIf`, (6) laufen lassen, (7) `Build-Spalten.ps1`.
 - **Programmspalte**: nur über `programme.json` (siehe Abschnitt 3). Nie von Hand in `spalten.js`.
-- **`Status` und `Verlauf`** legt der Sync selbst an, falls sie fehlen (Computer-Liste beide,
-  Benutzer-Liste `Verlauf`). Von Hand anlegen muss man sie nicht; wer es tut, nimmt für `Verlauf`
-  «Mehrere Textzeilen» ohne Rich-Text und für `Status` eine einzeilige Textspalte.
+**Der Sync legt nie eine Spalte an.** Er füllt nur Daten und meldet fehlende Spalten als WARN.
+Spalten anlegen ist ein bewusster, eigener Schritt – von Hand in den Listeneinstellungen oder mit
+`Ergaenze-Spalten.ps1`:
+
+```
+powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1
+```
+
+Erst mit `-WhatIf` prüfen, was angelegt würde: das Skript vergleicht die drei Listen mit den
+Schemadateien und `programme.json` und legt nur an, was fehlt – gelöscht oder geändert wird nie.
+Angemeldet wird per Device-Code mit den Rechten eines Menschen; die Entra-App des Syncs hat auf der
+Site bewusst nur Schreibrecht auf Zeilen und bleibt unberührt.
+
+Wer von Hand anlegt, nimmt für `Verlauf` «Mehrere Textzeilen» ohne Rich-Text, für `Status` und die
+Programmspalten eine einzeilige Textspalte. Der **interne Name** muss stimmen (er entsteht aus dem
+Namen, den man beim Anlegen eingibt – späteres Umbenennen ändert ihn nicht mehr).
 
 `frontend/spalten.js` wird **generiert** und darf nicht von Hand bearbeitet werden.
 
@@ -362,12 +391,11 @@ Geprüft werden ohne Pester, ohne Netz, ohne SCCM und ohne AD: Geschäftsjahr-He
 des AD-Syncs, Löschschutz und Archivschutz, die Verlauf-Helfer (leer, ungültig, ein Eintrag, mehrere,
 Anhängen ohne Verlust, kompakte Ausgabe), die Seriennummern-Normalisierung samt Platzhaltern, die
 Zuordnung SCCM-Gerät ↔ Computer-Zeile (Seriennummer vor Name, Dublettenwahl, Umbenennung,
-Archivieren und Reaktivieren), die Telefonnummern (Normalisierung, Kurzwahl, Abgleich mit dem AD,
-Umrechnung der alten Excel-Liste – und, falls `lokal\Telefonnummerm S4B.xlsx` da ist, das Lesen der
-Datei), Anzahl und Eindeutigkeit der Schema- und Programmeinträge sowie die Syntax aller `*.ps1`
-im Ordner.
+Archivieren und Reaktivieren), die Telefonnummern (Normalisierung, Kurzwahl, Abgleich mit dem AD),
+das Verhalten bei fehlenden Spalten, Anzahl und Eindeutigkeit der Schema- und Programmeinträge sowie
+die Syntax aller `*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 210 bestanden, 0 fehlgeschlagen` (ohne die Excel-Datei zwei weniger).
+Erwartete Ausgabe: `Ergebnis: 199 bestanden, 0 fehlgeschlagen`.
 
 Die Prüfung «`programme.json`: N Programme» ist eine feste Zahl im Test. Wer Programme hinzufügt oder
 entfernt, zieht sie dort nach.
@@ -378,10 +406,10 @@ entfernt, zieht sie dort nach.
 
 | Symptom | Ursache | Lösung |
 |---|---|---|
-| `invalid_client` / `AADSTS700027` | Zertifikat abgelaufen oder nicht mehr an der App | `Setup-EntraApp.ps1` erneut ausführen |
+| `invalid_client` / `AADSTS700027` | Zertifikat abgelaufen oder nicht mehr an der App | Zertifikat erneuern (Abschnitt 7.1) |
 | `Kein Zugriff auf den privaten Schlüssel` | Task-Konto darf den Schlüssel nicht lesen | in `certlm.msc` Leserecht vergeben oder als SYSTEM laufen lassen |
-| Graph `403` beim Schreiben | Site-Berechtigung fehlt | `Setup-EntraApp.ps1` erneut ausführen |
-| `Spalte '…' fehlt … und konnte nicht angelegt werden` mit `403` | die App hat auf der Site nur die Rolle `write`; Spalten anlegen verlangt `manage` | `Setup-EntraApp.ps1` erneut ausführen (hebt die Rolle an) oder die Spalte von Hand in den Listeneinstellungen anlegen. Bis dahin läuft der Sync weiter und lässt nur die Felder dieser Spalte aus |
+| Graph `403` beim Schreiben | Site-Berechtigung fehlt | der App die Rolle `write` auf die Site geben (Abschnitt 7.1, Schritt 5) |
+| `… Spalte(n) fehlen und werden nicht geschrieben: …` | die Spalte gibt es in der Liste nicht (neu im Schema, umbenannt oder gelöscht) | `Ergaenze-Spalten.ps1` ausführen oder die Spalte von Hand in den Listeneinstellungen anlegen (Abschnitt 4). Bis dahin läuft der Sync normal weiter und lässt nur die Felder dieser Spalte aus |
 | Graph `404` bei einer Liste | `ComputerListId`/`BenutzerListId` falsch | IDs aus den Listeneinstellungen in SharePoint übernehmen |
 | `field … is not recognized` | Spalte fehlt oder wurde umbenannt | Spalte wiederherstellen oder Eintrag im Skript entfernen |
 | `Löschschutz greift: …` | AD lieferte nichts oder zu viele Löschungen | OU-DNs und AD-Verbindung prüfen; bei einer echten Massenmutation `LoeschSchutzProzent` bewusst erhöhen |
@@ -394,8 +422,8 @@ entfernt, zieht sie dort nach.
 | Ein Gerät wird doppelt angelegt statt zugeordnet | die Zeile trägt eine andere Seriennummer als das SCCM-Gerät, deshalb greift auch der Namensfallback nicht | Seriennummer in der Zeile korrigieren oder leeren; die überzählige Zeile archivieren |
 | `Verlauf von '…' ist unbrauchbar – Zeile übersprungen` | der Inhalt der Spalte `Verlauf` ist kein gültiges JSON-Array (von Hand bearbeitet?) | Inhalt in der Zeile sichten und auf `[]` oder ein gültiges Array setzen; der Sync überschreibt ihn absichtlich nicht |
 | Ein PC fehlt in der Liste | er wurde nie gelöscht – die Computer-Phase löscht nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen |
-| `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | die Liste ist noch nicht eingerichtet | `Import-Telefonliste.ps1` ausführen und die ausgegebene ID als `TelefonListId` eintragen |
-| Frontend: Reiter «Telefonnummern» ist leer und nennt konfig.js | `telefonListId` in `frontend/konfig.js` steht noch auf dem Platzhalter | `Import-Telefonliste.ps1 -UpdateKonfig` oder die ID von Hand eintragen, neu deployen |
+| `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | `TelefonListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Telefonnummern» eintragen (steht auch in `frontend/konfig.js`) |
+| Frontend: Reiter «Telefonnummern» ist leer und nennt konfig.js | `telefonListId` in `frontend/konfig.js` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
 | `Nummer … steht im AD bei 'a' und 'b'` | zwei AD-Konten tragen dieselbe `telephoneNumber` | im AD bereinigen; bis dahin gilt der alphabetisch erste Login |
 | Eine Person steht in der Telefonliste, aber «Person (AD)» ist leer | im AD fehlt bei diesem Konto das Feld «Telefon» (`telephoneNumber`) | Feld im AD setzen; beim nächsten Sync erscheint die Person, `Benutzer` wird geschrieben |
 | Frontend: «Die Daten konnten nicht geladen werden – Failed to fetch», dazu ein CSP-Verstoss gegen `campussursee.sharepoint.com` | Graph leitet für `Inventar/programme.json` auf SharePoint um; fehlt der Host in `connect-src`, blockiert der Browser stillschweigend | In `frontend/_headers` muss `connect-src` den Eintrag `https://campussursee.sharepoint.com` enthalten. Nach dem Ändern neu deployen und hart neu laden |
@@ -407,22 +435,136 @@ Aufgabenplanung zeigt dann «0x1». Details stehen immer im Log.
 
 ---
 
-## 7. Einrichtung und Wiederherstellung
+## 7. Einrichtung von Hand
 
-Beides ist eingerichtet und nur bei Zertifikatsablauf, neuer Frontend-Adresse oder Neuaufbau nötig.
+Alles hier ist **eingerichtet** und nur bei Zertifikatsablauf, neuer Frontend-Adresse oder Neuaufbau
+nötig. Es gibt bewusst keine Setup-Skripte mehr: Schritte, die man alle paar Jahre einmal macht,
+gehören in eine Anleitung und nicht in Code, der ungetestet verstaubt. Alle Schritte brauchen ein
+Entra-Konto mit Rolle «Anwendungsadministrator» oder «Globaler Administrator».
 
-- **`Setup-EntraApp.ps1`** – Zertifikat, App-Registrierung «SCCM-SharePoint-Sync», Admin-Consent,
-  Site-Berechtigung (`Sites.Selected`, Rolle `manage`) und `Sync-Inventar.config.json`. Erneut
-  ausführen, wenn das Zertifikat abläuft oder die Site-Berechtigung fehlt; eine bestehende Rolle
-  `write` wird dabei auf `manage` angehoben. Die Rolle `write` reicht nur für Zeilen – der Sync legt
-  auch fehlende Spalten an (`Status`, `Verlauf`, Programm- und Telefonspalten) und braucht dafür
-  `manage`. Danach `AdUserOUs` in der Konfiguration prüfen.
-- **`Setup-FrontendApp.ps1`** – App-Registrierung «Computer Inventar Frontend» (SPA) mit den
-  delegierten Rechten `User.Read` und `Sites.ReadWrite.All`. Erneut ausführen, wenn eine
-  Umleitungsadresse dazukommt (`-RedirectUris`). Die Adresse muss **exakt** so eingetragen sein, wie
-  der Browser sie aufruft, inklusive Schrägstrich am Ende.
+### 7.1 Entra-App «SCCM-SharePoint-Sync» (der Sync)
 
-Beide brauchen ein Entra-Konto mit Rolle «Anwendungsadministrator» oder «Globaler Administrator».
+Meldet sich mit einem Zertifikat als Anwendung an und darf Zeilen auf genau einer Site schreiben.
+
+**1 – Zertifikat auf `adminsrv319` erzeugen** (PowerShell als Administrator). Der private Schlüssel
+bleibt auf dem Server, `NonExportable` ist Absicht:
+
+```powershell
+New-SelfSignedCertificate -Subject 'CN=SCCM-SharePoint-Sync' -CertStoreLocation Cert:\LocalMachine\My `
+  -KeyExportPolicy NonExportable -KeySpec Signature -KeyLength 2048 -KeyAlgorithm RSA `
+  -HashAlgorithm SHA256 -NotAfter (Get-Date).AddYears(5) -KeyUsage DigitalSignature `
+  -Provider 'Microsoft Enhanced RSA and AES Cryptographic Provider'
+```
+
+Thumbprint notieren und den öffentlichen Teil für den Upload exportieren:
+
+```powershell
+$c = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Subject -eq 'CN=SCCM-SharePoint-Sync' }
+Export-Certificate -Cert $c -FilePath C:\ComputerInventar\SCCM-SharePoint-Sync.cer
+```
+
+**2 – App-Registrierung** (Entra Admin Center → App-Registrierungen → Neue Registrierung):
+Name `SCCM-SharePoint-Sync`, «Nur Konten in diesem Organisationsverzeichnis», **keine**
+Umleitungs-URI. Die ClientId von der Übersichtsseite notieren.
+
+**3 – Zertifikat hinterlegen**: Zertifikate & Geheimnisse → Zertifikate → die `.cer` hochladen.
+
+**4 – Graph-Berechtigung**: API-Berechtigungen → Microsoft Graph → **Anwendungsberechtigungen** →
+`Sites.Selected` → «Administratorzustimmung erteilen». `Sites.Selected` allein gibt noch **keinen**
+Zugriff – erst Schritt 5 öffnet genau eine Site.
+
+**5 – Schreibrecht auf die Site**. Das geht nur über Graph, nicht im Portal. Im
+[Graph Explorer](https://developer.microsoft.com/graph/graph-explorer) als Konto mit
+`Sites.FullControl.All` (oder als Site-Collection-Admin) zuerst die Site-Id holen:
+
+```
+GET https://graph.microsoft.com/v1.0/sites/campussursee.sharepoint.com:/sites/mgmts-ict-s
+```
+
+Dann der App die Rolle `write` auf diese Site geben:
+
+```
+POST https://graph.microsoft.com/v1.0/sites/<site-id>/permissions
+{
+  "roles": ["write"],
+  "grantedToIdentities": [
+    { "application": { "id": "<ClientId>", "displayName": "SCCM-SharePoint-Sync" } }
+  ]
+}
+```
+
+`write` genügt bewusst: der Sync schreibt nur Zeilen, nie Spalten (Abschnitt 4). Die bestehende
+Berechtigung prüft man mit `GET /sites/<site-id>/permissions`.
+
+**6 – Konfiguration**: `Sync-Inventar.config.example.json` nach `Sync-Inventar.config.json` kopieren
+und `TenantId`, `ClientId`, `CertThumbprint` eintragen; `AdUserOUs` auf die echten OU-DNs prüfen.
+
+**7 – Leserecht auf den privaten Schlüssel** für das Konto der geplanten Aufgabe:
+`certlm.msc` → Zertifikat → Alle Aufgaben → Private Schlüssel verwalten. Läuft die Aufgabe als
+SYSTEM auf dem Site-Server, ist das normalerweise schon gegeben. Dasselbe Konto braucht
+**Leserecht auf das Active Directory** (Benutzerattribute und Gruppenmitgliedschaften der OUs aus
+`AdUserOUs`); das Computerkonto des Site-Servers erfüllt das in einer Domäne bereits.
+
+**8 – Probe**:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Sync-Inventar.ps1 -WhatIf -OnlyComputers -OnlyDevices CAMPUS-073
+```
+
+**Zertifikat erneuern** (alle 5 Jahre, oder bei `AADSTS700027`): Schritte 1 und 3 wiederholen, den
+neuen Thumbprint in die Konfiguration eintragen, einen Lauf abwarten und **erst dann** das alte
+Zertifikat an der App entfernen. Beide Zertifikate dürfen gleichzeitig hinterlegt sein.
+
+### 7.2 Entra-App «Computer Inventar Frontend» (SPA)
+
+**1 – App-Registrierung**: Name `Computer Inventar Frontend`, «Nur Konten in diesem
+Organisationsverzeichnis».
+
+**2 – Plattform**: Authentifizierung → Plattform hinzufügen → **Einzelseitige Anwendung (SPA)**.
+Nicht «Web» – sonst scheitert der Token-Tausch im Browser mit `AADSTS9002326`. Implizite Flows
+(«Zugriffstoken», «ID-Token») bleiben **aus**, die SPA nutzt Authorization Code Flow mit PKCE.
+
+**3 – Umleitungsadressen**: exakt so, wie der Browser sie aufruft – **mit** Schrägstrich am Ende,
+ohne `?` und `#`. Produktiv `https://inventar.campus-sursee.ch/`, für lokale Tests zusätzlich
+`http://localhost:8765/` (die Portnummer von `serve.ps1` bzw. `.claude/launch.json`). Ausser
+`localhost` ist immer `https` zwingend.
+
+**4 – Graph-Berechtigungen**: **Delegiert** `User.Read` und `Sites.ReadWrite.All` →
+«Administratorzustimmung erteilen».
+
+**5 – Zugang einschränken**: Unternehmensanwendungen → «Computer Inventar Frontend» →
+Eigenschaften → **Zuweisung erforderlich = Ja**, dann unter «Benutzer und Gruppen» die berechtigten
+Personen zuweisen. Ohne das darf sich jede Person im Tenant anmelden.
+
+**6 – ClientId** in `frontend/konfig.js` als `clientId` eintragen und neu deployen.
+
+Die Option «Öffentliche Clientflows zulassen» steht bei dieser App auf **Nein**. Sie ist für die SPA
+nicht nötig – deshalb meldet sich `Ergaenze-Spalten.ps1` per Device-Code mit dem öffentlichen Client
+von Microsoft Graph PowerShell (`14d82eec-204b-4c2f-b7e8-296a70dab67e`) an und nicht mit dieser
+ClientId; die würde den Device-Code-Flow mit `AADSTS7000218` abweisen.
+
+### 7.3 Telefonkontakte im AD (Teams-Adressbuch)
+
+Kontakte wie «Nachtdienst» stehen als AD-Kontaktobjekte in
+`OU=Contacts Sync,OU=Lync 2010,OU=Resources,OU=Staff,DC=sasadmin,DC=local` und laufen über Entra
+Connect ins Adressbuch und nach Teams. Ein Kontakt erscheint dort **nur**, wenn alle vier Attribute
+gesetzt sind:
+
+| Attribut | Inhalt |
+|---|---|
+| `displayName` | Anzeigename, identisch mit dem Objektnamen |
+| `mail` | Mailadresse – ohne sie ignoriert der Kontakt-Sync den Eintrag |
+| `mobile` | die Nummer; dieses Feld nutzt der Kontakt-Sync |
+| `telephoneNumber` | dieselbe Nummer |
+
+Schreibweise wie bei den bestehenden Kontakten der OU: `+41 79 392 21 63`. Schreibrecht auf die OU
+haben nur Domain Admins; bearbeitet wird im Attribut-Editor von «Active Directory-Benutzer und
+-Computer» oder mit `Set-ADObject`. Bis der Kontakt in Teams sichtbar ist, dauert es einen
+Entra-Connect-Zyklus (Standard 30 Minuten).
+
+**Offen (Stand 04.09.2026)**: «Nachtdienst 2 (Spät)» hat weder `displayName` noch `mobile`.
+Einzutragen: `displayName` = `Nachtdienst 2 (Spät)`, `mobile` = `+41 79 376 41 98`.
+Von 52 Kontakten in der OU haben 3 kein `displayName` oder `mail`.
 
 ---
 

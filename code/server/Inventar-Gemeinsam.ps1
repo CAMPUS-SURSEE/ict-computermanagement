@@ -599,12 +599,13 @@ function ConvertTo-GraphSpalte {
 function Get-SpaltenHinweis {
     <#
       Ergänzt eine Graph-Fehlermeldung um den Weg zur Lösung, wenn das Anlegen einer Spalte an
-      der Berechtigung scheitert: Sites.Selected mit der Rolle «write» darf Zeilen schreiben,
-      aber keine Spalten anlegen – dafür braucht die App mindestens die Rolle «manage».
+      der Berechtigung scheitert. Die Zertifikats-Anmeldung des Syncs hat auf der Site nur die
+      Rolle «write» und darf damit ausschliesslich Zeilen schreiben – Spalten anlegen darf nur
+      ein Mensch mit Vollzugriff auf die Site.
     #>
     param($Fehler)
     if ("$Fehler" -match '\(403\)|accessDenied|Access denied') {
-        return ' -> Die App darf auf dieser Site keine Spalten anlegen. Setup-EntraApp.ps1 erneut ausführen (hebt die Site-Rolle auf «manage») oder die Spalte von Hand in den Listeneinstellungen anlegen.'
+        return ' -> Keine Berechtigung, in dieser Liste Spalten anzulegen. Mit -Auth DeviceCode als Konto mit Vollzugriff auf die Site anmelden oder die Spalte von Hand in den Listeneinstellungen anlegen.'
     }
     return ''
 }

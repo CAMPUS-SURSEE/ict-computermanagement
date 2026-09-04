@@ -195,9 +195,9 @@ const Daten = (function () {
       + (meldung || "ungültiger Wert") + ". Bitte die Eingaben prüfen.";
     if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
     if (status === 403 && schreibend) return "Keine Schreibberechtigung für " + ziel
-      + ". Entweder fehlt der Anwendung die Berechtigung Sites.ReadWrite.All — dann bitte "
-      + "code\\Setup-FrontendApp.ps1 erneut ausführen, damit der Admin-Consent erteilt "
-      + "wird — oder das Konto darf in SharePoint nur lesen.";
+      + ". Entweder fehlt der App-Registrierung «Computer Inventar Frontend» die delegierte "
+      + "Berechtigung Sites.ReadWrite.All samt Administratorzustimmung (README Abschnitt 7.2) "
+      + "— oder das Konto darf in SharePoint nur lesen.";
     if (status === 403) return "Keine Berechtigung für " + ziel + ". Bitte prüfen, ob das "
       + "Konto Zugriff auf die SharePoint-Site «mgmts-ict-s» hat.";
     if (status === 409 || status === 412) return "Die Zeile wurde zwischenzeitlich von "

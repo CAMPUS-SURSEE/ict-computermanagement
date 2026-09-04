@@ -34,9 +34,10 @@ $ErrorActionPreference = 'Stop'
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
-. (Join-Path $ScriptDir 'Inventar-Gemeinsam.ps1')
+$ServerDir = Join-Path $ScriptDir 'server'
+. (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 
-if (-not $ConfigPath) { $ConfigPath = Join-Path $ScriptDir 'Sync-Inventar.config.json' }
+if (-not $ConfigPath) { $ConfigPath = Join-Path $ServerDir 'Sync-Inventar.config.json' }
 $cfg = Read-JsonDatei $ConfigPath
 $LogPath = Join-Path $ScriptDir 'Upload-Programme.log'
 if ($cfg.LogPath) { $LogPath = Join-Path (Split-Path -Parent $cfg.LogPath) 'Upload-Programme.log' }
@@ -60,14 +61,14 @@ if ($cfg.ProgrammeDateiPfad) { $Pfad = [string]$cfg.ProgrammeDateiPfad }
 
 Log '==== programme.json hochladen ===='
 
-$lokalPfad = Join-Path $ScriptDir 'programme.json'
+$lokalPfad = Join-Path $ServerDir 'programme.json'
 $lokalText = Get-Content $lokalPfad -Raw -Encoding UTF8
 $lokal = $lokalText | ConvertFrom-Json
 Log ("Lokal: {0} Programme, {1} mit AD-Gruppe, aktualisiert {2}" -f `
     @($lokal.programme).Count, @($lokal.programme | Where-Object { @($_.adGruppen).Count -gt 0 }).Count, $lokal.aktualisiert)
 
 # Bestehende Fassung sichern
-if (-not $SicherungsPfad) { $SicherungsPfad = Join-Path $ScriptDir ('programme.sicherung.{0}.json' -f (Get-Date).ToString('yyyyMMdd-HHmmss')) }
+if (-not $SicherungsPfad) { $SicherungsPfad = Join-Path $ServerDir ('programme.sicherung.{0}.json' -f (Get-Date).ToString('yyyyMMdd-HHmmss')) }
 try {
     $alt = Invoke-Graph -Uri "/sites/$SiteId/drive/root:/${Pfad}:/content"
     Log ("SharePoint bisher: {0} Programme, {1} mit AD-Gruppe, aktualisiert {2}" -f `

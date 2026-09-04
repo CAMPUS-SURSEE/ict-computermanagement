@@ -26,7 +26,7 @@ const KONFIG = {
   computerListId: "7870205c-bfa6-4d18-8035-d16d0a082637",
   benutzerListId: "7db0cf44-7a2a-4937-b982-03236858b4b9",
 
-  // Liste «Telefonnummern». code\Import-Telefonliste.ps1 -UpdateKonfig trägt die ID ein.
+  // Liste «Telefonnummern». Die ID steht in den Listeneinstellungen in SharePoint.
   telefonListId: "bd91b4ff-af5f-4457-8a37-13dad6ba6c39",
 
   /* Nummernblock des Hauses ohne Kurzwahl: aus der Kurzwahl 373 wird

@@ -3,6 +3,11 @@
   Synchronisiert die SharePoint-Listen «Computer» (aus SCCM) und «Benutzer» (aus Active Directory).
 
 .DESCRIPTION
+  Der Sync füllt nur Daten. Er ändert die Struktur der Listen nie: keine Spalte wird angelegt,
+  umbenannt oder gelöscht. Fehlt eine erwartete Spalte, meldet er das als WARN und lässt genau
+  ihre Felder aus – alles andere läuft weiter. Angelegt werden Spalten mit Ergaenze-Spalten.ps1
+  oder von Hand in den Listeneinstellungen.
+
   Phase Computer:
     - liest alle Geräte samt Inventar aus SCCM (SMS Provider, WMI),
     - ordnet sie über die Seriennummer den Zeilen der Computer-Liste zu (Fallback: PC-Name),
@@ -13,14 +18,14 @@
 
   Phase Benutzer:
     - lädt programme.json aus der Dokumentbibliothek,
-    - legt fehlende Spalten (Verlauf, Programme) in der Benutzer-Liste an,
+    - prüft, welche Spalten (Verlauf, Programme) die Benutzer-Liste hat,
     - liest die AD-Benutzer der konfigurierten OUs (Modul ActiveDirectory, Fallback ADSI),
     - ermittelt je Programm die rekursiven Mitglieder der hinterlegten AD-Gruppen,
     - schreibt AD-Felder, Primärgerät (SCCM) und die Programmstufen (2 = aus AD-Gruppe),
     - löscht Zeilen, deren Login im AD-Scope fehlt (mit Löschschutz).
 
   Phase Telefonnummern (nur wenn TelefonListId konfiguriert ist):
-    - legt fehlende Spalten in der Liste «Telefonnummern» an,
+    - prüft, welche Spalten die Liste «Telefonnummern» hat,
     - vergleicht die Nummern der Liste mit dem AD-Attribut telephoneNumber der Benutzer,
     - schreibt den Login in «Benutzer», übernimmt bei leerem Namen den AD-Anzeigenamen,
       setzt «Frei» auf «Aktiv», sobald die Nummer im AD vergeben ist,
@@ -810,30 +815,21 @@ $TelefonListId = [string]$cfg.TelefonListId
 if ($TelefonListId -match '^<') { $TelefonListId = '' }   # Platzhalter aus der Vorlage
 
 # ---------------------------------------------------------------------------
-# Spalten sicherstellen (idempotent)
+# Vorhandene Spalten feststellen (nur lesen)
 # ---------------------------------------------------------------------------
-function New-TextSpalte {
-    <# Einzeilige Textspalte für Graph. #>
-    param([string]$Name, [string]$Anzeige, [string]$Beschreibung)
-    return [ordered]@{ name = $Name; displayName = $Anzeige; description = $Beschreibung; text = @{ allowMultipleLines = $false; maxLength = 255 } }
-}
-
-function New-NoteSpalte {
-    <# Mehrzeilige Klartextspalte für Graph (kein Rich-Text). #>
-    param([string]$Name, [string]$Anzeige, [string]$Beschreibung)
-    return [ordered]@{ name = $Name; displayName = $Anzeige; description = $Beschreibung; text = @{ allowMultipleLines = $true; textType = 'plain' } }
-}
-
-function Confirm-InventarSpalten {
+function Get-ListenSpalten {
     <#
-      Legt fehlende Spalten in einer Liste an. Geprüft wird über den internen Namen und den
-      Anzeigenamen; Graph übernimmt «name» als internen Namen. Idempotent, -WhatIf-fähig.
-      Rückgabe: Hashtable der Spalten, die danach wirklich vorhanden sind – neu angelegte
-      eingeschlossen, nicht angelegte (-WhatIf, fehlende Berechtigung) nicht. Der Aufrufer
-      schreibt nur Felder, die darin stehen; sonst weist Graph den ganzen PATCH mit
+      Liest die Spalten einer Liste und meldet, welche der erwarteten fehlen.
+
+      Der Sync ändert die Struktur der Listen NICHT: er legt keine Spalten an, benennt keine um
+      und löscht keine. Er füllt nur Daten. Fehlende Spalten legt Ergaenze-Spalten.ps1 an oder
+      ein Mensch in den Listeneinstellungen.
+
+      Rückgabe: Hashtable der vorhandenen Spalten, unter internem Namen und Anzeigenamen.
+      Der Aufrufer schreibt nur Felder, die darin stehen; sonst weist Graph den ganzen PATCH mit
       «Field … is not recognized» zurück und eine fehlende Spalte kostet alle Zeilen.
     #>
-    param([string]$ListId, $Spalten)
+    param([string]$ListId, [string]$Bezeichnung, [string[]]$Erwartet)
     $vorhanden = @{}
     try {
         foreach ($c in (Invoke-Graph -Uri "/sites/$SiteId/lists/$ListId/columns?`$select=id,name,displayName").value) {
@@ -841,23 +837,13 @@ function Confirm-InventarSpalten {
             if ($c.displayName) { $vorhanden[[string]$c.displayName] = $c }
         }
     } catch {
-        Log "Spalten der Liste $ListId konnten nicht gelesen werden: $_" 'ERROR'
+        Log "Spalten der Liste $ListId ($Bezeichnung) konnten nicht gelesen werden: $_" 'ERROR'
         $script:fehler++
         return $vorhanden
     }
-    foreach ($s in @($Spalten)) {
-        if ($null -eq $s) { continue }
-        if ($vorhanden.ContainsKey([string]$s.name) -or $vorhanden.ContainsKey([string]$s.displayName)) { continue }
-        if ($WhatIf) { Log "WHATIF: Spalte '$($s.name)' würde in der Liste angelegt."; continue }
-        try {
-            $angelegt = Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$ListId/columns" -Body $s
-            $vorhanden[[string]$s.name] = $angelegt
-            if ($s.displayName) { $vorhanden[[string]$s.displayName] = $angelegt }
-            Log "Spalte angelegt: $($s.name)"
-        } catch {
-            Log "Spalte '$($s.name)' fehlt in der Liste $ListId und konnte nicht angelegt werden – ihre Felder werden diesmal nicht geschrieben: $_$(Get-SpaltenHinweis $_)" 'ERROR'
-            $script:fehler++
-        }
+    $fehlend = @($Erwartet | Where-Object { $_ -and -not $vorhanden.ContainsKey([string]$_) })
+    if ($fehlend.Count -gt 0) {
+        Log "$Bezeichnung`: $($fehlend.Count) Spalte(n) fehlen und werden nicht geschrieben: $($fehlend -join ', '). Anlegen mit Ergaenze-Spalten.ps1 oder von Hand in den Listeneinstellungen." 'WARN'
     }
     return $vorhanden
 }
@@ -869,18 +855,12 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
     if (-not $ComputerListId) { throw 'ComputerListId fehlt in der Konfiguration.' }
     $itemsBase = "/sites/$SiteId/lists/$ComputerListId/items"
 
-    # Fehlende Spalten Status und Verlauf anlegen (idempotent)
-    $cSpalten = Confirm-InventarSpalten $ComputerListId @(
-        (New-TextSpalte 'Status' 'Status' 'Aktiv, Lager oder Archiviert. Leer gilt als Aktiv; der Sync archiviert Geräte, die nicht mehr in SCCM sind.'),
-        (New-NoteSpalte 'Verlauf' 'Verlauf' 'JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]. Nicht von Hand bearbeiten.')
-    )
-
-    # Nur Spalten abfragen und schreiben, die es wirklich gibt: mit -WhatIf und bei fehlender
-    # Berechtigung wurden sie oben nicht angelegt.
+    # Nur Spalten abfragen und schreiben, die es wirklich gibt.
+    $cSpalten = Get-ListenSpalten $ComputerListId 'Computer-Liste' @('Status', 'Verlauf')
     $hatStatus = $cSpalten.ContainsKey('Status')
     $hatVerlauf = $cSpalten.ContainsKey('Verlauf')
-    if (-not $hatStatus) { Log 'Spalte «Status» fehlt in der Computer-Liste – Archivierung und Reaktivierung werden diesmal nicht geschrieben.' 'WARN' }
-    if (-not $hatVerlauf) { Log 'Spalte «Verlauf» fehlt in der Computer-Liste – es werden diesmal keine Verlaufseinträge geschrieben.' 'WARN' }
+    if (-not $hatStatus) { Log 'Ohne Spalte «Status» werden Archivierung und Reaktivierung nicht festgehalten.' 'WARN' }
+    if (-not $hatVerlauf) { Log 'Ohne Spalte «Verlauf» werden keine Verlaufseinträge geschrieben.' 'WARN' }
     $zusatz = @('Title', 'Seriennummer')
     if ($hatStatus) { $zusatz += 'Status' }
     if ($hatVerlauf) { $zusatz += 'Verlauf' }
@@ -1190,26 +1170,11 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
     }
     Log "Programme: $(@($programme.programme).Count)"
 
-    # 2) fehlende Spalten anlegen: zuerst Verlauf, dann die Programmspalten
-    $spalten = Confirm-InventarSpalten $BenutzerListId @(
-        (New-NoteSpalte 'Verlauf' 'Verlauf' 'JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]. Nicht von Hand bearbeiten.')
-    )
-    foreach ($p in $programme.programme) {
-        if ($spalten.ContainsKey($p.id)) { continue }
-        if ($WhatIf) { Log "WHATIF: Programmspalte '$($p.id)' würde angelegt."; continue }
-        try {
-            $spalten[[string]$p.id] = Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$BenutzerListId/columns" -Body (New-ProgrammSpalte $p)
-            Log "Programmspalte angelegt: $($p.id) ($($p.name))"
-        } catch {
-            Log "Programmspalte '$($p.id)' ($($p.name)) fehlt und konnte nicht angelegt werden – die Stufe wird diesmal nicht geschrieben: $_$(Get-SpaltenHinweis $_)" 'ERROR'
-            $fehler++
-        }
-    }
+    # 2) vorhandene Spalten feststellen: Verlauf und je Programm eine Spalte
+    $erwartet = @('Verlauf') + @($programme.programme | ForEach-Object { [string]$_.id })
+    $spalten = Get-ListenSpalten $BenutzerListId 'Benutzer-Liste' $erwartet
     # Nur Programme abgleichen, deren Spalte es in der Liste wirklich gibt.
     $programmIds = @($programme.programme | Where-Object { $spalten.ContainsKey([string]$_.id) } | ForEach-Object { $_.id })
-    if ($programmIds.Count -lt @($programme.programme).Count) {
-        Log "Programmspalten: $($programmIds.Count) von $(@($programme.programme).Count) vorhanden – die übrigen werden übersprungen." 'WARN'
-    }
 
     # 3) AD-Benutzer lesen
     $adBenutzer = Get-AdBenutzerAlle
@@ -1326,16 +1291,17 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
 # ===========================================================================
 if (-not $OnlyComputers -and -not $OnlyBenutzer) {
     if (-not $TelefonListId) {
-        Log 'TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen (Import-Telefonliste.ps1 gibt die ID aus).' 'WARN'
+        Log 'TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen (ID steht in den Listeneinstellungen und in frontend\konfig.js).' 'WARN'
     } else {
         $telefonBase = "/sites/$SiteId/lists/$TelefonListId/items"
         $praefix = $script:TelefonPraefixStandard
         if ($cfg.TelefonPraefix) { $praefix = [string]$cfg.TelefonPraefix }
 
-        # 1) Fehlende Spalten anlegen (idempotent) – alle ausser der Titelspalte aus schema-telefon.json
-        $tSchema = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-telefon.json'))
-        $tSpalten = @($tSchema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
-        $tVorhanden = Confirm-InventarSpalten $TelefonListId $tSpalten
+        # 1) Vorhandene Spalten feststellen. Geprüft werden nur die Spalten, die diese Phase
+        #    wirklich schreibt – die manuellen Spalten der Liste (Apparat, Standort, Hinweis,
+        #    Früherer Eintrag) gehen den Sync nichts an.
+        $tErwartet = @('Telefonnummer', 'Name', 'Typ', 'Status', 'Benutzer', 'ADLetzterSync', 'Verlauf')
+        $tVorhanden = Get-ListenSpalten $TelefonListId 'Telefonliste' $tErwartet
 
         # 2) AD-Benutzer (aus der Benutzer-Phase, sonst jetzt lesen)
         $adBenutzer = Get-AdBenutzerAlle

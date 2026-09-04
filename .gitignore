@@ -1,8 +1,5 @@
 # Konfiguration mit echten IDs, Logs und Datenexporte bleiben lokal
-code/Sync-Inventar.config.json
-code/Sync-SccmToSharePoint.config.json
+code/server/Sync-Inventar.config.json
 *.log
-*_rows.json
-import-*.json
-test.*
+programme.sicherung.*.json
 lokal

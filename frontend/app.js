@@ -606,7 +606,7 @@ async function telefoneLaden(fortschrittRuf) {
   telefonHinweis = "";
   if (!Daten.mockModus && !KONFIG.listeBereit("telefon")) {
     telefonHinweis = "In konfig.js fehlt die Listen-ID der Liste «Telefonnummern». "
-      + "code\\Import-Telefonliste.ps1 legt die Liste an und trägt die ID mit -UpdateKonfig ein.";
+      + "Die ID steht in den Listeneinstellungen in SharePoint und gehört als telefonListId in konfig.js.";
     return [];
   }
   try {

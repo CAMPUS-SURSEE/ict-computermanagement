@@ -12,8 +12,9 @@
    - Seriennummern-Normalisierung und Platzhalter-Erkennung,
    - Zuordnung SCCM-Gerät <-> Computer-Zeile (Seriennummer, Namensfallback, Umbenennung,
      Archivieren/Reaktivieren),
-   - Telefonnummern: Normalisierung, Kurzwahl, Abgleich mit dem AD, Import der alten Liste,
-   - Syntax aller PowerShell-Skripte im Ordner (Parser).
+   - Telefonnummern: Normalisierung, Kurzwahl, Abgleich mit dem AD,
+   - Verhalten bei fehlenden Spalten,
+   - Syntax aller PowerShell-Skripte in code\ und code\server\ (Parser).
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1
@@ -45,10 +46,13 @@ function Pruefe {
 function Abschnitt([string]$Titel) { Write-Host ''; Write-Host "== $Titel" -ForegroundColor Cyan }
 
 # --- Funktionen laden -------------------------------------------------------
+# Achtung: Dot-Sourcing läuft im Geltungsbereich des Aufrufers und überschreibt $ScriptDir mit
+# dem Ordner des geladenen Skripts. Die eigenen Pfade darum vorher in eigenen Namen sichern.
+$TestDir = $ScriptDir
+$ServerDir = Join-Path $TestDir 'server'
 $InventarNurFunktionen = $true
-. (Join-Path $ScriptDir 'Inventar-Gemeinsam.ps1')
-. (Join-Path $ScriptDir 'Sync-Inventar.ps1')
-. (Join-Path $ScriptDir 'Import-Telefonliste.ps1')
+. (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
+. (Join-Path $ServerDir 'Sync-Inventar.ps1')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Geschäftsjahr'
@@ -341,62 +345,11 @@ Pruefe 'Abgleich: nur eine Zeile je Nummer' 1 $t.Updates.Count
 Pruefe 'Abgleich: Nummer aus AD nicht neu' 0 $t.Neu.Count
 
 # ---------------------------------------------------------------------------
-Abschnitt 'Telefonnummern: Import der alten Liste'
-# Ein Blatt ist ein Array von Zeilen, jede Zeile ein String-Array (wie Read-XlsxBlatt es liefert).
-$blattListe = New-Object System.Collections.ArrayList
-foreach ($zeileText in @(
-        'Telefonliste Campus Sursee',
-        'Stand 31.07.2026   ·   Quelle Microsoft Teams',
-        '',
-        'Nr.|Telefonnummer|Name|Typ|Status|Grund / Hinweis|Früherer Eintrag',
-        '373|+41 41 926 23 73|Zesiger Janis|Person|aktiv||',
-        '222|+41 41 926 22 22|||inaktiv|frei - sofort vergebbar|Egger Bernadette',
-        '300|+41 41 926 23 00|Sportteam||inaktiv|nicht im Teams-Tenant (evtl. SIP-Apparat)|',
-        '506|+41 41 926 25 06|FREI||inaktiv|nicht im Teams-Tenant (evtl. SIP-Apparat)|',
-        '||||||')) {
-    [void]$blattListe.Add([string[]]($zeileText -split '\|'))
-}
-$testBlatt = @($blattListe.ToArray())
-Pruefe 'Import: Stand erkannt'            '31.07.2026' (Get-StandAusBlatt $testBlatt)
-$eintraege = @(ConvertFrom-TelefonBlatt $testBlatt)
-Pruefe 'Import: vier Einträge'            4 $eintraege.Count
-Pruefe 'Import: Nr gelesen'               '373' $eintraege[0].Nr
-Pruefe 'Import: Hinweis gelesen'          'frei - sofort vergebbar' $eintraege[1].Hinweis
-Pruefe 'Import: Früherer Eintrag gelesen' 'Egger Bernadette' $eintraege[1].Frueher
-$z0 = ConvertTo-TelefonZeile $eintraege[0]
-$z1 = ConvertTo-TelefonZeile $eintraege[1]
-$z2 = ConvertTo-TelefonZeile $eintraege[2]
-$z3 = ConvertTo-TelefonZeile $eintraege[3]
-Pruefe 'Import: aktiv -> Aktiv'           'Aktiv' $z0.Status
-Pruefe 'Import: Typ übernommen'           'Person' $z0.Typ
-Pruefe 'Import: Nummer formatiert'        '+41 41 926 23 73' $z0.Telefonnummer
-Pruefe 'Import: frei -> Frei'             'Frei' $z1.Status
-Pruefe 'Import: Hinweis übernommen'       'frei - sofort vergebbar' $z1.Hinweis
-Pruefe 'Import: SIP -> Inaktiv'           'Inaktiv' $z2.Status
-Pruefe 'Import: FREI -> leerer Name'      '' $z3.Name
-Pruefe 'Import: FREI -> Status Frei'      'Frei' $z3.Status
-Pruefe 'Import: Kurzwahl aus Nummer'      '499' (ConvertTo-TelefonZeile ([pscustomobject]@{ Nr = ''; Nummer = '+41 41 926 24 99'; Name = 'X'; Typ = ''; Status = ''; Hinweis = ''; Frueher = '' })).Title
-Pruefe 'Import: Status leer mit Name'     'Aktiv' (Get-TelefonStatusAusAlt '' 'Jemand' '')
-Pruefe 'Import: Status leer ohne Name'    'Frei'  (Get-TelefonStatusAusAlt '' '' '')
-$kopfFehler = $false
-try { [void](ConvertFrom-TelefonBlatt @([string[]]@('a', 'b'))) } catch { $kopfFehler = $true }
-Pruefe 'Import: fehlende Kopfzeile meldet' 'True' $kopfFehler
-$excel = Join-Path $ScriptDir '..\lokal\Telefonnummerm S4B.xlsx'
-if (Test-Path $excel) {
-    $roh = @(Read-XlsxBlatt $excel 'Telefonnummer')
-    $alle = @(ConvertFrom-TelefonBlatt $roh)
-    Pruefe 'Import: Excel gelesen (307 Nummern)' 307 $alle.Count
-    Pruefe 'Import: Excel Stand'                 '31.07.2026' (Get-StandAusBlatt $roh)
-} else {
-    Write-Host '  SKIP Excel-Datei lokal\Telefonnummerm S4B.xlsx nicht vorhanden'
-}
-
-# ---------------------------------------------------------------------------
 Abschnitt 'Schema- und Programmdateien'
-$schemaC = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-computer.json'))
-$schemaB = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-benutzer.json'))
-$schemaT = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-telefon.json'))
-$prg = Read-JsonDatei (Join-Path $ScriptDir 'programme.json')
+$schemaC = @(Read-JsonDatei (Join-Path $TestDir 'schema-computer.json'))
+$schemaB = @(Read-JsonDatei (Join-Path $TestDir 'schema-benutzer.json'))
+$schemaT = @(Read-JsonDatei (Join-Path $TestDir 'schema-telefon.json'))
+$prg = Read-JsonDatei (Join-Path $ServerDir 'programme.json')
 Pruefe 'Computer-Schema: 8 manuelle Spalten' 8 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
 Pruefe 'Computer-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
 Pruefe 'Benutzer-Schema: 14 Spalten'        14 $schemaB.Count
@@ -425,22 +378,23 @@ Pruefe 'Filter: Title bleibt immer'       'PC-1'  ((Select-VorhandeneFelder @{} 
 Pruefe 'Filter: nur Title übrig'          1      (Select-VorhandeneFelder @{} ([ordered]@{ Title = 'PC-1'; Status = 'Aktiv' })).Count
 Pruefe 'Filter: leere Felder'             0      (Select-VorhandeneFelder $spaltenDa ([ordered]@{})).Count
 Pruefe 'Filter: null Felder'              0      (Select-VorhandeneFelder $spaltenDa $null).Count
-Pruefe 'Hinweis bei 403'                  'True' ((Get-SpaltenHinweis 'Graph POST … fehlgeschlagen: (403) Forbidden.') -match 'manage').ToString()
+Pruefe 'Hinweis bei 403'                  'True' ((Get-SpaltenHinweis 'Graph POST … fehlgeschlagen: (403) Forbidden.') -match 'DeviceCode').ToString()
 Pruefe 'Hinweis bei accessDenied'         'True' ((Get-SpaltenHinweis '{"error":{"code":"accessDenied"}}') -ne '').ToString()
 Pruefe 'Kein Hinweis bei 400'             ''     (Get-SpaltenHinweis 'Graph PATCH … (400) Bad Request.')
 Pruefe 'Kein Hinweis bei leerem Fehler'   ''     (Get-SpaltenHinweis $null)
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'
-foreach ($f in (Get-ChildItem -Path $ScriptDir -Filter '*.ps1' | Sort-Object Name)) {
+foreach ($f in (Get-ChildItem -Path $TestDir -Filter '*.ps1' -Recurse | Sort-Object FullName)) {
+    $kurz = $f.FullName.Substring($TestDir.Length).TrimStart('\', '/')
     $tokens = $null; $parseFehler = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$parseFehler)
     if ($parseFehler -and $parseFehler.Count -gt 0) {
         $script:Fehlgeschlagen++
-        Write-Host ("  FAIL {0}: {1}" -f $f.Name, ($parseFehler[0].Message)) -ForegroundColor Red
+        Write-Host ("  FAIL {0}: {1}" -f $kurz, ($parseFehler[0].Message)) -ForegroundColor Red
     } else {
         $script:Ok++
-        Write-Host ("  OK   {0}" -f $f.Name)
+        Write-Host ("  OK   {0}" -f $kurz)
     }
 }
 
