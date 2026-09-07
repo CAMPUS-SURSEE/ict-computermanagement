@@ -15,6 +15,7 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | in `programme.json` unter `adGruppen` eintragen → `Upload-Programme.ps1` (Abschnitt 3) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-computer.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
 | **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `212 bestanden, 0 fehlgeschlagen` |
+| **eine Telefonnummer freigeben** | Telefonfenster → Knopf **«Nummer freigeben»** oben rechts (nur, wenn die Nummer nicht über das AD zugeordnet ist): Status «Frei», bisheriger Name wandert in den Verlauf |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |

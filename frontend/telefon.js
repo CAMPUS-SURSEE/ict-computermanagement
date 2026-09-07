@@ -78,6 +78,9 @@ let geloescht = false;
    Kurzwahl. */
 let nummerVonHand = false;
 
+/* Während «Nummer freigeben» speichert, keine automatischen Verlaufszeilen. */
+let ohneAutoVerlauf = false;
+
 let aktiverBereich = "stammdaten";
 
 const BEREICHE = [
@@ -569,11 +572,34 @@ function kopfZeichnen() {
 
 function aktionenZeichnen() {
   const ziel = leeren($("tf-aktionen"));
-  if (geloescht) return;
+  if (geloescht || neuModus) return;
 
-  if (!neuModus) {
-    ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
+  /* «Nummer freigeben» gibt es nur, wenn die Nummer nicht über das AD
+     zugeordnet ist — dort würde der nächste Abgleich sie sofort wieder
+     auf «Aktiv» setzen und den Namen nachtragen. */
+  if (statusWert() !== "Frei" && !personAusAd()) {
+    const k = knopf("Nummer freigeben", "knopf-leise", freigebenDialog);
+    if (speichertGerade) k.disabled = true;
+    ziel.appendChild(k);
   }
+  ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
+}
+
+/* Freigeben: Status «Frei», Name in den Verlauf, Namensfeld leeren —
+   und gleich speichern. Das ersetzt die frühere Spalte «Früherer Eintrag». */
+async function freigebenDialog() {
+  const name = textWert("Name").trim();
+  const kurz = textWert("Title").trim();
+  const frage = "Kurzwahl " + kurz + " bekommt den Status «Frei»"
+    + (name ? "; «" + name + "» wandert in den Verlauf und das Namensfeld wird geleert." : ".");
+  if (!await F.bestaetigen("Nummer freigeben", frage, "Freigeben")) return;
+  setzeWert("Status", "Frei");
+  if (name) setzeWert("Name", "");
+  setzeWert("Verlauf", F.verlaufAnhaengen(wert("Verlauf"),
+    "Freigegeben" + (name ? " (vorher: " + name + ")" : "")));
+  /* Der eine Eintrag genügt — keine zusätzlichen «Status geändert»-Zeilen. */
+  ohneAutoVerlauf = true;
+  try { await speichern(); } finally { ohneAutoVerlauf = false; }
 }
 
 
@@ -741,6 +767,28 @@ async function speichern() {
     for (const feld in entwurf) {
       if (!istBearbeitbar(SPALTE[feld])) continue;
       felder[feld] = fuerGraph(feld, entwurf[feld]);
+    }
+    /* Status- und Namenswechsel stehen automatisch im Verlauf — angehängt
+       an den Verlauf, wie er gespeichert würde (auch mit eigenen Einträgen). */
+    const eintraege = [];
+    if (istGeaendert("Status")) {
+      const alt = Modell.telefonStatus(zeile ? zeile.Status : "");
+      const neu = statusWert();
+      if (alt !== neu) eintraege.push("Status geändert: " + alt + " → " + neu);
+    }
+    if (istGeaendert("Name")) {
+      const alt = String(zeile ? zeile.Name || "" : "").trim();
+      const neu = textWert("Name").trim();
+      if (alt !== neu) {
+        eintraege.push(neu
+          ? (alt ? "Name geändert: " + alt + " → " + neu : "Name eingetragen: " + neu)
+          : "Name entfernt: " + alt);
+      }
+    }
+    if (eintraege.length && !ohneAutoVerlauf) {
+      let v = wert("Verlauf");
+      for (const e of eintraege) v = F.verlaufAnhaengen(v, e);
+      felder.Verlauf = v;
     }
   }
   if (!neuModus && !Object.keys(felder).length) {

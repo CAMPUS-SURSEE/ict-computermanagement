@@ -182,6 +182,15 @@ const Fenster = (function () {
     return leer;
   }
 
+  /* Einen Eintrag von heute an einen Verlauf anhängen; gibt den neuen
+     Spaltentext zurück. Für die automatischen Einträge (Statuswechsel,
+     Inhaberwechsel, Freigabe …). */
+  function verlaufAnhaengen(verlaufRoh, textZeile) {
+    const liste = Modell.verlaufLesen(verlaufRoh);
+    liste.push(Modell.verlaufEintrag("", textZeile));
+    return Modell.verlaufSchreiben(liste);
+  }
+
   /* ---------- Meldung an die Hauptseite und die anderen Seiten ---------- */
 
   function melden(typ, id) {
@@ -207,7 +216,7 @@ const Fenster = (function () {
       chip: chip, symbol: symbol, SYMBOL_ACHTUNG: SYMBOL_ACHTUNG, SYMBOL_INFO: SYMBOL_INFO,
       gleichwertig: gleichwertig, karte: karte, kachel: kachel, feldGesperrt: feldGesperrt,
       feldFrei: feldFrei, formZeile: formZeile, banner: banner, leerzustand: leerzustand,
-      melden: melden
+      melden: melden, verlaufAnhaengen: verlaufAnhaengen
     };
 
     /* ---- Toast ---- */

@@ -93,6 +93,7 @@ const dialogOeffnen = F.dialogOeffnen, dialogSchliessen = F.dialogSchliessen;
 const zeigeLaden = F.zeigeLaden, zeigeFehler = F.zeigeFehler, zeigeInhalt = F.zeigeInhalt;
 const gleichwertig = F.gleichwertig;
 const anhaengen = F.anhaengen, symbol = F.symbol, kachel = F.kachel;
+const verlaufAnhaengen = F.verlaufAnhaengen;
 const SYMBOL_ACHTUNG = F.SYMBOL_ACHTUNG, SYMBOL_INFO = F.SYMBOL_INFO;
 
 
@@ -503,15 +504,6 @@ function inhaberAlle() {
     : passend;
   return gefunden.slice()
     .sort((a, b) => Hilfe.vergleiche(a.__name || a.Title, b.__name || b.Title));
-}
-
-/* Einen Eintrag von heute an einen Verlauf anhängen; gibt den neuen
-   Spaltentext zurück. Wird für die automatischen Einträge gebraucht
-   (Statuswechsel, Inhaberwechsel, Lager, Archiv). */
-function verlaufAnhaengen(verlaufRoh, textZeile) {
-  const liste = Modell.verlaufLesen(verlaufRoh);
-  liste.push(Modell.verlaufEintrag("", textZeile));
-  return Modell.verlaufSchreiben(liste);
 }
 
 /* Der Inhaber dieses Geräts, sonst null. Bei mehreren Kandidaten gewinnt
@@ -2215,7 +2207,14 @@ async function inhaberSchreiben(schritte, meldung, geraetFelder) {
     }
     for (const schritt of schritte) {
       const wertFuerGraph = String(schritt.pcName || "").trim() || null;
-      await Daten.speichern("benutzer", schritt.benutzer.id, { Computer: wertFuerGraph });
+      /* Auch die Person bekommt den Wechsel in ihren Verlauf. */
+      const bisher = String(schritt.benutzer.Computer || "").trim();
+      const eintrag = wertFuerGraph
+        ? "Gerät erhalten: " + wertFuerGraph + (bisher && bisher !== wertFuerGraph ? " (vorher: " + bisher + ")" : "")
+        : (bisher ? "Gerät abgegeben: " + bisher : "");
+      const felderB = { Computer: wertFuerGraph };
+      if (eintrag) felderB.Verlauf = verlaufAnhaengen(schritt.benutzer.Verlauf, eintrag);
+      await Daten.speichern("benutzer", schritt.benutzer.id, felderB);
       melden("benutzer-geaendert", schritt.benutzer.id);
     }
     await datenLaden(true);

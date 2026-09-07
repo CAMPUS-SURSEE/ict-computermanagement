@@ -74,6 +74,7 @@ const gleichwertig = F.gleichwertig;
 
 let alleBenutzer = [];
 let alleComputer = [];
+let alleTelefone = [];      // Liste «Telefonnummern», für die Karte «Telefon»
 let programmDatei = null;
 let pSpalten = [];          // Programmspalten aus programme.json
 let pSpalte = {};           // id -> Spalte
@@ -373,6 +374,7 @@ function bereichUebersicht(ziel) {
 
   const gitter = el("div", "karten b-abstand");
   gitter.appendChild(kInhaber);
+  gitter.appendChild(telefonKarte());
 
   // AD-Felder, alle schreibgeschützt
   const kAd = karte("Angaben aus dem Active Directory",
@@ -389,6 +391,34 @@ function bereichUebersicht(ziel) {
   ziel.appendChild(gitter);
 }
 
+
+/* Die Telefonnummern dieser Person aus der Liste «Telefonnummern» —
+   live über das AD-Feld «Telefon» zugeordnet (Modell.telefoneAnreichern). */
+function telefonKarte() {
+  const k = karte("Telefon",
+    "Nummern aus der Liste «Telefonnummern», die im AD bei dieser Person stehen.");
+  const nummern = zeile.__telefone || [];
+  if (!nummern.length) {
+    k.inhalt.appendChild(F.leerzustand("Keine Telefonnummer",
+      text(zeile.Telefon).trim()
+        ? "Im AD steht «" + text(zeile.Telefon).trim() + "», in der Telefonliste gibt es dazu keine Zeile."
+        : "Im AD ist kein Telefon hinterlegt."));
+    return k;
+  }
+  const felder = el("div", "datenzeilen");
+  for (const t of nummern) {
+    const a = el("a", "name-link", "Kurzwahl " + (t.__kurzwahl || t.Title || ""));
+    a.href = "telefon.html?id=" + encodeURIComponent(t.id) + MOCK_ANHANG;
+    a.title = "Telefonnummer öffnen";
+    const huelle = el("span");
+    huelle.appendChild(a);
+    const nummer = text(t.Telefonnummer).trim();
+    if (nummer) huelle.appendChild(el("span", "datenzeile-neben", nummer));
+    felder.appendChild(feldFrei(text(t.Typ).trim() || "Nummer", huelle));
+  }
+  k.inhalt.appendChild(felder);
+  return k;
+}
 
 /* ---------- Gerät ---------- */
 
@@ -728,22 +758,20 @@ async function datenLaden(still) {
                          : "Daten werden aus SharePoint geladen …", "");
   }
 
-  const rohBenutzer = await Daten.benutzer(function (n) {
-    anzahlBenutzer = n; fortschritt();
-  });
-  const rohComputer = await Daten.computer(function (n) {
-    anzahlComputer = n; fortschritt();
-  });
-  if (!still) {
-    $("b-laden-fortschritt").textContent =
-      "Benutzer " + rohBenutzer.length + " / Geräte " + rohComputer.length
-      + " / Programme werden geladen …";
-  }
-  programmDatei = await Daten.programme();
+  /* Alles gleichzeitig holen — nacheinander dauerte es dreimal so lang.
+     Die Telefonliste ist Beigabe: fehlt sie, bleibt die Karte leer. */
+  const [rohBenutzer, rohComputer, programme, rohTelefone] = await Promise.all([
+    Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); }),
+    Daten.computer(function (n) { anzahlComputer = n; fortschritt(); }),
+    Daten.programme(),
+    Daten.telefone().catch(function () { return []; })
+  ]);
+  programmDatei = programme;
 
   const ergebnis = Modell.anreichern(rohComputer, rohBenutzer, programmDatei);
   alleComputer = ergebnis.computer;
   alleBenutzer = ergebnis.benutzer;
+  alleTelefone = Modell.telefoneAnreichern(rohTelefone || [], alleBenutzer);
   pSpalten = ergebnis.programmSpalten;
 
   pSpalte = {};
@@ -840,6 +868,17 @@ async function speichern() {
   for (const feld in entwurf) {
     if (!darfSchreiben(feld)) continue;
     felder[feld] = fuerGraph(feld, entwurf[feld]);
+  }
+  /* Ein Gerätewechsel steht automatisch im Verlauf. */
+  if (Object.prototype.hasOwnProperty.call(felder, "Computer")) {
+    const alt = String(zeile.Computer || "").trim();
+    const neu = String(felder.Computer || "").trim();
+    if (alt !== neu) {
+      const eintrag = neu
+        ? (alt ? "Gerät gewechselt: " + alt + " → " + neu : "Gerät erhalten: " + neu)
+        : "Gerät abgegeben: " + alt;
+      felder.Verlauf = F.verlaufAnhaengen(wert("Verlauf"), eintrag);
+    }
   }
   if (!Object.keys(felder).length) {
     entwurf = {};
