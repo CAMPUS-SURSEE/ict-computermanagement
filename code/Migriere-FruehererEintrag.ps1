@@ -101,11 +101,35 @@ if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 $ServerDir = Join-Path $ScriptDir 'server'
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 
+# Konfiguration: die Server-Konfiguration, falls vorhanden – sonst genügen die
+# öffentlichen Werte aus frontend\konfig.js (Mandant, Site, Listen-ID). Mehr
+# braucht dieser Lauf nicht; angemeldet wird ohnehin per Device-Code.
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ServerDir 'Sync-Inventar.config.json' }
-$cfg = Read-JsonDatei $ConfigPath
+if (Test-Path $ConfigPath) {
+    $cfg = Read-JsonDatei $ConfigPath
+} else {
+    $konfigJs = Join-Path (Split-Path -Parent $ScriptDir) 'frontend\konfig.js'
+    if (-not (Test-Path $konfigJs)) { throw "Weder $ConfigPath noch $konfigJs gefunden." }
+    $js = Get-Content $konfigJs -Raw -Encoding UTF8
+    function Get-JsWert([string]$Name) {
+        if ($js -match ('(?m)^\s*' + [regex]::Escape($Name) + '\s*:\s*"([^"]*)"')) { return $Matches[1] }
+        return ''
+    }
+    $cfg = [pscustomobject]@{
+        TenantId      = (Get-JsWert 'mandantId')
+        SiteId        = (Get-JsWert 'siteId')
+        SiteUrl       = ''
+        TelefonListId = (Get-JsWert 'telefonListId')
+        LogPath       = $null
+    }
+    foreach ($n in 'TenantId', 'SiteId', 'TelefonListId') {
+        if (-not $cfg.$n) { throw "In $konfigJs fehlt der Wert für $n." }
+    }
+}
 $LogPath = Join-Path $ScriptDir 'Migriere-FruehererEintrag.log'
 if ($cfg.LogPath) { $LogPath = Join-Path (Split-Path -Parent $cfg.LogPath) 'Migriere-FruehererEintrag.log' }
 Set-InventarLog $LogPath
+if (-not (Test-Path $ConfigPath)) { Log "Keine Server-Konfiguration – Mandant, Site und Listen-ID aus frontend\konfig.js." }
 
 $Spalte = $script:MigrationSpalte
 Log "==== Migration «Früherer Eintrag» -> Verlauf $(if ($WhatIf) { '(WhatIf)' }) ===="
