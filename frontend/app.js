@@ -221,7 +221,7 @@ function beschriftung(tab, schluessel) {
 
 const ANSICHTEN = ["uebersicht", "geraete", "benutzer", "telefone", "software"];
 const SPEICHER_SPALTEN = "computerinventar.spalten.";   // + Ansicht
-const SPEICHER_DICHTE  = "computerinventar.dichte.";    // + Ansicht
+const SPEICHER_DICHTE  = "computerinventar.dichte";     // alle Listen
 const SPEICHER_ARCHIV  = "computerinventar.archiv";     // nur Geräte
 
 /* Der Wert der Statusspalte, der ein Gerät aus der Liste nimmt. */
@@ -406,7 +406,7 @@ function einstellungenLaden() {
         const liste = JSON.parse(roh);
         if (Array.isArray(liste) && liste.length) zustand[tab].spalten = liste;
       }
-      zustand[tab].dicht = localStorage.getItem(SPEICHER_DICHTE + tab) === "kompakt";
+      zustand[tab].dicht = localStorage.getItem(SPEICHER_DICHTE) === "kompakt";
     } catch (e) { /* Ohne Speicher gilt die Standardauswahl. */ }
   }
   /* Der Archiv-Schalter wird wie Spalten und Dichte gemerkt. Fehlt der
@@ -419,7 +419,7 @@ function einstellungenLaden() {
 function einstellungenMerken(tab) {
   try {
     localStorage.setItem(SPEICHER_SPALTEN + tab, JSON.stringify(zustand[tab].spalten));
-    localStorage.setItem(SPEICHER_DICHTE + tab, zustand[tab].dicht ? "kompakt" : "normal");
+    localStorage.setItem(SPEICHER_DICHTE, zustand[tab].dicht ? "kompakt" : "normal");
     if (tab === "geraete") {
       localStorage.setItem(SPEICHER_ARCHIV, zustand.geraete.archiv ? "1" : "0");
     }
@@ -1105,7 +1105,7 @@ function zeichneChips(tab) {
     ziel.appendChild(c);
   }
 
-  if (anzahl > 1) {
+  if (anzahl > 0) {
     const alle = el("button", "chip", "Alle Filter entfernen");
     alle.type = "button";
     alle.addEventListener("click", function () {
@@ -1207,6 +1207,26 @@ function zeichneFilterleiste(tab) {
     "Die Zahl in Klammern zeigt, wie viele Zeilen den Wert haben."));
 
   const koerper = el("div", "panel-koerper");
+
+  /* Archivierte Geräte sind standardmässig ausgeblendet. Der Schalter
+     steht hier bei den Filtern — er nimmt einen Filter weg. */
+  if (tab === "geraete") {
+    const archivierte = zaehle(geraete, g => g.__archiviert);
+    const zeileArchiv = el("label", "panel-schalter");
+    const box = el("input");
+    box.type = "checkbox";
+    box.checked = z.archiv;
+    box.addEventListener("change", function () {
+      z.archiv = box.checked;
+      einstellungenMerken(tab);
+      nachFilter(tab);
+    });
+    zeileArchiv.appendChild(box);
+    zeileArchiv.appendChild(document.createTextNode("Archivierte Geräte anzeigen "));
+    zeileArchiv.appendChild(el("span", "zahl", "(" + archivierte + ")"));
+    koerper.appendChild(zeileArchiv);
+  }
+
   const gitter = el("div", "filtergitter");
 
   for (const facette of TAB[tab].facetten) {
@@ -1307,15 +1327,8 @@ function zeichneFilterleiste(tab) {
   }
 
   koerper.appendChild(gitter);
-
-  const werkzeuge = el("div", "werkzeugzeile");
-  werkzeuge.appendChild(knopf("Alle Filter entfernen", null, function () {
-    filterZuruecksetzen(tab);
-    $(tab + "-suche").value = "";
-    nachFilter(tab);
-    zeichneFilterleiste(tab);
-  }));
-  koerper.appendChild(werkzeuge);
+  /* «Alle Filter entfernen» steht als Chip in der Filterzeile — sichtbar,
+     ohne das Panel zu öffnen. Hier nicht noch einmal. */
   ziel.appendChild(koerper);
 }
 
@@ -1384,6 +1397,16 @@ function zeichneSpaltenwahl(tab) {
     knopf("Alle Spalten", null, function () { setzen(alleSpalten.map(s => s.i)); })
   ]);
   koerper.appendChild(werkzeuge);
+
+  /* Zeilenhöhe: gilt für alle drei Listen, gemerkt im Browser. */
+  const dichte = el("label", "panel-schalter");
+  const box = el("input");
+  box.type = "checkbox";
+  box.checked = z.dicht;
+  box.addEventListener("change", function () { dichteSetzen(box.checked); });
+  dichte.appendChild(box);
+  dichte.appendChild(document.createTextNode("Kompakte Zeilen (alle Listen)"));
+  koerper.appendChild(dichte);
   ziel.appendChild(koerper);
 }
 
@@ -2007,26 +2030,26 @@ function kanalVerbinden() {
    ================================================================== */
 
 /* Den Archiv-Schalter der Geräte-Werkzeugleiste nachführen. */
+/* Der Archiv-Schalter sitzt im Filter-Panel; hier ist nichts mehr
+   nachzuführen ausser dem Panel selbst, wenn es offen ist. */
 function archivAnwenden() {
-  const k = $("geraete-knopf-archiv");
-  if (!k) return;
-  const an = zustand.geraete.archiv;
-  k.classList.toggle("aktiv", an);
-  k.setAttribute("aria-pressed", an ? "true" : "false");
-  const archivierte = zaehle(geraete, g => g.__archiviert);
-  k.title = (an ? "Archivierte Geräte ausblenden" : "Archivierte Geräte einblenden")
-    + " — " + archivierte + " von " + geraete.length + " sind archiviert";
+  if (!$("geraete-filterleiste").hidden) zeichneFilterleiste("geraete");
 }
 
+/* «Kompakt» gilt für alle Listen gleich und sitzt im Spalten-Panel. */
 function dichteAnwenden(tab) {
   const z = zustand[tab];
   const bereich = $("ansicht-" + tab);
   if (bereich) bereich.classList.toggle("dicht", z.dicht);
-  const k = $(tab + "-knopf-dichte");
-  if (!k) return;
-  k.classList.toggle("aktiv", z.dicht);
-  k.setAttribute("aria-pressed", z.dicht ? "true" : "false");
-  k.title = z.dicht ? "Zur normalen Zeilenhöhe wechseln" : "Zu kompakten Zeilen wechseln";
+}
+
+function dichteSetzen(kompakt) {
+  for (const t of TABELLEN) {
+    zustand[t].dicht = kompakt;
+    dichteAnwenden(t);
+  }
+  einstellungenMerken(zustand.ansicht);
+  hashSchreiben();
 }
 
 /* Auf eine andere Ansicht umschalten und den Hash nachführen.
@@ -2158,29 +2181,10 @@ function tabEreignisse(tab) {
   $(tab + "-knopf-spalten").addEventListener("click", function () {
     panelUmschalten(tab, "spalten");
   });
-  $(tab + "-knopf-dichte").addEventListener("click", function () {
-    zustand[tab].dicht = !zustand[tab].dicht;
-    einstellungenMerken(tab);
-    dichteAnwenden(tab);
-    hashSchreiben();
-  });
   $(tab + "-knopf-csv").addEventListener("click", function () { csvExport(tab); });
-
-  /* Nur die Geräte haben den Archiv-Schalter. */
-  const archivKnopf = $(tab + "-knopf-archiv");
-  if (archivKnopf) {
-    archivKnopf.addEventListener("click", function () {
-      zustand[tab].archiv = !zustand[tab].archiv;
-      einstellungenMerken(tab);
-      archivAnwenden();
-      nachFilter(tab);
-    });
-  }
 
   knopfSinnbild(tab + "-knopf-filter", "filter");
   knopfSinnbild(tab + "-knopf-spalten", "spalten");
-  knopfSinnbild(tab + "-knopf-dichte", "dichte");
-  knopfSinnbild(tab + "-knopf-archiv", "archiv");   // nur bei den Geräten da
   knopfSinnbild(tab + "-knopf-csv", "csv");
   const feld = $(tab + "-suche");
   feld.parentNode.insertBefore(sinnbild("suche"), feld);

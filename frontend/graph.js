@@ -12,7 +12,7 @@
    Öffentliche Schnittstelle (auch im Vorführmodus identisch):
      await Daten.computer(fortschritt)     → Array flacher Zeilen
      await Daten.benutzer(fortschritt)     → Array flacher Zeilen
-     await Daten.telefone(fortschritt)     → Array flacher Zeilen
+     await Daten.telefone(fortschritt)     → Array flacher Zeilen (mit __etag)
      await Daten.programme()               → Objekt aus programme.json
      await Daten.zeile(liste, id)          → eine Zeile
      await Daten.speichern(liste, id, f)   → geänderte Zeile
@@ -157,34 +157,44 @@ const Daten = (function () {
     return "/sites/" + KONFIG.siteId + "/lists/" + KONFIG.listId(liste);
   }
 
-  /* Eine Anfrage an Graph. */
+  function warten(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+
+  /* Eine Anfrage an Graph. Bei Drosselung (429) oder kurzer Störung (503,
+     504) wird bis zu dreimal gewartet und wiederholt — so lange, wie Graph
+     es im Kopf «Retry-After» verlangt, sonst 2, 4, 6 Sekunden. Ein POST
+     wird nie wiederholt: er könnte sonst eine zweite Zeile anlegen. */
   async function anfrage(pfad, einstellungen) {
     const e = einstellungen || {};
     const methode = e.methode || "GET";
-    const zugriff = await Auth.token();
-
-    const kopfzeilen = {
-      "Authorization": "Bearer " + zugriff,
-      "Accept": e.roh ? "*/*" : "application/json"
-    };
+    const url = pfad.indexOf("http") === 0 ? pfad : WURZEL + pfad;
     let rumpf;
-    if (e.rumpf !== undefined && e.rumpf !== null) {
-      kopfzeilen["Content-Type"] = "application/json";
-      rumpf = JSON.stringify(e.rumpf);
-    }
+    if (e.rumpf !== undefined && e.rumpf !== null) rumpf = JSON.stringify(e.rumpf);
 
-    const antwort = await fetch(pfad.indexOf("http") === 0 ? pfad : WURZEL + pfad, {
-      method: methode, headers: kopfzeilen, body: rumpf
-    });
+    for (let versuch = 1; ; versuch++) {
+      const zugriff = await Auth.token();
+      const kopfzeilen = {
+        "Authorization": "Bearer " + zugriff,
+        "Accept": e.roh ? "*/*" : "application/json"
+      };
+      if (rumpf !== undefined) kopfzeilen["Content-Type"] = "application/json";
 
-    // DELETE antwortet mit 204 und leerem Rumpf.
-    const daten = antwort.status === 204 ? null : await antwort.json().catch(() => null);
-    if (!antwort.ok) {
+      const antwort = await fetch(url, { method: methode, headers: kopfzeilen, body: rumpf });
+
+      // DELETE antwortet mit 204 und leerem Rumpf.
+      const daten = antwort.status === 204 ? null : await antwort.json().catch(() => null);
+      if (antwort.ok) return daten;
+
+      const wiederholbar = (antwort.status === 429 || antwort.status === 503 || antwort.status === 504)
+        && methode !== "POST" && versuch < 4;
+      if (wiederholbar) {
+        const nach = Number(antwort.headers.get("Retry-After"));
+        await warten((nach > 0 ? Math.min(nach, 30) : versuch * 2) * 1000);
+        continue;
+      }
       const fehler = new Error(lesbarerFehler(antwort.status, daten, methode, e.was));
       fehler.status = antwort.status;
       throw fehler;
     }
-    return daten;
   }
 
   function lesbarerFehler(status, daten, methode, was) {
@@ -211,10 +221,13 @@ const Daten = (function () {
     return meldung || ("Fehler von Microsoft Graph (HTTP " + status + ")");
   }
 
-  /* Graph verschachtelt die Listenspalten unter «fields». Flach ist bequemer. */
+  /* Graph verschachtelt die Listenspalten unter «fields». Flach ist bequemer.
+     Das eTag der Zeile kommt als «__etag» mit: damit erkennt speichern(),
+     ob jemand anderes die Zeile inzwischen geändert hat. */
   function flach(element) {
     const satz = Object.assign({}, element.fields || {});
     satz.id = element.id;
+    satz.__etag = String(element.eTag || "");
     return satz;
   }
 
@@ -310,9 +323,25 @@ const Daten = (function () {
 
   /* Ändert nur die übergebenen Felder einer Zeile. «felder» ist ein flaches
      Objekt { InternerName: Wert }; Texte als Zeichenkette (leer = ""),
-     Zahlen als Zahl oder null. Alles Übrige bleibt unangetastet. */
-  async function speichern(liste, id, felder) {
+     Zahlen als Zahl oder null. Alles Übrige bleibt unangetastet.
+
+     «etagErwartet» ist das eTag der Zeile, wie sie geladen wurde (__etag).
+     Ist es gesetzt, wird vor dem Schreiben nachgesehen, ob die Zeile noch
+     dieselbe ist — sonst hätte die zweite Person die Änderung der ersten
+     stillschweigend überschrieben. Bei Abweichung kommt Fehler 412 zurück:
+     neu laden, dann noch einmal. */
+  async function speichern(liste, id, felder, etagErwartet) {
     if (mockModus) return Mock.speichern(liste, id, felder);
+    if (etagErwartet) {
+      const jetzt = await anfrage(listenPfad(liste) + "/items/" + encodeURIComponent(id)
+        + "?$select=id,eTag", { was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
+      const aktuell = String(jetzt && jetzt.eTag || "");
+      if (aktuell && aktuell !== String(etagErwartet)) {
+        const fehler = new Error(lesbarerFehler(412, null, "PATCH", "die Liste «" + LISTEN_TITEL[liste] + "»"));
+        fehler.status = 412;
+        throw fehler;
+      }
+    }
     const geaendert = await anfrage(
       listenPfad(liste) + "/items/" + encodeURIComponent(id) + "/fields",
       { methode: "PATCH", rumpf: felder, was: "die Liste «" + LISTEN_TITEL[liste] + "»" });

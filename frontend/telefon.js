@@ -817,7 +817,7 @@ async function speichern() {
       toast("Telefonnummer angelegt.");
       return;
     }
-    await Daten.speichern("telefon", elementId, felder);
+    await Daten.speichern("telefon", elementId, felder, zeile ? zeile.__etag : "");
     const anzahl = Object.keys(felder).length;
     entwurf = {};
     melden("telefon-geaendert", elementId);

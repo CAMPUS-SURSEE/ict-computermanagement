@@ -2155,7 +2155,7 @@ async function speichern() {
       return;
     }
 
-    await Daten.speichern("computer", elementId, felder);
+    await Daten.speichern("computer", elementId, felder, zeile ? zeile.__etag : "");
     const anzahl = anzahlAenderungen();
     entwurf = {};
     melden("zeile-geaendert", elementId);
@@ -2202,7 +2202,7 @@ async function verwerfen() {
 async function inhaberSchreiben(schritte, meldung, geraetFelder) {
   try {
     if (geraetFelder) {
-      await Daten.speichern("computer", elementId, geraetFelder);
+      await Daten.speichern("computer", elementId, geraetFelder, zeile ? zeile.__etag : "");
       melden("zeile-geaendert", elementId);
     }
     for (const schritt of schritte) {
@@ -2214,7 +2214,7 @@ async function inhaberSchreiben(schritte, meldung, geraetFelder) {
         : (bisher ? "Gerät abgegeben: " + bisher : "");
       const felderB = { Computer: wertFuerGraph };
       if (eintrag) felderB.Verlauf = verlaufAnhaengen(schritt.benutzer.Verlauf, eintrag);
-      await Daten.speichern("benutzer", schritt.benutzer.id, felderB);
+      await Daten.speichern("benutzer", schritt.benutzer.id, felderB, schritt.benutzer.__etag);
       melden("benutzer-geaendert", schritt.benutzer.id);
     }
     await datenLaden(true);

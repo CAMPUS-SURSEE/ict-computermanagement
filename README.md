@@ -19,7 +19,7 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
-| **archivierte Geräte im Frontend sehen** | in der Geräteliste den Schalter **«Archivierte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
+| **archivierte Geräte im Frontend sehen** | in der Geräteliste **Filter → «Archivierte Geräte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
 | **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
 | **den Inhaber eines Geräts ändern** | Gerätefenster → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8) |
 | **ein Gerät ins Lager legen, ausgeben oder archivieren** | Gerätefenster → Knöpfe oben rechts (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**): setzt Status, Inhaber und Verlauf in einem Schritt |
@@ -81,9 +81,9 @@ Berechtigung von Hand vergeben hat, verliert sie nicht, wenn später eine AD-Gru
 Steht das Gerät noch in SCCM, setzt der nächste Sync es wieder auf `Aktiv` und schreibt
 «Wieder in SCCM vorhanden, reaktiviert» in den Verlauf. Für eingelagerte Geräte ist `Lager`
 gedacht – das fasst der Sync nie an. Im Frontend sind archivierte Geräte in der Geräteliste,
-in den Kacheln der Übersicht und im Ersatz-Zeitstrahl ausgeblendet; der Schalter
-«Archivierte anzeigen» blendet sie wieder ein (er wird im Browser gemerkt und steht als `ar=1`
-im Link).
+in den Kacheln der Übersicht und im Ersatz-Zeitstrahl ausgeblendet; im Filter-Panel der
+Geräteliste blendet «Archivierte Geräte anzeigen» sie wieder ein (wird im Browser gemerkt und
+steht als `ar=1` im Link).
 
 **Verlauf** (mehrzeilige Klartextspalte `Verlauf` in beiden Listen) enthält ein JSON-Array:
 

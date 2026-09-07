@@ -891,7 +891,7 @@ async function speichern() {
   speicherleisteZeichnen();
 
   try {
-    await Daten.speichern("benutzer", elementId, felder);
+    await Daten.speichern("benutzer", elementId, felder, zeile.__etag);
     const anzahl = Object.keys(felder).length;
     entwurf = {};
     melden("benutzer-geaendert", elementId);

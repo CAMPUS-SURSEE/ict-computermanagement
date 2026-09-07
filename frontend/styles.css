@@ -95,6 +95,16 @@ body.seite { height: 100vh; overflow: hidden; }
 }
 /* Die Auswahlfelder sind .feld-eingabe aus design.css. */
 
+/* Eine Schalterzeile im Panel (Archivierte anzeigen, Kompakte Zeilen). */
+.panel-schalter {
+  display: flex; align-items: center; gap: var(--a2);
+  font-size: var(--t-s); color: var(--text);
+  margin: 0 0 var(--a4);
+  cursor: pointer;
+}
+.panel-schalter input { accent-color: var(--primaer); width: 16px; height: 16px; margin: 0; }
+.werkzeugzeile + .panel-schalter { margin: var(--a4) 0 0; }
+
 
 /* ==================================================================
    Software
