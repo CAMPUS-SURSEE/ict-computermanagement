@@ -158,7 +158,7 @@ $col = $col[0]
 Log "Spalte gefunden: «$($col.displayName)» (Id $($col.id))"
 
 # --- Lesen und sichern -----------------------------------------------------
-$items = @(Get-GraphAlle "$itemsBase?`$expand=fields(`$select=Title,$Spalte,Verlauf)&`$top=500")
+$items = @(Get-GraphAlle "${itemsBase}?`$expand=fields(`$select=Title,$Spalte,Verlauf)&`$top=500")
 $sicherung = New-Object System.Collections.ArrayList
 $mitWert = New-Object System.Collections.ArrayList
 foreach ($it in $items) {
@@ -220,7 +220,7 @@ if ($stats.fehler -gt 0) {
 }
 
 # Kontrolle direkt aus SharePoint: kein Rest darf mehr da sein.
-$rest = @(Get-GraphAlle "$itemsBase?`$expand=fields(`$select=Title,$Spalte)&`$top=500" |
+$rest = @(Get-GraphAlle "${itemsBase}?`$expand=fields(`$select=Title,$Spalte)&`$top=500" |
     Where-Object { (Get-Text $_.fields $Spalte) -ne '' })
 if ($rest.Count -gt 0) {
     Log "Spalte «$Spalte» wird NICHT gelöscht: $($rest.Count) Zeilen tragen noch einen Wert (z. B. Kurzwahl $(Get-Text $rest[0].fields 'Title'))." 'ERROR'
