@@ -410,9 +410,9 @@ function bereichUebersicht(ziel) {
   kacheln.appendChild(kachel(String(zahlen.aktiv), "Berechtigungen aktiv",
     "von " + zahlen.gesamt + " Programmen", zahlen.aktiv ? "erfolg" : null));
   kacheln.appendChild(kachel(String(zahlen.manuell), "manuell gesetzt",
-    "Stufe 1 — hier umschaltbar"));
+    "hier umschaltbar"));
   kacheln.appendChild(kachel(String(zahlen.ausAd), "aus AD-Gruppe",
-    "Stufe 2 — gesperrt", zahlen.ausAd ? "info" : null));
+    "vom AD vorgegeben", zahlen.ausAd ? "info" : null));
   ziel.appendChild(kacheln);
 
   // Inhaberschaft
@@ -437,16 +437,13 @@ function bereichUebersicht(ziel) {
   felder.appendChild(feldGesperrt("Primärgerät (SCCM)", zeile.SCCMPrimaerGeraet));
   kInhaber.inhalt.appendChild(felder);
 
-  const mehrdeutig = mehrdeutigHinweis();
-  if (mehrdeutig) kInhaber.inhalt.appendChild(mehrdeutig);
-
-  if (primaerAbweichung()) {
+  /* Die Einzelheiten (mehrdeutiger Name, SCCM-Vorschlag) stehen im
+     Abschnitt «Gerät»; die Übersicht verweist nur dorthin. */
+  if (primaerAbweichung() || mehrdeutigHinweis()) {
     const hinweis = el("div", "b-hinweis");
-    const primaer = text(zeile.SCCMPrimaerGeraet).trim();
-    hinweis.appendChild(el("span", "t-warnung",
-      "SCCM meldet «" + primaer + "» als Primärgerät"
-      + (name ? ", Inhaber ist die Person von «" + name + "»."
-              : ", Inhaber ist die Person keines Geräts.")));
+    hinweis.appendChild(el("span", "t-warnung", primaerAbweichung()
+      ? "SCCM meldet ein anderes Primärgerät als hier eingetragen."
+      : "Der eingetragene Gerätename ist nicht eindeutig."));
     hinweis.appendChild(knopf("Im Abschnitt «Gerät» klären", "knopf-leise", function () {
       bereichWechseln("geraet");
     }));
@@ -474,11 +471,8 @@ function bereichUebersicht(ziel) {
 
 /* ---------- Gerät ---------- */
 
-/* Nach jeder Änderung der Inhaberschaft auch die Kopfzeile neu zeichnen:
-   der Knopf «Gerät öffnen» hängt daran. */
 function inhaberschaftSetzen(pcName) {
   setzeWert("Computer", pcName);
-  kopfZeichnen();
   zeichneBereich();
 }
 
@@ -547,11 +541,6 @@ function bereichGeraet(ziel) {
   if (name) {
     const knoepfe = el("div", "karte-aktionen");
     knoepfe.appendChild(knopf("Inhaberschaft aufheben", null, inhaberschaftAufheben));
-    if (geraet) {
-      knoepfe.appendChild(knopf("Gerät öffnen", null, function () {
-        geraetFensterOeffnen(geraet);
-      }));
-    }
     kAktuell.inhalt.appendChild(knoepfe);
   }
 
@@ -771,11 +760,6 @@ function bereichBemerkung(ziel) {
    7. Kopfzeile, Navigation, Zeichnen
    ================================================================== */
 
-function geraetFensterOeffnen(computerZeile) {
-  window.open("geraet.html?id=" + encodeURIComponent(computerZeile.id) + MOCK_ANHANG,
-    "geraet-" + computerZeile.id);
-}
-
 function kopfZeichnen() {
   $("b-titel").textContent = zeile.__name || zeile.Title || "Benutzer";
 
@@ -785,18 +769,12 @@ function kopfZeichnen() {
   if (zeile.Funktion) teile.push(text(zeile.Funktion));
   $("b-unter").textContent = teile.join(" · ");
 
-  const status = $("b-status");
-  status.textContent = zeile.__adAktiv ? "AD-Konto aktiv" : "AD-Konto deaktiviert";
-  status.className = "b-status " + (zeile.__adAktiv ? "t-erfolg" : "t-gefahr");
+  /* Wie bei Gerät und Telefon: Chips in der Titelzeile, und nur für das,
+     was auffällt. Ein aktives AD-Konto ist der Normalfall. */
+  const status = leeren($("b-status"));
+  if (!zeile.__adAktiv) status.appendChild(chip("AD-Konto deaktiviert", "gefahr"));
 
-  const aktionen = leeren($("b-aktionen"));
-
-  const geraet = inhaberGeraet();
-  if (geraet) {
-    aktionen.appendChild(knopf("Gerät öffnen", null, function () {
-      geraetFensterOeffnen(geraet);
-    }));
-  }
+  leeren($("b-aktionen"));
 }
 
 /* Das Logo im Kopf führt zur Übersicht. Im Vorführmodus muss der Parameter

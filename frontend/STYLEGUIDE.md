@@ -245,7 +245,7 @@ Töne: `chip-erfolg`, `chip-warnung`, `chip-gefahr`, `chip-info`, `chip-marke`, 
 
 ### 4.10 Datenzeilen `.datenzeilen > .datenzeile`
 - **Lesen:** Name links (13 px `--text-leise`, 36 % Breite, mind. 110 px), Wert rechts (14 px `--text`), Hairline `--linie-leicht` dazwischen, 10 px senkrecht.
-- **Bearbeiten:** Klasse `.datenzeile-form` — Beschriftung oben (12 px 500), Feld in voller Breite (max. 560 px) darunter, Hinweis unter dem Feld. Schmale Felder (`.g-eingabe-schmal`, 200 px) für Jahre und Auswahlen.
+- **Bearbeiten:** Klasse `.datenzeile-form` — Beschriftung oben (12 px 500), Feld in voller Breite (max. 560 px) darunter, Hinweis `.datenzeile-hinweis` oder Knopfzeile `.datenzeile-zeile` (je 8 px Abstand) unter dem Feld. Schmale Felder (`.eingabe-schmal`, 200 px; im Gerätefenster noch `.g-eingabe-schmal`) für Jahre und Auswahlen.
 - Schreibgeschützte Felder tragen `.schloss` (🔒) im Namen mit Tooltip.
 - Geänderte, ungespeicherte Zeilen: `.geaendert` setzt einen blauen Punkt hinter den Namen.
 - Leerer Wert: «—» in `--text-still`, nie ein leeres Feld.

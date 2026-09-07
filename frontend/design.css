@@ -468,6 +468,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    stehen mit gleichem Abstand untereinander. Zeilen derselben Liste, die
    direkt in der Karte liegen, bleiben ohne Abstand. */
 .karte-inhalt > * + * { margin-top: var(--a4); }
+
+/* Kacheln direkt im Fensterinhalt (Übersicht der Detailfenster) halten
+   Abstand zur folgenden Karte. */
+.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
 .karte-inhalt > .g-hinweis + .g-hinweis,
 .karte-inhalt > .g-person + .g-person,
 .karte-inhalt > .g-roh-zeile + .g-roh-zeile,
@@ -787,10 +791,13 @@ input[type="checkbox"], input[type="radio"] {
 }
 .datenzeile-form .datenzeile-name { font-size: var(--t-xs); font-weight: 500; line-height: 16px; }
 .datenzeile-form .datenzeile-wert { white-space: normal; }
-.datenzeile-form input:not([type="checkbox"]):not(.g-eingabe-schmal),
-.datenzeile-form select:not(.g-eingabe-schmal),
+.datenzeile-form input:not([type="checkbox"]):not(.g-eingabe-schmal):not(.eingabe-schmal),
+.datenzeile-form select:not(.g-eingabe-schmal):not(.eingabe-schmal),
 .datenzeile-form textarea { max-width: 560px; }
 .datenzeile-form .datenzeile-hinweis { margin-top: var(--a1); line-height: 16px; }
+/* Eine Knopfzeile unter dem Feld («Vorschlag übernehmen») braucht denselben
+   Abstand wie der Hinweis, sonst klebt der Knopf an der Feldunterkante. */
+.datenzeile-form .datenzeile-zeile { margin-top: var(--a2); }
 
 .datenzeile-name {
   display: flex; align-items: baseline; gap: 5px;
@@ -806,6 +813,9 @@ input[type="checkbox"], input[type="radio"] {
 .datenzeile-neben { color: var(--text-still); font-size: var(--t-xs); margin-left: 6px; }
 .datenzeile-hinweis { font-size: var(--t-xs); color: var(--text-still); margin-top: 3px; }
 .datenzeile-zeile { display: flex; gap: var(--a2); align-items: center; flex-wrap: wrap; }
+/* Schmale Felder für Jahre und Auswahlen; die Seiten dürfen die Breite
+   mit eigener Klasse weiter verkleinern (z. B. Kurzwahl 160 px). */
+.datenzeile-form .eingabe-schmal { max-width: 200px; }
 
 .datenzeile.geaendert .datenzeile-name::after {
   content: "\2022";

@@ -1545,8 +1545,6 @@ function zeichneUebersicht() {
       () => springeMitFilter("benutzer", function () { })],
     [ohneGeraet, "ohne Gerät", null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "__hatGeraetText", "Nein"))],
-    [ohneInhaber, "Geräte ohne Inhaber", null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatInhaber", "Nein"))],
     [inaktiv, "AD-Konto deaktiviert", inaktiv ? "gefahr" : null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "ADAktiviert", "Nein"))],
     [abweichung, "Primärgerät weicht ab", abweichung ? "warnung" : null,

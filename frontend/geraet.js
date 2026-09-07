@@ -824,7 +824,8 @@ function bereichUebersicht(ziel) {
     zeile.SCCM_BitLocker ? (/nicht/i.test(zeile.SCCM_BitLocker) ? "gefahr" : "erfolg") : null));
 
   kacheln.appendChild(kachel("Beschaffungsjahr", textWert("Beschaffungsjahr"),
-    "Geschäftsjahr", textWert("Beschaffungsjahr") ? null : "warnung"));
+    textWert("Beschaffungsjahr") ? "" : "nicht erfasst",
+    textWert("Beschaffungsjahr") ? null : "warnung"));
 
   kacheln.appendChild(kachel("Ersatz geplant",
     textWert("ErsatzGeplant") || Modell.ersatzVorschlag(textWert("Beschaffungsjahr")),
@@ -942,16 +943,15 @@ function lebenszyklusZeichnen(ziel) {
 
   block.appendChild(kasten);
 
-  /* Fehlt das Beschaffungsjahr, wird es gleich hier erfasst — sonst fehlt
-     das Gerät in der ganzen Ersatzplanung. */
+  /* Fehlt das Beschaffungsjahr, fehlt das Gerät in der ganzen
+     Ersatzplanung. Bearbeitet wird nur im Bereich «Beschaffung» — die
+     Übersicht zeigt, und ein Knopf führt hin. */
   if (!beschaffung) {
     const erfassen = el("div", "g-lz-erfassen");
     erfassen.appendChild(el("span", "hinweis t-warnung",
-      "Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen. Jetzt erfassen:"));
-    erfassen.appendChild(eingabeFuer(SPALTE["Beschaffungsjahr"], {
-      liste: Modell.gjAuswahl(),
-      schmal: true,
-      beiAenderung: function () { zeichneBereich(true); }
+      "Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen."));
+    erfassen.appendChild(knopf("Beschaffungsjahr erfassen", "knopf-leise", function () {
+      bereichWechseln("beschaffung");
     }));
     block.appendChild(erfassen);
   }
@@ -979,35 +979,31 @@ function bereichBeschaffung(ziel) {
     beiAenderung: function () { zeichneBereich(true); }
   }));
 
-  /* Ersatzjahr mit Knopf «Vorschlag übernehmen». */
-  const ersatzHuelle = el("div");
-  ersatzHuelle.appendChild(eingabeFuer(SPALTE["ErsatzGeplant"], {
+  /* Ersatzjahr. Weicht der Wert vom Vorschlag ab, steht darunter ein Knopf,
+     der ihn übernimmt; stimmt er überein oder fehlt das Beschaffungsjahr,
+     genügt ein Hinweis. */
+  const geplant = textWert("ErsatzGeplant").trim();
+  let zusatz = null;
+  if (vorschlag && geplant !== vorschlag) {
+    zusatz = el("div", "datenzeile-zeile");
+    zusatz.appendChild(knopf("Vorschlag " + vorschlag + " übernehmen", "knopf-leise", function () {
+      setzeWert("ErsatzGeplant", vorschlag);
+      zeichneBereich(false);
+      toast("Vorschlag " + vorschlag + " übernommen. Noch nicht gespeichert.");
+    }));
+  }
+  felder.appendChild(formularZeile(SPALTE["ErsatzGeplant"], {
     liste: Modell.gjAuswahl(),
     schmal: true,
+    hinweis: !vorschlag ? "Ohne Beschaffungsjahr gibt es keinen Vorschlag."
+      : (geplant === vorschlag ? "Entspricht dem Vorschlag (Beschaffung + 5 Jahre)."
+        : "Vorschlag: " + vorschlag + " (Beschaffung + 5 Jahre)."),
+    zusatz: zusatz,
     beiAenderung: function () { zeichneBereich(true); }
   }));
-  const knoepfe = el("div", "datenzeile-zeile");
-  const uebernehmen = knopf("Vorschlag übernehmen", "knopf-leise", function () {
-    setzeWert("ErsatzGeplant", vorschlag);
-    zeichneBereich(false);
-    toast("Vorschlag " + vorschlag + " übernommen. Noch nicht gespeichert.");
-  });
-  uebernehmen.disabled = !vorschlag || textWert("ErsatzGeplant").trim() === vorschlag;
-  uebernehmen.title = vorschlag
-    ? "Beschaffungsjahr + 5 = " + vorschlag
-    : "Ohne Beschaffungsjahr gibt es keinen Vorschlag.";
-  knoepfe.appendChild(uebernehmen);
-  knoepfe.appendChild(el("span", "hinweis", vorschlag
-    ? "Vorschlag: " + vorschlag + " (Beschaffung + 5 Jahre)"
-    : "Kein Vorschlag — es fehlt das Beschaffungsjahr."));
-  ersatzHuelle.appendChild(knoepfe);
-
-  const zErsatz = feldZeileKnoten("Ersatz geplant", ersatzHuelle, false);
-  zErsatz.classList.add("datenzeile-form");
-  zErsatz.classList.toggle("geaendert", istGeaendert("ErsatzGeplant"));
-  felder.appendChild(zErsatz);
   k.inhalt.appendChild(felder);
 
+  /* Der Normalfall («im Plan») bleibt neutral; nur was ansteht, wird farbig. */
   const statusText = {
     ueberfaellig: "Der Ersatz ist überfällig.",
     bald: "Der Ersatz steht im laufenden Geschäftsjahr an.",
@@ -1015,30 +1011,9 @@ function bereichBeschaffung(ziel) {
     unbekannt: "Ohne Beschaffungs- und Ersatzjahr lässt sich nichts planen."
   };
   const ton = status === "ueberfaellig" ? "t-gefahr"
-    : (status === "bald" ? "t-warnung" : (status === "ok" ? "t-erfolg" : "t-leise"));
-  const statusZeile = el("p", "hinweis " + ton, statusText[status]);
-  k.inhalt.appendChild(statusZeile);
+    : (status === "bald" ? "t-warnung" : "");
+  k.inhalt.appendChild(el("p", "hinweis " + ton, statusText[status]));
   gitter.appendChild(k);
-
-  /* Kleine Einordnung: wie viele Geräte teilen dieses Beschaffungsjahr? */
-  if (!neuModus) {
-    const kEinordnung = karte("Einordnung",
-      "Zum Vergleich innerhalb der ganzen Geräteliste.");
-    const kacheln = el("div", "kacheln");
-    const gleichesJahr = alleGeraete.filter(z =>
-      String(z.Beschaffungsjahr || "").trim() === beschaffung && beschaffung);
-    const ueberfaellig = alleGeraete.filter(z => z.__ersatzStatus === "ueberfaellig");
-    const ohneJahr = alleGeraete.filter(z => !String(z.Beschaffungsjahr || "").trim());
-    kacheln.appendChild(kachel("Geräte mit demselben Beschaffungsjahr",
-      beschaffung ? String(gleichesJahr.length) : "", beschaffung || "kein Jahr erfasst"));
-    kacheln.appendChild(kachel("Ersatz überfällig (ganze Flotte)",
-      String(ueberfaellig.length), "von " + alleGeraete.length + " Geräten",
-      ueberfaellig.length ? "gefahr" : null));
-    kacheln.appendChild(kachel("Ohne Beschaffungsjahr", String(ohneJahr.length),
-      "von " + alleGeraete.length + " Geräten", ohneJahr.length ? "warnung" : null));
-    kEinordnung.inhalt.appendChild(kacheln);
-    gitter.appendChild(kEinordnung);
-  }
 
   ziel.appendChild(gitter);
 }
@@ -1307,20 +1282,6 @@ function bereichStammdaten(ziel) {
 
   reihe.appendChild(bemerkungKarte());
 
-  if (!neuModus) {
-    const kHerkunft = karte("Herkunft der Daten",
-      "Was der SCCM-Abgleich zu diesem Gerät weiss.");
-    const f = el("div", "datenzeilen");
-    f.appendChild(feldZeile("SCCM Gerätename", zeile.SCCM_Name, null, true));
-    f.appendChild(feldZeile("Seriennummer", zeile.SCCM_SerialNumber, null, true));
-    f.appendChild(feldZeile("In SCCM vorhanden", zeile.SCCM_Found, null, true));
-    f.appendChild(datumZeile("Letzte Synchronisation", zeile.SCCM_LastSync));
-    f.appendChild(feldZeile("Listen-ID (SharePoint)", zeile.id, null, true));
-    kHerkunft.inhalt.appendChild(f);
-    reihe.appendChild(kHerkunft);
-    reihe.classList.add("g-stamm-reihe-3");
-  }
-
   ziel.appendChild(reihe);
 
   /* Verlauf. Er wird über denselben Entwurf gespeichert wie alle anderen
@@ -1503,14 +1464,12 @@ function bereichHardware(ziel) {
     disks.map(f => [f[0] || "", f.slice(1).join(" · ")])));
   gitter.appendChild(kDisks);
 
-  const kBios = karte("BIOS, TPM und Akku");
+  const kBios = karte("BIOS und Akku");
   const f3 = el("div", "datenzeilen");
   f3.appendChild(feldZeile("BIOS-Version", zeile.SCCM_BIOSVersion, null, true));
   const biosAlter = Hilfe.tageHer(zeile.SCCM_BIOSDate);
   f3.appendChild(feldZeile("BIOS-Datum", Hilfe.datumText(zeile.SCCM_BIOSDate),
     biosAlter === null ? null : "vor " + Math.round(biosAlter / 30) + " Monaten", true));
-  f3.appendChild(feldZeile("TPM-Version", zeile.SCCM_TPMVersion, null, true));
-  f3.appendChild(feldZeile("TPM aktiviert", zeile.SCCM_TPMEnabled, null, true));
   const akku = akkuProzent();
   f3.appendChild(feldZeile("Akku", zeile.SCCM_Battery,
     akku === null ? null : (akku < 50 ? "Ersatz prüfen" : "in Ordnung"), true));
@@ -1602,12 +1561,11 @@ function bereichSicherheit(ziel) {
   kDefender.inhalt.appendChild(f1);
   gitter.appendChild(kDefender);
 
-  const kVerschluesselung = karte("Verschlüsselung und Verwaltung");
+  const kVerschluesselung = karte("Verschlüsselung und TPM");
   const f2 = el("div", "datenzeilen");
   f2.appendChild(feldZeile("BitLocker", zeile.SCCM_BitLocker, null, true));
   f2.appendChild(feldZeile("TPM-Version", zeile.SCCM_TPMVersion, null, true));
   f2.appendChild(feldZeile("TPM aktiviert", zeile.SCCM_TPMEnabled, null, true));
-  f2.appendChild(feldZeile("Co-Managed (Intune)", zeile.SCCM_CoManaged, null, true));
   kVerschluesselung.inhalt.appendChild(f2);
 
   const chips = el("div", "chips");
@@ -1854,6 +1812,12 @@ function bereichFelder(ziel) {
   }));
   k.inhalt.appendChild(werkzeuge);
 
+  /* Die Listen-ID ist der Schlüssel dieser Zeile in SharePoint; sie steht
+     nur hier, nicht mehr im Kopf. */
+  const kennung = el("div", "datenzeilen");
+  kennung.appendChild(feldZeile("Listen-ID (SharePoint)", zeile.id, null, true));
+  k.inhalt.appendChild(kennung);
+
   const suchtext = rohSuche.trim().toLowerCase();
   let gezeigt = 0;
 
@@ -1939,7 +1903,6 @@ function kopfZeichnen() {
     if (zeile && zeile.SCCM_Model) unter.push(String(zeile.SCCM_Model));
     const wem = inhaber();
     if (wem) unter.push(personName(wem));
-    if (zeile && zeile.id) unter.push("Listen-ID " + zeile.id);
   }
   /* Der Untertitel wird in einer schmalen Kopfzeile mit «…» gekürzt
      (design.css). Damit nichts verloren geht, steht der volle Text als
@@ -2011,6 +1974,15 @@ function adresseFuer(id) {
    unteren Fensterrand; die Knöpfe stehen in einem eigenen Behälter
    (.fenster-nav-menue), der darin klebt beziehungsweise auf schmalen
    Fenstern zur waagrecht rollenden Reiterleiste wird. */
+/* In einen anderen Bereich springen — aus der Navigation oder aus einem
+   Knopf im Inhalt (z. B. «Beschaffungsjahr erfassen»). */
+function bereichWechseln(schluessel) {
+  aktiverBereich = schluessel;
+  location.hash = "#" + schluessel;
+  navZeichnen();
+  zeichneBereich(false);
+}
+
 function navZeichnen() {
   const nav = leeren($("g-nav"));
   /* Ein neues Gerät hat nur das eine Formular — keine Navigation. */
@@ -2022,12 +1994,7 @@ function navZeichnen() {
     const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""), b.d);
     k.type = "button";
     if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
-    k.addEventListener("click", function () {
-      aktiverBereich = b.k;
-      location.hash = "#" + b.k;
-      navZeichnen();
-      zeichneBereich(false);
-    });
+    k.addEventListener("click", function () { bereichWechseln(b.k); });
     menue.appendChild(k);
   }
   nav.appendChild(menue);

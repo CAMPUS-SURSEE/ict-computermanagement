@@ -298,7 +298,7 @@ function eingabeFuer(spalte, optionen) {
 }
 
 function auswahlFuer(spalte, werte, mitLeer) {
-  const wahl = el("select", "feld-eingabe tf-eingabe-schmal");
+  const wahl = el("select", "feld-eingabe eingabe-schmal");
   wahl.id = "tf-eingabe-" + spalte.i;
   wahl.setAttribute("aria-label", spalte.d);
   if (mitLeer) {
@@ -413,8 +413,6 @@ function personKarte() {
 
     const felder = el("div", "datenzeilen");
     felder.appendChild(feldGesperrt("Telefon im AD", b.Telefon));
-    felder.appendChild(feldGesperrt("Benutzer (AD)", zeile ? zeile.Benutzer : "",
-      "Schreibt der Sync beim nächsten Lauf."));
     felder.appendChild(feldGesperrt("Letzter AD-Sync",
       Hilfe.datumZeitText(zeile ? zeile.ADLetzterSync : "")));
     k.inhalt.appendChild(felder);
@@ -470,7 +468,7 @@ function personKarte() {
 function kurzwahlZeile() {
   const s = SPALTE["Title"];
   const feld = eingabeFuer(s, {
-    klasse: "tf-eingabe-kurzwahl",
+    klasse: "eingabe-schmal tf-eingabe-kurzwahl",
     beiEingabe: function (v) {
       if (!nummerVonHand) {
         const voll = Modell.telefonVoll(v.trim());
@@ -581,15 +579,6 @@ function bereichStammdaten(ziel) {
   kPerson.id = "tf-personkarte";
   gitter.appendChild(kPerson);
 
-  if (!neuModus && zeile) {
-    const kHerkunft = karte("Herkunft", "Zur Einordnung.");
-    const f = el("div", "datenzeilen");
-    f.appendChild(feldGesperrt("Listen-ID (SharePoint)", zeile.id, "Schlüssel der Zeile in SharePoint."));
-    f.appendChild(feldGesperrt("Letzter AD-Sync", Hilfe.datumZeitText(zeile.ADLetzterSync)));
-    kHerkunft.inhalt.appendChild(f);
-    gitter.appendChild(kHerkunft);
-  }
-
   ziel.appendChild(gitter);
 }
 
@@ -644,7 +633,6 @@ function kopfZeichnen() {
     if (nummer) unter.push(nummer);
     if (textWert("Name").trim()) unter.push(textWert("Name").trim());
     if (textWert("Typ").trim()) unter.push(textWert("Typ").trim());
-    if (zeile && zeile.id) unter.push("Listen-ID " + zeile.id);
   }
   $("tf-unter").textContent = unter.join(" · ");
   $("tf-unter").title = unter.join(" · ");
@@ -656,7 +644,8 @@ function kopfZeichnen() {
        auffällt: Frei, Inaktiv, nicht zugewiesen, dazu die Person aus dem AD. */
     if (s === "Frei") status.appendChild(chip("Frei", "warnung"));
     else if (s === "Inaktiv") status.appendChild(chip("Inaktiv", "leise"));
-    if (!istZugewiesen()) status.appendChild(chip("Nicht zugewiesen", "warnung"));
+    /* «Frei» heisst immer auch «nicht zugewiesen» — ein Chip genügt. */
+    else if (!istZugewiesen()) status.appendChild(chip("Nicht zugewiesen", "warnung"));
     const b = person();
     if (b) status.appendChild(chip(b.__name || b.Title, "info"));
   }
@@ -1035,7 +1024,7 @@ function loeschenDialog() {
     + "früher hatte, steht im Verlauf. Löschen nur, wenn die Nummer nicht mehr existiert."));
   d.inhalt.appendChild(el("p", null, "Zur Bestätigung bitte die Kurzwahl abtippen: " + kurz));
 
-  const feld = el("input", "feld-eingabe tf-eingabe-schmal");
+  const feld = el("input", "feld-eingabe eingabe-schmal");
   feld.type = "text";
   feld.autocomplete = "off";
   feld.setAttribute("aria-label", "Kurzwahl zur Bestätigung");

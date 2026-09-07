@@ -14,14 +14,13 @@
    ================================================================== */
 
 /* Die Kurzwahl ist der Schlüssel: kurzes Feld mit festen Ziffernbreiten. */
-.tf-eingabe-kurzwahl {
+.datenzeile-form .tf-eingabe-kurzwahl {
   max-width: 160px;
   font-size: var(--t-l);
   font-variant-numeric: tabular-nums;
 }
 
-/* Schmale Felder für Auswahlen (wie .g-eingabe-schmal im Gerätefenster). */
-.tf-eingabe-schmal { max-width: 200px; }
+/* Schmale Felder für Auswahlen: Breite kommt aus design.css (.eingabe-schmal). */
 
 /* Mehrzeiliger Text (Hinweis). */
 .tf-textarea { min-height: 88px; resize: vertical; }
@@ -47,22 +46,15 @@
 .tf-person-name { font-size: var(--t-l); font-weight: 500; overflow-wrap: anywhere; }
 .tf-person-unter { font-size: var(--t-s); color: var(--text-leise); overflow-wrap: anywhere; }
 
-.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
-
 
 /* ==================================================================
-   Schmale Fenster und Druck
+   Druck
    ================================================================== */
-
-@media (max-width: 760px) {
-  .tf-eingabe-schmal { max-width: 200px; }
-  .tf-eingabe-kurzwahl { max-width: 160px; }
-}
 
 @media print {
   body.tf-seite { background: var(--weiss); }
   .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .band { display: none; }
   .fenster-rumpf { grid-template-columns: 1fr; }
   .fenster-inhalt { padding: 0; }
-  .karte, .kachel { break-inside: avoid; page-break-inside: avoid; }
+  .karte { break-inside: avoid; page-break-inside: avoid; }
 }

@@ -2,16 +2,8 @@
 
    Wird NACH design.css geladen. Das gesamte Gerüst kommt aus design.css.
    Hier bleiben nur die wenigen Muster, die es nur in diesem Fenster gibt:
-   AD-Status in der Titelzeile, Hinweiszeilen, Trefferliste der Gerätesuche
+   Hinweiszeilen, Trefferliste der Gerätesuche
    und die Programmliste. Alle eigenen Klassen beginnen mit «b-». */
-
-
-/* ==================================================================
-   Titelzeile
-   ================================================================== */
-
-.b-status { font-size: var(--t-s); font-weight: 500; margin-top: 2px; }
-.b-status:empty { display: none; }
 
 
 /* ==================================================================
@@ -74,7 +66,6 @@
 
 .b-abstand { margin-top: var(--a5); }
 
-.fenster-inhalt .kacheln { margin-bottom: var(--a5); }
 
 
 /* ==================================================================
