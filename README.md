@@ -21,6 +21,7 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **archivierte Geräte im Frontend sehen** | in der Geräteliste den Schalter **«Archivierte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
 | **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
 | **den Inhaber eines Geräts ändern** | Gerätefenster → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8) |
+| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Gerätefenster → Knöpfe oben rechts (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**): setzt Status, Inhaber und Verlauf in einem Schritt |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |

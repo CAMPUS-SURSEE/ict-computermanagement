@@ -115,22 +115,24 @@ let rohLeereZeigen = false;
 
 let aktiverBereich = "uebersicht";
 
+/* Drei Gruppen: was man pflegt («Gerät»), was SCCM liefert und was
+   ausgewertet wird. Die bearbeitbaren Bereiche stehen damit beisammen. */
 const BEREICHE = [
-  { k: "uebersicht",  d: "Übersicht",        f: bereichUebersicht,  immer: false },
-  { k: "beschaffung", d: "Beschaffung",      f: bereichBeschaffung, immer: true  },
-  { k: "inhaber",     d: "Inhaber",          f: bereichInhaber,     immer: false },
-  { k: "stammdaten",  d: "Stammdaten",       f: bereichStammdaten,  immer: true  },
-  { k: "software",    d: "Software (SCCM)",  f: bereichSoftware,    immer: false },
-  { k: "hardware",    d: "Hardware",         f: bereichHardware,    immer: false },
-  { k: "system",      d: "System & Netzwerk", f: bereichSystem,     immer: false },
-  { k: "sicherheit",  d: "Sicherheit",       f: bereichSicherheit,  immer: false },
-  { k: "aktivitaet",  d: "SCCM & Aktivität", f: bereichAktivitaet,  immer: false },
-  { k: "analyse",     d: "Flottenvergleich", f: bereichAnalyse,     immer: false },
-  { k: "felder",      d: "Alle Felder",      f: bereichFelder,      immer: true  }
+  { k: "uebersicht",  d: "Übersicht",         f: bereichUebersicht,  gruppe: "Gerät" },
+  { k: "stammdaten",  d: "Stammdaten",        f: bereichStammdaten,  gruppe: "Gerät" },
+  { k: "beschaffung", d: "Beschaffung",       f: bereichBeschaffung, gruppe: "Gerät" },
+  { k: "inhaber",     d: "Inhaber",           f: bereichInhaber,     gruppe: "Gerät" },
+  { k: "software",    d: "Software",          f: bereichSoftware,    gruppe: "Aus SCCM" },
+  { k: "hardware",    d: "Hardware",          f: bereichHardware,    gruppe: "Aus SCCM" },
+  { k: "system",      d: "System & Netzwerk", f: bereichSystem,      gruppe: "Aus SCCM" },
+  { k: "sicherheit",  d: "Sicherheit",        f: bereichSicherheit,  gruppe: "Aus SCCM" },
+  { k: "aktivitaet",  d: "Client & Aktivität", f: bereichAktivitaet, gruppe: "Aus SCCM" },
+  { k: "analyse",     d: "Flottenvergleich",  f: bereichAnalyse,     gruppe: "Auswertung" },
+  { k: "felder",      d: "Alle Felder",       f: bereichFelder,      gruppe: "Auswertung" }
 ];
 
 /* Das Anlegen ist ein einziges Formular ohne Navigation. */
-const BEREICH_NEU = { k: "neu", d: "Neues Gerät", f: bereichNeu, immer: true };
+const BEREICH_NEU = { k: "neu", d: "Neues Gerät", f: bereichNeu };
 
 function sichtbareBereiche() {
   // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch einen
@@ -145,6 +147,9 @@ function speicherleisteZeichnen() {
     neuModus: neuModus, geloescht: geloescht, speichertGerade: speichertGerade,
     speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neues Gerät"
   });
+  /* Die Schnellaktionen im Kopf sind gesperrt, solange etwas Ungespeichertes
+     offen ist — sie hängen also am selben Zustand. */
+  if (zeile) aktionenZeichnen();
 }
 
 /* Ein neues Gerät hat nur das eine Formular — keine Navigation. */
@@ -500,6 +505,15 @@ function inhaberAlle() {
     .sort((a, b) => Hilfe.vergleiche(a.__name || a.Title, b.__name || b.Title));
 }
 
+/* Einen Eintrag von heute an einen Verlauf anhängen; gibt den neuen
+   Spaltentext zurück. Wird für die automatischen Einträge gebraucht
+   (Statuswechsel, Inhaberwechsel, Lager, Archiv). */
+function verlaufAnhaengen(verlaufRoh, textZeile) {
+  const liste = Modell.verlaufLesen(verlaufRoh);
+  liste.push(Modell.verlaufEintrag("", textZeile));
+  return Modell.verlaufSchreiben(liste);
+}
+
 /* Der Inhaber dieses Geräts, sonst null. Bei mehreren Kandidaten gewinnt
    der erste Name — dieselbe Wahl trifft Modell.anreichern. */
 function inhaber() {
@@ -527,6 +541,12 @@ function hinweise() {
 
   /* --- Status und Namensdubletten --- */
   const betrieb = geraeteStatus();
+  if ((betrieb === "Lager" || betrieb === "Archiviert") && inhaber()) {
+    warnung("Status «" + betrieb + "», aber ein Inhaber ist eingetragen",
+      "«" + personName(inhaber()) + "» trägt das Gerät noch im Feld «Computer». "
+      + "Ein Gerät im Lager oder Archiv hat keinen Inhaber — im Bereich «Inhaber» "
+      + "entfernen oder das Gerät über «Ausgeben an …» wieder in Betrieb nehmen.");
+  }
   if (betrieb === "Archiviert") {
     info("Gerät ist archiviert", "Es steht nicht mehr im Einsatz und ist in der "
       + "Geräteliste standardmässig ausgeblendet. Über den Filter «Archivierte "
@@ -1203,6 +1223,15 @@ function bereichStammdaten(ziel) {
   }
   felder.appendChild(statusZeile());
   k.inhalt.appendChild(felder);
+  if (!neuModus) {
+    const aktionen = el("div", "karte-aktionen");
+    aktionen.appendChild(knopf("Duplizieren", null, function () {
+      location.href = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
+        + (mockModus ? "&mock=1" : "");
+    }));
+    aktionen.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
+    k.inhalt.appendChild(aktionen);
+  }
   reihe.appendChild(k);
 
   reihe.appendChild(bemerkungKarte());
@@ -1865,18 +1894,32 @@ function kopfZeichnen() {
   aktionenZeichnen();
 }
 
+/* Schnellaktionen im Kopf: der ganze Lagerablauf mit je einem Klick.
+   Welche erscheinen, hängt vom Status ab — Aktiv: ins Lager oder
+   archivieren; Lager: ausgeben oder archivieren; Archiviert: reaktivieren.
+   Duplizieren und Löschen stehen unten in der Stammdaten-Karte. */
 function aktionenZeichnen() {
   const ziel = leeren($("g-aktionen"));
-  if (geloescht) return;
+  if (geloescht || neuModus || !zeile) return;
 
-  if (!neuModus) {
-    ziel.appendChild(knopf("Duplizieren", "knopf-leise", function () {
-      location.href = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
-        + (mockModus ? "&mock=1" : "");
-    }));
-
-    ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
+  const gesperrt = anzahlAenderungen() > 0 || speichertGerade;
+  const aktion = function (beschriftung, klasse, beiKlick) {
+    const k = knopf(beschriftung, klasse, beiKlick);
+    k.disabled = gesperrt;
+    if (gesperrt) k.title = "Zuerst speichern oder verwerfen.";
+    return k;
+  };
+  const s = geraeteStatus();
+  if (s === "Archiviert") {
+    ziel.appendChild(aktion("Reaktivieren", "knopf-leise", reaktivierenDialog));
+    return;
   }
+  if (s === "Lager") {
+    ziel.appendChild(aktion("Ausgeben an …", "knopf-leise", function () { inhaberWaehlenDialog(true); }));
+  } else {
+    ziel.appendChild(aktion("Ins Lager legen", "knopf-leise", insLagerDialog));
+  }
+  ziel.appendChild(aktion("Archivieren", "knopf-leise", archivierenDialog));
 }
 
 
@@ -2085,6 +2128,15 @@ async function speichern() {
     }
   } else {
     for (const feld in entwurf) felder[feld] = fuerGraph(feld, entwurf[feld]);
+    /* Ein Statuswechsel steht automatisch im Verlauf — angehängt an den
+       Verlauf, wie er gespeichert würde (inklusive eigener Einträge). */
+    if (istGeaendert("Status")) {
+      const alt = Modell.status(zeile ? zeile.Status : "");
+      const neu = geraeteStatus();
+      if (alt !== neu) {
+        felder.Verlauf = verlaufAnhaengen(wert("Verlauf"), "Status geändert: " + alt + " → " + neu);
+      }
+    }
   }
 
   speichertGerade = true;
@@ -2155,8 +2207,12 @@ async function verwerfen() {
    Der Inhaberwechsel schreibt zwei Zeilen — erst wird der bisherige
    Inhaber gelöst, dann der neue gesetzt. Nur so bleibt die Regel «genau
    ein Inhaber je Gerät» auch in den Daten wahr. */
-async function inhaberSchreiben(schritte, meldung) {
+async function inhaberSchreiben(schritte, meldung, geraetFelder) {
   try {
+    if (geraetFelder) {
+      await Daten.speichern("computer", elementId, geraetFelder);
+      melden("zeile-geaendert", elementId);
+    }
     for (const schritt of schritte) {
       const wertFuerGraph = String(schritt.pcName || "").trim() || null;
       await Daten.speichern("benutzer", schritt.benutzer.id, { Computer: wertFuerGraph });
@@ -2185,21 +2241,26 @@ function inhaberEntfernenDialog(benutzer) {
   d.knoepfe.appendChild(knopf(titel, "knopf-gefahr", function () {
     dialogSchliessen();
     inhaberSchreiben([{ benutzer: benutzer, pcName: "" }],
-      "«" + personName(benutzer) + "» ist nicht mehr eingetragen.");
+      "«" + personName(benutzer) + "» ist nicht mehr eingetragen.",
+      istInhaber ? { Verlauf: verlaufAnhaengen(wert("Verlauf"), "Inhaber entfernt: " + personName(benutzer)) } : null);
   }));
 }
 
-function inhaberWaehlenDialog() {
+/* «ausgabe»: aus dem Lager heraus ausgeben — dann wird das Gerät dabei
+   wieder «Aktiv». Sonst der gewöhnliche Inhaberwechsel. */
+function inhaberWaehlenDialog(ausgabe) {
   const pcName = textWert("Title").trim();
   if (!pcName) {
     toast("Ohne PC-Name lässt sich kein Inhaber festlegen.", true);
     return;
   }
   const bisheriger = inhaber();
-  const titel = bisheriger ? "Inhaber wechseln" : "Inhaber festlegen";
+  const ausLager = !!ausgabe && geraeteStatus() !== "Aktiv";
+  const titel = ausLager ? "Ausgeben an …" : (bisheriger ? "Inhaber wechseln" : "Inhaber festlegen");
   const d = dialogOeffnen(titel);
   d.inhalt.appendChild(el("p", null,
     "Die gewählte Person wird Inhaberin von «" + pcName + "»."
+    + (ausLager ? " Das Gerät verlässt das Lager und wird «Aktiv»." : "")
     + (bisheriger
         ? " «" + personName(bisheriger) + "» gibt das Gerät dabei ab — ein "
           + "Gerät hat genau einen Inhaber."
@@ -2271,16 +2332,25 @@ function inhaberWaehlenDialog() {
     d2.inhalt.appendChild(el("p", bisher ? "t-warnung" : "t-leise", bisher
       ? "Aktuelles Gerät dieser Person: «" + bisher + "». Dieser Eintrag wird ersetzt."
       : "Dieser Person ist zurzeit kein Gerät zugeordnet."));
-    d2.knoepfe.appendChild(knopf("Zurück", null, inhaberWaehlenDialog));
-    d2.knoepfe.appendChild(knopf(bisheriger ? "Wechseln" : "Festlegen", "knopf-primaer",
+    d2.knoepfe.appendChild(knopf("Zurück", null, function () { inhaberWaehlenDialog(ausgabe); }));
+    d2.knoepfe.appendChild(knopf(ausLager ? "Ausgeben" : (bisheriger ? "Wechseln" : "Festlegen"), "knopf-primaer",
       function () {
         dialogSchliessen();
         /* Erst lösen, dann setzen: dazwischen hat das Gerät keinen
            Inhaber, aber nie zwei. */
         const schritte = abgebende.map(a => ({ benutzer: a, pcName: "" }));
         schritte.push({ benutzer: b, pcName: pcName });
+        const verlaufText = ausLager
+          ? "Aus dem Lager ausgegeben an " + personName(b)
+          : (bisheriger
+              ? "Inhaber gewechselt: " + personName(bisheriger) + " → " + personName(b)
+              : "Inhaber festgelegt: " + personName(b));
+        const geraetFelder = { Verlauf: verlaufAnhaengen(wert("Verlauf"), verlaufText) };
+        if (ausLager) geraetFelder.Status = "Aktiv";
         inhaberSchreiben(schritte,
-          "«" + personName(b) + "» ist jetzt Inhaber dieses Geräts.");
+          ausLager ? "Ausgegeben an «" + personName(b) + "»."
+                   : "«" + personName(b) + "» ist jetzt Inhaber dieses Geräts.",
+          geraetFelder);
       }));
   };
 
@@ -2289,6 +2359,99 @@ function inhaberWaehlenDialog() {
 
   d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
   suche.focus();
+}
+
+/* ---------- Schnellaktionen: Lager, Archiv, Reaktivieren ----------
+
+   Jede Aktion ist ein Dialog und ein Speichervorgang: Status, Inhaber und
+   Verlauf ändern sich zusammen. Vorher musste man dafür drei Bereiche
+   besuchen. */
+
+/* Optionales Notizfeld für den Verlaufseintrag. */
+function notizFeld(d) {
+  const feld = el("textarea", "feld-eingabe");
+  feld.id = "g-aktion-notiz";
+  feld.rows = 2;
+  feld.placeholder = "Notiz für den Verlauf (optional), z. B. Grund oder Regalplatz";
+  feld.setAttribute("aria-label", "Notiz für den Verlauf");
+  d.inhalt.appendChild(feld);
+  return feld;
+}
+
+function verlaufTextMit(basis, notiz) {
+  const n = String(notiz || "").trim();
+  return n ? basis + " — " + n : basis;
+}
+
+/* Alle Personen, die das Gerät gerade tragen, geben es ab. */
+function abgabeSchritte() {
+  return inhaberAlle().map(a => ({ benutzer: a, pcName: "" }));
+}
+
+function inhaberSatz() {
+  const wem = inhaber();
+  return wem ? " «" + personName(wem) + "» gibt das Gerät dabei ab." : "";
+}
+
+function insLagerDialog() {
+  const d = dialogOeffnen("Ins Lager legen");
+  d.inhalt.appendChild(el("p", null,
+    "«" + anzeigeName() + "» bekommt den Status «Lager» und bleibt in der Geräteliste."
+    + inhaberSatz()));
+  const notiz = notizFeld(d);
+  d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
+  d.knoepfe.appendChild(knopf("Ins Lager legen", "knopf-primaer", function () {
+    const wem = inhaber();
+    const basis = "Ins Lager gelegt" + (wem ? " (vorher: " + personName(wem) + ")" : "");
+    dialogSchliessen();
+    inhaberSchreiben(abgabeSchritte(), "Gerät liegt im Lager.", {
+      Status: "Lager",
+      Verlauf: verlaufAnhaengen(wert("Verlauf"), verlaufTextMit(basis, notiz.value))
+    });
+  }));
+  notiz.focus();
+}
+
+function archivierenDialog() {
+  const d = dialogOeffnen("Archivieren");
+  d.inhalt.appendChild(el("p", null,
+    "«" + anzeigeName() + "» bekommt den Status «Archiviert» und ist in der "
+    + "Geräteliste und in den Kennzahlen ausgeblendet." + inhaberSatz()));
+  if (Hilfe.istJa(zeile.SCCM_Found)) {
+    d.inhalt.appendChild(el("p", "t-warnung",
+      "Das Gerät steht noch in SCCM. Solange das so ist, setzt der nächste "
+      + "Abgleich es wieder auf «Aktiv» — für ein eingelagertes Gerät ist "
+      + "«Ins Lager legen» die richtige Wahl."));
+  }
+  const notiz = notizFeld(d);
+  d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
+  d.knoepfe.appendChild(knopf("Archivieren", "knopf-gefahr", function () {
+    const wem = inhaber();
+    const basis = "Archiviert" + (wem ? " (vorher: " + personName(wem) + ")" : "");
+    dialogSchliessen();
+    inhaberSchreiben(abgabeSchritte(), "Gerät archiviert.", {
+      Status: "Archiviert",
+      Verlauf: verlaufAnhaengen(wert("Verlauf"), verlaufTextMit(basis, notiz.value))
+    });
+  }));
+  notiz.focus();
+}
+
+function reaktivierenDialog() {
+  const d = dialogOeffnen("Reaktivieren");
+  d.inhalt.appendChild(el("p", null,
+    "«" + anzeigeName() + "» kommt zurück ins Lager (Status «Lager») und "
+    + "erscheint wieder in der Geräteliste. Von dort lässt es sich ausgeben."));
+  const notiz = notizFeld(d);
+  d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
+  d.knoepfe.appendChild(knopf("Reaktivieren", "knopf-primaer", function () {
+    dialogSchliessen();
+    inhaberSchreiben([], "Gerät reaktiviert, liegt im Lager.", {
+      Status: "Lager",
+      Verlauf: verlaufAnhaengen(wert("Verlauf"), verlaufTextMit("Reaktiviert, ins Lager gelegt", notiz.value))
+    });
+  }));
+  notiz.focus();
 }
 
 /* ---------- Löschen ---------- */
