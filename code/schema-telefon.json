@@ -90,15 +90,6 @@
         "description":  "Grund oder Hinweis, Freitext"
     },
     {
-        "internal":  "FruehererEintrag",
-        "display":  "Früherer Eintrag",
-        "type":  "Text",
-        "group":  "Zuordnung",
-        "source":  "manuell",
-        "inDefaultView":  false,
-        "description":  "Wer die Nummer vorher hatte"
-    },
-    {
         "internal":  "Verlauf",
         "display":  "Verlauf",
         "type":  "Note",

@@ -53,6 +53,7 @@ $ServerDir = Join-Path $TestDir 'server'
 $InventarNurFunktionen = $true
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 . (Join-Path $ServerDir 'Sync-Inventar.ps1')
+. (Join-Path $TestDir 'Migriere-FruehererEintrag.ps1')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Geschäftsjahr'
@@ -354,7 +355,7 @@ $prg = Read-JsonDatei (Join-Path $ServerDir 'programme.json')
 Pruefe 'Computer-Schema: 7 manuelle Spalten' 7 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
 Pruefe 'Computer-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
 Pruefe 'Benutzer-Schema: 14 Spalten'        14 $schemaB.Count
-Pruefe 'Telefon-Schema: 12 Spalten'         12 $schemaT.Count
+Pruefe 'Telefon-Schema: 11 Spalten'         11 $schemaT.Count
 Pruefe 'Telefon-Schema: 2 AD-Spalten'       2 (@($schemaT | Where-Object { $_.source -eq 'ad' }).Count)
 Pruefe 'Telefon-Schema: Verlauf ist Note'   'Note' (@($schemaT | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
 Pruefe 'Telefon-Schema: Titel heisst Kurzwahl' 'Kurzwahl' (@($schemaT | Where-Object { $_.internal -eq 'Title' })[0].display)
@@ -383,6 +384,28 @@ Pruefe 'Hinweis bei 403'                  'True' ((Get-SpaltenHinweis 'Graph POS
 Pruefe 'Hinweis bei accessDenied'         'True' ((Get-SpaltenHinweis '{"error":{"code":"accessDenied"}}') -ne '').ToString()
 Pruefe 'Kein Hinweis bei 400'             ''     (Get-SpaltenHinweis 'Graph PATCH … (400) Bad Request.')
 Pruefe 'Kein Hinweis bei leerem Fehler'   ''     (Get-SpaltenHinweis $null)
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Migration «Früherer Eintrag» -> Verlauf'
+$migZeit = [datetime]'2026-09-07T10:00:00Z'
+$migLeer = Get-FruehererEintragMigration -Verlauf '' -Wert '' -Zeitpunkt $migZeit
+Pruefe 'Migration ohne Wert: überspringen'   'ueberspringen' $migLeer.Aktion
+$migNeu = Get-FruehererEintragMigration -Verlauf '' -Wert ' Muster Hans ' -Zeitpunkt $migZeit
+Pruefe 'Migration neuer Eintrag: anhängen'   'anhaengen' $migNeu.Aktion
+$migEintraege = @(ConvertFrom-Verlauf $migNeu.Verlauf)
+Pruefe 'Migration: ein Eintrag im Verlauf'   1 $migEintraege.Count
+Pruefe 'Migration: Text'                     'Früherer Eintrag: Muster Hans (aus der alten Telefonliste S4B übernommen)' $migEintraege[0].text
+Pruefe 'Migration: Datum = Stand alte Liste' '2026-07-31' $migEintraege[0].datum
+Pruefe 'Migration: Quelle sync'              'sync' $migEintraege[0].quelle
+$migBestehend = '[{"id":"x","datum":"2026-09-04","text":"Aus der Telefonliste S4B importiert","quelle":"sync","erstellt":"2026-09-04T10:00:00Z"}]'
+$migZwei = Get-FruehererEintragMigration -Verlauf $migBestehend -Wert 'Muster Hans' -Zeitpunkt $migZeit
+Pruefe 'Migration: bestehende Einträge bleiben' 2 (@(ConvertFrom-Verlauf $migZwei.Verlauf)).Count
+Pruefe 'Migration: alter Eintrag unverändert'  'Aus der Telefonliste S4B importiert' (@(ConvertFrom-Verlauf $migZwei.Verlauf))[0].text
+$migNochmal = Get-FruehererEintragMigration -Verlauf $migZwei.Verlauf -Wert 'Muster Hans' -Zeitpunkt $migZeit
+Pruefe 'Migration idempotent: nur leeren'    'leeren' $migNochmal.Aktion
+$migFehler = $false
+try { [void](Get-FruehererEintragMigration -Verlauf 'kaputt {' -Wert 'X' -Zeitpunkt $migZeit) } catch { $migFehler = $true }
+Pruefe 'Migration: unlesbarer Verlauf wirft'  'True' $migFehler
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'

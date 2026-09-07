@@ -7,7 +7,7 @@
      Stammdaten   Kurzwahl, Nummer, Name, Typ, Status, Apparat, Standort —
                   dazu die Person, die im Active Directory diese Nummer
                   hinterlegt hat (live aus der Benutzer-Liste).
-     Hinweis      Hinweis, früherer Eintrag und der Verlauf.
+     Hinweis      Hinweis und der Verlauf (auch: wer die Nummer früher hatte).
 
    Mit ?neu=1 wird eine neue Nummer erfasst: dasselbe Formular, «Anlegen»
    statt «Speichern». Die Telefonnummer wird aus der Kurzwahl vorgeschlagen
@@ -592,9 +592,6 @@ function bereichHinweis(ziel) {
   const felder = el("div", "datenzeilen");
   const hinweisFeld = eingabeFuer(SPALTE["Hinweis"]);
   felder.appendChild(formZeile(SPALTE["Hinweis"].d, hinweisFeld, "Hinweis"));
-  const frueher = eingabeFuer(SPALTE["FruehererEintrag"]);
-  felder.appendChild(formZeile(SPALTE["FruehererEintrag"].d, frueher, "FruehererEintrag",
-    "Wer die Nummer vorher hatte — aus der alten Liste übernommen."));
   kHinweis.inhalt.appendChild(felder);
   stapel.appendChild(kHinweis);
 

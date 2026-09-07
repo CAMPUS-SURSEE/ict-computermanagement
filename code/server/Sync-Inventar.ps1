@@ -1297,8 +1297,8 @@ if (-not $OnlyComputers -and -not $OnlyBenutzer) {
         if ($cfg.TelefonPraefix) { $praefix = [string]$cfg.TelefonPraefix }
 
         # 1) Vorhandene Spalten feststellen. Geprüft werden nur die Spalten, die diese Phase
-        #    wirklich schreibt – die manuellen Spalten der Liste (Apparat, Standort, Hinweis,
-        #    Früherer Eintrag) gehen den Sync nichts an.
+        #    wirklich schreibt – die manuellen Spalten der Liste (Apparat, Standort, Hinweis)
+        #    gehen den Sync nichts an.
         $tErwartet = @('Telefonnummer', 'Name', 'Typ', 'Status', 'Benutzer', 'ADLetzterSync', 'Verlauf')
         $tVorhanden = Get-ListenSpalten $TelefonListId 'Telefonliste' $tErwartet
 

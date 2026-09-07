@@ -14,7 +14,7 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **ein Programm hinzufügen oder ändern** | `programme.json` bearbeiten → `Upload-Programme.ps1` → `Ergaenze-Spalten.ps1` legt die Spalte an (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | in `programme.json` unter `adGruppen` eintragen → `Upload-Programme.ps1` (Abschnitt 3) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-computer.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `200 bestanden, 0 fehlgeschlagen` |
+| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `212 bestanden, 0 fehlgeschlagen` |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
@@ -39,7 +39,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 |---|---|---|
 | Liste **Computer** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
-| Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, Früherer Eintrag, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
+| Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | **programme.json** | die Programmliste mit Kategorie und AD-Gruppen; liegt in `Dokumente/Inventar/` auf der Site | von Hand, hochgeladen mit `Upload-Programme.ps1` |
 
 ```
@@ -119,6 +119,8 @@ und wird nie auf den Server kopiert.
 | `Build-Spalten.ps1` | erzeugt `frontend/spalten.js` aus den Schemadateien |
 | `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und `programme.json` fehlen – der einzige Ort, an dem Spalten entstehen (Abschnitt 4) |
 | `Upload-Programme.ps1` | lädt `server/programme.json` nach SharePoint (mit Sicherung und Kontrolle) |
+| `Entferne-Spalte.ps1` | löscht eine benannte Spalte nach Sicherung ihrer Werte (Gegenstück zu `Ergaenze-Spalten.ps1`) |
+| `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
 
@@ -307,6 +309,11 @@ Importskript dafür war einmalig und ist entfernt; wer den Ablauf nachlesen will
 Git-Historie (`git log -- code/Import-Telefonliste.ps1`). Gepflegt wird die Liste seither im
 Frontend, ergänzt vom Sync.
 
+Die Import-Spalte «Früherer Eintrag» (wer die Nummer vorher hatte) wurde im September 2026 in den
+**Verlauf** überführt: `Migriere-FruehererEintrag.ps1` hängt je Zeile einen Eintrag
+«Früherer Eintrag: … (aus der alten Telefonliste S4B übernommen)» mit Datum 31.07.2026 an, leert
+die Spalte und löscht sie. Zuerst mit `-WhatIf`, dann ohne; braucht nur die Device-Code-Anmeldung.
+
 ### 2.8 Inhaberschaft (wem ein Gerät gehört)
 
 Jedes Gerät hat **genau einen Inhaber**: die Person, der es formal gehört. Gespeichert wird das in
@@ -426,7 +433,7 @@ Archivieren und Reaktivieren), die Telefonnummern (Normalisierung, Kurzwahl, Abg
 das Verhalten bei fehlenden Spalten, Anzahl und Eindeutigkeit der Schema- und Programmeinträge sowie
 die Syntax aller `*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 199 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 212 bestanden, 0 fehlgeschlagen`.
 
 Die Prüfung «`programme.json`: N Programme» ist eine feste Zahl im Test. Wer Programme hinzufügt oder
 entfernt, zieht sie dort nach.

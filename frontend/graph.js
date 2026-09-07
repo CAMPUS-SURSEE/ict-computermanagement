@@ -592,6 +592,8 @@ const Mock = (function () {
                  ["267", "Itin Giulia"], ["318", "Auviso (Ersatz B+T)"], ["396", "Hecht Mathias"]];
 
   function telefonZeile(r, nr, kurz, name, typ, status, benutzerLogin, hinweis, frueher) {
+    /* «frueher»: wer die Nummer vorher hatte — steht wie in der echten Liste
+       als Verlaufseintrag (Migration vom 2026-09), nicht in einer Spalte. */
     const z = leereZeile(SPALTEN_TELEFON);
     z.id = String(nr);
     z.Title = kurz;
@@ -605,11 +607,17 @@ const Mock = (function () {
       : (r() < 0.6 ? "Teams" : (r() < 0.5 ? "Tischtelefon" : "Headset")));
     z.Standort = typ === "Raum" ? name : (r() < 0.3 ? waehle(r, GEBAEUDE) : "");
     z.Hinweis = hinweis || "";
-    z.FruehererEintrag = frueher || "";
-    z.Verlauf = JSON.stringify([{
+    const verlauf = [{
       id: "mock-t-" + nr, datum: tagIso(35), quelle: "sync", erstellt: vorTagen(35, 9),
       text: "Aus der Telefonliste S4B importiert (Stand 31.07.2026)"
-    }]);
+    }];
+    if (frueher) {
+      verlauf.push({
+        id: "mock-tf-" + nr, datum: "2026-07-31", quelle: "sync", erstellt: vorTagen(3, 10),
+        text: "Früherer Eintrag: " + frueher + " (aus der alten Telefonliste S4B übernommen)"
+      });
+    }
+    z.Verlauf = JSON.stringify(verlauf);
     return z;
   }
 

@@ -131,6 +131,5 @@ const SPALTEN_TELEFON = [
   { i: "Apparat", d: "Apparat", t: "Text", g: "Ausstattung", q: "manuell" },
   { i: "Standort", d: "Standort", t: "Text", g: "Ausstattung", q: "manuell" },
   { i: "Hinweis", d: "Hinweis", t: "Note", g: "Zuordnung", q: "manuell" },
-  { i: "FruehererEintrag", d: "Früherer Eintrag", t: "Text", g: "Zuordnung", q: "manuell" },
   { i: "Verlauf", d: "Verlauf", t: "Note", g: "Zuordnung", q: "manuell" }
 ];
