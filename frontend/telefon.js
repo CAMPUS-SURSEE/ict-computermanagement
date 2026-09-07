@@ -1,6 +1,6 @@
 /* telefon.js — Telefonfenster des Computer Inventars.
 
-   Wird von der Hauptseite mit window.open("telefon.html?id=…", "telefon-<id>")
+   Wird von der Hauptseite als telefon.html?id=… im selben Tab
    geöffnet und zeigt eine einzelne Zeile der Liste «Telefonnummern» in zwei
    Bereichen:
 
@@ -395,8 +395,7 @@ function personKarte() {
     const links = el("div");
     const a = el("a", "name-link tf-person-name", b.__name || b.Title);
     a.href = "benutzer.html?id=" + encodeURIComponent(b.id) + MOCK_ANHANG;
-    a.target = "benutzer-" + b.id;
-    a.title = "Benutzerfenster öffnen";
+    a.title = "Benutzer öffnen";
     links.appendChild(a);
     const unter = [];
     if (b.Title) unter.push(text(b.Title));
@@ -662,7 +661,19 @@ function logoZeichnen() {
   const verweis = $("tf-logo");
   if (verweis) verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
   const pfad = $("tf-pfad");
-  if (pfad) pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#telefone";
+  if (pfad) {
+    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#telefone";
+    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
+       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
+    pfad.addEventListener("click", function (e) {
+      let vonListe = false;
+      try {
+        const von = new URL(document.referrer);
+        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
+      } catch (fehler) { vonListe = false; }
+      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
+    });
+  }
 }
 
 function adresseFuer(id) {

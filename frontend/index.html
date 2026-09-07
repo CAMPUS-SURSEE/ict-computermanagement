@@ -90,27 +90,32 @@
     <main class="inhalt ansicht" id="ansicht-uebersicht" hidden>
       <div class="bahn">
 
+        <!-- Zuoberst, was Aufmerksamkeit braucht: alle Kennzahlen mit Warn-
+             oder Gefahrenton und einem Wert über null, aus allen drei Listen.
+             Ein Klick öffnet die passende Liste gefiltert. -->
+        <section class="bereich">
+          <h2 class="bereich-titel">Handlungsbedarf</h2>
+          <div class="kacheln" id="kacheln-handlungsbedarf"></div>
+          <p class="hinweis" id="handlungsbedarf-leer" hidden>Nichts offen — alle geprüften Regeln sind erfüllt.</p>
+        </section>
+
         <section class="bereich">
           <h2 class="bereich-titel">Geräte</h2>
-          <p class="bereich-unter">Ein Klick auf eine Kachel öffnet die Geräteliste mit dem passenden Filter.</p>
           <div class="kacheln" id="kacheln-geraete"></div>
         </section>
 
         <section class="bereich">
           <h2 class="bereich-titel">Benutzer</h2>
-          <p class="bereich-unter">Aus der Benutzerliste, die der AD-Abgleich pflegt.</p>
           <div class="kacheln" id="kacheln-benutzer"></div>
         </section>
 
         <section class="bereich">
           <h2 class="bereich-titel">Telefonnummern</h2>
-          <p class="bereich-unter">Aus der Liste «Telefonnummern». Nicht zugewiesene Nummern sind in der Liste hervorgehoben.</p>
           <div class="kacheln" id="kacheln-telefone"></div>
         </section>
 
         <section class="bereich">
           <h2 class="bereich-titel">Ersatzplanung</h2>
-          <p class="bereich-unter">Geschäftsjahre vom ältesten Beschaffungsjahr bis zum spätesten geplanten Ersatz. Ein Klick auf eine Säule filtert die Geräteliste.</p>
           <div class="karte">
             <div class="zeitstrahl" id="zeitstrahl"></div>
             <div class="zeitstrahl-legende" id="zeitstrahl-legende"></div>
@@ -119,7 +124,6 @@
 
         <section class="bereich">
           <h2 class="bereich-titel">Verteilungen</h2>
-          <p class="bereich-unter">Die zehn häufigsten Werte je Merkmal.</p>
           <div class="gitter gitter-2" id="verteilungen"></div>
         </section>
 

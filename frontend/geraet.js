@@ -1,6 +1,6 @@
 /* geraet.js — Gerätefenster des Computer Inventars (Spezifikation 3.3).
 
-   Wird von der Hauptseite mit window.open("geraet.html?id=…", "geraet-<id>")
+   Wird von der Hauptseite als geraet.html?id=… im selben Tab
    geöffnet und zeigt ein einzelnes Gerät der Liste «Computer»: Übersicht mit
    Kennzahlen, kompaktem Lebenszyklus und Hinweisen, Beschaffung, Inhaber,
    Stammdaten, Software aus SCCM, Hardware, System, Sicherheit,
@@ -1021,9 +1021,8 @@ function bereichBeschaffung(ziel) {
 /* ---------- Inhaber ---------- */
 
 function benutzerFensterOeffnen(id) {
-  const adresse = "benutzer.html?id=" + encodeURIComponent(id)
+  location.href = "benutzer.html?id=" + encodeURIComponent(id)
     + (mockModus ? "&mock=1" : "");
-  window.open(adresse, "benutzer-" + id);
 }
 
 /* Eine Personenzeile mit Namen, Kurzangaben und Knöpfen. */
@@ -1946,9 +1945,8 @@ function aktionenZeichnen() {
 
   if (!neuModus) {
     ziel.appendChild(knopf("Duplizieren", "knopf-leise", function () {
-      const adresse = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
+      location.href = "geraet.html?neu=1&vorlage=" + encodeURIComponent(zeile.id)
         + (mockModus ? "&mock=1" : "");
-      window.open(adresse, "geraet-neu");
     }));
 
     ziel.appendChild(knopf("Löschen", "knopf-leise", loeschenDialog));
@@ -1963,7 +1961,19 @@ function logoZeichnen() {
   verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
   // Der Pfad über dem Titel führt in die Geräteliste.
   const pfad = $("g-pfad");
-  if (pfad) pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#geraete";
+  if (pfad) {
+    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#geraete";
+    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
+       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
+    pfad.addEventListener("click", function (e) {
+      let vonListe = false;
+      try {
+        const von = new URL(document.referrer);
+        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
+      } catch (fehler) { vonListe = false; }
+      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
+    });
+  }
 }
 
 function adresseFuer(id) {

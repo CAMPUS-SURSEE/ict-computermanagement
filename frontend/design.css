@@ -558,6 +558,8 @@ button.kachel:active { background: var(--flaeche-2); }
 .kachel.ton-erfolg  .kachel-wert { color: var(--erfolg); }
 .kachel.ton-warnung .kachel-wert { color: var(--warnung); }
 .kachel.ton-gefahr  .kachel-wert { color: var(--gefahr); }
+/* Null ist keine Nachricht: die Zahl tritt zurück. */
+.kachel.kachel-null .kachel-wert { color: var(--text-still); }
 .kachel.ton-info    .kachel-wert { color: var(--info); }
 
 

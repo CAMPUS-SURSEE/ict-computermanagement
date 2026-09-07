@@ -1,6 +1,6 @@
 /* benutzer.js — Benutzerfenster des Computer Inventars (Spezifikation 3.4).
 
-   Wird von der Hauptseite mit window.open("benutzer.html?id=…") geöffnet und
+   Wird von der Hauptseite als benutzer.html?id=… im selben Tab geöffnet und
    zeigt eine einzelne Zeile der Benutzer-Liste in vier Abschnitten:
 
      Übersicht        AD-Felder (schreibgeschützt), Gerät, Kennzahlen
@@ -279,9 +279,8 @@ function statusMarke(computerZeile) {
   return c;
 }
 
-/* Link in das Gerätefenster. Öffnet je Gerät ein eigenes Fenster.
-   Geöffnet wird immer über die Listen-ID, nie über den Namen: Namen sind
-   nicht eindeutig.
+/* Link auf die Geräteseite. Geöffnet wird immer über die Listen-ID, nie
+   über den Namen: Namen sind nicht eindeutig.
 
    Ist das Gerät nicht «Aktiv», steht der Status daneben — sonst wundert
    man sich, warum es in der Geräteliste nicht auftaucht. */
@@ -289,8 +288,7 @@ function geraetLink(computerZeile) {
   const huelle = el("span", "b-geraetlink");
   const a = el("a", "name-link", computerZeile.Title);
   a.href = "geraet.html?id=" + encodeURIComponent(computerZeile.id) + MOCK_ANHANG;
-  a.target = "geraet-" + computerZeile.id;
-  a.title = "Listen-ID " + computerZeile.id + " — Gerätefenster öffnen";
+  a.title = "Listen-ID " + computerZeile.id + " — Gerät öffnen";
   huelle.appendChild(a);
 
   const marke = statusMarke(computerZeile);
@@ -367,9 +365,7 @@ function mehrdeutigHinweis() {
     const a = el("a", "chip" + (c === gewaehlt ? " chip-marke" : ""),
       "Listen-ID " + c.id + " · " + Modell.status(c.Status));
     a.href = "geraet.html?id=" + encodeURIComponent(c.id) + MOCK_ANHANG;
-    a.target = "geraet-" + c.id;
-    a.title = (c === gewaehlt ? "Wird hier angezeigt. " : "")
-      + "Gerätefenster in eigenem Fenster öffnen";
+    a.title = (c === gewaehlt ? "Wird hier angezeigt. " : "") + "Gerät öffnen";
     liste.appendChild(a);
   }
   kasten.appendChild(liste);
@@ -785,7 +781,19 @@ function logoZeichnen() {
   verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
   // Der Pfad über dem Titel führt in die Benutzerliste.
   const pfad = $("b-pfad");
-  if (pfad) pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#benutzer";
+  if (pfad) {
+    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#benutzer";
+    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
+       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
+    pfad.addEventListener("click", function (e) {
+      let vonListe = false;
+      try {
+        const von = new URL(document.referrer);
+        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
+      } catch (fehler) { vonListe = false; }
+      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
+    });
+  }
 }
 
 /* Die Seitennavigation. Die Spalte selbst (.fenster-nav) reicht bis zum

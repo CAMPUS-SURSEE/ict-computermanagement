@@ -50,7 +50,7 @@ body.seite { height: 100vh; overflow: hidden; }
 }
 
 /* Kennzahl-Kacheln: auto-fit, damit jede Reihe bündig abschliesst. */
-.kacheln { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.kacheln { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .kacheln .kachel { min-height: 108px; }
 
 

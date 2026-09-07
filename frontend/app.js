@@ -273,7 +273,7 @@ const mockModus = new URLSearchParams(location.search).get("mock") === "1";
    «c» = sichtbare Spalten (Komma-getrennt), «d» = Dichte. Beide gelten für
    die Ansicht im Hash. Fehlen sie, gilt die im Browser gemerkte Auswahl. */
 
-function hashSchreiben() {
+function hashSchreiben(alsVerlaufseintrag) {
   const p = new URLSearchParams();
   const a = zustand.ansicht;
 
@@ -312,11 +312,16 @@ function hashSchreiben() {
   if (location.hash === neu) return;
   eigenerHash = neu;
 
-  /* Bewusst replaceState statt location.hash: zwei Zuweisungen im selben
-     Durchlauf verwirft der Browser stillschweigend, und jede Filteränderung
-     als Verlaufseintrag würde die Zurück-Taste unbrauchbar machen. */
+  /* Ein Ansichtswechsel (Übersicht → Geräte) ist ein Schritt, den die
+     Zurück-Taste rückgängig machen soll: pushState. Filter, Sortierung und
+     Spaltenwahl ersetzen dagegen nur den aktuellen Eintrag — jede Änderung
+     als Verlaufseintrag würde die Zurück-Taste unbrauchbar machen. Bewusst
+     nicht location.hash: zwei Zuweisungen im selben Durchlauf verwirft der
+     Browser stillschweigend. */
+  const adresse = location.pathname + location.search + neu;
   if (window.history && history.replaceState) {
-    history.replaceState(null, "", location.pathname + location.search + neu);
+    if (alsVerlaufseintrag) history.pushState(null, "", adresse);
+    else history.replaceState(null, "", adresse);
   } else {
     location.hash = neu;
   }
@@ -776,9 +781,7 @@ function zelle(tab, zeile, schluessel) {
         : (tab === "telefone" ? (zeile.__kurzwahl || "(ohne Kurzwahl)") : "(ohne Namen)"));
     const link = el("a", "name-link", text);
     link.href = detailUrl(tab, zeile.id);
-    link.target = fensterName(tab, zeile.id);
-    link.rel = "noopener";
-    link.title = text + " — Detail in neuem Fenster öffnen";
+    link.title = text + " — Detail öffnen";
     td.appendChild(link);
     return td;
   }
@@ -822,9 +825,7 @@ function zelle(tab, zeile, schluessel) {
       const b = zeile.__benutzerZeile;
       const link = el("a", "name-link", zeile.__benutzerName);
       link.href = benutzerUrl(b.id);
-      link.target = "benutzer-" + b.id;
-      link.rel = "noopener";
-      link.title = (b.Title || "") + " — Benutzerfenster öffnen";
+      link.title = (b.Title || "") + " — Benutzer öffnen";
       td.appendChild(link);
       if (!b.__adAktiv) {
         td.appendChild(document.createTextNode(" "));
@@ -858,9 +859,7 @@ function zelle(tab, zeile, schluessel) {
     const b = zeile.__inhaber;
     const link = el("a", "name-link", zeile.__inhaberName);
     link.href = benutzerUrl(b.id);
-    link.target = "benutzer-" + b.id;
-    link.rel = "noopener";
-    link.title = (b.Title || "") + " — Benutzerfenster öffnen";
+    link.title = (b.Title || "") + " — Benutzer öffnen";
     td.appendChild(link);
     if (zeile.__mehrfachInhaber) {
       td.appendChild(document.createTextNode(" "));
@@ -1450,11 +1449,12 @@ function csvExport(tab) {
 function springeMitFilter(tab, setzen) {
   filterZuruecksetzen(tab);
   setzen(zustand[tab]);
+  const gewechselt = zustand.ansicht !== tab;
   zustand.ansicht = tab;
   panelsSchliessen();
   neuBerechnen(tab);
   zeichneAnsicht();
-  hashSchreiben();
+  hashSchreiben(gewechselt);
   const rahmen = $(tab + "-rahmen");
   if (rahmen) rahmen.scrollTop = 0;
 }
@@ -1495,7 +1495,24 @@ function aktiveGeraete() {
   return geraete.filter(z => !z.__archiviert);
 }
 
+/* Eine Kennzahl landet zuoberst unter «Handlungsbedarf», wenn sie einen
+   Warn- oder Gefahrenton trägt und grösser als null ist. Alles andere bleibt
+   im Bestand seiner Liste; eine Null wird grau. Im Handlungsbedarf steht die
+   Herkunft (Geräte, Benutzer, Telefonnummern) als Unterzeile, damit
+   «nicht in SCCM» ohne seinen Block verständlich bleibt. */
+function kachelnEinordnen(zielBestand, herkunft, liste) {
+  const zielOffen = $("kacheln-handlungsbedarf");
+  for (const [w, t, ton, unter, aktion] of liste) {
+    const offen = ton && ton !== "erfolg" && w > 0;
+    const k = kachel(w, t, ton, offen ? (unter ? herkunft + " · " + unter : herkunft) : unter, aktion);
+    if (!w) k.classList.add("kachel-null");
+    (offen ? zielOffen : zielBestand).appendChild(k);
+  }
+}
+
 function zeichneUebersicht() {
+  leeren($("kacheln-handlungsbedarf"));
+
   /* ---- Kennzahlen Geräte ---- */
   const zielG = $("kacheln-geraete");
   leeren(zielG);
@@ -1523,14 +1540,12 @@ function zeichneUebersicht() {
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig))],
     [ohneJahr, "ohne Beschaffungsjahr", ohneJahr ? "warnung" : null, null,
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.unbekannt))],
-    [ohneInhaber, "ohne Inhaber", null, null,
+    [ohneInhaber, "ohne Inhaber", ohneInhaber ? "warnung" : null, null,
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatInhaber", "Nein"))],
     [archiviert, "archiviert", null, "in der Liste ausgeblendet",
       () => springeMitFilter("geraete", z => facetteSetzen(z, "__statusText", ARCHIVIERT))]
   ];
-  for (const [w, t, ton, unter, aktion] of kachelnG) {
-    zielG.appendChild(kachel(w, t, ton, unter, aktion));
-  }
+  kachelnEinordnen(zielG, "Geräte", kachelnG);
 
   /* ---- Kennzahlen Benutzer ---- */
   const zielB = $("kacheln-benutzer");
@@ -1550,9 +1565,7 @@ function zeichneUebersicht() {
     [abweichung, "Primärgerät weicht ab", abweichung ? "warnung" : null,
       "SCCM-Primärgerät ≠ Gerät der Person", null]
   ];
-  for (const [w, t, ton, unter, aktion] of kachelnB) {
-    zielB.appendChild(kachel(w, t, ton, unter, aktion));
-  }
+  kachelnEinordnen(zielB, "Benutzer", kachelnB);
 
   /* ---- Kennzahlen Telefonnummern ---- */
   const zielT = $("kacheln-telefone");
@@ -1565,8 +1578,7 @@ function zeichneUebersicht() {
   const nameWeicht = zaehle(telefone, t => t.__nameAbweichung);
   const ohneTelefon = zaehle(benutzer, b => b.__adAktiv && !b.__hatTelefon);
 
-  /* Sieben Kacheln wie bei den Geräten, damit sie in eine Reihe passen
-     (Styleguide 4.5). «zugewiesen» ist der Normalfall und bleibt schwarz. */
+  /* «zugewiesen» ist der Normalfall und bleibt schwarz. */
   const kachelnT = [
     [telefone.length, "Telefonnummern", null, null,
       () => springeMitFilter("telefone", function () { })],
@@ -1588,12 +1600,12 @@ function zeichneUebersicht() {
         facetteSetzen(z, "ADAktiviert", "Ja");
       })]
   ];
-  for (const [w, t, ton, unter, aktion] of kachelnT) {
-    zielT.appendChild(kachel(w, t, ton, unter, aktion));
-  }
+  kachelnEinordnen(zielT, "Telefonnummern", kachelnT);
   if (telefonHinweis && !telefone.length) {
     zielT.appendChild(el("p", "hinweis", telefonHinweis));
   }
+
+  $("handlungsbedarf-leer").hidden = $("kacheln-handlungsbedarf").children.length > 0;
 
   zeichneZeitstrahl();
   zeichneVerteilungen();
@@ -1760,16 +1772,6 @@ function zeichneVerteilungen() {
 
   ziel.appendChild(verteilungsKarte("Benutzer nach Abteilung", verteilung("benutzer", "Abteilung"),
     w => springeMitFilter("benutzer", z => facetteSetzen(z, "Abteilung", w))));
-
-  ziel.appendChild(verteilungsKarte("Benutzer nach Firma", verteilung("benutzer", "Firma"),
-    w => springeMitFilter("benutzer", z => facetteSetzen(z, "Firma", w))));
-
-  ziel.appendChild(verteilungsKarte("Telefonnummern nach Typ", verteilung("telefone", "Typ"),
-    w => springeMitFilter("telefone", z => facetteSetzen(z, "Typ", w))));
-
-  ziel.appendChild(verteilungsKarte("Telefonnummern nach Abteilung (AD)",
-    verteilung("telefone", "__abteilung"),
-    w => springeMitFilter("telefone", z => facetteSetzen(z, "__abteilung", w))));
 }
 
 
@@ -1904,24 +1906,22 @@ function detailUrl(tab, id) {
   return geraetUrl(id);
 }
 
-/* Pro Datensatz genau ein Fenster: der Fenstername «geraet-<id>»,
-   «benutzer-<id>» bzw. «telefon-<id>» holt ein bestehendes Fenster nach
-   vorne, statt ein weiteres zu öffnen. */
-function fensterName(tab, id) {
-  return (tab === "benutzer" ? "benutzer-" : (tab === "telefone" ? "telefon-" : "geraet-")) + id;
-}
-
-function detailOeffnen(tab, id, neuesFenster) {
+/* Detailseiten öffnen im selben Tab; die Zurück-Taste führt zur Liste mit
+   allen Filtern, weil der Zustand im Hash steht. Wer mehrere Datensätze
+   nebeneinander braucht, nimmt Ctrl-Klick, Shift-Klick oder die mittlere
+   Maustaste — dann ein neuer Tab. */
+function detailOeffnen(tab, id, neuerTab) {
   if (id === null || id === undefined) return;
-  window.open(detailUrl(tab, id), neuesFenster ? "_blank" : fensterName(tab, id));
+  if (neuerTab) window.open(detailUrl(tab, id), "_blank");
+  else location.href = detailUrl(tab, id);
 }
 
 function neuesGeraetOeffnen() {
-  window.open("geraet.html?neu=1" + (mockModus ? "&mock=1" : ""), "geraet-neu");
+  location.href = "geraet.html?neu=1" + (mockModus ? "&mock=1" : "");
 }
 
 function neueTelefonnummerOeffnen() {
-  window.open("telefon.html?neu=1" + (mockModus ? "&mock=1" : ""), "telefon-neu");
+  location.href = "telefon.html?neu=1" + (mockModus ? "&mock=1" : "");
 }
 
 let hinweisZeitgeber = null;
@@ -2037,16 +2037,26 @@ function dichteAnwenden(tab) {
    Ansicht über der Lade- oder Fehlermeldung. */
 function ansichtWechseln(name) {
   if (ANSICHTEN.indexOf(name) === -1) return;
+  const gewechselt = zustand.ansicht !== name;
   zustand.ansicht = name;
   if (!$("reiter").hidden) zeichneAnsicht();
-  hashSchreiben();
+  hashSchreiben(gewechselt);
 }
+
+/* Tab-Titel und Reiter-Beschriftung je Ansicht. */
+const ANSICHT_TITEL = {
+  uebersicht: "Übersicht", geraete: "Geräte", benutzer: "Benutzer",
+  telefone: "Telefonnummern", software: "Software"
+};
 
 function zeichneAnsicht() {
   for (const a of ANSICHTEN) $("ansicht-" + a).hidden = a !== zustand.ansicht;
   for (const k of document.querySelectorAll(".reiter-knopf")) {
-    k.classList.toggle("aktiv", k.dataset.ansicht === zustand.ansicht);
+    const aktiv = k.dataset.ansicht === zustand.ansicht;
+    k.classList.toggle("aktiv", aktiv);
+    if (aktiv) k.setAttribute("aria-current", "page"); else k.removeAttribute("aria-current");
   }
+  document.title = (ANSICHT_TITEL[zustand.ansicht] || "Übersicht") + " — Computer Inventar";
 
   if (zustand.ansicht === "uebersicht") zeichneUebersicht();
 
@@ -2250,6 +2260,13 @@ function ereignisseVerbinden() {
       const feld = $(tab + "-suche");
       if (feld) { feld.focus(); feld.select(); }
     }
+  });
+
+  /* Kommt die Seite über die Zurück-Taste aus dem Cache des Browsers
+     (bfcache), ist sie so alt wie beim Verlassen — die Änderung aus der
+     Detailseite fehlt. Darum still nachladen. */
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted && !$("reiter").hidden) stillNeuLaden(true);
   });
 
   window.addEventListener("hashchange", function () {
