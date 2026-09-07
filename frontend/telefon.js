@@ -50,38 +50,16 @@ function istBearbeitbar(spalte) {
 
 
 /* ==================================================================
-   2. Kleine DOM-Helfer
+   2. Gerüst (fenster.js) und DOM-Helfer
    ================================================================== */
 
-function $(id) { return document.getElementById(id); }
-
-function el(tag, klasse, text) {
-  const k = document.createElement(tag);
-  if (klasse) k.className = klasse;
-  if (text !== undefined && text !== null) k.textContent = String(text);
-  return k;
-}
-
-function leeren(knoten) {
-  while (knoten.firstChild) knoten.removeChild(knoten.firstChild);
-  return knoten;
-}
-
-function knopf(beschriftung, klasse, beiKlick) {
-  const k = el("button", "knopf" + (klasse ? " " + klasse : ""), beschriftung);
-  k.type = "button";
-  if (beiKlick) k.addEventListener("click", beiKlick);
-  return k;
-}
-
-function text(wertRoh) {
-  return (wertRoh === null || wertRoh === undefined || wertRoh === false)
-    ? "" : String(wertRoh);
-}
-
-function chip(beschriftung, ton) {
-  return el("span", "chip" + (ton ? " chip-" + ton : ""), beschriftung);
-}
+const F = Fenster.erstellen("tf", { neuLaden: function () { neuLaden(); } });
+const $ = F.$, el = F.el, leeren = F.leeren, knopf = F.knopf, text = F.text, chip = F.chip;
+const karte = F.karte, feldGesperrt = F.feldGesperrt, feldFrei = F.feldFrei;
+const toast = F.toast, melden = F.melden;
+const dialogOeffnen = F.dialogOeffnen, dialogSchliessen = F.dialogSchliessen;
+const zeigeLaden = F.zeigeLaden, zeigeFehler = F.zeigeFehler, zeigeInhalt = F.zeigeInhalt;
+const gleichwertig = F.gleichwertig;
 
 
 /* ==================================================================
@@ -107,6 +85,57 @@ const BEREICHE = [
   { k: "hinweis",    d: "Hinweis & Verlauf", f: bereichHinweis }
 ];
 
+/* ---------- Gerüst-Anbindung ---------- */
+
+function speicherleisteZeichnen() {
+  F.speicherleisteZeichnen({
+    neuModus: neuModus, geloescht: geloescht, speichertGerade: speichertGerade,
+    speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neue Telefonnummer"
+  });
+}
+
+function navZeichnen() { F.navZeichnen(BEREICHE, aktiverBereich, bereichWechseln); }
+
+function zeichneBereich(fokusHalten) {
+  aktiverBereich = F.zeichneBereich(BEREICHE, aktiverBereich, fokusHalten);
+}
+
+function bereichWechseln(schluessel) {
+  aktiverBereich = schluessel;
+  location.hash = "#" + schluessel;
+  navZeichnen();
+  zeichneBereich(false);
+}
+
+function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich; }
+
+function logoZeichnen() { F.logoZeichnen("telefone"); }
+
+function bandZeichnen() {
+  F.bandZeichnen("Vorführmodus (?mock=1): alle Nummern und Personen sind erfunden. "
+    + "Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
+      entwurf = {};
+      melden("telefon-geaendert", elementId);
+      neuLaden();
+    });
+}
+
+function autoStarten() {
+  F.autoStarten(
+    function () { return !neuModus && !geloescht && !speichertGerade && !anzahlAenderungen(); },
+    async function () {
+      await datenLaden(true);
+      zeileWaehlen();
+      zeigeInhalt();
+      zeichnenAlles();
+    });
+}
+
+/* Formularzeile mit Punkt, wenn das Feld im Entwurf steht. */
+function formZeile(beschriftung, feldKnoten, feldName, hinweis) {
+  return F.formZeile(beschriftung, feldKnoten, feldName && istGeaendert(feldName), hinweis);
+}
+
 
 /* ---------- Werte lesen und schreiben ---------- */
 
@@ -117,11 +146,6 @@ function wert(feld) {
 
 function textWert(feld) { return text(wert(feld)); }
 
-function gleichwertig(a, b) {
-  const nA = (a === null || a === undefined || a === false) ? "" : a;
-  const nB = (b === null || b === undefined || b === false) ? "" : b;
-  return String(nA) === String(nB);
-}
 
 function setzeWert(feld, neuerWert) {
   const alt = zeile ? zeile[feld] : "";
@@ -138,115 +162,10 @@ function istGeaendert(feld) {
 }
 
 
-/* ---------- Speicherleiste ---------- */
-
-function speicherleisteZeichnen() {
-  const leiste = $("tf-speicherleiste");
-  const anzahl = anzahlAenderungen();
-  const zeigen = !geloescht && (neuModus || anzahl > 0 || speichertGerade);
-  leiste.hidden = !zeigen;
-  if (!zeigen) return;
-
-  const t = neuModus
-    ? (anzahl === 0 ? "Neue Telefonnummer — noch nicht angelegt"
-                    : anzahl + (anzahl === 1 ? " Angabe" : " Angaben") + " erfasst")
-    : (anzahl === 1 ? "1 Änderung" : anzahl + " Änderungen");
-  $("tf-speicher-text").textContent = speichertGerade ? "Wird gespeichert …" : t;
-
-  const fehlerFeld = $("tf-speicher-fehler");
-  fehlerFeld.textContent = speicherFehler;
-  fehlerFeld.hidden = !speicherFehler;
-
-  const speichern = $("tf-knopf-speichern");
-  speichern.textContent = speicherFehler ? "Nochmals speichern"
-    : (neuModus ? "Anlegen" : "Speichern");
-  speichern.disabled = speichertGerade || (!neuModus && anzahl === 0);
-
-  const verwerfen = $("tf-knopf-verwerfen");
-  verwerfen.textContent = neuModus ? "Formular leeren" : "Verwerfen";
-  verwerfen.disabled = speichertGerade || anzahl === 0;
-}
-
-
-/* ---------- Toast ---------- */
-
-let toastZeit = null;
-
-function toast(meldung, istFehler) {
-  const t = $("tf-toast");
-  t.textContent = meldung;
-  t.className = "toast" + (istFehler ? " toast-fehler" : "");
-  t.hidden = false;
-  if (toastZeit) clearTimeout(toastZeit);
-  toastZeit = setTimeout(function () { t.hidden = true; }, istFehler ? 8000 : 3500);
-}
-
-
-/* ---------- Meldung an die Hauptseite ---------- */
-
-function melden(typ, id) {
-  try {
-    const kanal = new BroadcastChannel("computerinventar");
-    kanal.postMessage({ typ: typ, id: id === undefined ? null : String(id) });
-    kanal.close();
-  } catch (e) {
-    // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
-  }
-}
-
-
 /* ==================================================================
    4. Bausteine
    ================================================================== */
 
-function karte(titel, unter, breit) {
-  const k = el("section", "karte" + (breit ? " karte-breit" : ""));
-  if (titel || unter) {
-    const kopf = el("div", "karte-kopf");
-    if (titel) kopf.appendChild(el("h2", "karte-titel", titel));
-    if (unter) kopf.appendChild(el("p", "karte-unter", unter));
-    k.appendChild(kopf);
-  }
-  const inhalt = el("div", "karte-inhalt");
-  k.appendChild(inhalt);
-  k.inhalt = inhalt;
-  return k;
-}
-
-function feldGesperrt(beschriftung, wertText, hinweis) {
-  const f = el("div", "datenzeile");
-  const label = el("div", "datenzeile-name");
-  label.appendChild(el("span", "schloss"));
-  label.appendChild(document.createTextNode(beschriftung));
-  label.title = hinweis || "Kommt aus dem Abgleich und lässt sich hier nicht ändern.";
-  f.appendChild(label);
-  const w = text(wertText);
-  f.appendChild(el("div", "datenzeile-wert" + (w ? "" : " leer"), w || "—"));
-  return f;
-}
-
-function feldFrei(beschriftung, knoten) {
-  const f = el("div", "datenzeile");
-  f.appendChild(el("div", "datenzeile-name", beschriftung));
-  const wrap = el("div", "datenzeile-wert");
-  wrap.appendChild(knoten);
-  f.appendChild(wrap);
-  return f;
-}
-
-/* Eine Formularzeile: Beschriftung oben, Feld darunter (design.css
-   .datenzeile-form). «geaendert» markiert den Namen mit einem Punkt. */
-function formZeile(beschriftung, feldKnoten, feldName, hinweis) {
-  const z = el("div", "datenzeile datenzeile-form");
-  z.appendChild(el("div", "datenzeile-name", beschriftung));
-  const wrap = el("div", "datenzeile-wert");
-  wrap.appendChild(feldKnoten);
-  if (hinweis) wrap.appendChild(el("div", "datenzeile-hinweis", hinweis));
-  z.appendChild(wrap);
-  if (feldName) z.classList.toggle("geaendert", istGeaendert(feldName));
-  return z;
-}
 
 /* Vorschlagslisten aus den vorhandenen Werten einer Spalte. */
 const datenlistenGebaut = {};
@@ -277,7 +196,7 @@ function eingabeFuer(spalte, optionen) {
   const o = optionen || {};
   const istNote = spalte.t === "Note";
   const feld = el(istNote ? "textarea" : "input",
-    "feld-eingabe" + (istNote ? " tf-textarea" : "") + (o.klasse ? " " + o.klasse : ""));
+    "feld-eingabe" + (o.klasse ? " " + o.klasse : ""));
   if (!istNote) feld.type = "text";
   feld.value = textWert(spalte.i);
   feld.id = "tf-eingabe-" + spalte.i;
@@ -288,7 +207,7 @@ function eingabeFuer(spalte, optionen) {
     if (id) feld.setAttribute("list", id);
   }
   feld.addEventListener("input", function () {
-    feld.classList.remove("tf-ungueltig");
+    feld.classList.remove("ungueltig");
     setzeWert(spalte.i, feld.value);
     const z = feld.closest ? feld.closest(".datenzeile") : null;
     if (z) z.classList.toggle("geaendert", istGeaendert(spalte.i));
@@ -420,7 +339,7 @@ function personKarte() {
     const name = textWert("Name").trim();
     const adName = String(b.__name || "").trim();
     if (adName && Modell.schluessel(name) !== Modell.schluessel(adName)) {
-      const hinweis = el("div", "b-hinweis");
+      const hinweis = el("div", "banner");
       hinweis.appendChild(el("span", "t-warnung", name
         ? "In der Liste steht «" + name + "», im AD hat «" + adName + "» diese Nummer."
         : "Die Nummer hat noch keinen Namen; im AD gehört sie «" + adName + "»."));
@@ -433,7 +352,7 @@ function personKarte() {
       }));
       k.inhalt.appendChild(hinweis);
     } else if (statusWert() === "Frei") {
-      const hinweis = el("div", "b-hinweis");
+      const hinweis = el("div", "banner");
       hinweis.appendChild(el("span", "t-warnung",
         "Die Nummer steht auf «Frei», ist im AD aber bei «" + adName + "» hinterlegt."));
       hinweis.appendChild(knopf("Auf Aktiv setzen", "knopf-primaer", function () {
@@ -657,72 +576,11 @@ function aktionenZeichnen() {
   }
 }
 
-function logoZeichnen() {
-  const verweis = $("tf-logo");
-  if (verweis) verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
-  const pfad = $("tf-pfad");
-  if (pfad) {
-    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#telefone";
-    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
-       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
-    pfad.addEventListener("click", function (e) {
-      let vonListe = false;
-      try {
-        const von = new URL(document.referrer);
-        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
-      } catch (fehler) { vonListe = false; }
-      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
-    });
-  }
-}
 
 function adresseFuer(id) {
   return "telefon.html?id=" + encodeURIComponent(id) + MOCK_ANHANG;
 }
 
-function navZeichnen() {
-  const nav = leeren($("tf-nav"));
-  nav.hidden = false;
-  const menue = el("div", "fenster-nav-menue");
-  for (const b of BEREICHE) {
-    const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""), b.d);
-    k.type = "button";
-    if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
-    k.addEventListener("click", function () {
-      aktiverBereich = b.k;
-      location.hash = "#" + b.k;
-      navZeichnen();
-      zeichneBereich(false);
-    });
-    menue.appendChild(k);
-  }
-  nav.appendChild(menue);
-  const aktiv = menue.querySelector(".fenster-nav-knopf.aktiv");
-  if (aktiv && aktiv.scrollIntoView) aktiv.scrollIntoView({ block: "nearest", inline: "nearest" });
-}
-
-function zeichneBereich(fokusHalten) {
-  const vorher = document.activeElement;
-  const vorherId = vorher && vorher.id ? vorher.id : null;
-  let anfang = null;
-  try { anfang = vorher ? vorher.selectionStart : null; } catch (e) { anfang = null; }
-
-  const ziel = leeren($("tf-bereich"));
-  ziel.hidden = false;
-  const bereich = BEREICHE.filter(b => b.k === aktiverBereich)[0] || BEREICHE[0];
-  aktiverBereich = bereich.k;
-  bereich.f(ziel);
-
-  if (fokusHalten && vorherId) {
-    const nachher = $(vorherId);
-    if (nachher && nachher.focus) {
-      nachher.focus();
-      if (anfang !== null) {
-        try { nachher.setSelectionRange(anfang, anfang); } catch (e) { /* select */ }
-      }
-    }
-  }
-}
 
 function zeichnenAlles() {
   kopfZeichnen();
@@ -736,33 +594,6 @@ function zeichnenAlles() {
    8. Laden, Speichern, Anlegen, Löschen
    ================================================================== */
 
-function zeigeLaden(meldung, fortschrittText) {
-  $("tf-laden-text").textContent = meldung;
-  $("tf-laden-fortschritt").textContent = fortschrittText || "";
-  $("tf-laden").hidden = false;
-  $("tf-fehler").hidden = true;
-  $("tf-bereich").hidden = true;
-  $("tf-nav").hidden = true;
-}
-
-function zeigeFehler(titel, meldung, hinweis, knopfText, beiKlick) {
-  $("tf-fehler-titel").textContent = titel;
-  $("tf-fehler-text").textContent = meldung;
-  $("tf-fehler-hinweis").textContent = hinweis || "";
-  const k = $("tf-knopf-nochmal");
-  k.textContent = knopfText || "Erneut laden";
-  k.onclick = beiKlick || neuLaden;
-  $("tf-laden").hidden = true;
-  $("tf-fehler").hidden = false;
-  $("tf-bereich").hidden = true;
-  $("tf-nav").hidden = true;
-  $("tf-speicherleiste").hidden = true;
-}
-
-function zeigeInhalt() {
-  $("tf-laden").hidden = true;
-  $("tf-fehler").hidden = true;
-}
 
 /* Eine leere Zeile mit allen Spalten, für «Neue Telefonnummer». */
 function leereZeile() {
@@ -847,44 +678,7 @@ function ladefehlerZeigen(fehler) {
    ungespeicherten Änderungen (sie gingen verloren), beim Anlegen, während
    des Speicherns, bei offenem Dialog, nach dem Löschen und in einem
    Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
-let autoLetzte = Date.now();
-let autoLaeuft = false;
 
-function autoErlaubt() {
-  if (autoLaeuft || document.hidden) return false;
-  if (neuModus || geloescht || speichertGerade) return false;
-  if (anzahlAenderungen()) return false;
-  if (!$("tf-dialog").hidden) return false;
-  return true;
-}
-
-async function autoNachladen() {
-  autoLaeuft = true;
-  try {
-    await datenLaden(true);
-    zeileWaehlen();
-    zeigeInhalt();
-    zeichnenAlles();
-  } catch (fehler) {
-    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
-       wegen einer kurzen Störung. */
-  } finally {
-    autoLaeuft = false;
-    autoLetzte = Date.now();
-  }
-}
-
-function autoPruefen() {
-  if (!autoErlaubt()) return;
-  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
-  autoNachladen();
-}
-
-function autoStarten() {
-  autoLetzte = Date.now();
-  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
-  document.addEventListener("visibilitychange", autoPruefen);
-}
 
 /* ---------- Prüfen ---------- */
 
@@ -924,7 +718,7 @@ async function speichern() {
     speicherleisteZeichnen();
     toast(fehler.text, true);
     const feld = $("tf-eingabe-" + fehler.feld);
-    if (feld) { feld.classList.add("tf-ungueltig"); feld.focus(); }
+    if (feld) { feld.classList.add("ungueltig"); feld.focus(); }
     return;
   }
 
@@ -993,11 +787,11 @@ async function speichern() {
   }
 }
 
-function verwerfen() {
+async function verwerfen() {
   if (!anzahlAenderungen() || speichertGerade) return;
   const t = neuModus ? "Alle Eingaben dieses Formulars verwerfen?"
     : anzahlAenderungen() + " Änderung(en) verwerfen?";
-  if (!window.confirm(t)) return;
+  if (!await F.bestaetigen("Verwerfen", t, "Verwerfen", true)) return;
   entwurf = {};
   speicherFehler = "";
   nummerVonHand = false;
@@ -1007,19 +801,6 @@ function verwerfen() {
 
 /* ---------- Dialog und Löschen ---------- */
 
-function dialogSchliessen() {
-  $("tf-dialog").hidden = true;
-  $("tf-dialog-hintergrund").hidden = true;
-  leeren($("tf-dialog-inhalt"));
-  leeren($("tf-dialog-knoepfe"));
-}
-
-function dialogOeffnen(titel) {
-  $("tf-dialog-titel").textContent = titel;
-  $("tf-dialog-hintergrund").hidden = false;
-  $("tf-dialog").hidden = false;
-  return { inhalt: leeren($("tf-dialog-inhalt")), knoepfe: leeren($("tf-dialog-knoepfe")) };
-}
 
 function loeschenDialog() {
   const kurz = String(zeile.Title || "").trim();
@@ -1074,26 +855,6 @@ function loeschenDialog() {
    9. Start und Tastatur
    ================================================================== */
 
-function hashLesen() {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && BEREICHE.some(b => b.k === h)) aktiverBereich = h;
-}
-
-function bandZeichnen() {
-  if (!mockModus) return;
-  const band = $("tf-band");
-  band.hidden = false;
-  band.appendChild(document.createTextNode(
-    "Vorführmodus (?mock=1): alle Nummern und Personen sind erfunden. "
-    + "Änderungen bleiben im Browser und gehen nie nach SharePoint."));
-  band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", "knopf-leise", function () {
-    if (!window.confirm("Alle im Vorführmodus gemachten Änderungen verwerfen?")) return;
-    Mock.zuruecksetzen();
-    entwurf = {};
-    melden("telefon-geaendert", elementId);
-    neuLaden();
-  }));
-}
 
 async function start() {
   hashLesen();
@@ -1127,39 +888,20 @@ async function start() {
 
 /* ---------- Ereignisse ---------- */
 
-$("tf-knopf-speichern").addEventListener("click", speichern);
-$("tf-knopf-verwerfen").addEventListener("click", verwerfen);
-$("tf-dialog-hintergrund").addEventListener("click", dialogSchliessen);
-
+F.ereignisse({
+  speichern: speichern,
+  verwerfen: verwerfen,
+  anzahlAenderungen: anzahlAenderungen,
+  verlassenFrei: function () { return geloescht; },
+  beiHash: function (h) {
+    if (h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
+      aktiverBereich = h;
+      navZeichnen();
+      zeichneBereich(false);
+    }
+  }
+});
 autoStarten();
-
-window.addEventListener("hashchange", function () {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
-    aktiverBereich = h;
-    navZeichnen();
-    zeichneBereich(false);
-  }
-});
-
-document.addEventListener("keydown", function (e) {
-  if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-    e.preventDefault();
-    speichern();
-    return;
-  }
-  if (e.key === "Escape") {
-    if (!$("tf-dialog").hidden) { dialogSchliessen(); return; }
-    if (anzahlAenderungen()) { e.preventDefault(); verwerfen(); }
-  }
-});
-
-window.addEventListener("beforeunload", function (e) {
-  if (!anzahlAenderungen() || geloescht) return;
-  e.preventDefault();
-  e.returnValue = "";
-  return "";
-});
 
 start();
 

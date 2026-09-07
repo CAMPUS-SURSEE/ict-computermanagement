@@ -23,7 +23,7 @@
   flex-wrap: wrap;
   margin-bottom: var(--a4);
 }
-.g-werkzeuge .g-eingabe { max-width: 320px; }
+.g-werkzeuge .feld-eingabe { max-width: 320px; }
 
 .g-schalterchen {
   display: flex; align-items: center; gap: var(--a2);
@@ -36,37 +36,6 @@
   margin: var(--a5) 0 var(--a2);
 }
 
-
-
-/* ==================================================================
-   Eingaben (Material Outlined)
-   ================================================================== */
-
-.g-eingabe, .g-textarea {
-  font: inherit;
-  font-size: var(--t-m);
-  width: 100%;
-  max-width: 420px;
-  min-height: 40px;
-  padding: var(--a2) var(--a3);
-  border: 1px solid var(--umriss);
-  border-radius: var(--r-klein);
-  background: var(--weiss);
-  color: var(--text);
-  transition: border-color .12s, box-shadow .12s;
-}
-.g-textarea { max-width: 560px; min-height: 88px; resize: vertical; }
-.g-eingabe:hover, .g-textarea:hover { border-color: var(--text); }
-.g-eingabe:focus, .g-textarea:focus {
-  outline: none;
-  border-color: var(--primaer);
-  box-shadow: inset 0 0 0 1px var(--primaer);
-}
-.g-eingabe.g-ungueltig, .g-textarea.g-ungueltig {
-  border-color: var(--gefahr);
-  box-shadow: inset 0 0 0 1px var(--gefahr);
-}
-.g-eingabe-schmal { max-width: 200px; }
 
 
 /* ==================================================================
@@ -135,8 +104,8 @@
   border-radius: 2px;
   background: var(--primaer);
 }
-.g-lz-fuell.g-lz-warnung { background: #f9ab00; }
-.g-lz-fuell.g-lz-gefahr  { background: #d93025; }
+.g-lz-fuell.g-lz-warnung { background: var(--diagramm-warnung); }
+.g-lz-fuell.g-lz-gefahr  { background: var(--diagramm-gefahr); }
 
 .g-lz-erfassen {
   display: flex;
@@ -207,7 +176,7 @@
   color: var(--primaer);
   padding: 4px 10px; cursor: pointer;
 }
-.g-kopierknopf:hover { background: rgba(11,87,208,.08); }
+.g-kopierknopf:hover { background: var(--primaer-hover); }
 
 
 /* ==================================================================
@@ -275,13 +244,13 @@
   align-items: stretch;
   margin-bottom: var(--a4);
 }
-.g-stamm-reihe .g-eingabe { max-width: none; }
-.g-stamm-reihe .g-eingabe-schmal { max-width: 200px; }
+.g-stamm-reihe .feld-eingabe { max-width: none; }
+.g-stamm-reihe .eingabe-schmal { max-width: 200px; }
 
 .g-bemerkung { display: flex; flex-direction: column; }
 .g-bemerkung .karte-inhalt { flex: 1 1 auto; display: flex; flex-direction: column; }
 .g-bemerkung-huelle { flex: 1 1 auto; display: flex; }
-.g-bemerkung .g-textarea {
+.g-bemerkung .feld-eingabe {
   flex: 1 1 auto;
   max-width: none;
   min-height: 160px;
@@ -307,14 +276,12 @@
 
 @media (max-width: 760px) {
   .g-stamm-reihe { grid-template-columns: 1fr; }
-  .g-bemerkung .g-textarea { min-height: 120px; }
+  .g-bemerkung .feld-eingabe { min-height: 120px; resize: vertical; }
 
   .g-roh-zeile { grid-template-columns: minmax(0, 1fr) auto; }
   .g-roh-name { grid-column: 1 / -1; }
 
-  .g-werkzeuge .g-eingabe { max-width: none; }
-  .g-eingabe, .g-textarea { max-width: none; }
-  .g-eingabe-schmal { max-width: 200px; }
+  .g-werkzeuge .feld-eingabe { max-width: none; }
 }
 
 
@@ -323,7 +290,7 @@
    ================================================================== */
 
 @media print {
-  body.g-seite { background: #ffffff; }
+  body.g-seite { background: var(--weiss); }
   .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .g-band,
   .g-werkzeuge, .g-kopierknopf, .g-person-knoepfe { display: none; }
   .fenster-rumpf { grid-template-columns: 1fr; }

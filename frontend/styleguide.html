@@ -259,11 +259,11 @@
             <div class="karte-kopf"><h2 class="karte-titel">Bearbeiten</h2><p class="karte-unter">.datenzeile.datenzeile-form — Outlined-Felder, Hinweis unter dem Feld.</p></div>
             <div class="karte-inhalt">
               <div class="datenzeilen">
-                <div class="datenzeile datenzeile-form geaendert"><div class="datenzeile-name">PC-Name</div><div class="datenzeile-wert"><input class="g-eingabe" type="text" value="CAMPUS-901" aria-label="PC-Name"><div class="datenzeile-hinweis">Schlüssel für den SCCM-Abgleich. Muss genau dem Gerätenamen in SCCM entsprechen.</div></div></div>
-                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Beschaffungsjahr</div><div class="datenzeile-wert"><input class="g-eingabe g-eingabe-schmal" type="text" value="2021/2022" aria-label="Beschaffungsjahr"><div class="datenzeile-hinweis">Auswahl 2015/2016 bis 2035/2036, freie Eingabe erlaubt.</div></div></div>
-                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Status</div><div class="datenzeile-wert"><select class="g-eingabe g-eingabe-schmal" aria-label="Status"><option>Aktiv</option><option>Lager</option><option>Archiviert</option></select><div class="datenzeile-hinweis t-leise">Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv».</div></div></div>
-                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Ungültig</div><div class="datenzeile-wert"><input class="g-eingabe g-ungueltig" type="text" value="2021" aria-label="Ungültig"><div class="datenzeile-hinweis t-gefahr">Bitte ein Geschäftsjahr in der Form 2021/2022 eingeben.</div></div></div>
-                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Bemerkung</div><div class="datenzeile-wert"><textarea class="g-textarea" aria-label="Bemerkung">Freitext, mehrzeilig.</textarea></div></div>
+                <div class="datenzeile datenzeile-form geaendert"><div class="datenzeile-name">PC-Name</div><div class="datenzeile-wert"><input class="feld-eingabe" type="text" value="CAMPUS-901" aria-label="PC-Name"><div class="datenzeile-hinweis">Schlüssel für den SCCM-Abgleich. Muss genau dem Gerätenamen in SCCM entsprechen.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Beschaffungsjahr</div><div class="datenzeile-wert"><input class="feld-eingabe eingabe-schmal" type="text" value="2021/2022" aria-label="Beschaffungsjahr"><div class="datenzeile-hinweis">Auswahl 2015/2016 bis 2035/2036, freie Eingabe erlaubt.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Status</div><div class="datenzeile-wert"><select class="feld-eingabe eingabe-schmal" aria-label="Status"><option>Aktiv</option><option>Lager</option><option>Archiviert</option></select><div class="datenzeile-hinweis t-leise">Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv».</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Ungültig</div><div class="datenzeile-wert"><input class="feld-eingabe ungueltig" type="text" value="2021" aria-label="Ungültig"><div class="datenzeile-hinweis t-gefahr">Bitte ein Geschäftsjahr in der Form 2021/2022 eingeben.</div></div></div>
+                <div class="datenzeile datenzeile-form"><div class="datenzeile-name">Bemerkung</div><div class="datenzeile-wert"><textarea class="feld-eingabe" aria-label="Bemerkung">Freitext, mehrzeilig.</textarea></div></div>
               </div>
             </div>
           </section>
@@ -418,11 +418,11 @@
           </section>
 
           <section class="karte">
-            <div class="karte-kopf"><h2 class="karte-titel">Banner</h2><p class="karte-unter">.b-hinweis — Ton nach dem Text darin; Knopf rechts, Chips auf eigener Zeile.</p></div>
+            <div class="karte-kopf"><h2 class="karte-titel">Banner</h2><p class="karte-unter">.banner — Ton nach dem Text darin; Knopf rechts, Chips auf eigener Zeile.</p></div>
             <div class="karte-inhalt">
-              <div class="b-hinweis"><span class="t-warnung">SCCM meldet «CAMPUS-901» als Primärgerät, Inhaber ist die Person keines Geräts.</span><button type="button" class="knopf knopf-primaer">SCCM-Primärgerät übernehmen</button></div>
-              <div class="b-hinweis"><span class="t-warnung">2 Geräte heissen «CAMPUS-904». Die Zuordnung speichert nur den Namen und ist damit nicht eindeutig.</span><div class="chips"><a class="chip chip-marke" href="#hinweise">Listen-ID 4 · Aktiv</a><a class="chip" href="#hinweise">Listen-ID 61 · Archiviert</a></div></div>
-              <div class="b-hinweis"><span class="t-info">Neutraler Hinweis mit Erklärung.</span><button type="button" class="knopf knopf-leise">Im Abschnitt «Gerät» klären</button></div>
+              <div class="banner"><span class="t-warnung">SCCM meldet «CAMPUS-901» als Primärgerät, Inhaber ist die Person keines Geräts.</span><button type="button" class="knopf knopf-primaer">SCCM-Primärgerät übernehmen</button></div>
+              <div class="banner"><span class="t-warnung">2 Geräte heissen «CAMPUS-904». Die Zuordnung speichert nur den Namen und ist damit nicht eindeutig.</span><div class="chips"><a class="chip chip-marke" href="#hinweise">Listen-ID 4 · Aktiv</a><a class="chip" href="#hinweise">Listen-ID 61 · Archiviert</a></div></div>
+              <div class="banner"><span class="t-info">Neutraler Hinweis mit Erklärung.</span><button type="button" class="knopf knopf-leise">Im Abschnitt «Gerät» klären</button></div>
               <p class="hinweis">Hinweistext .hinweis: 13 px, --text-leise — für Erklärungen und Leermeldungen.</p>
             </div>
           </section>
@@ -476,7 +476,7 @@
           <div class="dialog sg-schwebend" role="dialog" aria-modal="false" style="width:auto;max-width:560px">
             <h2>Inhaber wechseln</h2>
             <p>Die gewählte Person wird Inhaberin von «CAMPUS-901». «Urs Muster» gibt das Gerät dabei ab — ein Gerät hat genau einen Inhaber.</p>
-            <input class="g-eingabe" type="search" placeholder="Name, Login oder Abteilung suchen …" aria-label="Benutzer suchen" style="max-width:none">
+            <input class="feld-eingabe" type="search" placeholder="Name, Login oder Abteilung suchen …" aria-label="Benutzer suchen" style="max-width:none">
             <div class="g-trefferliste">
               <button type="button" class="g-treffer"><div class="g-person-name">Anna Ammann</div><div class="g-person-unter">ammann.anna · Bildung · aktuell: CAMPUS-934</div></button>
               <button type="button" class="g-treffer"><div class="g-person-name">Anna Blumer</div><div class="g-person-unter">blumer.anna · Marketing · aktuell kein Gerät</div></button>
@@ -518,8 +518,8 @@
               <div class="vl">
                 <div class="vl-werkzeuge"><button type="button" class="knopf knopf-primaer">Neuer Eintrag</button><span class="hinweis">3 Einträge</span></div>
                 <div class="vl-formular">
-                  <div class="vl-formular-zeile"><label class="vl-feldname">Datum <input class="vl-datum-feld" type="date" value="2026-09-04"></label></div>
-                  <textarea class="vl-text-feld" placeholder="Was ist passiert? Mehrere Zeilen sind erlaubt."></textarea>
+                  <div class="vl-formular-zeile"><label class="vl-feldname">Datum <input class="feld-eingabe vl-datum-feld" type="date" value="2026-09-04"></label></div>
+                  <textarea class="feld-eingabe vl-text-feld" placeholder="Was ist passiert? Mehrere Zeilen sind erlaubt."></textarea>
                   <div class="vl-knoepfe"><button type="button" class="knopf knopf-primaer">Hinzufügen</button><button type="button" class="knopf">Abbrechen</button></div>
                 </div>
                 <ol class="vl-liste">

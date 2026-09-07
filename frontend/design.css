@@ -1,7 +1,8 @@
 /* design.css — Design-System «Computer Inventar», Campus Sursee.
 
    Wird von allen Seiten als ERSTE Stilvorlage geladen. styles.css,
-   geraet.css und benutzer.css enthalten danach nur noch Seitenlayout.
+   geraet.css, benutzer.css und telefon.css enthalten danach nur noch
+   Seitenlayout.
 
    HALTUNG: Google Material Design 3, so wie Google es in seinen eigenen
    Konsolen einsetzt (Admin-Konsole, Search Console, Cloud Console):
@@ -54,7 +55,7 @@
    Datenzeilen (Name links, Wert rechts)
      .datenzeilen .datenzeile[.geaendert] .datenzeile-name
      .datenzeile-wert[.leer] .datenzeile-neben .datenzeile-hinweis
-     .datenzeile-zeile .datenzeile-breit
+     .datenzeile-zeile .datenzeile-breit .eingabe-schmal
 
    Kennzahlen
      .kacheln .kachel .kachel-wert[.klein] .kachel-text .kachel-unter
@@ -130,6 +131,18 @@
   --gefahr-hell:  #fce8e6;
   --info:         #0b57d0;
   --info-hell:    #e8f0fe;
+  --gefahr-dunkel: #8c1d18;            /* Hover auf gefährlichen Knöpfen */
+
+  /* Diagramme (Säulen, Marken, Balken): kräftiger als die Textfarben. */
+  --diagramm-gefahr:  #d93025;
+  --diagramm-warnung: #f9ab00;
+
+  /* Hover und Druck auf Text-Knöpfen: der Akzent, stark verdünnt. */
+  --primaer-hover: rgba(11, 87, 208, .08);
+  --primaer-druck: rgba(11, 87, 208, .12);
+
+  /* Snackbar/Toast: dunkle Fläche mit hellem Text. */
+  --snackbar: #3c4043;
 
   /* Neutrale Töne (On-Surface, On-Surface-Variant, Outline) */
   --text:         #1f1f1f;
@@ -469,6 +482,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
    direkt in der Karte liegen, bleiben ohne Abstand. */
 .karte-inhalt > * + * { margin-top: var(--a4); }
 
+/* Zwischenüberschrift in der Seitennavigation der Detailseiten. */
+.fenster-nav-gruppe {
+  font-size: var(--t-xs); font-weight: 500; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text-still);
+  padding: var(--a4) var(--a4) var(--a1);
+}
+.fenster-nav-gruppe:first-child { padding-top: var(--a1); }
+
 /* Kacheln direkt im Fensterinhalt (Übersicht der Detailfenster) halten
    Abstand zur folgenden Karte. */
 .fenster-inhalt .kacheln { margin-bottom: var(--a5); }
@@ -629,8 +650,8 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
   cursor: pointer; white-space: nowrap;
   transition: background .12s, box-shadow .12s;
 }
-.knopf:hover  { background: rgba(11,87,208,.08); }
-.knopf:active { background: rgba(11,87,208,.12); }
+.knopf:hover  { background: var(--primaer-hover); }
+.knopf:active { background: var(--primaer-druck); }
 .knopf[disabled] {
   background: rgba(31,31,31,.06); color: rgba(31,31,31,.38);
   border-color: transparent; cursor: default;
@@ -645,7 +666,7 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
 .knopf-primaer:active { background: var(--primaer-dunkel); box-shadow: none; }
 
 .knopf-leise { background: none; border-color: transparent; color: var(--primaer); }
-.knopf-leise:hover { background: rgba(11,87,208,.08); }
+.knopf-leise:hover { background: var(--primaer-hover); }
 
 /* Neutral (grau): Nebensächliches, das keine Aktion in Markenfarbe
    verdient — etwa «Abmelden» in der Kopfzeile. */
@@ -663,7 +684,7 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
 .knopf.aktiv:hover { background: var(--primaer-container); }
 
 .knopf-gefahr { background: var(--gefahr); color: var(--weiss); border-color: transparent; }
-.knopf-gefahr:hover { background: #8c1d18; }
+.knopf-gefahr:hover { background: var(--gefahr-dunkel); }
 
 .zaehler {
   background: var(--primaer); color: var(--weiss);
@@ -756,6 +777,13 @@ button.chip.chip-marke:hover, button.chip.chip-info:hover { background: var(--pr
   outline: none; border-color: var(--primaer);
   box-shadow: inset 0 0 0 1px var(--primaer);
 }
+/* Ungültige Eingabe: roter Doppelrahmen. */
+.feld-eingabe.ungueltig {
+  border-color: var(--gefahr);
+  box-shadow: inset 0 0 0 1px var(--gefahr);
+}
+/* Mehrzeiliger Text wächst nach unten, nie zur Seite. */
+textarea.feld-eingabe { min-height: 88px; resize: vertical; }
 .feld-eingabe[readonly], .feld input[readonly], .feld textarea[readonly] {
   color: var(--text-leise); background: var(--flaeche);
   border-color: var(--linie);
@@ -793,8 +821,8 @@ input[type="checkbox"], input[type="radio"] {
 }
 .datenzeile-form .datenzeile-name { font-size: var(--t-xs); font-weight: 500; line-height: 16px; }
 .datenzeile-form .datenzeile-wert { white-space: normal; }
-.datenzeile-form input:not([type="checkbox"]):not(.g-eingabe-schmal):not(.eingabe-schmal),
-.datenzeile-form select:not(.g-eingabe-schmal):not(.eingabe-schmal),
+.datenzeile-form input:not([type="checkbox"]):not(.eingabe-schmal),
+.datenzeile-form select:not(.eingabe-schmal),
 .datenzeile-form textarea { max-width: 560px; }
 .datenzeile-form .datenzeile-hinweis { margin-top: var(--a1); line-height: 16px; }
 /* Eine Knopfzeile unter dem Feld («Vorschlag übernehmen») braucht denselben
@@ -827,17 +855,7 @@ input[type="checkbox"], input[type="radio"] {
 
 .datenzeile-breit { display: block; padding: 10px 0; }
 .datenzeile-breit .datenzeile-name { margin-bottom: var(--a2); }
-.datenzeile-breit textarea {
-  font: inherit; font-size: var(--t-m); width: 100%;
-  min-height: 140px; resize: vertical;
-  padding: var(--a2) var(--a3);
-  border: 1px solid var(--umriss); border-radius: var(--r-klein);
-  background: var(--weiss); color: var(--text);
-}
-.datenzeile-breit textarea:hover { border-color: var(--text); }
-.datenzeile-breit textarea:focus {
-  outline: none; border-color: var(--primaer); box-shadow: inset 0 0 0 1px var(--primaer);
-}
+.datenzeile-breit .feld-eingabe { min-height: 140px; }
 
 /* Mehrfachauswahl in Filtern */
 .mehrfach {
@@ -1104,8 +1122,8 @@ button.saeule { cursor: pointer; }
 button.saeule:hover { filter: brightness(.9); }
 .saeule-a { background: var(--primaer); }
 .saeule-b { background: var(--primaer-schwach); }
-.saeule-b.gefahr { background: #d93025; }
-.saeule-b.warnung { background: #f9ab00; }
+.saeule-b.gefahr { background: var(--diagramm-gefahr); }
+.saeule-b.warnung { background: var(--diagramm-warnung); }
 
 .zeitstrahl-linie { height: 1px; width: 100%; background: var(--linie); }
 
@@ -1125,8 +1143,8 @@ button.saeule:hover { filter: brightness(.9); }
   content: ""; width: 10px; height: 10px; border-radius: 2px;
   background: var(--primaer); flex: none;
 }
-.zeitstrahl-marke.gefahr::before  { background: #d93025; }
-.zeitstrahl-marke.warnung::before { background: #f9ab00; }
+.zeitstrahl-marke.gefahr::before  { background: var(--diagramm-gefahr); }
+.zeitstrahl-marke.warnung::before { background: var(--diagramm-warnung); }
 .zeitstrahl-marke.info::before    { background: var(--primaer-schwach); }
 .zeitstrahl-marke.stark { color: var(--text); font-weight: 500; }
 .zeitstrahl-marke.stark::before { display: none; }
@@ -1241,7 +1259,7 @@ button.saeule:hover { filter: brightness(.9); }
   right: var(--a5);
   bottom: 80px;
   z-index: 45;
-  background: #3c4043;
+  background: var(--snackbar);
   color: var(--weiss);
   font-size: var(--t-m);
   border-radius: var(--r-klein);
@@ -1309,7 +1327,7 @@ button.liste-zeile:hover { background: var(--flaeche); }
 
 /* Hinweisbanner in einer Karte: Text, dazu Chips oder ein Knopf. Getönte
    Fläche nach dem Ton des Textes darin, wie ein Material-Banner. */
-.b-hinweis, .g-banner {
+.banner {
   display: flex; align-items: center; gap: var(--a2) var(--a3); flex-wrap: wrap;
   font-size: var(--t-s); line-height: 18px;
   padding: var(--a3) var(--a4);
@@ -1317,12 +1335,12 @@ button.liste-zeile:hover { background: var(--flaeche); }
   background: var(--flaeche);
   border: 1px solid var(--linie);
 }
-.b-hinweis > .t-warnung, .g-banner > .t-warnung { flex: 1 1 260px; }
-.b-hinweis:has(> .t-warnung) { background: var(--warnung-hell); border-color: transparent; }
-.b-hinweis:has(> .t-gefahr)  { background: var(--gefahr-hell);  border-color: transparent; }
-.b-hinweis:has(> .t-info)    { background: var(--info-hell);    border-color: transparent; }
-.b-hinweis .knopf { margin-left: auto; }
-.b-hinweis .chips { flex-basis: 100%; }
+.banner > .t-warnung, .banner > .t-gefahr, .banner > .t-info, .banner > span { flex: 1 1 260px; }
+.banner:has(> .t-warnung) { background: var(--warnung-hell); border-color: transparent; }
+.banner:has(> .t-gefahr)  { background: var(--gefahr-hell);  border-color: transparent; }
+.banner:has(> .t-info)    { background: var(--info-hell);    border-color: transparent; }
+.banner .knopf { margin-left: auto; }
+.banner .chips { flex-basis: 100%; }
 
 
 /* ==================================================================

@@ -56,34 +56,16 @@ function istBearbeitbar(spalte) {
 
 
 /* ==================================================================
-   2. Kleine DOM-Helfer
+   2. Gerüst (fenster.js) und DOM-Helfer
    ================================================================== */
 
-function $(id) { return document.getElementById(id); }
-
-function el(tag, klasse, text) {
-  const k = document.createElement(tag);
-  if (klasse) k.className = klasse;
-  if (text !== undefined && text !== null) k.textContent = String(text);
-  return k;
-}
-
-function leeren(knoten) {
-  while (knoten.firstChild) knoten.removeChild(knoten.firstChild);
-  return knoten;
-}
-
-function knopf(beschriftung, klasse, beiKlick) {
-  const k = el("button", "knopf" + (klasse ? " " + klasse : ""), beschriftung);
-  k.type = "button";
-  if (beiKlick) k.addEventListener("click", beiKlick);
-  return k;
-}
-
-function text(wertRoh) {
-  return (wertRoh === null || wertRoh === undefined || wertRoh === false)
-    ? "" : String(wertRoh);
-}
+const F = Fenster.erstellen("b", { neuLaden: function () { neuLaden(); } });
+const $ = F.$, el = F.el, leeren = F.leeren, knopf = F.knopf, text = F.text, chip = F.chip;
+const karte = F.karte, feldGesperrt = F.feldGesperrt, feldFrei = F.feldFrei;
+const toast = F.toast, melden = F.melden;
+const dialogOeffnen = F.dialogOeffnen, dialogSchliessen = F.dialogSchliessen;
+const zeigeLaden = F.zeigeLaden, zeigeFehler = F.zeigeFehler, zeigeInhalt = F.zeigeInhalt;
+const gleichwertig = F.gleichwertig;
 
 
 /* ==================================================================
@@ -116,6 +98,62 @@ const BEREICHE = [
   { k: "bemerkung",      d: "Bemerkung",      f: bereichBemerkung }
 ];
 
+/* ---------- Gerüst-Anbindung ---------- */
+
+function speicherleisteZeichnen() {
+  F.speicherleisteZeichnen({
+    neuModus: false, geloescht: false, speichertGerade: speichertGerade,
+    speicherFehler: speicherFehler, anzahl: anzahlAenderungen()
+  });
+}
+
+/* Die Zahl der aktiven Berechtigungen steht am Navigationseintrag. */
+function navZeichnen() {
+  const zahlen = rechteZaehlen();
+  F.navZeichnen(BEREICHE, aktiverBereich, bereichWechseln, {
+    zusatz: function (b) {
+      return b.k === "berechtigungen" ? el("span", "fenster-nav-zahl", String(zahlen.aktiv)) : null;
+    }
+  });
+}
+
+/* Zeichnet den aktiven Bereich neu und stellt den Fokus samt Schreibmarke
+   wieder her, damit Tippen in den Suchfeldern nicht abreisst. */
+function zeichneBereich() {
+  aktiverBereich = F.zeichneBereich(BEREICHE, aktiverBereich, true);
+}
+
+function bereichWechseln(schluessel) {
+  aktiverBereich = schluessel;
+  location.hash = "#" + schluessel;
+  navZeichnen();
+  zeichneBereich();
+}
+
+function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich; }
+
+function logoZeichnen() { F.logoZeichnen("benutzer"); }
+
+function bandZeichnen() {
+  F.bandZeichnen("Vorführmodus (?mock=1): alle Personen, Geräte und Berechtigungen sind "
+    + "erfunden. Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
+      entwurf = {};
+      melden("benutzer-geaendert", elementId);
+      neuLaden();
+    });
+}
+
+function autoStarten() {
+  F.autoStarten(
+    function () { return !speichertGerade && !anzahlAenderungen(); },
+    async function () {
+      await datenLaden(true);
+      zeileWaehlen();
+      zeigeInhalt();
+      zeichnenAlles();
+    });
+}
+
 
 /* ---------- Werte lesen und schreiben ---------- */
 
@@ -129,12 +167,6 @@ function textWert(feld) {
   return text(wert(feld));
 }
 
-/* Hin und Her soll wieder als unverändert gelten. */
-function gleichwertig(a, b) {
-  const nA = (a === null || a === undefined || a === false) ? "" : a;
-  const nB = (b === null || b === undefined || b === false) ? "" : b;
-  return String(nA) === String(nB);
-}
 
 function setzeWert(feld, neuerWert) {
   const alt = zeile ? zeile[feld] : "";
@@ -154,117 +186,10 @@ function programmStufe(id) {
 }
 
 
-/* ---------- Speicherleiste ---------- */
-
-function speicherleisteZeichnen() {
-  const leiste = $("b-speicherleiste");
-  const anzahl = anzahlAenderungen();
-  const zeigen = anzahl > 0 || speichertGerade;
-  leiste.hidden = !zeigen;
-  if (!zeigen) return;
-
-  $("b-speicher-text").textContent = speichertGerade
-    ? "Wird gespeichert …"
-    : (anzahl === 1 ? "1 Änderung" : anzahl + " Änderungen");
-
-  const fehlerFeld = $("b-speicher-fehler");
-  fehlerFeld.textContent = speicherFehler;
-  fehlerFeld.hidden = !speicherFehler;
-
-  const speichern = $("b-knopf-speichern");
-  speichern.textContent = speicherFehler ? "Nochmals speichern" : "Speichern";
-  speichern.disabled = speichertGerade || anzahl === 0;
-
-  const verwerfen = $("b-knopf-verwerfen");
-  verwerfen.disabled = speichertGerade || anzahl === 0;
-}
-
-
-/* ---------- Toast ---------- */
-
-let toastZeit = null;
-
-function toast(meldung, istFehler) {
-  const t = $("b-toast");
-  t.textContent = meldung;
-  t.className = "toast" + (istFehler ? " toast-fehler" : "");
-  t.hidden = false;
-  if (toastZeit) clearTimeout(toastZeit);
-  toastZeit = setTimeout(function () { t.hidden = true; }, istFehler ? 8000 : 3500);
-}
-
-
-/* ---------- Meldung an die Hauptseite ---------- */
-
-function melden(typ, id) {
-  try {
-    const kanal = new BroadcastChannel("computerinventar");
-    kanal.postMessage({ typ: typ, id: id === undefined ? null : String(id) });
-    kanal.close();
-  } catch (e) {
-    // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
-  }
-}
-
-
 /* ==================================================================
    4. Bausteine
    ================================================================== */
 
-function karte(titel, unter) {
-  const k = el("section", "karte");
-  if (titel || unter) {
-    const kopf = el("div", "karte-kopf");
-    const zeileKopf = el("div", "karte-kopf-zeile");
-    const links = el("div");
-    if (titel) links.appendChild(el("h2", "karte-titel", titel));
-    if (unter) links.appendChild(el("p", "karte-unter", unter));
-    zeileKopf.appendChild(links);
-    kopf.appendChild(zeileKopf);
-    k.appendChild(kopf);
-    k.kopfZeile = zeileKopf;
-  }
-  const inhalt = el("div", "karte-inhalt");
-  k.appendChild(inhalt);
-  k.inhalt = inhalt;
-  return k;
-}
-
-function kachel(wertText, beschriftung, unter, ton) {
-  const k = el("div", "kachel" + (ton ? " ton-" + ton : ""));
-  k.setAttribute("data-klickbar", "nein");
-  k.appendChild(el("div", "kachel-wert", wertText));
-  k.appendChild(el("div", "kachel-text", beschriftung));
-  if (unter) k.appendChild(el("div", "kachel-unter", unter));
-  return k;
-}
-
-/* Ein schreibgeschütztes Feldpaar mit Schloss-Symbol. */
-function feldGesperrt(beschriftung, wertText) {
-  const f = el("div", "datenzeile");
-  const label = el("div", "datenzeile-name");
-  label.appendChild(el("span", "schloss"));
-  label.appendChild(document.createTextNode(beschriftung));
-  label.title = "Kommt aus dem Abgleich und lässt sich hier nicht ändern.";
-  f.appendChild(label);
-  const w = text(wertText);
-  f.appendChild(el("div", "datenzeile-wert" + (w ? "" : " leer"), w || "—"));
-  return f;
-}
-
-/* Ein Feldpaar, dessen Wert frei aufgebaut wird (Link, Chips, Knöpfe). */
-function feldFrei(beschriftung, knoten, mitSchloss) {
-  const f = el("div", "datenzeile");
-  const label = el("div", "datenzeile-name");
-  if (mitSchloss) label.appendChild(el("span", "schloss"));
-  label.appendChild(document.createTextNode(beschriftung));
-  f.appendChild(label);
-  const wrap = el("div", "datenzeile-wert");
-  wrap.appendChild(knoten);
-  f.appendChild(wrap);
-  return f;
-}
 
 /* Ein kleiner Chip für den Gerätestatus, oder null bei «Aktiv» — der
    Normalfall braucht keine Auszeichnung. */
@@ -355,7 +280,7 @@ function mehrdeutigHinweis() {
   if (treffer.length < 2) return null;
   const gewaehlt = inhaberGeraet();
 
-  const kasten = el("div", "b-hinweis");
+  const kasten = el("div", "banner");
   kasten.appendChild(el("span", "t-warnung",
     treffer.length + " Geräte heissen «" + textWert("Computer").trim()
     + "». Die Inhaberschaft speichert nur den Namen und ist damit nicht "
@@ -403,11 +328,11 @@ function bereichUebersicht(ziel) {
 
   // Kennzahlen
   const kacheln = el("div", "kacheln");
-  kacheln.appendChild(kachel(String(zahlen.aktiv), "Berechtigungen aktiv",
+  kacheln.appendChild(F.kachel("Berechtigungen aktiv", String(zahlen.aktiv),
     "von " + zahlen.gesamt + " Programmen", zahlen.aktiv ? "erfolg" : null));
-  kacheln.appendChild(kachel(String(zahlen.manuell), "manuell gesetzt",
+  kacheln.appendChild(F.kachel("manuell gesetzt", String(zahlen.manuell),
     "hier umschaltbar"));
-  kacheln.appendChild(kachel(String(zahlen.ausAd), "aus AD-Gruppe",
+  kacheln.appendChild(F.kachel("aus AD-Gruppe", String(zahlen.ausAd),
     "vom AD vorgegeben", zahlen.ausAd ? "info" : null));
   ziel.appendChild(kacheln);
 
@@ -436,7 +361,7 @@ function bereichUebersicht(ziel) {
   /* Die Einzelheiten (mehrdeutiger Name, SCCM-Vorschlag) stehen im
      Abschnitt «Gerät»; die Übersicht verweist nur dorthin. */
   if (primaerAbweichung() || mehrdeutigHinweis()) {
-    const hinweis = el("div", "b-hinweis");
+    const hinweis = el("div", "banner");
     hinweis.appendChild(el("span", "t-warnung", primaerAbweichung()
       ? "SCCM meldet ein anderes Primärgerät als hier eingetragen."
       : "Der eingetragene Gerätename ist nicht eindeutig."));
@@ -523,7 +448,7 @@ function bereichGeraet(ziel) {
      Abgleich selbst schreibt die Inhaberschaft nie. */
   if (primaerAbweichung()) {
     const primaer = text(zeile.SCCMPrimaerGeraet).trim();
-    const hinweis = el("div", "b-hinweis");
+    const hinweis = el("div", "banner");
     hinweis.appendChild(el("span", "t-warnung",
       "SCCM meldet «" + primaer + "» als Primärgerät dieser Person."));
     hinweis.appendChild(knopf("SCCM-Primärgerät übernehmen", "knopf-primaer", function () {
@@ -722,7 +647,7 @@ function bereichBemerkung(ziel) {
   const f = el("div", "datenzeile-breit");
   const label = el("div", "datenzeile-name", "Bemerkung");
   f.appendChild(label);
-  const eingabe = el("textarea");
+  const eingabe = el("textarea", "feld-eingabe");
   eingabe.id = "b-bemerkung";
   eingabe.value = textWert("Bemerkung");
   eingabe.setAttribute("aria-label", "Bemerkung");
@@ -773,94 +698,6 @@ function kopfZeichnen() {
   leeren($("b-aktionen"));
 }
 
-/* Das Logo im Kopf führt zur Übersicht. Im Vorführmodus muss der Parameter
-   mitgehen, sonst landet man dort auf der Anmeldung. */
-function logoZeichnen() {
-  const verweis = $("b-logo");
-  if (!verweis) return;
-  verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
-  // Der Pfad über dem Titel führt in die Benutzerliste.
-  const pfad = $("b-pfad");
-  if (pfad) {
-    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#benutzer";
-    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
-       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
-    pfad.addEventListener("click", function (e) {
-      let vonListe = false;
-      try {
-        const von = new URL(document.referrer);
-        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
-      } catch (fehler) { vonListe = false; }
-      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
-    });
-  }
-}
-
-/* Die Seitennavigation. Die Spalte selbst (.fenster-nav) reicht bis zum
-   unteren Fensterrand; die Knöpfe stehen in einem eigenen Behälter
-   (.fenster-nav-menue), der darin klebt beziehungsweise auf schmalen
-   Fenstern zur waagrecht rollenden Reiterleiste wird. */
-function navZeichnen() {
-  const nav = leeren($("b-nav"));
-  nav.hidden = false;
-  const zahlen = rechteZaehlen();
-
-  const menue = el("div", "fenster-nav-menue");
-  for (const b of BEREICHE) {
-    const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""));
-    k.type = "button";
-    if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
-    k.appendChild(document.createTextNode(b.d));
-    if (b.k === "berechtigungen") {
-      k.appendChild(el("span", "fenster-nav-zahl", String(zahlen.aktiv)));
-    }
-    k.addEventListener("click", function () { bereichWechseln(b.k); });
-    menue.appendChild(k);
-  }
-  nav.appendChild(menue);
-
-  /* Auf schmalen Fenstern ist die Navigation eine waagrecht rollende
-     Leiste. Nach dem Neuzeichnen soll der aktive Eintrag sichtbar bleiben;
-     «nearest» rührt nichts an, wenn er ohnehin schon zu sehen ist. */
-  const aktiv = menue.querySelector(".fenster-nav-knopf.aktiv");
-  if (aktiv && aktiv.scrollIntoView) {
-    aktiv.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }
-}
-
-function bereichWechseln(schluessel) {
-  aktiverBereich = schluessel;
-  location.hash = "#" + schluessel;
-  navZeichnen();
-  zeichneBereich();
-}
-
-/* Zeichnet den aktiven Bereich neu und stellt den Fokus samt Schreibmarke
-   wieder her, damit Tippen in den Suchfeldern nicht abreisst. */
-function zeichneBereich() {
-  const vorher = document.activeElement;
-  const vorherId = vorher && vorher.id ? vorher.id : null;
-  let pos = null;
-  if (vorher && typeof vorher.selectionStart === "number") {
-    try { pos = vorher.selectionStart; } catch (e) { pos = null; }
-  }
-
-  const ziel = leeren($("b-bereich"));
-  ziel.hidden = false;
-  const bereich = BEREICHE.filter(b => b.k === aktiverBereich)[0] || BEREICHE[0];
-  aktiverBereich = bereich.k;
-  bereich.f(ziel);
-
-  if (vorherId) {
-    const neu = document.getElementById(vorherId);
-    if (neu && typeof neu.focus === "function") {
-      neu.focus();
-      if (pos !== null && typeof neu.setSelectionRange === "function") {
-        try { neu.setSelectionRange(pos, pos); } catch (e) { /* type=search mag das nicht überall */ }
-      }
-    }
-  }
-}
 
 function zeichnenAlles() {
   kopfZeichnen();
@@ -874,33 +711,6 @@ function zeichnenAlles() {
    8. Laden und Speichern
    ================================================================== */
 
-function zeigeLaden(meldung, fortschrittText) {
-  $("b-laden-text").textContent = meldung;
-  $("b-laden-fortschritt").textContent = fortschrittText || "";
-  $("b-laden").hidden = false;
-  $("b-fehler").hidden = true;
-  $("b-bereich").hidden = true;
-  $("b-nav").hidden = true;
-}
-
-function zeigeFehler(titel, meldung, hinweis, knopfText, beiKlick) {
-  $("b-fehler-titel").textContent = titel;
-  $("b-fehler-text").textContent = meldung;
-  $("b-fehler-hinweis").textContent = hinweis || "";
-  const k = $("b-knopf-nochmal");
-  k.textContent = knopfText || "Erneut laden";
-  k.onclick = beiKlick || neuLaden;
-  $("b-laden").hidden = true;
-  $("b-fehler").hidden = false;
-  $("b-bereich").hidden = true;
-  $("b-nav").hidden = true;
-  $("b-speicherleiste").hidden = true;
-}
-
-function zeigeInhalt() {
-  $("b-laden").hidden = true;
-  $("b-fehler").hidden = true;
-}
 
 /* «still» lädt im Hintergrund nach, ohne die Seite gegen den Spinner zu
    tauschen: nach dem Speichern soll der Inhalt stehen bleiben. */
@@ -992,42 +802,7 @@ function ladefehlerZeigen(fehler) {
    Übersprungen wird, sobald Nachladen mehr stören als nützen würde: bei
    ungespeicherten Änderungen (sie gingen verloren), während des Speicherns
    und in einem Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
-let autoLetzte = Date.now();
-let autoLaeuft = false;
 
-function autoErlaubt() {
-  if (autoLaeuft || document.hidden) return false;
-  if (speichertGerade || anzahlAenderungen()) return false;
-  return true;
-}
-
-async function autoNachladen() {
-  autoLaeuft = true;
-  try {
-    await datenLaden(true);
-    zeileWaehlen();
-    zeigeInhalt();
-    zeichnenAlles();
-  } catch (fehler) {
-    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
-       wegen einer kurzen Störung. */
-  } finally {
-    autoLaeuft = false;
-    autoLetzte = Date.now();
-  }
-}
-
-function autoPruefen() {
-  if (!autoErlaubt()) return;
-  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
-  autoNachladen();
-}
-
-function autoStarten() {
-  autoLetzte = Date.now();
-  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
-  document.addEventListener("visibilitychange", autoPruefen);
-}
 
 /* Werte so aufbereiten, wie Graph sie erwartet. Programmwerte sind immer
    Zeichenketten «0» oder «1»; «2» schreibt dieses Fenster nie.
@@ -1096,11 +871,11 @@ async function speichern() {
   }
 }
 
-function verwerfen() {
+async function verwerfen() {
   if (!anzahlAenderungen() || speichertGerade) return;
   const anzahl = anzahlAenderungen();
-  if (!window.confirm(anzahl === 1 ? "Eine Änderung verwerfen?"
-                                   : anzahl + " Änderungen verwerfen?")) return;
+  const frage = anzahl === 1 ? "Eine Änderung verwerfen?" : anzahl + " Änderungen verwerfen?";
+  if (!await F.bestaetigen("Verwerfen", frage, "Verwerfen", true)) return;
   entwurf = {};
   speicherFehler = "";
   zeichnenAlles();
@@ -1112,26 +887,6 @@ function verwerfen() {
    9. Start und Tastatur
    ================================================================== */
 
-function hashLesen() {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && BEREICHE.some(b => b.k === h)) aktiverBereich = h;
-}
-
-function bandZeichnen() {
-  if (!mockModus) return;
-  const band = $("b-band");
-  band.hidden = false;
-  band.appendChild(document.createTextNode(
-    "Vorführmodus (?mock=1): alle Personen, Geräte und Berechtigungen sind "
-    + "erfunden. Änderungen bleiben im Browser und gehen nie nach SharePoint."));
-  band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", "knopf-leise", function () {
-    if (!window.confirm("Alle im Vorführmodus gemachten Änderungen verwerfen?")) return;
-    Mock.zuruecksetzen();
-    entwurf = {};
-    melden("benutzer-geaendert", elementId);
-    neuLaden();
-  }));
-}
 
 async function start() {
   hashLesen();
@@ -1161,42 +916,19 @@ async function start() {
 
 /* ---------- Ereignisse ---------- */
 
-$("b-knopf-speichern").addEventListener("click", speichern);
-$("b-knopf-verwerfen").addEventListener("click", verwerfen);
-
-autoStarten();
-
-window.addEventListener("hashchange", function () {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
-    aktiverBereich = h;
-    navZeichnen();
-    zeichneBereich();
-  }
-});
-
-document.addEventListener("keydown", function (e) {
-  // Ctrl+S beziehungsweise Cmd+S speichert.
-  if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-    e.preventDefault();
-    speichern();
-    return;
-  }
-  if (e.key === "Escape") {
-    if (anzahlAenderungen()) {
-      e.preventDefault();
-      verwerfen();
+F.ereignisse({
+  speichern: speichern,
+  verwerfen: verwerfen,
+  anzahlAenderungen: anzahlAenderungen,
+  beiHash: function (h) {
+    if (h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
+      aktiverBereich = h;
+      navZeichnen();
+      zeichneBereich();
     }
   }
 });
-
-window.addEventListener("beforeunload", function (e) {
-  if (!anzahlAenderungen()) return;
-  e.preventDefault();
-  // Der Text stammt vom Browser; zurückgeben muss man trotzdem etwas.
-  e.returnValue = "";
-  return "";
-});
+autoStarten();
 
 start();
 

@@ -220,7 +220,6 @@ function beschriftung(tab, schluessel) {
    ================================================================== */
 
 const ANSICHTEN = ["uebersicht", "geraete", "benutzer", "telefone", "software"];
-const KANAL_NAME = "computerinventar";
 const SPEICHER_SPALTEN = "computerinventar.spalten.";   // + Ansicht
 const SPEICHER_DICHTE  = "computerinventar.dichte.";    // + Ansicht
 const SPEICHER_ARCHIV  = "computerinventar.archiv";     // nur Geräte
@@ -1245,7 +1244,7 @@ function zeichneFilterleiste(tab) {
   for (const zs of TAB[tab].zeitspalten) {
     const feld = el("div", "filterfeld");
     feld.appendChild(el("label", null, zs.d));
-    const auswahl = document.createElement("select");
+    const auswahl = el("select", "feld-eingabe");
     auswahl.appendChild(new Option("alle", ""));
     for (const s of ZEITRAEUME) auswahl.appendChild(new Option(s.d, s.w));
     auswahl.value = z.zeit[zs.k] || "";
@@ -1261,7 +1260,7 @@ function zeichneFilterleiste(tab) {
   if (TAB[tab].hatSpeicher) {
     const feld = el("div", "filterfeld");
     feld.appendChild(el("label", null, "Freier Speicher Laufwerk C:"));
-    const wahl = document.createElement("select");
+    const wahl = el("select", "feld-eingabe");
     wahl.appendChild(new Option("alle", ""));
     for (const s of SPEICHERSTUFEN) wahl.appendChild(new Option(s.d, s.w));
     wahl.value = z.speicher;
@@ -1277,14 +1276,14 @@ function zeichneFilterleiste(tab) {
     const feld = el("div", "filterfeld");
     feld.appendChild(el("label", null, "Berechtigung für Programm"));
 
-    const wahl = document.createElement("select");
+    const wahl = el("select", "feld-eingabe");
     wahl.appendChild(new Option("kein Programmfilter", ""));
     for (const p of programmSpalten.slice().sort((a, b) => Hilfe.vergleiche(a.d, b.d))) {
       wahl.appendChild(new Option(p.d, p.i));
     }
     wahl.value = z.programm;
 
-    const stufenWahl = document.createElement("select");
+    const stufenWahl = el("select", "feld-eingabe");
     for (const s of PROGRAMM_STUFEN) stufenWahl.appendChild(new Option(s.d, s.w));
     stufenWahl.value = z.programmStufe;
     stufenWahl.disabled = !z.programm;
@@ -1992,7 +1991,7 @@ const MELDUNGEN = ["zeile-geaendert", "zeile-neu", "zeile-geloescht",
 function kanalVerbinden() {
   if (!window.BroadcastChannel) return;
   let zeitgeber = null;
-  const kanal = new BroadcastChannel(KANAL_NAME);
+  const kanal = new BroadcastChannel(KONFIG.kanalName);
   kanal.addEventListener("message", function (ereignis) {
     const typ = ereignis.data && ereignis.data.typ;
     if (MELDUNGEN.indexOf(typ) === -1) return;

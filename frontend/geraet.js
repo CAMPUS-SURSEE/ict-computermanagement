@@ -82,53 +82,18 @@ const NICHT_DUPLIZIEREN = ["Title", "Status", "Verlauf"];
 
 
 /* ==================================================================
-   2. Kleine DOM-Helfer
+   2. Gerüst (fenster.js) und DOM-Helfer
    ================================================================== */
 
-function $(id) { return document.getElementById(id); }
-
-function el(tag, klasse, text) {
-  const k = document.createElement(tag);
-  if (klasse) k.className = klasse;
-  if (text !== undefined && text !== null) k.textContent = String(text);
-  return k;
-}
-
-function anhaengen(eltern, kinder) {
-  for (const k of kinder) if (k) eltern.appendChild(k);
-  return eltern;
-}
-
-function leeren(knoten) {
-  while (knoten.firstChild) knoten.removeChild(knoten.firstChild);
-  return knoten;
-}
-
-/* Symbole als inline-SVG: keine Schriftart, kein CDN, Farbe = currentColor. */
-function symbol(pfadDaten, groesse) {
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  const g = groesse || 16;
-  svg.setAttribute("class", "icon");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("width", String(g));
-  svg.setAttribute("height", String(g));
-  svg.setAttribute("aria-hidden", "true");
-  const pfad = document.createElementNS(NS, "path");
-  pfad.setAttribute("d", pfadDaten);
-  svg.appendChild(pfad);
-  return svg;
-}
-
-const SYMBOL_ACHTUNG = "M12 3 2.5 20.5h19L12 3ZM12 10v4M12 17.5v.5";
-const SYMBOL_INFO    = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v6M12 7.5v.5";
-
-function knopf(beschriftung, klasse, beiKlick) {
-  const k = el("button", "knopf" + (klasse ? " " + klasse : ""), beschriftung);
-  k.type = "button";
-  if (beiKlick) k.addEventListener("click", beiKlick);
-  return k;
-}
+const F = Fenster.erstellen("g", { neuLaden: function () { neuLaden(); } });
+const $ = F.$, el = F.el, leeren = F.leeren, knopf = F.knopf, text = F.text, chip = F.chip;
+const karte = F.karte, feldGesperrt = F.feldGesperrt, feldFrei = F.feldFrei;
+const toast = F.toast, melden = F.melden;
+const dialogOeffnen = F.dialogOeffnen, dialogSchliessen = F.dialogSchliessen;
+const zeigeLaden = F.zeigeLaden, zeigeFehler = F.zeigeFehler, zeigeInhalt = F.zeigeInhalt;
+const gleichwertig = F.gleichwertig;
+const anhaengen = F.anhaengen, symbol = F.symbol, kachel = F.kachel;
+const SYMBOL_ACHTUNG = F.SYMBOL_ACHTUNG, SYMBOL_INFO = F.SYMBOL_INFO;
 
 
 /* ==================================================================
@@ -173,6 +138,58 @@ function sichtbareBereiche() {
   return neuModus ? [BEREICH_NEU] : BEREICHE;
 }
 
+/* ---------- Gerüst-Anbindung ---------- */
+
+function speicherleisteZeichnen() {
+  F.speicherleisteZeichnen({
+    neuModus: neuModus, geloescht: geloescht, speichertGerade: speichertGerade,
+    speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neues Gerät"
+  });
+}
+
+/* Ein neues Gerät hat nur das eine Formular — keine Navigation. */
+function navZeichnen() {
+  document.body.classList.toggle("g-ohne-nav", neuModus);
+  F.navZeichnen(sichtbareBereiche(), aktiverBereich, bereichWechseln, { verstecken: neuModus });
+}
+
+function zeichneBereich(fokusHalten) {
+  aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich, fokusHalten);
+}
+
+/* In einen anderen Bereich springen — aus der Navigation oder aus einem
+   Knopf im Inhalt (z. B. «Beschaffungsjahr erfassen»). */
+function bereichWechseln(schluessel) {
+  aktiverBereich = schluessel;
+  location.hash = "#" + schluessel;
+  navZeichnen();
+  zeichneBereich(false);
+}
+
+function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich; }
+
+function logoZeichnen() { F.logoZeichnen("geraete"); }
+
+function bandZeichnen() {
+  F.bandZeichnen("Vorführmodus (?mock=1): alle Personen, Geräte und Zahlen sind erfunden. "
+    + "Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
+      entwurf = {};
+      melden("zeile-geaendert", elementId);
+      neuLaden();
+    });
+}
+
+function autoStarten() {
+  F.autoStarten(
+    function () { return !neuModus && !geloescht && !speichertGerade && !anzahlAenderungen(); },
+    async function () {
+      await datenLaden(true);
+      zeileWaehlen();
+      zeigeInhalt();
+      zeichnenAlles();
+    });
+}
+
 /* ---------- Werte lesen und schreiben ---------- */
 
 /* Der aktuell anzuzeigende Wert: Entwurf schlägt gespeicherten Wert. */
@@ -186,14 +203,6 @@ function textWert(feld) {
   return (w === null || w === undefined || w === false) ? "" : String(w);
 }
 
-/* Vergleich auf «gleich wie gespeichert», damit ein Hin und Her wieder als
-   unverändert gilt. */
-function gleichwertig(a, b) {
-  const nA = (a === null || a === undefined) ? "" : a;
-  const nB = (b === null || b === undefined) ? "" : b;
-  if (typeof nA === "boolean" || typeof nB === "boolean") return !!nA === !!nB;
-  return String(nA) === String(nB);
-}
 
 function setzeWert(feld, neuerWert) {
   const alt = zeile ? zeile[feld] : "";
@@ -211,95 +220,15 @@ function istGeaendert(feld) {
   return Object.prototype.hasOwnProperty.call(entwurf, feld);
 }
 
-/* ---------- Speicherleiste ---------- */
-
-function speicherleisteZeichnen() {
-  const leiste = $("g-speicherleiste");
-  const anzahl = anzahlAenderungen();
-  const zeigen = !geloescht && (neuModus || anzahl > 0 || speichertGerade);
-  leiste.hidden = !zeigen;
-  if (!zeigen) return;
-
-  const text = neuModus
-    ? (anzahl === 0 ? "Neues Gerät — noch nicht angelegt"
-                    : anzahl + (anzahl === 1 ? " Angabe" : " Angaben") + " erfasst")
-    : (anzahl === 1 ? "1 Änderung" : anzahl + " Änderungen");
-  $("g-speicher-text").textContent = speichertGerade ? "Wird gespeichert …" : text;
-
-  const fehlerFeld = $("g-speicher-fehler");
-  fehlerFeld.textContent = speicherFehler;
-  fehlerFeld.hidden = !speicherFehler;
-
-  const speichern = $("g-knopf-speichern");
-  speichern.textContent = speicherFehler ? "Nochmals speichern"
-    : (neuModus ? "Anlegen" : "Speichern");
-  speichern.disabled = speichertGerade || (!neuModus && anzahl === 0);
-
-  const verwerfen = $("g-knopf-verwerfen");
-  verwerfen.textContent = neuModus ? "Formular leeren" : "Verwerfen";
-  verwerfen.disabled = speichertGerade || anzahl === 0;
-}
-
-/* ---------- Toast ---------- */
-
-let toastZeit = null;
-
-function toast(text, istFehler) {
-  const t = $("g-toast");
-  t.textContent = text;
-  t.className = "toast" + (istFehler ? " toast-fehler" : "");
-  t.hidden = false;
-  if (toastZeit) clearTimeout(toastZeit);
-  toastZeit = setTimeout(function () { t.hidden = true; }, istFehler ? 8000 : 3500);
-}
-
-/* ---------- Meldung an die Hauptseite und die anderen Fenster ---------- */
-
-function melden(typ, id) {
-  try {
-    const kanal = new BroadcastChannel("computerinventar");
-    kanal.postMessage({ typ: typ, id: id === undefined ? null : String(id) });
-    kanal.close();
-  } catch (e) {
-    // Ältere Browser kennen BroadcastChannel nicht. Dann bleibt die
-    // Hauptseite bis zum nächsten automatischen Takt auf dem alten Stand.
-  }
-}
-
-
 /* ==================================================================
    4. Bausteine
    ================================================================== */
 
-/* Eine Karte des Design-Systems. Inhalt kommt in karte.inhalt. */
-function karte(titel, unter, breit) {
-  const k = el("section", "karte" + (breit ? " karte-breit" : ""));
-  if (titel) {
-    const kopf = el("div", "karte-kopf");
-    kopf.appendChild(el("h2", "karte-titel", titel));
-    if (unter) kopf.appendChild(el("p", "karte-unter", unter));
-    k.appendChild(kopf);
-  }
-  const inhalt = el("div", "karte-inhalt");
-  k.appendChild(inhalt);
-  k.inhalt = inhalt;
-  return k;
-}
 
 function kartenGitter() {
   return el("div", "karten");
 }
 
-/* Kennzahl-Kachel: Farbe ausschliesslich auf der Zahl (design.css). */
-function kachel(text, wertText, unter, ton) {
-  const k = el("div", "kachel" + (ton ? " ton-" + ton : ""));
-  k.setAttribute("data-klickbar", "nein");
-  const leer = wertText === "" || wertText === null || wertText === undefined;
-  k.appendChild(el("div", "kachel-wert klein", leer ? "—" : String(wertText)));
-  k.appendChild(el("div", "kachel-text", text));
-  if (unter) k.appendChild(el("div", "kachel-unter", unter));
-  return k;
-}
 
 function schloss() {
   const s = el("span", "schloss");
@@ -370,9 +299,6 @@ function tabelle(kopfzeilen, datenzeilen) {
   return rahmen;
 }
 
-function chip(text, ton) {
-  return el("span", "chip" + (ton ? " chip-" + ton : ""), text);
-}
 
 function leerHinweis(text) {
   return el("p", "hinweis", text);
@@ -418,7 +344,7 @@ function eingabeFuer(spalte, optionen) {
   const o = optionen || {};
   const istNote = spalte.t === "Note";
   const feld = el(istNote ? "textarea" : "input",
-    (istNote ? "g-textarea" : "g-eingabe") + (o.schmal ? " g-eingabe-schmal" : ""));
+    "feld-eingabe" + (o.schmal ? " eingabe-schmal" : ""));
   if (!istNote) feld.type = "text";
   feld.value = textWert(spalte.i);
   feld.id = "g-eingabe-" + spalte.i;
@@ -431,7 +357,7 @@ function eingabeFuer(spalte, optionen) {
   }
 
   feld.addEventListener("input", function () {
-    feld.classList.remove("g-ungueltig");
+    feld.classList.remove("ungueltig");
     setzeWert(spalte.i, feld.value);
     const z = feld.closest ? feld.closest(".datenzeile") : null;
     if (z) z.classList.toggle("geaendert", istGeaendert(spalte.i));
@@ -1171,7 +1097,7 @@ function bereichInhaber(ziel) {
    geschrieben wird erst, wenn jemand tatsächlich etwas wählt — dann aber
    immer einer der drei erlaubten Werte, nie eine leere Zeichenkette. */
 function statusZeile() {
-  const wahl = el("select", "g-eingabe g-eingabe-schmal");
+  const wahl = el("select", "feld-eingabe eingabe-schmal");
   wahl.id = "g-eingabe-Status";
   wahl.setAttribute("aria-label", STATUS.d);
   /* Nur der Wert steht im Auswahlfeld — die Erklärung darunter im Hinweis.
@@ -1374,7 +1300,7 @@ function bereichSoftware(ziel) {
     + (zeile.SCCM_InstalledSoftwareCount || installiert.length) + " Einträge, "
     + "aufgeführt werden die vom Abgleich übernommenen.");
   const werkzeuge = el("div", "g-werkzeuge");
-  const isSuche = el("input", "g-eingabe");
+  const isSuche = el("input", "feld-eingabe");
   isSuche.type = "search";
   isSuche.id = "g-suche-installiert";
   isSuche.placeholder = "Installierte Software suchen …";
@@ -1778,7 +1704,7 @@ function bereichFelder(ziel) {
     + "gruppiert wie in der SharePoint-Liste.", true);
 
   const werkzeuge = el("div", "g-werkzeuge");
-  const suche = el("input", "g-eingabe");
+  const suche = el("input", "feld-eingabe");
   suche.type = "search";
   suche.id = "g-suche-felder";
   suche.placeholder = "Feld oder Wert suchen …";
@@ -1953,28 +1879,6 @@ function aktionenZeichnen() {
   }
 }
 
-/* Das Logo im Kopf führt zur Übersicht. Im Vorführmodus muss der Parameter
-   mitgehen, sonst landet man dort auf der Anmeldung. */
-function logoZeichnen() {
-  const verweis = $("g-logo");
-  if (!verweis) return;
-  verweis.href = "index.html" + (mockModus ? "?mock=1" : "");
-  // Der Pfad über dem Titel führt in die Geräteliste.
-  const pfad = $("g-pfad");
-  if (pfad) {
-    pfad.href = "index.html" + (mockModus ? "?mock=1" : "") + "#geraete";
-    /* Kam man aus der Liste, führt der Pfad per Verlauf zurück — mit allen
-       Filtern und der Rollposition. Sonst ist er ein gewöhnlicher Link. */
-    pfad.addEventListener("click", function (e) {
-      let vonListe = false;
-      try {
-        const von = new URL(document.referrer);
-        vonListe = von.origin === location.origin && /^\/(index(\.html)?)?$/.test(von.pathname);
-      } catch (fehler) { vonListe = false; }
-      if (vonListe && history.length > 1) { e.preventDefault(); history.back(); }
-    });
-  }
-}
 
 function adresseFuer(id) {
   return "geraet.html?id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
@@ -1984,65 +1888,7 @@ function adresseFuer(id) {
    unteren Fensterrand; die Knöpfe stehen in einem eigenen Behälter
    (.fenster-nav-menue), der darin klebt beziehungsweise auf schmalen
    Fenstern zur waagrecht rollenden Reiterleiste wird. */
-/* In einen anderen Bereich springen — aus der Navigation oder aus einem
-   Knopf im Inhalt (z. B. «Beschaffungsjahr erfassen»). */
-function bereichWechseln(schluessel) {
-  aktiverBereich = schluessel;
-  location.hash = "#" + schluessel;
-  navZeichnen();
-  zeichneBereich(false);
-}
 
-function navZeichnen() {
-  const nav = leeren($("g-nav"));
-  /* Ein neues Gerät hat nur das eine Formular — keine Navigation. */
-  nav.hidden = neuModus;
-  document.body.classList.toggle("g-ohne-nav", neuModus);
-  if (neuModus) return;
-  const menue = el("div", "fenster-nav-menue");
-  for (const b of sichtbareBereiche()) {
-    const k = el("button", "fenster-nav-knopf" + (b.k === aktiverBereich ? " aktiv" : ""), b.d);
-    k.type = "button";
-    if (b.k === aktiverBereich) k.setAttribute("aria-current", "true");
-    k.addEventListener("click", function () { bereichWechseln(b.k); });
-    menue.appendChild(k);
-  }
-  nav.appendChild(menue);
-
-  /* Auf schmalen Fenstern ist die Navigation eine waagrecht rollende
-     Leiste. Nach dem Neuzeichnen soll der aktive Eintrag sichtbar bleiben.
-     «nearest» rührt nichts an, wenn er ohnehin schon zu sehen ist. */
-  const aktiv = menue.querySelector(".fenster-nav-knopf.aktiv");
-  if (aktiv && aktiv.scrollIntoView) {
-    aktiv.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }
-}
-
-/* Zeichnet den aktiven Bereich neu. «fokusHalten» setzt den Fokus danach
-   auf das gleichnamige Feld zurück, damit Tippen nicht abreisst. */
-function zeichneBereich(fokusHalten) {
-  const vorher = document.activeElement;
-  const vorherId = vorher && vorher.id ? vorher.id : null;
-  let anfang = null;
-  try { anfang = vorher ? vorher.selectionStart : null; } catch (e) { anfang = null; }
-
-  const ziel = leeren($("g-bereich"));
-  ziel.hidden = false;
-  const bereich = sichtbareBereiche().filter(b => b.k === aktiverBereich)[0]
-    || sichtbareBereiche()[0];
-  aktiverBereich = bereich.k;
-  bereich.f(ziel);
-
-  if (fokusHalten && vorherId) {
-    const nachher = $(vorherId);
-    if (nachher && nachher.focus) {
-      nachher.focus();
-      if (anfang !== null) {
-        try { nachher.setSelectionRange(anfang, anfang); } catch (e) { /* type=search */ }
-      }
-    }
-  }
-}
 
 function zeichnenAlles() {
   kopfZeichnen();
@@ -2056,33 +1902,6 @@ function zeichnenAlles() {
    8. Laden, Speichern, Anlegen, Löschen, Inhaberschaft
    ================================================================== */
 
-function zeigeLaden(text) {
-  $("g-laden-text").textContent = text;
-  $("g-laden").hidden = false;
-  $("g-fehler").hidden = true;
-  $("g-bereich").hidden = true;
-  $("g-nav").hidden = true;
-}
-
-function zeigeFehler(titel, text, hinweis, knopfText, beiKlick) {
-  $("g-fehler-titel").textContent = titel;
-  $("g-fehler-text").textContent = text;
-  $("g-fehler-hinweis").textContent = hinweis || "";
-  const k = $("g-knopf-nochmal");
-  k.textContent = knopfText || "Erneut laden";
-  k.onclick = beiKlick || neuLaden;
-  $("g-laden").hidden = true;
-  $("g-fehler").hidden = false;
-  $("g-bereich").hidden = true;
-  $("g-nav").hidden = true;
-  $("g-speicherleiste").hidden = true;
-}
-
-function zeigeInhalt() {
-  $("g-laden").hidden = true;
-  $("g-fehler").hidden = true;
-  $("g-laden-fortschritt").textContent = "";
-}
 
 /* Eine leere Zeile mit allen Spalten, für «Neues Gerät». */
 function leereZeile() {
@@ -2196,44 +2015,7 @@ function ladeFehlerZeigen(fehler) {
    ungespeicherten Änderungen (sie gingen verloren), beim Anlegen, während
    des Speicherns, bei offenem Dialog, nach dem Löschen und in einem
    Hintergrund-Tab. Der nächste Takt versucht es dann wieder. */
-let autoLetzte = Date.now();
-let autoLaeuft = false;
 
-function autoErlaubt() {
-  if (autoLaeuft || document.hidden) return false;
-  if (neuModus || geloescht || speichertGerade) return false;
-  if (anzahlAenderungen()) return false;
-  if (!$("g-dialog").hidden) return false;
-  return true;
-}
-
-async function autoNachladen() {
-  autoLaeuft = true;
-  try {
-    await datenLaden(true);
-    zeileWaehlen();
-    zeigeInhalt();
-    zeichnenAlles();
-  } catch (fehler) {
-    /* Still bleiben: Der bisher gezeigte Stand ist besser als ein Fehlerbild
-       wegen einer kurzen Störung. */
-  } finally {
-    autoLaeuft = false;
-    autoLetzte = Date.now();
-  }
-}
-
-function autoPruefen() {
-  if (!autoErlaubt()) return;
-  if (Date.now() - autoLetzte < KONFIG.autoTaktMs) return;
-  autoNachladen();
-}
-
-function autoStarten() {
-  autoLetzte = Date.now();
-  setInterval(autoPruefen, KONFIG.autoPruefTaktMs);
-  document.addEventListener("visibilitychange", autoPruefen);
-}
 
 /* ---------- Prüfen ---------- */
 
@@ -2279,7 +2061,7 @@ async function speichern() {
     speicherleisteZeichnen();
     toast(fehler.text, true);
     const feld = $("g-eingabe-" + fehler.feld);
-    if (feld) { feld.classList.add("g-ungueltig"); feld.focus(); }
+    if (feld) { feld.classList.add("ungueltig"); feld.focus(); }
     return;
   }
 
@@ -2349,35 +2131,16 @@ async function speichern() {
   }
 }
 
-function verwerfen() {
+async function verwerfen() {
   if (!anzahlAenderungen()) return;
-  const text = neuModus
+  const frage = neuModus
     ? "Alle Eingaben dieses Formulars verwerfen?"
     : anzahlAenderungen() + " Änderung(en) verwerfen?";
-  if (!window.confirm(text)) return;
+  if (!await F.bestaetigen("Verwerfen", frage, "Verwerfen", true)) return;
   entwurf = {};
   speicherFehler = "";
   zeichnenAlles();
   toast("Änderungen verworfen.");
-}
-
-/* ---------- Dialog ---------- */
-
-function dialogSchliessen() {
-  $("g-dialog").hidden = true;
-  $("g-dialog-hintergrund").hidden = true;
-  leeren($("g-dialog-inhalt"));
-  leeren($("g-dialog-knoepfe"));
-}
-
-function dialogOeffnen(titel) {
-  $("g-dialog-titel").textContent = titel;
-  $("g-dialog-hintergrund").hidden = false;
-  $("g-dialog").hidden = false;
-  return {
-    inhalt: leeren($("g-dialog-inhalt")),
-    knoepfe: leeren($("g-dialog-knoepfe"))
-  };
 }
 
 /* ---------- Inhaber festlegen, wechseln und entfernen ---------- */
@@ -2442,7 +2205,7 @@ function inhaberWaehlenDialog() {
           + "Gerät hat genau einen Inhaber."
         : "")));
 
-  const suche = el("input", "g-eingabe");
+  const suche = el("input", "feld-eingabe");
   suche.type = "search";
   suche.id = "g-inhaber-suche";
   suche.placeholder = "Name, Login oder Abteilung suchen …";
@@ -2549,7 +2312,7 @@ function loeschenDialog() {
   d.inhalt.appendChild(el("p", null,
     "Zur Bestätigung bitte den PC-Namen genau abtippen: " + name));
 
-  const feld = el("input", "g-eingabe");
+  const feld = el("input", "feld-eingabe");
   feld.type = "text";
   feld.autocomplete = "off";
   feld.setAttribute("aria-label", "PC-Name zur Bestätigung");
@@ -2593,26 +2356,6 @@ function loeschenDialog() {
    9. Start und Tastatur
    ================================================================== */
 
-function hashLesen() {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && BEREICHE.some(b => b.k === h)) aktiverBereich = h;
-}
-
-function bandZeichnen() {
-  if (!mockModus) return;
-  const band = $("g-band");
-  band.hidden = false;
-  band.appendChild(document.createTextNode(
-    "Vorführmodus (?mock=1): alle Personen, Geräte und Zahlen sind erfunden. "
-    + "Änderungen bleiben im Browser und gehen nie nach SharePoint."));
-  band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", "knopf-leise", function () {
-    if (!window.confirm("Alle im Vorführmodus gemachten Änderungen verwerfen?")) return;
-    Mock.zuruecksetzen();
-    entwurf = {};
-    melden("zeile-geaendert", elementId);
-    neuLaden();
-  }));
-}
 
 async function start() {
   hashLesen();
@@ -2643,41 +2386,20 @@ async function start() {
 
 /* ---------- Ereignisse ---------- */
 
-$("g-knopf-speichern").addEventListener("click", speichern);
-$("g-knopf-verwerfen").addEventListener("click", verwerfen);
-$("g-dialog-hintergrund").addEventListener("click", dialogSchliessen);
-
+F.ereignisse({
+  speichern: speichern,
+  verwerfen: verwerfen,
+  anzahlAenderungen: anzahlAenderungen,
+  verlassenFrei: function () { return geloescht; },
+  beiHash: function (h) {
+    if (h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
+      aktiverBereich = h;
+      navZeichnen();
+      zeichneBereich(false);
+    }
+  }
+});
 autoStarten();
-
-window.addEventListener("hashchange", function () {
-  const h = (location.hash || "").replace(/^#/, "");
-  if (h && h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
-    aktiverBereich = h;
-    navZeichnen();
-    zeichneBereich(false);
-  }
-});
-
-document.addEventListener("keydown", function (e) {
-  // Ctrl+S beziehungsweise Cmd+S speichert.
-  if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-    e.preventDefault();
-    speichern();
-    return;
-  }
-  if (e.key === "Escape") {
-    if (!$("g-dialog").hidden) { dialogSchliessen(); return; }
-    if (anzahlAenderungen()) { e.preventDefault(); verwerfen(); }
-  }
-});
-
-window.addEventListener("beforeunload", function (e) {
-  if (!anzahlAenderungen() || geloescht) return;
-  e.preventDefault();
-  // Der Text stammt vom Browser; zurückgeben muss man trotzdem etwas.
-  e.returnValue = "";
-  return "";
-});
 
 start();
 

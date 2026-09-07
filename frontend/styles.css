@@ -93,14 +93,7 @@ body.seite { height: 100vh; overflow: hidden; }
   display: block; font-size: var(--t-xs); font-weight: 500;
   color: var(--text-leise); margin-bottom: var(--a1);
 }
-.filterfeld select {
-  width: 100%; font: inherit; font-size: var(--t-m);
-  min-height: 40px; padding: var(--a2) var(--a3);
-  border: 1px solid var(--umriss); border-radius: var(--r-klein);
-  background: var(--weiss); color: var(--text);
-}
-.filterfeld select:hover { border-color: var(--text); }
-.filterfeld select:focus { outline: none; border-color: var(--primaer); box-shadow: inset 0 0 0 1px var(--primaer); }
+/* Die Auswahlfelder sind .feld-eingabe aus design.css. */
 
 
 /* ==================================================================

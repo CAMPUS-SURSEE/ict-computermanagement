@@ -74,6 +74,13 @@
 
 <div class="toast" id="b-toast" hidden role="status" aria-live="polite"></div>
 
+<div class="dialog-hintergrund" id="b-dialog-hintergrund" hidden></div>
+<div class="dialog" id="b-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="b-dialog-titel">
+  <h2 id="b-dialog-titel"></h2>
+  <div id="b-dialog-inhalt"></div>
+  <div class="dialog-knoepfe" id="b-dialog-knoepfe"></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -83,6 +90,7 @@
 <script src="graph.js"></script>
 <script src="modell.js"></script>
 <script src="verlauf.js"></script>
+<script src="fenster.js"></script>
 <script src="benutzer.js"></script>
 
 </body>

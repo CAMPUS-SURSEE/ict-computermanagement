@@ -38,6 +38,11 @@ const KONFIG = {
      Graph: GET /sites/{siteId}/drive/root:/{programmeDateiPfad}:/content */
   programmeDateiPfad: "Inventar/programme.json",
 
+  /* ---- Rundfunkkanal zwischen Hauptseite und Detailseiten ----
+     Eine Detailseite meldet nach dem Speichern über diesen Kanal, die
+     Hauptseite lädt daraufhin still nach (BroadcastChannel, gleicher Ursprung). */
+  kanalName: "computerinventar",
+
   /* ---- Automatisches Nachladen ----
      Es gibt keinen Knopf «Neu laden» mehr. Stattdessen holen sich die Liste
      und die Detailfenster ihre Daten in diesem Abstand still selbst nach —

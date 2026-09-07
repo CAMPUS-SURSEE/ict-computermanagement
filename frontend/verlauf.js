@@ -1,4 +1,4 @@
-/* verlauf.js — Verlaufs-Zeitstrahl für Gerätefenster und Benutzerfenster.
+/* verlauf.js — Verlaufs-Zeitstrahl für Gerät, Benutzer und Telefonnummer.
 
    Beide Listen haben eine Note-Spalte «Verlauf» mit einem JSON-Array; das
    Format und alle Lese- und Schreibhelfer stehen in modell.js. Diese Datei
@@ -63,7 +63,7 @@ const Verlauf = (function () {
   }
 
   function datumsfeld(wert) {
-    const f = el("input", "vl-datum-feld");
+    const f = el("input", "feld-eingabe vl-datum-feld");
     f.type = "date";
     f.value = wert || Modell.heuteIso();
     f.setAttribute("aria-label", "Datum des Ereignisses");
@@ -71,7 +71,7 @@ const Verlauf = (function () {
   }
 
   function textfeld(wert, platzhalter) {
-    const f = el("textarea", "vl-text-feld");
+    const f = el("textarea", "feld-eingabe vl-text-feld");
     f.value = wert || "";
     f.rows = 3;
     f.placeholder = platzhalter || "";

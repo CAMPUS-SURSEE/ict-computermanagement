@@ -239,13 +239,13 @@ Töne: `chip-erfolg`, `chip-warnung`, `chip-gefahr`, `chip-info`, `chip-marke`, 
 - 40 px hoch, 14 px, 1 px `--umriss`, 4 px Radius, weiss.
 - Hover Rahmen `--text`, Fokus Rahmen `--primaer` doppelt (1 px + 1 px innen), ungültig `--gefahr` doppelt.
 - Schreibgeschützt: `--flaeche` mit `--linie`-Rahmen und `--text-leise`.
-- Gilt für `.feld-eingabe` (das Feld des Design-Systems, auch für `select` und `textarea`), `.g-eingabe`, `.g-textarea`, `.feld input/select/textarea`, `.vl-datum-feld`, `.vl-text-feld`, `.filterfeld select`, `.datenzeile-breit textarea`.
-- Neue Seiten nehmen `.feld-eingabe` aus design.css und ergänzen in ihrem Seiten-CSS nur Breiten und den Ungültig-Zustand (Beispiel: `.tf-eingabe-schmal`, `.tf-ungueltig` in telefon.css).
+- Es gibt genau eine Feldklasse: `.feld-eingabe` (für `input`, `select` und `textarea`; `textarea` 88 px hoch, senkrecht ziehbar). Zustände: `.ungueltig` (rot), `[readonly]`. Breiten: `.eingabe-schmal` (200 px) oder eine Seitenklasse daneben (`.tf-eingabe-kurzwahl`, `.vl-text-feld`).
+- Seiten-CSS ergänzt nur Breiten, nie Rahmen, Farben oder Höhen.
 - Checkboxen und Radios: `accent-color: --primaer`.
 
 ### 4.10 Datenzeilen `.datenzeilen > .datenzeile`
 - **Lesen:** Name links (13 px `--text-leise`, 36 % Breite, mind. 110 px), Wert rechts (14 px `--text`), Hairline `--linie-leicht` dazwischen, 10 px senkrecht.
-- **Bearbeiten:** Klasse `.datenzeile-form` — Beschriftung oben (12 px 500), Feld in voller Breite (max. 560 px) darunter, Hinweis `.datenzeile-hinweis` oder Knopfzeile `.datenzeile-zeile` (je 8 px Abstand) unter dem Feld. Schmale Felder (`.eingabe-schmal`, 200 px; im Gerätefenster noch `.g-eingabe-schmal`) für Jahre und Auswahlen.
+- **Bearbeiten:** Klasse `.datenzeile-form` — Beschriftung oben (12 px 500), Feld in voller Breite (max. 560 px) darunter, Hinweis `.datenzeile-hinweis` oder Knopfzeile `.datenzeile-zeile` (je 8 px Abstand) unter dem Feld. Schmale Felder (`.eingabe-schmal`, 200 px) für Jahre und Auswahlen.
 - Schreibgeschützte Felder tragen `.schloss` (🔒) im Namen mit Tooltip.
 - Geänderte, ungespeicherte Zeilen: `.geaendert` setzt einen blauen Punkt hinter den Namen.
 - Leerer Wert: «—» in `--text-still`, nie ein leeres Feld.
