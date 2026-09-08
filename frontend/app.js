@@ -513,7 +513,15 @@ const SINNBILDER = {
   archiv:     ["M4 9h16v10H4z", "M3 5h18v4H3z", "M10 13h4"],
   plus:       ["M12 5v14", "M5 12h14"],
   abmelden:   ["M15 5H6v14h9", "M14 12h7", "M18 9l3 3-3 3"],
-  schliessen: ["M6 6l12 12", "M18 6L6 18"]
+  schliessen: ["M6 6l12 12", "M18 6L6 18"],
+  /* Übersicht: dieselben Sinnbilder wie in der Navigation, dazu ein Pfeil
+     für «Liste öffnen» und ein Winkel am Ende einer Aufgabenzeile. */
+  admin:      ["M4 6h16v10H4z", "M2 19h20"],
+  edu:        ["M12 4L2 9l10 5 10-5z", "M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"],
+  benutzer:   ["M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5"],
+  telefone:   ["M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"],
+  pfeil:      ["M5 12h14", "M13 6l6 6-6 6"],
+  winkel:     ["M9 6l6 6-6 6"]
 };
 
 function sinnbild(name) {
@@ -1549,20 +1557,9 @@ function facetteSetzen(z, schluessel, wert) { z.facetten[schluessel] = [wert]; }
    6a. Übersicht
    ================================================================== */
 
-function kachel(wert, text, ton, unter, aktion) {
-  const k = el(aktion ? "button" : "div", "kachel" + (ton ? " ton-" + ton : ""));
-  if (aktion) k.type = "button";
-  const klein = String(wert).length > 7 ? " klein" : "";
-  anhaengen(k, [el("div", "kachel-wert" + klein, wert), el("div", "kachel-text", text)]);
-  if (unter) k.appendChild(el("div", "kachel-unter", unter));
-  if (aktion) {
-    k.addEventListener("click", aktion);
-    k.title = "In der Liste anzeigen";
-  } else {
-    k.dataset.klickbar = "nein";
-  }
-  return k;
-}
+/* Eine Kennzahl ist ein Fünfer: [Wert, Text, Ton, Unterzeile, Aktion].
+   Der Ton färbt die Zahl (erfolg, warnung, gefahr); ohne Ton bleibt sie
+   schwarz, eine Null grau. Die Aktion öffnet die passende Liste gefiltert. */
 
 function zaehle(liste, pruefung) {
   let n = 0;
@@ -1573,34 +1570,120 @@ function zaehle(liste, pruefung) {
 /* Die Clients, die für Kennzahlen und Planung zählen: alles ausser den
    archivierten. Ein ausgemustertes Gerät verzerrt sonst jede Zahl — es ist
    weder online noch ersatzbedürftig, steht aber im Nenner. Die archivierten
-   bekommen dafür eine eigene Kachel. */
+   bekommen dafür eine eigene Zeile. */
 function aktiveClients(tab) {
   return zeilenVon(tab).filter(z => !z.__archiviert);
 }
 
-/* Eine Kennzahl landet zuoberst unter «Handlungsbedarf», wenn sie einen
-   Warn- oder Gefahrenton trägt und grösser als null ist. Alles andere bleibt
-   im Bestand seiner Liste; eine Null wird grau. Im Handlungsbedarf steht die
-   Herkunft (Geräte, Benutzer, Telefonnummern) als Unterzeile, damit
-   «nicht in SCCM» ohne seinen Block verständlich bleibt. */
-function kachelnEinordnen(zielBestand, herkunft, liste) {
-  const zielOffen = $("kacheln-handlungsbedarf");
+/* Offen ist eine Kennzahl, wenn sie einen Warn- oder Gefahrenton trägt und
+   grösser als null ist. Sie erscheint dann zusätzlich unter «Handlungs-
+   bedarf»; in ihrer Bestandskarte bleibt sie trotzdem stehen, damit jede
+   Karte immer dieselben Zeilen zeigt, ganz gleich, wie die Daten stehen. */
+function istOffen(w, ton) {
+  return Boolean(ton) && ton !== "erfolg" && w > 0;
+}
+
+const TON_RANG = { gefahr: 0, warnung: 1 };
+
+/* Die gesammelten offenen Punkte aller Listen; zeichneUebersicht leert
+   die Liste, die Bestandskarten füllen sie, am Ende wird sie gezeichnet. */
+let offenePunkte = [];
+
+function offenMerken(herkunft, liste) {
   for (const [w, t, ton, unter, aktion] of liste) {
-    const offen = ton && ton !== "erfolg" && w > 0;
-    const k = kachel(w, t, ton, offen ? (unter ? herkunft + " · " + unter : herkunft) : unter, aktion);
-    if (!w) k.classList.add("kachel-null");
-    (offen ? zielOffen : zielBestand).appendChild(k);
+    if (istOffen(w, ton)) offenePunkte.push({ w, t, ton, herkunft, unter, aktion });
   }
+}
+
+/* Eine Zeile unter «Handlungsbedarf»: Zahl als getönte Marke, daneben der
+   Text mit Herkunft, rechts ein Winkel, wenn ein Klick in die Liste führt. */
+function aufgabeZeile(p) {
+  const z = el(p.aktion ? "button" : "div", "aufgabe ton-" + p.ton);
+  if (p.aktion) {
+    z.type = "button";
+    z.title = "In der Liste anzeigen";
+    z.addEventListener("click", p.aktion);
+  }
+  const text = el("span", "aufgabe-text");
+  anhaengen(text, [
+    el("span", "aufgabe-titel", p.t),
+    el("span", "aufgabe-unter", p.unter ? p.herkunft + " · " + p.unter : p.herkunft)
+  ]);
+  anhaengen(z, [el("span", "aufgabe-zahl", p.w), text, p.aktion ? sinnbild("winkel") : null]);
+  return z;
+}
+
+function zeichneHandlungsbedarf() {
+  const ziel = $("kacheln-handlungsbedarf");
+  leeren(ziel);
+  /* Gefahr vor Warnung, sonst in der Reihenfolge der Listen; sort ist
+     stabil, darum bleibt die Reihenfolge innerhalb eines Tons erhalten. */
+  offenePunkte.sort((a, b) => (TON_RANG[a.ton] ?? 9) - (TON_RANG[b.ton] ?? 9));
+  for (const p of offenePunkte) ziel.appendChild(aufgabeZeile(p));
+
+  const n = offenePunkte.length;
+  const zaehler = $("handlungsbedarf-anzahl");
+  zaehler.textContent = n === 1 ? "1 offener Punkt" : n + " offene Punkte";
+  zaehler.hidden = n === 0;
+  $("handlungsbedarf-leer").hidden = n > 0;
+  ziel.hidden = n === 0;
+}
+
+/* Eine Bestandskarte: Kopf mit Sinnbild, Titel und Sprung in die Liste;
+   darunter die erste Kennzahl gross, die übrigen als Zeilen. */
+function bestandKarte(tab, liste, hinweis) {
+  const ziel = $("bestand-" + tab);
+  leeren(ziel);
+
+  const kopf = el("div", "bestand-kopf");
+  const oeffnen = el("button", "knopf knopf-still knopf-sinnbild");
+  oeffnen.type = "button";
+  oeffnen.title = ANSICHT_TITEL[tab] + " öffnen";
+  oeffnen.setAttribute("aria-label", ANSICHT_TITEL[tab] + " öffnen");
+  oeffnen.appendChild(sinnbild("pfeil"));
+  oeffnen.addEventListener("click", () => springeMitFilter(tab, function () { }));
+  anhaengen(kopf, [sinnbild(tab), el("h2", "bestand-titel", ANSICHT_TITEL[tab]), oeffnen]);
+  ziel.appendChild(kopf);
+
+  const [haupt, ...rest] = liste;
+  const h = el(haupt[4] ? "button" : "div", "bestand-haupt");
+  if (haupt[4]) {
+    h.type = "button";
+    h.title = "In der Liste anzeigen";
+    h.addEventListener("click", haupt[4]);
+  }
+  anhaengen(h, [
+    el("span", "bestand-wert" + (haupt[0] ? "" : " leer"), haupt[0]),
+    el("span", "bestand-text", haupt[1]),
+    el("span", "bestand-unter", haupt[3] || "")
+  ]);
+  ziel.appendChild(h);
+
+  const zeilen = el("div", "bestand-liste");
+  for (const [w, t, ton, unter, aktion] of rest) {
+    const z = el(aktion ? "button" : "div", "bestand-zeile");
+    if (aktion) {
+      z.type = "button";
+      z.addEventListener("click", aktion);
+    }
+    /* Die Unterzeile steht hier nur im Tooltip; in der Zeile wäre sie
+       abgeschnitten. Unter «Handlungsbedarf» steht sie ausgeschrieben. */
+    const text = el("span", "bestand-zeile-text", t);
+    if (unter) z.title = t + " — " + unter;
+    const zahl = el("span", "bestand-zahl" + (w ? (ton ? " t-" + ton : "") : " leer"), w);
+    anhaengen(z, [text, zahl]);
+    zeilen.appendChild(z);
+  }
+  ziel.appendChild(zeilen);
+
+  if (hinweis) ziel.appendChild(el("p", "bestand-hinweis hinweis", hinweis));
+  offenMerken(ANSICHT_TITEL[tab], liste);
 }
 
 /* Die Kennzahlen einer Client-Liste. Beide Listen bekommen denselben Satz;
    «ohne Inhaber» fällt bei den EDU-Clients weg, weil es dort bewusst keine
    Inhaberschaft gibt. */
 function clientKacheln(tab) {
-  const ziel = $("kacheln-" + tab);
-  leeren(ziel);
-
-  const titel = TAB[tab].titel;
   const alleZeilen = zeilenVon(tab);
   const imEinsatz = aktiveClients(tab);
   const archiviert = alleZeilen.length - imEinsatz.length;
@@ -1610,7 +1693,7 @@ function clientKacheln(tab) {
   const ohneJahr = zaehle(imEinsatz, z => !String(z.Beschaffungsjahr || "").trim());
 
   /* Ein Sprung in die Liste mit einer Facette blendet die archivierten
-     weiter aus — genau wie die Kachel sie nicht mitzählt. */
+     weiter aus — genau wie die Zahl sie nicht mitzählt. */
   const kacheln = [
     [imEinsatz.length, "im Einsatz", null,
       archiviert ? "ohne " + archiviert + " archivierte" : "keine archivierten",
@@ -1620,7 +1703,7 @@ function clientKacheln(tab) {
     [ohneSccm, "nicht in SCCM", ohneSccm ? "warnung" : null, null,
       () => springeMitFilter(tab, z => facetteSetzen(z, "SCCM_Found", "Nein"))],
     [ueberfaellig, "Ersatz überfällig", ueberfaellig ? "gefahr" : null,
-      "Ersatz geplant vor " + Modell.gjAktuell(),
+      "geplant vor " + Modell.gjAktuell(),
       () => springeMitFilter(tab, z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig))],
     [ohneJahr, "ohne Beschaffungsjahr", ohneJahr ? "warnung" : null, null,
       () => springeMitFilter(tab, z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.unbekannt))]
@@ -1630,85 +1713,71 @@ function clientKacheln(tab) {
     kacheln.push([ohneInhaber, "ohne Inhaber", ohneInhaber ? "warnung" : null, null,
       () => springeMitFilter(tab, z => facetteSetzen(z, "__hatInhaber", "Nein"))]);
   }
-  kacheln.push([archiviert, "archiviert", null, "in der Liste ausgeblendet",
+  kacheln.push([archiviert, "archiviert", null, "ausgeblendet",
     () => springeMitFilter(tab, z => facetteSetzen(z, "__statusText", ARCHIVIERT))]);
 
-  kachelnEinordnen(ziel, titel, kacheln);
-
   /* Fehlt die EDU-Liste noch, steht hier statt lauter Nullen der Weg dahin. */
-  if (tab === "edu" && listenHinweis.edu && !alleZeilen.length) {
-    ziel.appendChild(el("p", "hinweis", listenHinweis.edu));
-  }
+  const hinweis = tab === "edu" && listenHinweis.edu && !alleZeilen.length ? listenHinweis.edu : null;
+  bestandKarte(tab, kacheln, hinweis);
 }
 
 function zeichneUebersicht() {
-  leeren($("kacheln-handlungsbedarf"));
+  offenePunkte = [];
 
   /* ---- Kennzahlen der beiden Client-Listen ---- */
   clientKacheln("admin");
   clientKacheln("edu");
 
   /* ---- Kennzahlen Benutzer ---- */
-  const zielB = $("kacheln-benutzer");
-  leeren(zielB);
-
   const ohneGeraet = zaehle(benutzer, b => !b.__hatGeraet);
   const inaktiv = zaehle(benutzer, b => !b.__adAktiv);
   const abweichung = zaehle(benutzer, b => b.__primaerAbweichung);
+  const ohneTelefon = zaehle(benutzer, b => b.__adAktiv && !b.__hatTelefon);
 
-  const kachelnB = [
+  bestandKarte("benutzer", [
     [benutzer.length, "Benutzer gesamt", null, null,
       () => springeMitFilter("benutzer", function () { })],
     [ohneGeraet, "ohne Gerät", null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "__hatGeraetText", "Nein"))],
+    [ohneTelefon, "ohne Telefonnummer", null, "aktive AD-Konten",
+      () => springeMitFilter("benutzer", function (z) {
+        facetteSetzen(z, "__hatTelefonText", "Nein");
+        facetteSetzen(z, "ADAktiviert", "Ja");
+      })],
     [inaktiv, "AD-Konto deaktiviert", inaktiv ? "gefahr" : null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "ADAktiviert", "Nein"))],
     [abweichung, "Primärgerät weicht ab", abweichung ? "warnung" : null,
-      "SCCM-Primärgerät ≠ ADMIN-Client der Person", null]
-  ];
-  kachelnEinordnen(zielB, "Benutzer", kachelnB);
+      "SCCM-Primärgerät ≠ ADMIN-Client", null]
+  ], null);
 
   /* ---- Kennzahlen Telefonnummern ---- */
-  const zielT = $("kacheln-telefone");
-  leeren(zielT);
-
   const zugewiesen = zaehle(telefone, t => t.__zugewiesen);
   const nichtZugewiesen = telefone.length - zugewiesen;
   const frei = zaehle(telefone, t => t.__status === "Frei");
   const inaktivT = zaehle(telefone, t => t.__status === "Inaktiv");
   const nameWeicht = zaehle(telefone, t => t.__nameAbweichung);
-  const ohneTelefon = zaehle(benutzer, b => b.__adAktiv && !b.__hatTelefon);
 
   /* «zugewiesen» ist der Normalfall und bleibt schwarz. */
-  const kachelnT = [
+  bestandKarte("telefone", [
     [telefone.length, "Telefonnummern", null, null,
       () => springeMitFilter("telefone", function () { })],
     [zugewiesen, "zugewiesen", null, null,
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__zugewiesenText", "Ja"))],
-    [nichtZugewiesen, "nicht zugewiesen", nichtZugewiesen ? "warnung" : null,
-      "in der Liste hervorgehoben",
-      () => springeMitFilter("telefone", z => facetteSetzen(z, "__zugewiesenText", "Nein"))],
-    [frei, "frei — sofort vergebbar", null, null,
+    [frei, "frei", null, "sofort vergebbar",
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__statusText", "Frei"))],
     [inaktivT, "inaktiv", null, "nicht in Teams",
       () => springeMitFilter("telefone", z => facetteSetzen(z, "__statusText", "Inaktiv"))],
+    [nichtZugewiesen, "nicht zugewiesen", nichtZugewiesen ? "warnung" : null, null,
+      () => springeMitFilter("telefone", z => facetteSetzen(z, "__zugewiesenText", "Nein"))],
     [nameWeicht, "Name weicht vom AD ab", nameWeicht ? "warnung" : null,
       "Liste und AD nennen verschiedene Personen",
-      () => springeMitFilter("telefone", z => facetteSetzen(z, "__nameAbweichungText", "Ja"))],
-    [ohneTelefon, "Benutzer ohne Nummer", null, "aktive AD-Konten",
-      () => springeMitFilter("benutzer", function (z) {
-        facetteSetzen(z, "__hatTelefonText", "Nein");
-        facetteSetzen(z, "ADAktiviert", "Ja");
-      })]
-  ];
-  kachelnEinordnen(zielT, "Telefonnummern", kachelnT);
-  if (listenHinweis.telefon && !telefone.length) {
-    zielT.appendChild(el("p", "hinweis", listenHinweis.telefon));
-  }
+      () => springeMitFilter("telefone", z => facetteSetzen(z, "__nameAbweichungText", "Ja"))]
+  ], listenHinweis.telefon && !telefone.length ? listenHinweis.telefon : null);
 
-  $("handlungsbedarf-leer").hidden = $("kacheln-handlungsbedarf").children.length > 0;
+  zeichneHandlungsbedarf();
 
   for (const tab of CLIENT_TABELLEN) zeichneZeitstrahl(tab);
+  zeichneZeitstrahlLegende();
   zeichneVerteilungen();
 }
 
@@ -1719,9 +1788,7 @@ function zeichneUebersicht() {
    zugleich springen — darum lieber zwei ehrliche Achsen. */
 function zeichneZeitstrahl(tab) {
   const ziel = $("zeitstrahl-" + tab);
-  const legende = $("zeitstrahl-legende-" + tab);
   leeren(ziel);
-  leeren(legende);
 
   /* Geplant wird nur für Clients, die im Einsatz sind: ein archiviertes
      Gerät braucht keinen Ersatz mehr. */
@@ -1807,22 +1874,33 @@ function zeichneZeitstrahl(tab) {
   }
 
   ziel.appendChild(achse);
+}
 
+/* Beide Achsen teilen sich eine Legende unter der Karte. */
+function zeichneZeitstrahlLegende() {
+  const legende = $("zeitstrahl-legende");
+  leeren(legende);
   anhaengen(legende, [
     el("span", "zeitstrahl-marke", "beschafft (linke Säule)"),
     el("span", "zeitstrahl-marke warnung", "Ersatz geplant (rechte Säule)"),
     el("span", "zeitstrahl-marke gefahr", "Ersatz überfällig"),
-    el("span", null, "Laufendes Geschäftsjahr: " + heute),
+    el("span", null, "Laufendes Geschäftsjahr: " + Modell.gjAktuell()),
     el("span", null, "Ohne archivierte Geräte")
   ]);
 }
 
 /* ---------- Verteilungen ---------- */
 
+/* Mehr als acht Zeilen macht eine Verteilungskarte nicht lesbarer; der
+   Rest steht als Summe darunter. */
+const VERTEILUNG_ZEILEN = 8;
+
 function verteilungsKarte(titel, eintraege, beiKlick) {
   const karte = el("div", "karte");
   const kopf = el("div", "karte-kopf");
-  kopf.appendChild(el("h2", "karte-titel", titel));
+  const h = el("h3", "karte-titel", titel);
+  h.title = titel;
+  kopf.appendChild(h);
   karte.appendChild(kopf);
 
   const block = el("div", "karte-inhalt");
@@ -1834,7 +1912,7 @@ function verteilungsKarte(titel, eintraege, beiKlick) {
   }
 
   const groesste = eintraege[0][1];
-  for (const [name, anzahl] of eintraege.slice(0, 10)) {
+  for (const [name, anzahl] of eintraege.slice(0, VERTEILUNG_ZEILEN)) {
     const zeile = el("button", "liste-zeile");
     zeile.type = "button";
 
@@ -1853,10 +1931,10 @@ function verteilungsKarte(titel, eintraege, beiKlick) {
     block.appendChild(zeile);
   }
 
-  if (eintraege.length > 10) {
-    const rest = eintraege.slice(10).reduce((s, e) => s + e[1], 0);
+  if (eintraege.length > VERTEILUNG_ZEILEN) {
+    const rest = eintraege.slice(VERTEILUNG_ZEILEN).reduce((s, e) => s + e[1], 0);
     block.appendChild(el("p", "hinweis",
-      "und " + (eintraege.length - 10) + " weitere Werte mit zusammen " + rest + " Zeilen"));
+      "und " + (eintraege.length - VERTEILUNG_ZEILEN) + " weitere Werte mit zusammen " + rest + " Zeilen"));
   }
   return karte;
 }

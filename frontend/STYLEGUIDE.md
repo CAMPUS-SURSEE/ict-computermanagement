@@ -195,11 +195,20 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 - Raster `.karten`: auto-fit, mindestens 420 px je Spalte, 16 px Lücke; `.karte-breit` über alle Spalten.
 - Karten strecken sich **nicht** auf gleiche Höhe (`align-items: start`).
 
+### 4.4b Übersicht: Aufgaben, Bestandskarten, Planung
+
+Die Startseite verwendet keine freien Kachelreihen mehr, weil deren Höhe von der Textlänge abhing. Stattdessen drei Bausteine mit fester Form (design.css, Abschnitt 5b):
+
+- **Handlungsbedarf** `.karte > .aufgaben > .aufgabe`: eine Zeile je offenem Punkt (Ton warnung/gefahr, Wert > 0), 56 px hoch, Zahl als getönte runde Marke, Titel + Herkunft, Winkel rechts, wenn ein Klick in die Liste führt. Sortiert: Gefahr vor Warnung. Mehrspaltig ab 320 px je Spalte. Zähler `.bereich-zaehler` neben dem Titel; leer: `.aufgaben-leer` mit grünem Haken.
+- **Bestand** `.bestaende > .karte.bestand`: je Liste eine Karte gleicher Form — Kopf (Sinnbild, Titel, Pfeil «Liste öffnen»), Hauptzahl 36 px mit Text und Unterzeile (die Unterzeile reserviert ihre Höhe auch leer), darunter `.bestand-zeile` 36 px mit Wert rechts. Offene Punkte bleiben hier stehen, damit die Karte unabhängig von den Daten dieselben Zeilen zeigt. Eine Null ist grau.
+- **Ersatzplanung** `.karte > .planung > .planung-teil`: beide Achsen in einer Karte, getrennt durch einen 1-px-Spalt, eine gemeinsame Legende.
+- **Verteilungen** `.gitter.gitter-2.gitter-gleich`: Karten einer Reihe gleich hoch, Titel einzeilig (Tooltip trägt den vollen Titel), höchstens acht Zeilen je Karte.
+
 ### 4.5 Kennzahl-Kachel `.kachel`
 - Aufbau wie in der Search Console: **Beschriftung oben** (14 px `--text-leise`), **Zahl darunter** (32 px 400), optional Zusatz (12 px `--text-still`). Die DOM-Reihenfolge ist egal, CSS ordnet über `order`.
 - Ton `.ton-erfolg | .ton-warnung | .ton-gefahr | .ton-info` färbt **nur die Zahl**.
 - Als `<button>` klickbar: Hover `--flaeche` und Rahmen `--umriss-leicht`. `data-klickbar="nein"` für reine Anzeige.
-- Raster `.kacheln`: auto-fill 190 px (Übersicht: auto-fit 140 px, damit sieben Kacheln in eine Reihe passen). Handy: zwei Spalten.
+- Raster `.kacheln`: auto-fill 190 px; nur noch in den Detailfenstern, die Übersicht nutzt 4.4b. Handy: auto-fill 140 px.
 
 ### 4.6 Knöpfe `.knopf`
 | Variante | Klasse | Aussehen | Einsatz |

@@ -13,3 +13,7 @@ Sync-Inventar.config*.json
 
 # Datenexporte und Sicherungen der Migrationsskripte
 lokal
+
+# Excel-Auszüge aus SharePoint und S4B (Inventar, Telefonnummern): enthalten
+# Personendaten und liegen nur lokal. Alle .xlsx, egal wo im Repository.
+*.xlsx

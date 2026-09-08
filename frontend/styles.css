@@ -39,19 +39,15 @@ body.seite { height: 100vh; overflow: hidden; }
    Übersicht
    ================================================================== */
 
-#zeitstrahl {
-  padding-bottom: var(--a2);
-  overscroll-behavior-x: contain;
-}
+/* Die Bausteine der Übersicht (Aufgaben, Bestandskarten, Planung) stehen
+   in design.css, Abschnitt 5b. Hier nur, was allein diese Seite braucht. */
+
+.zeitstrahl { overscroll-behavior-x: contain; }
 
 .verteilung-name {
   display: block; font-size: var(--t-s);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-/* Kennzahl-Kacheln: auto-fit, damit jede Reihe bündig abschliesst. */
-.kacheln { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-.kacheln .kachel { min-height: 108px; }
 
 
 /* ==================================================================
@@ -162,12 +158,6 @@ body.seite { height: 100vh; overflow: hidden; }
   .kopf .knopf,
   .toolbar .knopf,
   .toolbar .suche { min-height: 40px; }
-
-  .kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kacheln .kachel { min-height: 92px; }
-
-  #zeitstrahl .zeitstrahl-tick,
-  #zeitstrahl .zeitstrahl-zelle { min-width: 64px; }
 
   .werkzeug-bereich .anzahl { margin-left: 0; order: 99; flex-basis: 100%; }
   .toolbar #knopf-neu,

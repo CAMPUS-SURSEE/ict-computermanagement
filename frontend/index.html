@@ -94,54 +94,70 @@
     <main class="inhalt ansicht" id="ansicht-uebersicht" hidden>
       <div class="bahn">
 
+        <div class="uebersicht-kopf">
+          <h1 class="uebersicht-titel">Übersicht</h1>
+          <p class="uebersicht-unter">Kennzahlen aus allen Listen. Ein Klick auf eine Zahl öffnet die passende Liste gefiltert.</p>
+        </div>
+
         <!-- Zuoberst, was Aufmerksamkeit braucht: alle Kennzahlen mit Warn-
              oder Gefahrenton und einem Wert über null, aus allen Listen.
-             Ein Klick öffnet die passende Liste gefiltert. -->
+             Eine Zeile je Punkt, sortiert nach Dringlichkeit. -->
         <section class="bereich">
-          <h2 class="bereich-titel">Handlungsbedarf</h2>
-          <div class="kacheln" id="kacheln-handlungsbedarf"></div>
-          <p class="hinweis" id="handlungsbedarf-leer" hidden>Nichts offen — alle geprüften Regeln sind erfüllt.</p>
+          <div class="bereich-kopf">
+            <h2 class="bereich-titel">Handlungsbedarf</h2>
+            <span class="bereich-zaehler" id="handlungsbedarf-anzahl" hidden></span>
+          </div>
+          <div class="karte">
+            <div class="aufgaben" id="kacheln-handlungsbedarf"></div>
+            <p class="aufgaben-leer" id="handlungsbedarf-leer" hidden>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/><path d="M8 12l3 3 5-6"/></svg>
+              <span>Nichts offen — alle geprüften Regeln sind erfüllt.</span>
+            </p>
+          </div>
         </section>
 
+        <!-- Bestand: je Liste eine Karte mit derselben Form — Hauptzahl oben,
+             darunter die weiteren Kennzahlen als Zeilen. Die Karten einer
+             Reihe sind gleich hoch. -->
         <section class="bereich">
-          <h2 class="bereich-titel">ADMIN-Clients</h2>
-          <div class="kacheln" id="kacheln-admin"></div>
-        </section>
-
-        <section class="bereich">
-          <h2 class="bereich-titel">EDU-Clients</h2>
-          <div class="kacheln" id="kacheln-edu"></div>
-        </section>
-
-        <section class="bereich">
-          <h2 class="bereich-titel">Benutzer</h2>
-          <div class="kacheln" id="kacheln-benutzer"></div>
-        </section>
-
-        <section class="bereich">
-          <h2 class="bereich-titel">Telefonnummern</h2>
-          <div class="kacheln" id="kacheln-telefone"></div>
+          <div class="bereich-kopf">
+            <h2 class="bereich-titel">Bestand</h2>
+          </div>
+          <div class="bestaende">
+            <div class="karte bestand" id="bestand-admin"></div>
+            <div class="karte bestand" id="bestand-edu"></div>
+            <div class="karte bestand" id="bestand-benutzer"></div>
+            <div class="karte bestand" id="bestand-telefone"></div>
+          </div>
         </section>
 
         <!-- Ersatzplanung: je Client-Liste eine eigene Achse, damit ein Klick
-             auf eine Säule eindeutig in die passende Tabelle springt. -->
+             auf eine Säule eindeutig in die passende Tabelle springt. Beide
+             Achsen teilen sich eine Karte und eine Legende. -->
         <section class="bereich">
-          <h2 class="bereich-titel">Ersatzplanung</h2>
-          <div class="karte">
-            <div class="karte-kopf"><h3 class="karte-titel">ADMIN-Clients</h3></div>
-            <div class="zeitstrahl" id="zeitstrahl-admin"></div>
-            <div class="zeitstrahl-legende" id="zeitstrahl-legende-admin"></div>
+          <div class="bereich-kopf">
+            <h2 class="bereich-titel">Ersatzplanung</h2>
           </div>
           <div class="karte">
-            <div class="karte-kopf"><h3 class="karte-titel">EDU-Clients</h3></div>
-            <div class="zeitstrahl" id="zeitstrahl-edu"></div>
-            <div class="zeitstrahl-legende" id="zeitstrahl-legende-edu"></div>
+            <div class="planung">
+              <div class="planung-teil">
+                <h3 class="planung-titel">ADMIN-Clients</h3>
+                <div class="zeitstrahl" id="zeitstrahl-admin"></div>
+              </div>
+              <div class="planung-teil">
+                <h3 class="planung-titel">EDU-Clients</h3>
+                <div class="zeitstrahl" id="zeitstrahl-edu"></div>
+              </div>
+            </div>
+            <div class="zeitstrahl-legende" id="zeitstrahl-legende"></div>
           </div>
         </section>
 
         <section class="bereich">
-          <h2 class="bereich-titel">Verteilungen</h2>
-          <div class="gitter gitter-2" id="verteilungen"></div>
+          <div class="bereich-kopf">
+            <h2 class="bereich-titel">Verteilungen</h2>
+          </div>
+          <div class="gitter gitter-2 gitter-gleich" id="verteilungen"></div>
         </section>
 
       </div>
