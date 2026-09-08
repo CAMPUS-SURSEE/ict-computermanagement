@@ -50,7 +50,10 @@ const CLIENT_ZUSATZ = [
      Die rohe Spalte «Status» bleibt in der Spaltenwahl erreichbar. */
   { i: "__statusText",    d: "Status", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__ersatzText",    d: "Ersatzstatus", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
-  { i: "__hatInhaber",    d: "Inhaber gesetzt", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
+  { i: "__hatInhaber",    d: "Inhaber gesetzt", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
+  /* «In Domäne» als Text, damit ein leeres Feld überall als «Ja» erscheint —
+     so gilt für die ganze Altlast dasselbe wie für den Sync (Test-InDomaene). */
+  { i: "__domaeneText",   d: "In Domäne", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
 ];
 
 /* Die Inhaber-Spalten gibt es nur bei den ADMIN-Clients: EDU-Clients gehören
@@ -123,6 +126,7 @@ function clientTab(schluessel, titel, mitInhaber, csvName) {
     { k: "__ersatzText",      d: "Ersatzstatus" },
     { k: "GebaeudeStock",     d: "Gebäude / Stock" },
     { k: "__hatInhaber",      d: "Inhaber gesetzt" },
+    { k: "__domaeneText",     d: "In Domäne" },
     { k: "SCCM_Found",        d: "In SCCM" },
     { k: "SCCM_Online",       d: "Online" },
     { k: "SCCM_ClientActive", d: "Client aktiv" },
@@ -588,6 +592,7 @@ function nachbereiten() {
   for (const c of adminClients.concat(eduClients)) {
     c.__ersatzText = ERSATZ_TEXT[c.__ersatzStatus] || "unbekannt";
     c.__hatInhaber = c.__inhaber ? "Ja" : "Nein";
+    c.__domaeneText = c.InDomaene === false ? "Nein" : "Ja";
     // __status setzt Modell.anreichern; hier nur als Facettenwert gespiegelt.
     c.__statusText = c.__status;
   }
@@ -1866,7 +1871,9 @@ function zeichneZeitstrahl(tab) {
     tick.appendChild(saeulen);
     tick.appendChild(el("div", "zeitstrahl-linie"));
     tick.appendChild(el("div", "zeitstrahl-werte", nB + " / " + nE));
-    const label = el("div", "zeitstrahl-label", jahr.replace("/", "/​"));
+    /* Kurzform «2024/25»: die volle Bezeichnung steht im Tooltip. Mit
+       «2024/2025» überschnitten sich die Beschriftungen bei vielen Jahren. */
+    const label = el("div", "zeitstrahl-label", jahr.replace(/\/(\d\d)(\d\d)$/, "/$2"));
     label.title = "Geschäftsjahr " + jahr
       + (vergleich === 0 ? " (laufendes Geschäftsjahr)" : "");
     tick.appendChild(label);

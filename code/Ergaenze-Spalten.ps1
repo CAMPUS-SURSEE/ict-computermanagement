@@ -21,6 +21,10 @@
   Graph PowerShell». Die Frontend-Registrierung taugt dafür nicht: bei ihr steht «Allow public
   client flows» auf Nein, sie weist den Device-Code-Flow mit AADSTS7000218 ab.
 
+.PARAMETER NeuAnmelden
+  Erzwingt eine neue Device-Code-Anmeldung, statt die abgelegte Sitzung zu verwenden
+  (lokal\graph-sitzung.xml, siehe Graph-Sitzung.ps1).
+
 .PARAMETER Listen
   Welche Listen geprüft werden: Admin, Edu, Benutzer, Telefon, Software oder Alle (Vorgabe).
   Die Programmspalten der Benutzer-Liste kommen aus der Liste «Software»; sie muss dafür
@@ -41,6 +45,7 @@ param(
     [string]$ClientId = '14d82eec-204b-4c2f-b7e8-296a70dab67e',
     [ValidateSet('Alle', 'Admin', 'Edu', 'Benutzer', 'Telefon', 'Software')]
     [string[]]$Listen = @('Alle'),
+    [switch]$NeuAnmelden,
     [switch]$WhatIf
 )
 
@@ -54,6 +59,7 @@ if (-not $ScriptDir) { $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.P
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 $ServerDir = Join-Path $ScriptDir 'server'
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
+. (Join-Path $ScriptDir 'Graph-Sitzung.ps1')
 
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ServerDir 'Sync-Inventar.config.json' }
 $cfg = Get-InventarKonfiguration -KonfigPfad $ConfigPath `
@@ -71,8 +77,7 @@ if ($Auth -eq 'Certificate') {
     Set-GraphTokenProvider { Get-GraphTokenZertifikat $cfg }
 } else {
     if (-not $ClientId) { throw 'ClientId fehlt (Parameter -ClientId).' }
-    Log "Device-Code-Anmeldung mit ClientId $ClientId"
-    Set-GraphToken (Get-GraphTokenDeviceCode -TenantId $cfg.TenantId -ClientId $ClientId)
+    Connect-GraphSitzung -TenantId $cfg.TenantId -ClientId $ClientId -Neu:$NeuAnmelden | Out-Null
 }
 
 $SiteId = $cfg.SiteId

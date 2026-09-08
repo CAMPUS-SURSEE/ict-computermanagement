@@ -12,10 +12,14 @@
    Schnellaktion «Ausgeben an …»; alles Übrige ist gleich.
 
    Bearbeitbar sind genau die von Hand gepflegten Spalten (q = "manuell" in
-   spalten.js): Title, GebaeudeStock, Bemerkung, Status, Verlauf,
+   spalten.js): Title, GebaeudeStock, Bemerkung, InDomaene, Status, Verlauf,
    Beschaffungsjahr, ErsatzGeplant. Alle SCCM-Spalten sind schreibgeschützt
    und tragen ein Schloss — der Abgleich überschreibt sie ohnehin. Die
    Seriennummer kommt ausschliesslich aus SCCM (SCCM_SerialNumber).
+
+   «In Domäne» entscheidet, ob der Abgleich die Zeile überhaupt anfasst.
+   Nein heisst: keine SCCM-Felder, keine Archivierung — für Geräte ohne
+   Domäne, die es in SCCM nie geben wird (Gäste- und Prüfungsnotebooks).
 
    Ein neues Gerät (?neu=1) bekommt keine Bereichsnavigation, sondern ein
    einziges kurzes Formular (bereichNeu) mit den Angaben, die ein Mensch
@@ -86,6 +90,7 @@ const STAMM_SPALTEN = ["Title", "GebaeudeStock"].map(i => SPALTE[i]);
 const BEMERKUNG = SPALTE["Bemerkung"];
 const STATUS = SPALTE["Status"];
 const VERLAUF = SPALTE["Verlauf"];
+const DOMAENE = SPALTE["InDomaene"];
 
 /* Spalten, die dieses Fenster schreiben darf. */
 function istBearbeitbar(spalte) {
@@ -368,10 +373,30 @@ function werteDerSpalte(feld) {
   return werte;
 }
 
+/* Ein Ja/Nein-Feld als Kontrollkästchen. Getrennt von eingabeFuer, weil ein
+   Kästchen weder «value» noch eine Vorschlagsliste kennt und den Wert als
+   Boolean in den Entwurf legt – nicht als Text. */
+function kaestchenFuer(spalte, optionen) {
+  const o = optionen || {};
+  const kasten = el("input");
+  kasten.type = "checkbox";
+  kasten.id = "g-eingabe-" + spalte.i;
+  kasten.setAttribute("aria-label", spalte.d);
+  kasten.checked = wert(spalte.i) !== false;   // leer gilt als Ja
+  kasten.addEventListener("change", function () {
+    setzeWert(spalte.i, kasten.checked);
+    const z = kasten.closest ? kasten.closest(".datenzeile") : null;
+    if (z) z.classList.toggle("geaendert", istGeaendert(spalte.i));
+    if (o.beiAenderung) o.beiAenderung();
+  });
+  return kasten;
+}
+
 /* Ein Eingabefeld für eine bearbeitbare Spalte.
    optionen: { liste: [..], schmal: true, beiAenderung: fn } */
 function eingabeFuer(spalte, optionen) {
   const o = optionen || {};
+  if (spalte.t === "Boolean") return kaestchenFuer(spalte, o);
   const istNote = spalte.t === "Note";
   const feld = el(istNote ? "textarea" : "input",
     "feld-eingabe" + (o.schmal ? " eingabe-schmal" : ""));
@@ -1192,6 +1217,37 @@ function statusZeile() {
   return zeileStatus;
 }
 
+/* Das Kontrollkästchen «In Domäne». Es entscheidet, ob der SCCM-Abgleich
+   diese Zeile überhaupt anfasst — darum steht der Hinweis darunter und
+   sagt beides an, was daran hängt. Ein leeres Feld gilt als Ja. */
+function domaeneZeile() {
+  const huelle = el("div");
+  const kasten = kaestchenFuer(DOMAENE, { beiAenderung: hinweisSetzen });
+  const zeileKasten = el("label", "g-schalterchen");
+  zeileKasten.appendChild(kasten);
+  zeileKasten.appendChild(el("span", null, "Gerät ist in der Domäne"));
+  huelle.appendChild(zeileKasten);
+  const hinweisText = el("div", "datenzeile-hinweis");
+  huelle.appendChild(hinweisText);
+
+  function hinweisSetzen() {
+    const ja = wert("InDomaene") !== false;
+    hinweisText.className = "datenzeile-hinweis " + (ja ? "t-leise" : "t-warnung");
+    hinweisText.textContent = ja
+      ? "Der SCCM-Abgleich pflegt diese Zeile: Er füllt die SCCM-Felder und "
+        + "archiviert das Gerät, sobald es nicht mehr in SCCM steht."
+      : "Der SCCM-Abgleich lässt diese Zeile vollständig in Ruhe — keine "
+        + "SCCM-Felder, keine Archivierung. Für Geräte ohne Domäne, die es in "
+        + "SCCM nie geben wird (Gäste- und Prüfungsnotebooks).";
+  }
+  hinweisSetzen();
+
+  const z = feldZeileKnoten(DOMAENE.d, huelle, false);
+  z.classList.add("datenzeile-form");
+  z.classList.toggle("geaendert", istGeaendert("InDomaene"));
+  return z;
+}
+
 /* Warnt, wenn schon ein anderes Gerät genauso heisst. Bewusst nur ein
    Hinweis: gleiche Namen sind erlaubt (etwa ein archiviertes Altgerät),
    und ein blockierender Zwang hätte hier nur das Erfassen verhindert.
@@ -1249,6 +1305,7 @@ function bereichStammdaten(ziel) {
       zusatz: namensWarnung()
     } : null));
   }
+  felder.appendChild(domaeneZeile());
   felder.appendChild(statusZeile());
   k.inhalt.appendChild(felder);
   if (!neuModus) {
@@ -1302,6 +1359,7 @@ function bereichNeu(ziel) {
       zusatz: namensWarnung()
     } : null));
   }
+  felder.appendChild(domaeneZeile());
   felder.appendChild(formularZeile(SPALTE["Beschaffungsjahr"], {
     liste: Modell.gjAuswahl(),
     schmal: true,
@@ -1981,10 +2039,13 @@ function zeichnenAlles() {
    ================================================================== */
 
 
-/* Eine leere Zeile mit allen Spalten, für «Neues Gerät». */
+/* Eine leere Zeile mit allen Spalten, für «Neues Gerät». «In Domäne» steht
+   dabei auf Ja: der Normalfall ist ein Gerät, das der SCCM-Abgleich pflegt.
+   Wer ein Gäste- oder Prüfungsnotebook erfasst, nimmt das Häkchen weg. */
 function leereZeile() {
   const z = {};
   for (const s of SPALTEN) z[s.i] = s.t === "Boolean" ? false : "";
+  z.InDomaene = true;
   z.id = null;
   return z;
 }

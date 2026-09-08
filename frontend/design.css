@@ -666,11 +666,15 @@ button.aufgabe:active { background: var(--flaeche-2); }
 
 /* ---- Bestand: vier gleich geformte Karten ---- */
 
+/* Vier Karten in einer Reihe, darunter zwei — nie drei plus eine. */
 .bestaende {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--a4);
   align-items: stretch;
+}
+@media (max-width: 1300px) {
+  .bestaende { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .bestand { display: flex; flex-direction: column; }
 .bestand-kopf {
@@ -740,7 +744,9 @@ button.bestand-zeile:hover { background: var(--flaeche); }
   padding: 0 var(--a2);
 }
 .planung-teil .zeitstrahl { padding: var(--a3) 0 var(--a2); }
-.planung-teil .zeitstrahl-tick { min-width: 48px; }
+/* Mindestbreite je Geschäftsjahr; bei vielen Jahren rollt die Achse in
+   ihrem Behälter, statt dass sich Beschriftungen überschneiden. */
+.planung-teil .zeitstrahl-tick { min-width: 72px; }
 
 /* Karten einer Reihe auf dieselbe Höhe strecken. */
 .gitter-gleich { align-items: stretch; }
@@ -1261,7 +1267,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 
 .zeitstrahl-tick {
-  flex: 1 1 0; min-width: 56px;
+  flex: 1 1 0; min-width: 72px;
   display: flex; flex-direction: column; align-items: center;
   gap: var(--a1);
   background: none; border: none; font: inherit; color: inherit;

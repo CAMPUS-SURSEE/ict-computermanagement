@@ -55,6 +55,7 @@ $InventarNurFunktionen = $true
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 . (Join-Path $ServerDir 'Sync-Inventar.ps1')
 . (Join-Path $TestDir 'Migriere-FruehererEintrag.ps1')
+. (Join-Path $TestDir 'Abgleich-Excel.ps1')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Geschäftsjahr'
@@ -251,6 +252,28 @@ Pruefe 'Gerät wird neu angelegt'           1 $p.Neu.Count
 $p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'), (Zeile 11 '' '' '' ''))
 Pruefe 'Leere Zeile wird ignoriert' 0 $p.Archivieren.Count
 
+# k) «In Domäne = Nein»: der Abgleich lässt die Zeile vollständig in Ruhe.
+function ZeileD($id, $titel, $status, $domaene) {
+    [pscustomobject]@{ Id = $id; Title = $titel; SCCM_SerialNumber = ''; Seriennummer = ''; Status = $status; InDomaene = $domaene }
+}
+Pruefe 'InDomaene: leer gilt als Ja'   'True'  (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' $null))
+Pruefe 'InDomaene: True ist Ja'        'True'  (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' $true))
+Pruefe 'InDomaene: False ist Nein'     'False' (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' $false))
+Pruefe 'InDomaene: Text «Nein»'        'False' (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' 'Nein'))
+Pruefe 'InDomaene: Text «false»'       'False' (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' 'false'))
+Pruefe 'InDomaene: Text «Ja»'          'True'  (Test-InDomaene (ZeileD 10 'PC1' 'Aktiv' 'Ja'))
+
+# Ein Gerät ohne Domäne wird nie archiviert, obwohl SCCM es nicht kennt …
+$p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((ZeileD 10 'GAST-01' 'Aktiv' $false))
+Pruefe 'Ohne Domäne: nicht archiviert'   0 $p.Archivieren.Count
+Pruefe 'Ohne Domäne: gezählt'            1 $p.Ausserhalb
+Pruefe 'Ohne Domäne: zählt nicht als aktive Zeile' 0 $p.AktiveZeilen
+Pruefe 'Ohne Domäne: Gerät wird neu angelegt' 1 $p.Neu.Count
+# … und eine Zeile in der Domäne daneben verhält sich unverändert.
+$p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((ZeileD 10 'GAST-01' 'Aktiv' $false), (ZeileD 11 'PC1' 'Aktiv' $true))
+Pruefe 'Ohne Domäne: Nachbarzeile trifft' '11' $p.Zuordnungen[0].ZeileId
+Pruefe 'Ohne Domäne: nur eine aktive Zeile' 1 $p.AktiveZeilen
+
 # ---------------------------------------------------------------------------
 Abschnitt 'Archivschutz'
 $a1 = Test-ArchivSchutz 0 100 10 50
@@ -353,7 +376,9 @@ $schemaC = @(Read-JsonDatei (Join-Path $TestDir 'schema-client.json'))
 $schemaB = @(Read-JsonDatei (Join-Path $TestDir 'schema-benutzer.json'))
 $schemaT = @(Read-JsonDatei (Join-Path $TestDir 'schema-telefon.json'))
 $schemaS = @(Read-JsonDatei (Join-Path $TestDir 'schema-software.json'))
-Pruefe 'Client-Schema: 7 manuelle Spalten' 7 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
+Pruefe 'Client-Schema: 8 manuelle Spalten' 8 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
+Pruefe 'Client-Schema: InDomaene ist Boolean' 'Boolean' (@($schemaC | Where-Object { $_.internal -eq 'InDomaene' })[0].type)
+Pruefe 'Client-Schema: InDomaene hat Vorgabe Ja' '1' (@($schemaC | Where-Object { $_.internal -eq 'InDomaene' })[0].default)
 Pruefe 'Client-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
 Pruefe 'Benutzer-Schema: 14 Spalten'        14 $schemaB.Count
 Pruefe 'Telefon-Schema: 11 Spalten'         11 $schemaT.Count
@@ -441,6 +466,74 @@ Pruefe 'Migration idempotent: nur leeren'    'leeren' $migNochmal.Aktion
 $migFehler = $false
 try { [void](Get-FruehererEintragMigration -Verlauf 'kaputt {' -Wert 'X' -Zeitpunkt $migZeit) } catch { $migFehler = $true }
 Pruefe 'Migration: unlesbarer Verlauf wirft'  'True' $migFehler
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Abgleich Excel -> SharePoint'
+
+# Zellbezug und Zahlenformat der .xlsx
+Pruefe 'Spaltenindex A'   1  (ConvertTo-SpaltenIndex 'A1')
+Pruefe 'Spaltenindex Z'   26 (ConvertTo-SpaltenIndex 'Z9')
+Pruefe 'Spaltenindex AA'  27 (ConvertTo-SpaltenIndex 'AA12')
+Pruefe 'Spaltenindex DH' 112 (ConvertTo-SpaltenIndex 'DH474')
+Pruefe 'Zahl 17.1 ohne Rattenschwanz' '17.1' (Format-XlsxZahl '17.100000000000001')
+Pruefe 'Zahl bleibt ganzzahlig'       '373'  (Format-XlsxZahl '373')
+Pruefe 'Text bleibt Text'             '17.3' (Format-XlsxZahl '17.3')
+Pruefe 'Nichtzahl bleibt unverändert' 'EDU-1' (Format-XlsxZahl 'EDU-1')
+
+# Arbeitsplatz ohne eigenes Gerät
+Pruefe 'Kein PC ist kein Gerät'        'False' (Test-EigenesGeraet 'Kein PC')
+Pruefe 'kein pc ist kein Gerät'        'False' (Test-EigenesGeraet 'kein pc')
+Pruefe 'Shared ist kein eigenes Gerät' 'False' (Test-EigenesGeraet 'Shared CAMPUS-070')
+Pruefe 'Leer ist kein Gerät'           'False' (Test-EigenesGeraet '')
+Pruefe 'CAMPUS-001 ist ein Gerät'      'True'  (Test-EigenesGeraet 'CAMPUS-001')
+
+# Gerätename und Standort im EDU-Blatt
+Pruefe 'Name ohne Standort'       'EDU-155-01'  (Split-GeraeteName 'EDU-155-01').Name
+Pruefe 'Standort leer'            ''            (Split-GeraeteName 'EDU-155-01').Standort
+Pruefe 'Name vor Leerzeichen'     'EDULAP-031'  (Split-GeraeteName 'EDULAP-031 Konferenzsaal 1').Name
+Pruefe 'Standort nach Leerzeichen' 'Konferenzsaal 1' (Split-GeraeteName 'EDULAP-031 Konferenzsaal 1').Standort
+Pruefe 'Bindestrich fällt weg'    'Halle 23 - Schmidlin' (Split-GeraeteName 'EDULAP-107 - Halle 23 - Schmidlin').Standort
+Pruefe 'Name bei Bindestrich'     'EDULAP-107'  (Split-GeraeteName 'EDULAP-107 - Halle 23 - Schmidlin').Name
+
+# Beschaffungsjahr und Ersatz aus den Kreuzen
+Pruefe 'Jüngstes Jahr zählt'  '2025/2026' (Get-BeschaffungsjahrAusKreuzen @('2019/2020', '2025/2026') '2026/2027')
+Pruefe 'Budgetjahr zählt nicht' '2021/2022' (Get-BeschaffungsjahrAusKreuzen @('2021/2022', '2026/2027') '2026/2027')
+Pruefe 'Ohne Kreuz kein Jahr'  ''          (Get-BeschaffungsjahrAusKreuzen @() '2026/2027')
+Pruefe 'Ersatz = Beschaffung + 5' '2026/2027' (Get-ErsatzGeplant '2021/2022' $false '2026/2027')
+Pruefe 'Ersatz schlägt Budget'    '2030/2031' (Get-ErsatzGeplant '2025/2026' $true '2026/2027')
+Pruefe 'Budget ohne Beschaffung'  '2026/2027' (Get-ErsatzGeplant '' $true '2026/2027')
+Pruefe 'Weder noch'               ''          (Get-ErsatzGeplant '' $false '2026/2027')
+
+# Programmstufen: die Excel gilt, eine vom AD gesetzte 2 bleibt
+Pruefe 'Kreuz auf leer -> 1'   '1'   (Get-ProgrammstufeNeu $true '')
+Pruefe 'Kreuz auf 0 -> 1'      '1'   (Get-ProgrammstufeNeu $true '0')
+Pruefe 'Kreuz auf 1 -> nichts' ''    ([string](Get-ProgrammstufeNeu $true '1'))
+Pruefe 'Kreuz auf 2 -> nichts' ''    ([string](Get-ProgrammstufeNeu $true '2'))
+Pruefe 'Leer auf 1 -> 0'       '0'   (Get-ProgrammstufeNeu $false '1')
+Pruefe 'Leer auf 2 -> nichts'  ''    ([string](Get-ProgrammstufeNeu $false '2'))
+Pruefe 'Leer auf leer -> nichts' ''  ([string](Get-ProgrammstufeNeu $false ''))
+Pruefe 'Leer auf 0 -> nichts'  ''    ([string](Get-ProgrammstufeNeu $false '0'))
+
+# Dubletten im EDU-Blatt zusammenfassen
+$mg = Merge-GeraeteZeilen @(
+    [pscustomobject]@{ Title = 'EDULAP-147'; GebaeudeStock = 'Halle 23'; Seriennummer = ''; InDomaene = $false },
+    [pscustomobject]@{ Title = 'edulap-147'; GebaeudeStock = ''; Seriennummer = 'SN-1'; InDomaene = $true },
+    [pscustomobject]@{ Title = 'EDULAP-148'; GebaeudeStock = ''; Seriennummer = ''; InDomaene = $false }
+) @('GebaeudeStock', 'Seriennummer')
+Pruefe 'Dublette zusammengefasst'   2 @($mg.Geraete).Count
+Pruefe 'Dublette gemeldet'          'edulap-147' ([string]@($mg.Doppelt)[0])
+Pruefe 'Erster Wert gewinnt'        'Halle 23' @($mg.Geraete)[0].GebaeudeStock
+Pruefe 'Leeres Feld wird aufgefüllt' 'SN-1'    @($mg.Geraete)[0].Seriennummer
+Pruefe 'In Domäne einmal Ja reicht' 'True'     @($mg.Geraete)[0].InDomaene
+
+# Login-Zuordnung: Leerzeichen, 20-Zeichen-Grenze des AD, Anzeigename
+Pruefe 'Login ohne Leerzeichen' 'thameur.midassi' (Get-ExcelLoginSchluessel 'Thameur. Midassi')
+$bLogin = @{ 'michael.roethlisberg' = 'A'; 'karina.fruman' = 'B' }
+$bName = @{ 'fruman karina' = @('B'); 'doppelt name' = @('C', 'D') }
+Pruefe 'Treffer über gekürzten Login' 'Gekürzt' (Find-BenutzerZeile $bLogin $bName 'Michael.Roethlisberger' 'Röthlisberger Michael').Weg
+Pruefe 'Treffer über Anzeigename'  'Anzeigename' (Find-BenutzerZeile $bLogin $bName 'Karina.Frumann' 'Fruman Karina').Weg
+Pruefe 'Mehrdeutiger Name zählt nicht' '' (Find-BenutzerZeile $bLogin $bName 'X.Y' 'Doppelt Name').Weg
+Pruefe 'Kein Treffer'              ''  (Find-BenutzerZeile $bLogin $bName 'Nicht.Da' 'Da Nicht').Weg
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'

@@ -4,10 +4,12 @@
   «Benutzer» (aus Active Directory).
 
 .DESCRIPTION
-  Der Sync füllt nur Daten. Er ändert die Struktur der Listen nie: keine Spalte wird angelegt,
-  umbenannt oder gelöscht. Fehlt eine erwartete Spalte, meldet er das als WARN und lässt genau
-  ihre Felder aus – alles andere läuft weiter. Angelegt werden Spalten mit Ergaenze-Spalten.ps1
-  oder von Hand in den Listeneinstellungen.
+  Der Sync füllt Daten. Er benennt keine Spalte um und löscht keine; fehlt eine erwartete
+  Spalte, meldet er das als WARN und lässt genau ihre Felder aus – alles andere läuft weiter.
+  Angelegt werden Spalten mit Ergaenze-Spalten.ps1 oder von Hand in den Listeneinstellungen.
+  Eine einzige Ausnahme: Fehlt in der Benutzer-Liste die Spalte zu einem Programm der Liste
+  «Software», legt er sie selbst an – sonst wäre ein direkt in SharePoint erfasstes Programm
+  wirkungslos. Scheitert das, bleibt es bei der Warnung.
 
   Phase Clients (läuft zweimal, einmal je Liste):
     - liest alle Geräte samt Inventar aus SCCM (SMS Provider, WMI),
@@ -16,6 +18,8 @@
     - ordnet sie je Liste über die Seriennummer den Zeilen zu (Fallback: PC-Name),
     - führt den Titel nach, wenn ein Gerät in SCCM umbenannt wurde (mit Verlaufseintrag),
     - schreibt nur geänderte SCCM_*-Felder, legt fehlende Geräte neu an (Status «Aktiv»),
+    - lässt Zeilen mit «In Domäne = Nein» vollständig in Ruhe (Geräte ohne Domäne, die es in
+      SCCM nie geben wird – Gäste- und Prüfungsnotebooks),
     - setzt Zeilen ohne SCCM-Gerät auf «In SCCM vorhanden = Nein» und Status «Archiviert».
       Gelöscht wird in dieser Phase nie – es gibt keinen Löschpfad. Wird ein Gerät umbenannt und
       wechselt dabei die Seite (EDU ↔ ADMIN), verschwindet es aus der einen Liste (archiviert)
@@ -180,20 +184,6 @@ function ConvertTo-BenutzerFelder {
 # Zuordnung SCCM-Gerät <-> Zeile einer Client-Liste (rein, ohne Graph und WMI)
 # ---------------------------------------------------------------------------
 
-function Get-StatusNorm {
-    <# Status einer Client-Zeile vereinheitlichen. Leer bleibt leer (gilt sonst als «Aktiv»). #>
-    param([string]$Status)
-    if (-not $Status) { return '' }
-    $s = ([string]$Status).Trim()
-    if ($s -eq '') { return '' }
-    switch ($s.ToLowerInvariant()) {
-        'aktiv' { return 'Aktiv' }
-        'lager' { return 'Lager' }
-        'archiviert' { return 'Archiviert' }
-    }
-    return $s   # unbekannter Wert: unverändert lassen
-}
-
 function Get-ZeilenSeriennummer {
     <# Gültige Seriennummer einer Zeile: ausschliesslich SCCM_SerialNumber.
        Eine manuelle Spalte «Seriennummer» gibt es seit 2026-09-04 nicht mehr. #>
@@ -256,9 +246,12 @@ function Get-ClientZuordnung {
       SCCM und ohne Graph geprüft werden kann.
 
       $SccmGeraete: Objekte mit ResourceId, Name, Seriennummer, Aktivitaet (jüngste SCCM-Aktivität)
-      $Zeilen     : Objekte mit Id, Title, SCCM_SerialNumber, Status
+      $Zeilen     : Objekte mit Id, Title, SCCM_SerialNumber, Status, InDomaene
 
       Regeln:
+       0. Zeilen mit «In Domäne = Nein» sind vom Abgleich ausgenommen: kein Gerät, keine
+          Archivierung, und sie zählen nicht in die aktiven Zeilen des Archivschutzes. Leer
+          gilt als Ja (Test-InDomaene).
        1. Schlüssel ist die Seriennummer (Platzhalter zählen nicht als Seriennummer).
           Liefert SCCM mehrere Ressourcen mit derselben Seriennummer (Neuaufsetzung, Altdatensatz),
           gilt die mit der jüngsten Aktivität; die anderen werden nur gemeldet.
@@ -314,7 +307,14 @@ function Get-ClientZuordnung {
     }
 
     # --- 2) Zeilen indexieren -------------------------------------------------
-    $zeilenSortiert = @(@($Zeilen) | Where-Object { $null -ne $_ } | Sort-Object { Get-ZeilenSortierschluessel $_ })
+    $alleZeilen = @(@($Zeilen) | Where-Object { $null -ne $_ } | Sort-Object { Get-ZeilenSortierschluessel $_ })
+
+    # Zeilen mit «In Domäne = Nein» fallen hier ganz heraus: Sie bekommen kein SCCM-Gerät
+    # zugeordnet, keine SCCM-Felder und werden nie archiviert. Sie zählen auch nicht in die
+    # aktiven Zeilen – sonst würde der Archivschutz an Geräten gemessen, die in SCCM
+    # gar nicht vorkommen können.
+    $ausserhalb = @($alleZeilen | Where-Object { -not (Test-InDomaene $_) })
+    $zeilenSortiert = @($alleZeilen | Where-Object { Test-InDomaene $_ })
     $zNachSerie = @{}
     $zNachName = @{}
     $zustand = @{}   # ZeileId -> Hilfsdaten
@@ -405,6 +405,7 @@ function Get-ClientZuordnung {
         Neu          = @($neu.ToArray())
         Archivieren  = @($archivieren.ToArray())
         AktiveZeilen = $aktiveZeilen
+        Ausserhalb   = @($ausserhalb).Count
         Warnungen    = @($warnungen.ToArray())
     }
 }
@@ -878,14 +879,17 @@ function Invoke-ClientPhase {
     $itemsBase = "/sites/$SiteId/lists/$ListId/items"
 
     # Nur Spalten abfragen und schreiben, die es wirklich gibt.
-    $cSpalten = Get-ListenSpalten $ListId "Liste «$titel»" @('Status', 'Verlauf')
+    $cSpalten = Get-ListenSpalten $ListId "Liste «$titel»" @('Status', 'Verlauf', 'InDomaene')
     $hatStatus = $cSpalten.ContainsKey('Status')
     $hatVerlauf = $cSpalten.ContainsKey('Verlauf')
+    $hatDomaene = $cSpalten.ContainsKey('InDomaene')
     if (-not $hatStatus) { Log "$titel`: Ohne Spalte «Status» werden Archivierung und Reaktivierung nicht festgehalten." 'WARN' }
     if (-not $hatVerlauf) { Log "$titel`: Ohne Spalte «Verlauf» werden keine Verlaufseinträge geschrieben." 'WARN' }
+    if (-not $hatDomaene) { Log "$titel`: Ohne Spalte «InDomaene» gelten alle Zeilen als in der Domäne." 'WARN' }
     $zusatz = @('Title')
     if ($hatStatus) { $zusatz += 'Status' }
     if ($hatVerlauf) { $zusatz += 'Verlauf' }
+    if ($hatDomaene) { $zusatz += 'InDomaene' }
     $sccmFieldNames = (Build-SccmFields $systems[0]).Keys
     $select = ($zusatz -join ',') + ',' + ($sccmFieldNames -join ',')
     $items = Get-GraphAlle "$itemsBase`?`$expand=fields(`$select=$select)&`$top=500"
@@ -925,12 +929,16 @@ function Invoke-ClientPhase {
                 SCCM_SerialNumber = [string]$it.fields.SCCM_SerialNumber
                 Status            = [string]$it.fields.Status
                 Verlauf           = [string]$it.fields.Verlauf
+                InDomaene         = $it.fields.InDomaene
                 Item              = $it
             })
     }
 
     $plan = Get-ClientZuordnung $geraete $zeilen
     foreach ($w in $plan.Warnungen) { Log "$titel`: $w" 'WARN' }
+    if ($plan.Ausserhalb -gt 0) {
+        Log "$titel`: $($plan.Ausserhalb) Zeile(n) mit «In Domäne = Nein» – vom Abgleich ausgenommen (kein SCCM-Gerät, keine Archivierung)."
+    }
 
     $stats = @{ updated = 0; created = 0; unchanged = 0; archiviert = 0; reaktiviert = 0; umbenannt = 0; uebersprungen = 0 }
 
@@ -1231,6 +1239,27 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
     # 2) vorhandene Spalten feststellen: Verlauf und je Programm eine Spalte
     $erwartet = @('Verlauf') + @($programmListe | ForEach-Object { [string]$_.id })
     $spalten = Get-ListenSpalten $BenutzerListId 'Benutzer-Liste' $erwartet
+
+    # Fehlende Programmspalten legt der Sync selbst an. Das ist die einzige Stelle, an der er
+    # eine Spalte erzeugt – und sie ist nötig, damit ein Programm mit einer Zeile in «Software»
+    # vollständig ist: Wer eine Zeile direkt in SharePoint erfasst (statt im Frontend, das die
+    # Spalte mit anlegt), bekäme sonst ein Programm, das nie eine Stufe speichern kann.
+    # Scheitert das Anlegen (fehlende Berechtigung), bleibt es bei der bisherigen Warnung und
+    # das Programm wird in diesem Lauf einfach übergangen.
+    foreach ($p in $programmListe) {
+        $progId = [string]$p.id
+        if ($spalten.ContainsKey($progId)) { continue }
+        if ($WhatIf) { Log "WHATIF Programmspalte anlegen: $progId («$($p.name)»)"; continue }
+        try {
+            $neu = Invoke-Graph -Method POST -Uri "/sites/$SiteId/lists/$BenutzerListId/columns" -Body (New-ProgrammSpalte $p)
+            $spalten[$progId] = $neu
+            if ($p.name) { $spalten[[string]$p.name] = $neu }
+            Log "Programmspalte «$progId» in der Benutzer-Liste angelegt (Anzeigename «$($p.name)»)."
+        } catch {
+            Log "Programmspalte «$progId» konnte nicht angelegt werden – das Programm wird in diesem Lauf übergangen: $_" 'WARN'
+        }
+    }
+
     # Nur Programme abgleichen, deren Spalte es in der Liste wirklich gibt.
     $programmIds = @($programmListe | Where-Object { $spalten.ContainsKey([string]$_.id) } | ForEach-Object { $_.id })
 

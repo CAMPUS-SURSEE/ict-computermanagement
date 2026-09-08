@@ -36,6 +36,16 @@
         "description":  "Aktiv, Lager oder Archiviert. Aktiv/Lager frei wählbar; Archiviert setzt der Sync, wenn das Gerät nicht mehr in SCCM ist (ein PC wird nie gelöscht). Leer gilt als Aktiv."
     },
     {
+        "internal":  "InDomaene",
+        "display":  "In Domäne",
+        "type":  "Boolean",
+        "default":  "1",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Ja (Standard, auch wenn das Feld leer ist): das Gerät steht in der Domäne, der SCCM-Abgleich pflegt seine Zeile. Nein: der Abgleich lässt die Zeile vollständig in Ruhe – er schreibt keine SCCM-Felder und archiviert sie nie. Für Geräte ohne Domäne (Gäste- und Prüfungsnotebooks), die es in SCCM nie geben wird"
+    },
+    {
         "internal":  "Verlauf",
         "display":  "Verlauf",
         "type":  "Note",

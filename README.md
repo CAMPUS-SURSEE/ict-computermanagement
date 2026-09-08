@@ -9,6 +9,12 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 > gleiches Frontend, nur ohne Inhaberschaft. Die Programmliste ist von der Datei
 > `programme.json` in die neue SharePoint-Liste **«Software»** gezogen und wird jetzt im Frontend
 > gepflegt. Den Umbau in SharePoint macht `Migriere-Clients.ps1` (Abschnitt 9).
+>
+> **Excel-Abgleich vom 08.09.2026.** Die beiden Excel-Inventare («Computer und User Inventar.xlsx»,
+> «Telefonnummerm S4B.xlsx») sind einmalig in die Listen übernommen worden — `Abgleich-Excel.ps1`
+> (Abschnitt 10). Dabei neu: die Spalte **«In Domäne»** in beiden Client-Listen. Steht sie auf
+> Nein, lässt der SCCM-Abgleich die Zeile vollständig in Ruhe — das ist der Weg für die 94
+> Gäste- und Prüfungsnotebooks ohne Domäne, die es in SCCM nie geben wird.
 
 ---
 
@@ -20,8 +26,9 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
 | **ein Programm hinzufügen oder ändern** | Frontend → Reiter **«Software»** → **«Neue Software»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | Softwarefenster → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
+| **ein Gerät ohne Domäne erfassen** | Clientfenster → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich lässt die Zeile danach vollständig in Ruhe und archiviert sie nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `212 bestanden, 0 fehlgeschlagen` |
+| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `297 bestanden, 0 fehlgeschlagen` |
 | **eine Telefonnummer freigeben** | Telefonfenster → Knopf **«Nummer freigeben»** oben rechts (nur, wenn die Nummer nicht über das AD zugeordnet ist): Status «Frei», bisheriger Name wandert in den Verlauf |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -47,11 +54,11 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 
 | Baustein | Inhalt | Wer schreibt |
 |---|---|---|
-| Liste **ADMIN-Clients** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
+| Liste **ADMIN-Clients** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **In Domäne**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
 | Liste **EDU-Clients** | dieselben Spalten wie «ADMIN-Clients» (`schema-client.json`); enthält alle SCCM-Geräte, deren Name mit `EDU` beginnt. Ohne Inhaberschaft | dieselben wie oben |
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, angezeigt als «ADMIN-Client», Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
-| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Reiter «Software») |
+| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Reiter «Software») + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
@@ -86,6 +93,18 @@ Berechtigung von Hand vergeben hat, verliert sie nicht, wenn später eine AD-Gru
 | `Aktiv` | im Einsatz | Menschen; der Sync setzt ihn beim ersten Kontakt und beim Reaktivieren |
 | `Lager` | eingelagert, aber noch in SCCM | nur Menschen – der Sync fasst `Lager` nie an, solange das Gerät in SCCM ist |
 | `Archiviert` | kein SCCM-Gerät mehr dazu | der Sync (und Menschen von Hand) |
+
+**In Domäne** (Ja/Nein-Spalte `InDomaene`, leer gilt als Ja) entscheidet, ob der Sync die Zeile
+überhaupt anfasst:
+
+| Wert | Bedeutung |
+|---|---|
+| `Ja` (oder leer) | Normalfall: der Sync ordnet der Zeile ein SCCM-Gerät zu, schreibt die `SCCM_*`-Felder und archiviert sie, sobald das Gerät aus SCCM verschwindet |
+| `Nein` | Der Sync überspringt die Zeile vollständig – kein Gerät, keine SCCM-Felder, **keine Archivierung**, und sie zählt nicht in die aktiven Zeilen des Archivschutzes. Für Geräte, die es in SCCM nie geben wird: Gäste- und Prüfungsnotebooks ohne Domäne |
+
+Ohne diese Spalte müsste ein Gerät ohne Domäne bei jedem Lauf archiviert werden – und weil das bei
+94 von 119 EDU-Zeilen der Fall wäre, würde der Archivschutz (Abschnitt 2.3) greifen und die ganze
+Phase mit einem Fehler abbrechen. Gesetzt wird sie im Clientfenster unter «Stammdaten».
 
 `Archiviert` von Hand zu setzen lohnt sich nur für Geräte, die auch in SCCM verschwunden sind:
 Steht das Gerät noch in SCCM, setzt der nächste Sync es wieder auf `Aktiv` und schreibt
@@ -132,6 +151,9 @@ dass irgendetwas besser würde.
 | `Build-Spalten.ps1` | erzeugt `frontend/spalten.js` aus den Schemadateien |
 | `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und Liste «Software» fehlen – der Reparaturweg, wenn eine Spalte fehlt (Abschnitt 4) |
 | `Entferne-Spalte.ps1` | löscht eine benannte Spalte nach Sicherung ihrer Werte (Gegenstück zu `Ergaenze-Spalten.ps1`) |
+| `Graph-Sitzung.ps1` | haltbare Anmeldung: einmal Device-Code, danach still über das Refresh-Token aus `lokal\graph-sitzung.xml` (DPAPI-verschlüsselt). Wird von den Werkzeugen daneben eingebunden |
+| `Abgleich-Excel.ps1` | einmalig: übernimmt die beiden Excel-Inventare in die Listen (Abschnitt 10) |
+| `Benenne-ListenAdresse.ps1` | einmalig: ändert die Adresse einer Liste (`.../Lists/Computer` → `.../Lists/ADMIN-Clients`) über die SharePoint-REST-Schnittstelle |
 | `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
@@ -176,12 +198,15 @@ Diese eine Regel steht in `Get-ClientListe` (`Inventar-Gemeinsam.ps1`) und gespi
 `frontend/modell.js` (`clientListe`); beide Seiten müssen dasselbe rechnen. Der Ablauf ist für beide
 Listen derselbe:
 
-1. Prüfen, ob die Liste `Status` und `Verlauf` hat. Der Sync **legt keine Spalten an** –
+1. Prüfen, ob die Liste `Status`, `InDomaene` und `Verlauf` hat. Der Sync **legt in den
+   Client-Listen keine Spalten an** –
    er füllt nur Daten. Fehlt eine Spalte, meldet er das **einmal** als WARN und lässt genau ihre
    Felder aus; alles andere läuft normal weiter. Das gilt in allen drei Phasen: eine fehlende
    Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile. Anlegen: `Ergaenze-Spalten.ps1`
    oder von Hand in den Listeneinstellungen (Abschnitt 4).
-2. SCCM per WMI lesen.
+2. SCCM per WMI lesen. Zeilen mit **«In Domäne = Nein»** fallen hier vollständig heraus: Sie
+   bekommen kein Gerät, keine SCCM-Felder, werden nie archiviert und zählen nicht in die aktiven
+   Zeilen des Archivschutzes. Leer gilt als Ja, ältere Zeilen verhalten sich also wie bisher.
 3. **Zuordnung über die Seriennummer**, nicht über den Namen — je Liste getrennt. Verglichen wird die SCCM-Seriennummer
    mit der Spalte `SCCM_SerialNumber` (beides getrimmt und gross geschrieben); eine manuelle
    Seriennummer-Spalte gibt es seit dem 4. September 2026 nicht mehr. Platzhalter wie `To be filled by O.E.M.`, `Default string`,
@@ -404,14 +429,19 @@ oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
 | `Kategorie` | Gruppe in der Software-Ansicht und in der Spaltenwahl. Eine neue Kategorie entsteht, indem man sie hinschreibt |
 | `AdGruppen` | sAMAccountNames von AD-Gruppen, **eine je Zeile**. Mehrere sind erlaubt, der Sync bildet die Vereinigung. Leer ist erlaubt: dann gibt es das Programm nur auf Stufe 0/1 von Hand |
 | `Reihenfolge` | Sortiernummer. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende. Die Migration hat in Zehnerschritten vergeben, damit dazwischen Platz bleibt |
+| — | Seit dem Excel-Abgleich (Abschnitt 10) stehen **94 Programme** in sieben Kategorien; neu dazu kam **«Protel-Abteilungen»** mit den 15 Abteilungen, die in der Excel als eigene Spalten neben Protel standen |
 | `Bemerkung` | Freitext: wozu das Programm dient, wer es lizenziert |
 
 **Ein Programm ist zwei Dinge zugleich**: eine Zeile in «Software» *und* eine Textspalte in der
 Benutzer-Liste, deren interner Name die Programm-Id ist. Dort steht je Person die Stufe (0/1/2).
 Ohne diese Spalte wäre das Programm wirkungslos – **darum legt das Softwarefenster sie beim Anlegen
 gleich mit an**, mit den Rechten der angemeldeten Person (delegiert `Sites.ReadWrite.All`).
-Der Sync legt weiterhin nie eine Spalte an; scheitert das Anlegen im Frontend, hilft
-`Ergaenze-Spalten.ps1 -Listen Benutzer` nach.
+
+**Eine Zeile in «Software» genügt.** Wer ein Programm nicht im Frontend, sondern direkt in
+SharePoint erfasst, bekommt die Spalte trotzdem: Seit dem 08.09.2026 legt auch der **Sync** eine
+fehlende Programmspalte selbst an – das ist die einzige Stelle, an der er eine Spalte erzeugt.
+Scheitert das (Berechtigung), bleibt es bei der bisherigen Warnung im Log, und das Programm wird
+in diesem Lauf übergangen; `Ergaenze-Spalten.ps1 -Listen Benutzer` hilft dann nach.
 
 **Reihenfolge beim Anlegen**: erst die Spalte, dann die Zeile. Scheitert die Spalte an der
 Berechtigung, entsteht gar kein Programm – besser als eine Software-Zeile, die nirgends wirkt.
@@ -486,10 +516,14 @@ Anhängen ohne Verlust, kompakte Ausgabe), die Seriennummern-Normalisierung samt
 Zuordnung SCCM-Gerät ↔ Client-Zeile (Seriennummer vor Name, Dublettenwahl, Umbenennung,
 Archivieren und Reaktivieren), die **Aufteilung ADMIN-/EDU-Clients** (`Get-ClientListe`), die
 **Umrechnung Software-Zeile → Programm** samt Sortierung und Id-Prüfung, die Telefonnummern
-(Normalisierung, Kurzwahl, Abgleich mit dem AD), das Verhalten bei fehlenden Spalten, Anzahl und
-Form der Schemaeinträge sowie die Syntax aller `*.ps1` in `code/` und `code/server/`.
+(Normalisierung, Kurzwahl, Abgleich mit dem AD), das Verhalten bei fehlenden Spalten, **«In Domäne»**
+(leer gilt als Ja, eine Zeile mit Nein wird nie archiviert und zählt nicht in den Archivschutz), die
+**Umrechnung der Excel-Blätter** (Zellbezug, Zahlenformat, Arbeitsplatz ohne eigenes Gerät,
+Gerätename ↔ Standort, Beschaffungsjahr aus den Kreuzen, Programmstufen, Dubletten, Login-Zuordnung
+über gekürzten Login und Anzeigename), Anzahl und Form der Schemaeinträge sowie die Syntax aller
+`*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 236 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 297 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -798,3 +832,95 @@ powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -WhatIf
 Der Eintrag `https://campussursee.sharepoint.com` in `connect-src` von `frontend/_headers` ist
 bereits entfernt: er war nur für den Dateidownload von `programme.json` nötig. Listenzeilen kommen
 direkt von `graph.microsoft.com`.
+
+---
+
+## 10. Der Excel-Abgleich vom 08.09.2026
+
+Vor den SharePoint-Listen wurde das Inventar in zwei Excel-Dateien geführt, und beide sind
+danach weitergepflegt worden. `Abgleich-Excel.ps1` hat sie einmalig übernommen: **was in der Excel
+steht, gilt** – mit einer begründeten Ausnahme bei den Telefonnummern (siehe unten).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Abgleich-Excel.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\Abgleich-Excel.ps1
+```
+
+Immer zuerst mit `-WhatIf`. Mit `-Bereiche Clients` (oder `Edu`, `Software`, `Benutzer`, `Telefon`,
+`Aufraeumen`) läuft nur ein Teil. Die Anmeldung hält über `Graph-Sitzung.ps1`: einmal Device-Code,
+danach still über das Refresh-Token in `lokal\graph-sitzung.xml`.
+
+### Was woher kommt
+
+| Excel | Liste | Übernommen |
+|---|---|---|
+| Blatt «Computer und User», Spalte `PC-Name` | **ADMIN-Clients** | Gebäude/Stock, Bemerkung, Beschaffungsjahr, Ersatz geplant |
+| Blatt «Computer und User», Spalte `Login` | **Benutzer** | Bemerkung, Inhaberschaft (`Computer`), Programmstufen |
+| Blatt «EDU-Geräte», Spalte `Arbeitsplatz` | **EDU-Clients** | PC-Name, Gebäude/Stock, Bemerkung, Beschaffungsjahr, Ersatz geplant, In Domäne |
+| Blatt «Computer und User», Programmspalten | **Software** | fehlende Programme samt Spalte in der Benutzer-Liste |
+| Blatt «Telefonnummer» | **Telefonnummern** | nur Bericht, siehe unten |
+
+Die Regeln, die dabei nicht in der Excel stehen, sondern aus dem Datenmodell kommen:
+
+- **Kein Gerät ist kein Gerät.** Steht im PC-Namen `Kein PC` oder `Shared CAMPUS-070`, hat die
+  Person kein eigenes Gerät. Solche Zeilen sind Arbeitsplätze, keine Clients – sie kommen in
+  keine Client-Liste, und die Inhaberschaft der Person wird geleert.
+- **Beschaffungsjahr** ist das jüngste angekreuzte Jahr (mehrere Kreuze heissen «ersetzt»).
+  **Ersatz geplant** ist Beschaffungsjahr + 5; nur wenn es gar kein Beschaffungsjahr gibt, zählt
+  ein Kreuz in «Budget 2026/2027».
+- **Gerätename und Standort.** Im EDU-Blatt steht beides im selben Feld
+  («EDULAP-107 - Halle 23 - Schmidlin»). Der Teil vor dem ersten Leerzeichen wird der PC-Name,
+  der Rest der Standort. `EDU-155-01` bleibt dabei ganz.
+- **Programmstufen.** Ein Kreuz wird zu `1`. Eine vom Sync gesetzte `2` (AD-Gruppe) bleibt stehen –
+  sie bedeutet dasselbe, und der nächste Lauf setzte eine `1` ohnehin wieder auf `2`. Steht in der
+  Excel kein Kreuz, während in der Liste eine `1` steht, wird sie auf `0` gesetzt.
+- **Login-Zuordnung.** Zuerst der Login selbst, dann der auf 20 Zeichen gekürzte (so lang darf ein
+  sAMAccountName höchstens sein: aus «Michael.Roethlisberger» wird im AD «Michael.Roethlisberg»),
+  zuletzt der Anzeigename, falls er eindeutig ist. Jeder Umweg steht als Warnung im Log.
+- **Angelegt wird nie ein Benutzer.** Die Liste kommt aus dem AD; eine von Hand angelegte Zeile
+  löscht der nächste Sync wieder (Abschnitt 2.3).
+
+### Stand nach dem Lauf
+
+| Liste | Vorher | Nachher | Was passiert ist |
+|---|---|---|---|
+| ADMIN-Clients | 188 | **163** | 159 Excel-Geräte abgeglichen, 25 EDU-Karteileichen entfernt, 4 Zeilen ohne Excel-Eintrag bewusst behalten |
+| EDU-Clients | 31 | **119** | 25 Geräte ergänzt (Beschaffungsjahr), 94 Geräte neu angelegt, 6 archivierte Doppel entfernt |
+| Benutzer | 202 | **202** | 160 Zeilen abgeglichen (Inhaberschaft, Bemerkung, Programmstufen) |
+| Software | 71 | **94** | 23 Programme angelegt, dazu 15 neue Spalten in der Benutzer-Liste |
+| Telefonnummern | 307 | **307** | unverändert, siehe unten |
+
+Die vier Zeilen, die es nur in SharePoint gibt, bleiben stehen: `CAMPUS-125` und `CAMPUS-BIHA`
+stehen aktiv in SCCM (gelöscht legte der nächste Sync sie leer wieder an), `CAMPUS-180` und
+`GASTRONOMIE G17` sind archiviert und halten fest, dass es diese Geräte einmal gab. Sie gehören
+in der Excel nachgetragen, nicht in SharePoint gelöscht.
+
+### Die Telefonliste wird nicht geschrieben
+
+Alle 307 Nummern stimmen überein – bis auf **Kurzwahl 318**. Dort ist SharePoint neuer: Der Sync
+hat die Nummer am 08.09.2026 im AD bei `auviso.technik` gefunden, den Namen übernommen und den
+Status von «Frei» auf «Aktiv» gesetzt. Die Excel steht auf Stand 31.07.2026. Diesen Stand
+zurückzuschreiben hiesse, ein richtiges Ergebnis durch ein veraltetes zu ersetzen – der nächste
+Sync korrigierte es ohnehin wieder. Der Bereich `Telefon` vergleicht darum nur und meldet.
+
+### Was in der Excel aufzuräumen ist
+
+Der Lauf hat 15 Einträge gemeldet, die sich nicht zuordnen liessen – sie brauchen eine
+menschliche Entscheidung:
+
+| Excel | Befund |
+|---|---|
+| `Driton.Lazaraj` («Lazaraj Driton») | im AD heisst er `driton.lazraj` («Lazraj Driton»); Login **und** Name weichen ab |
+| `Celina.Inderbinden`, `Florian.Steffen`, `Simon.Hintermann`, `Tamara.Unternaehrer`, `Yvonne.Estermann` | kein AD-Konto im Sync-Bereich – ausgetreten oder in einer anderen OU |
+| `Marketing`, `Seminarsupport`, `TechD (lokaler User)`, `-` | keine AD-Konten (Sammelbegriffe bzw. lokale Konten) |
+| `Amira.Lustenberger ?` | zweite Zeile derselben Person («Reserve ICT 5 (alt Mira)»); das Fragezeichen gehört weg |
+| `EDULAP-147` | steht im EDU-Blatt zweimal, einmal mit Standort, einmal mit Seriennummer – zusammengefasst |
+| 3 Zeilen im EDU-Blatt ohne Gerätenamen | drei Surface Pro 10, nur mit Seriennummer erfasst |
+| 46 Benutzer nur in SharePoint | Dienstkonten, Stiftungsrat und weitere AD-Konten, die in der Excel nie standen |
+
+Danach zur Kontrolle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1
+powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -WhatIf
+```

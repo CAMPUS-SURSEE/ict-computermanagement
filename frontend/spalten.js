@@ -24,6 +24,7 @@ const SPALTEN_CLIENT = [
   { i: "GebaeudeStock", d: "Gebäude / Stock", t: "Text", g: "Stammdaten", q: "manuell" },
   { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "Status", d: "Status", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "InDomaene", d: "In Domäne", t: "Boolean", g: "Stammdaten", q: "manuell" },
   { i: "Verlauf", d: "Verlauf", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "Beschaffungsjahr", d: "Beschaffungsjahr", t: "Text", g: "Beschaffung", q: "manuell" },
   { i: "ErsatzGeplant", d: "Ersatz geplant", t: "Text", g: "Beschaffung", q: "manuell" },

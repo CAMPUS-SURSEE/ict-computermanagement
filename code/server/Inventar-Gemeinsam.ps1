@@ -182,6 +182,27 @@ function Get-ClientListe {
     return 'admin'
 }
 
+function Test-InDomaene {
+    <#
+      Gehört das Gerät dieser Zeile zur Domäne? Gelesen wird die Spalte «InDomaene» (Ja/Nein).
+
+      Leer gilt als Ja – so verhalten sich alle Zeilen wie vor der Spalte. Nur ein
+      ausdrückliches Nein nimmt die Zeile aus dem SCCM-Abgleich: Der Sync ordnet ihr kein
+      Gerät zu, schreibt keine SCCM-Felder und archiviert sie nie. Gedacht für Geräte, die
+      es in SCCM nie geben wird (Gäste- und Prüfungsnotebooks ohne Domäne).
+
+      SharePoint liefert eine Ja/Nein-Spalte als Boolean, ältere Exporte als Text; darum
+      werden beide Schreibweisen erkannt.
+    #>
+    param($Zeile)
+    $v = Get-Feld $Zeile 'InDomaene'
+    if ($null -eq $v) { return $true }
+    if ($v -is [bool]) { return $v }
+    $s = ([string]$v).Trim().ToLowerInvariant()
+    if ($s -eq '') { return $true }
+    return -not ($s -eq 'false' -or $s -eq 'nein' -or $s -eq 'no' -or $s -eq '0')
+}
+
 function Get-ClientListenTitel {
     <# Anzeigename einer Client-Liste ('admin' | 'edu') für Log und Meldungen. #>
     param([string]$Liste)
@@ -287,6 +308,24 @@ function Test-TelefonImBlock {
     <# Liegt die Nummer im Nummernblock des Hauses? #>
     param([string]$Nummer, [string]$Praefix)
     return ((Get-TelefonKurzwahl $Nummer $Praefix) -ne '')
+}
+
+function Get-StatusNorm {
+    <#
+      Status einer Client-Zeile vereinheitlichen (Aktiv, Lager, Archiviert).
+      Leer bleibt leer – es gilt sonst als «Aktiv», und ein leeres Feld soll nicht allein
+      dadurch zu einem geschriebenen Wert werden. Ein unbekannter Wert bleibt unverändert.
+    #>
+    param([string]$Status)
+    if (-not $Status) { return '' }
+    $s = ([string]$Status).Trim()
+    if ($s -eq '') { return '' }
+    switch ($s.ToLowerInvariant()) {
+        'aktiv' { return 'Aktiv' }
+        'lager' { return 'Lager' }
+        'archiviert' { return 'Archiviert' }
+    }
+    return $s
 }
 
 function Get-TelefonStatusNorm {
@@ -651,6 +690,10 @@ function ConvertTo-GraphSpalte {
       Wandelt eine Spaltendefinition aus schema-client.json / schema-benutzer.json in das
       columnDefinition-Format von Microsoft Graph. Die Titelspalte kommt hier nicht vor,
       sie wird nachträglich per PATCH umbenannt.
+
+      «default» im Schema wird zum Vorgabewert der Spalte. SharePoint gibt ihn auch für Zeilen
+      zurück, die es vor der Spalte schon gab – dadurch bedeutet eine neue Ja/Nein-Spalte mit
+      Vorgabe «Ja» nicht plötzlich «Nein» für den ganzen Altbestand.
     #>
     param($Def)
     $c = [ordered]@{ name = $Def.internal; displayName = $Def.display }
@@ -662,6 +705,8 @@ function ConvertTo-GraphSpalte {
         'DateTime' { $c['dateTime'] = @{ format = 'dateTime'; displayAs = 'default' } }
         default    { $c['text'] = @{ allowMultipleLines = $false; maxLength = 255 } }
     }
+    $vorgabe = Get-Feld $Def 'default'
+    if ($null -ne $vorgabe -and "$vorgabe" -ne '') { $c['defaultValue'] = @{ value = [string]$vorgabe } }
     return $c
 }
 

@@ -733,6 +733,11 @@ const Mock = (function () {
     z.GebaeudeStock = waehle(r, GEBAEUDE);
     z.Bemerkung = r() < 0.15 ? "Ersatzgerät, Rückgabe offen" : "";
 
+    /* «In Domäne»: der Normalfall ist Ja. Bei den EDU-Clients steht rund jedes
+       dritte Gerät ausserhalb der Domäne (Gäste- und Prüfungsnotebooks) — nur so
+       lässt sich im Vorführmodus anschauen, wie solche Zeilen aussehen. */
+    z.InDomaene = (praefix === "EDU-") ? (r() > 0.35) : true;
+
     /* Status: die grosse Mehrheit ist im Einsatz, ein paar liegen im Lager,
        ein paar sind archiviert. Bewusst bleibt ein Teil der Zeilen leer —
        so wird geprüft, dass ein leerer Wert als «Aktiv» durchgeht. */
@@ -756,11 +761,13 @@ const Mock = (function () {
       else z.ErsatzGeplant = Modell.gjPlus(z.Beschaffungsjahr, 5);
     }
 
-    // Rund jedes zehnte Gerät ist nicht in SCCM.
-    const inSccm = r() > 0.1;
+    /* Rund jedes zehnte Gerät ist nicht in SCCM — und ein Gerät ausserhalb der
+       Domäne ist es nie: Der Abgleich fasst diese Zeilen gar nicht erst an. */
+    const inSccm = z.InDomaene && r() > 0.1;
     z.SCCM_Found = inSccm ? "Ja" : "Nein";
     if (!inSccm) {
-      z.SCCM_SyncStatus = "Kein SCCM-Gerät gefunden";
+      z.SCCM_SyncStatus = z.InDomaene ? "Kein SCCM-Gerät gefunden"
+                                      : "Ausserhalb der Domäne, vom Abgleich ausgenommen";
       return z;
     }
 
