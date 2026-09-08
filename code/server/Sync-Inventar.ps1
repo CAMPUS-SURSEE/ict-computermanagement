@@ -1,6 +1,7 @@
 ﻿<#
 .SYNOPSIS
-  Synchronisiert die SharePoint-Listen «Computer» (aus SCCM) und «Benutzer» (aus Active Directory).
+  Synchronisiert die SharePoint-Listen «ADMIN-Clients» und «EDU-Clients» (aus SCCM) und
+  «Benutzer» (aus Active Directory).
 
 .DESCRIPTION
   Der Sync füllt nur Daten. Er ändert die Struktur der Listen nie: keine Spalte wird angelegt,
@@ -8,16 +9,20 @@
   ihre Felder aus – alles andere läuft weiter. Angelegt werden Spalten mit Ergaenze-Spalten.ps1
   oder von Hand in den Listeneinstellungen.
 
-  Phase Computer:
+  Phase Clients (läuft zweimal, einmal je Liste):
     - liest alle Geräte samt Inventar aus SCCM (SMS Provider, WMI),
-    - ordnet sie über die Seriennummer den Zeilen der Computer-Liste zu (Fallback: PC-Name),
+    - teilt sie über den Namen auf: alles, was mit «EDU» beginnt, gehört in die Liste
+      «EDU-Clients», alles Übrige in «ADMIN-Clients» (Get-ClientListe in Inventar-Gemeinsam.ps1),
+    - ordnet sie je Liste über die Seriennummer den Zeilen zu (Fallback: PC-Name),
     - führt den Titel nach, wenn ein Gerät in SCCM umbenannt wurde (mit Verlaufseintrag),
     - schreibt nur geänderte SCCM_*-Felder, legt fehlende Geräte neu an (Status «Aktiv»),
     - setzt Zeilen ohne SCCM-Gerät auf «In SCCM vorhanden = Nein» und Status «Archiviert».
-      Gelöscht wird in dieser Phase nie – es gibt keinen Löschpfad.
+      Gelöscht wird in dieser Phase nie – es gibt keinen Löschpfad. Wird ein Gerät umbenannt und
+      wechselt dabei die Seite (EDU ↔ ADMIN), verschwindet es aus der einen Liste (archiviert)
+      und entsteht in der anderen neu; verschoben wird von Hand oder mit Migriere-Clients.ps1.
 
   Phase Benutzer:
-    - lädt programme.json aus der Dokumentbibliothek,
+    - lädt die Programmliste aus der SharePoint-Liste «Software»,
     - prüft, welche Spalten (Verlauf, Programme) die Benutzer-Liste hat,
     - liest die AD-Benutzer der konfigurierten OUs (Modul ActiveDirectory, Fallback ADSI),
     - ermittelt je Programm die rekursiven Mitglieder der hinterlegten AD-Gruppen,
@@ -32,8 +37,11 @@
     - legt Nummern aus dem Hausblock (TelefonPraefix), die im AD stehen, aber in der Liste fehlen, neu an.
       Gelöscht wird in dieser Phase nie.
 
-.PARAMETER OnlyComputers
-  Nur die Computer-Phase ausführen.
+.PARAMETER OnlyClients
+  Nur die Client-Phasen ausführen (ADMIN-Clients und EDU-Clients).
+
+.PARAMETER ClientListen
+  Welche Client-Listen abgeglichen werden: Alle (Vorgabe), Admin oder Edu.
 
 .PARAMETER OnlyBenutzer
   Nur die Benutzer-Phase ausführen.
@@ -53,7 +61,9 @@ param(
     [string]$ConfigPath,
     [switch]$WhatIf,
     [switch]$IncludeServers,
-    [switch]$OnlyComputers,
+    [switch]$OnlyClients,
+    [ValidateSet('Alle', 'Admin', 'Edu')]
+    [string]$ClientListen = 'Alle',
     [switch]$OnlyBenutzer,
     [switch]$OnlyTelefone,
     [switch]$DumpOnly,
@@ -167,11 +177,11 @@ function ConvertTo-BenutzerFelder {
 }
 
 # ---------------------------------------------------------------------------
-# Zuordnung SCCM-Gerät <-> Zeile der Computer-Liste (rein, ohne Graph und WMI)
+# Zuordnung SCCM-Gerät <-> Zeile einer Client-Liste (rein, ohne Graph und WMI)
 # ---------------------------------------------------------------------------
 
 function Get-StatusNorm {
-    <# Status einer Computer-Zeile vereinheitlichen. Leer bleibt leer (gilt sonst als «Aktiv»). #>
+    <# Status einer Client-Zeile vereinheitlichen. Leer bleibt leer (gilt sonst als «Aktiv»). #>
     param([string]$Status)
     if (-not $Status) { return '' }
     $s = ([string]$Status).Trim()
@@ -216,7 +226,7 @@ function Test-ArchivSchutz {
     <#
       Plausibilitätsschutz für das Archivieren: liefert SCCM gar nichts oder würde ein einziger Lauf
       mehr als GrenzeProzent % der nicht archivierten Zeilen archivieren, wird nicht archiviert.
-      (Gelöscht wird in der Computer-Phase ohnehin nie.)
+      (Gelöscht wird in den Client-Phasen ohnehin nie.)
     #>
     param(
         [int]$AnzahlSccmGeraete,
@@ -240,9 +250,9 @@ function Test-ArchivSchutz {
     return [pscustomobject]@{ Erlaubt = $true; Prozent = $prozent; Grund = "Archivieren erlaubt ($AnzahlArchivieren von $AnzahlAktiveZeilen Zeilen, $prozent %)." }
 }
 
-function Get-ComputerZuordnung {
+function Get-ClientZuordnung {
     <#
-      Ordnet SCCM-Geräte den Zeilen der Computer-Liste zu. Reine Funktion, damit sie ohne
+      Ordnet SCCM-Geräte den Zeilen einer Client-Liste zu. Reine Funktion, damit sie ohne
       SCCM und ohne Graph geprüft werden kann.
 
       $SccmGeraete: Objekte mit ResourceId, Name, Seriennummer, Aktivitaet (jüngste SCCM-Aktivität)
@@ -402,7 +412,7 @@ function Get-ComputerZuordnung {
 function New-Zuordnung {
     <#
       Baut einen Zuordnungseintrag samt Titeländerung, neuem Status und Verlaufstexten.
-      $Zustand ist das Hilfsobjekt aus Get-ComputerZuordnung (Zeile, Seriennummer, Status, Titel).
+      $Zustand ist das Hilfsobjekt aus Get-ClientZuordnung (Zeile, Seriennummer, Status, Titel).
     #>
     param($Geraet, $Zustand, [string]$Grund)
     $alterTitel = $Zustand.Titel
@@ -593,8 +603,6 @@ $now = Get-Date
 
 $LoeschSchutzProzent = 50
 if ($null -ne $cfg.LoeschSchutzProzent) { $LoeschSchutzProzent = [double]$cfg.LoeschSchutzProzent }
-$ProgrammeDateiPfad = 'Inventar/programme.json'
-if ($cfg.ProgrammeDateiPfad) { $ProgrammeDateiPfad = [string]$cfg.ProgrammeDateiPfad }
 
 # ---------------------------------------------------------------------------
 # SCCM auslesen
@@ -618,9 +626,9 @@ $EPInfectionMap = @{ 0 = 'Unbekannt'; 1 = 'Sauber'; 2 = 'Sauber (Bedrohung entfe
 $EncryptMap = @{ 0 = 'Keine'; 1 = 'AES 128 + Diffuser'; 2 = 'AES 256 + Diffuser'; 3 = 'AES 128'; 4 = 'AES 256'; 5 = 'Hardware'; 6 = 'XTS-AES 128'; 7 = 'XTS-AES 256' }
 
 Log "==== Sync-Start (Provider $srv, Site $($cfg.SiteCode)) ===="
-$nurBenutzer = [bool]$OnlyBenutzer -and -not $OnlyComputers
+$nurBenutzer = [bool]$OnlyBenutzer -and -not $OnlyClients
 # Nur die Telefon-Phase: braucht das AD, aber kein SCCM.
-$nurTelefone = [bool]$OnlyTelefone -and -not $OnlyComputers -and -not $OnlyBenutzer
+$nurTelefone = [bool]$OnlyTelefone -and -not $OnlyClients -and -not $OnlyBenutzer
 
 $systems = @()
 $primary = @{}
@@ -808,10 +816,17 @@ if (-not $SiteId) {
     $u = [uri]$cfg.SiteUrl
     $SiteId = (Invoke-Graph -Uri ('/sites/{0}:{1}' -f $u.Host, $u.AbsolutePath)).id
 }
-$ComputerListId = $cfg.ComputerListId
-$BenutzerListId = $cfg.BenutzerListId
-$TelefonListId = [string]$cfg.TelefonListId
-if ($TelefonListId -match '^<') { $TelefonListId = '' }   # Platzhalter aus der Vorlage
+function Get-ListId([string]$Wert) {
+    # Platzhalter aus der Vorlage («<...>») gelten als «nicht konfiguriert».
+    $t = ([string]$Wert).Trim()
+    if ($t -match '^<') { return '' }
+    return $t
+}
+$AdminClientListId = Get-ListId $cfg.AdminClientListId
+$EduClientListId = Get-ListId $cfg.EduClientListId
+$BenutzerListId = Get-ListId $cfg.BenutzerListId
+$TelefonListId = Get-ListId $cfg.TelefonListId
+$SoftwareListId = Get-ListId $cfg.SoftwareListId
 
 # ---------------------------------------------------------------------------
 # Vorhandene Spalten feststellen (nur lesen)
@@ -848,29 +863,37 @@ function Get-ListenSpalten {
 }
 
 # ===========================================================================
-# Phase 1: Computer
+# Phase 1: Clients (ADMIN-Clients und EDU-Clients)
 # ===========================================================================
-if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
-    if (-not $ComputerListId) { throw 'ComputerListId fehlt in der Konfiguration.' }
-    $itemsBase = "/sites/$SiteId/lists/$ComputerListId/items"
+# Beide Listen haben dieselben Spalten und werden gleich behandelt; sie unterscheiden sich
+# einzig darin, welche SCCM-Geräte hineingehören (Get-ClientListe: Name beginnt mit EDU?).
+# Deshalb steht der ganze Ablauf einmal hier und wird zweimal aufgerufen.
+function Invoke-ClientPhase {
+    param(
+        [string]$Liste,            # 'admin' | 'edu'
+        [string]$ListId,
+        $SccmGeraete               # nur die Geräte, die in DIESE Liste gehören
+    )
+    $titel = Get-ClientListenTitel $Liste
+    $itemsBase = "/sites/$SiteId/lists/$ListId/items"
 
     # Nur Spalten abfragen und schreiben, die es wirklich gibt.
-    $cSpalten = Get-ListenSpalten $ComputerListId 'Computer-Liste' @('Status', 'Verlauf')
+    $cSpalten = Get-ListenSpalten $ListId "Liste «$titel»" @('Status', 'Verlauf')
     $hatStatus = $cSpalten.ContainsKey('Status')
     $hatVerlauf = $cSpalten.ContainsKey('Verlauf')
-    if (-not $hatStatus) { Log 'Ohne Spalte «Status» werden Archivierung und Reaktivierung nicht festgehalten.' 'WARN' }
-    if (-not $hatVerlauf) { Log 'Ohne Spalte «Verlauf» werden keine Verlaufseinträge geschrieben.' 'WARN' }
+    if (-not $hatStatus) { Log "$titel`: Ohne Spalte «Status» werden Archivierung und Reaktivierung nicht festgehalten." 'WARN' }
+    if (-not $hatVerlauf) { Log "$titel`: Ohne Spalte «Verlauf» werden keine Verlaufseinträge geschrieben." 'WARN' }
     $zusatz = @('Title')
     if ($hatStatus) { $zusatz += 'Status' }
     if ($hatVerlauf) { $zusatz += 'Verlauf' }
     $sccmFieldNames = (Build-SccmFields $systems[0]).Keys
     $select = ($zusatz -join ',') + ',' + ($sccmFieldNames -join ',')
     $items = Get-GraphAlle "$itemsBase`?`$expand=fields(`$select=$select)&`$top=500"
-    Log "Computer-Liste: $($items.Count) Zeilen"
+    Log "$titel`: $($items.Count) Zeilen, $(@($SccmGeraete).Count) SCCM-Geräte"
 
     # SCCM-Geräte auf die Felder herunterbrechen, die die Zuordnung braucht.
     $geraete = New-Object System.Collections.ArrayList
-    foreach ($sys in $systems) {
+    foreach ($sys in $SccmGeraete) {
         $rid = [string]$sys.ResourceId
         $c = First $combined $rid; $b = First $bios $rid
         $serial = $null
@@ -906,15 +929,15 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
             })
     }
 
-    $plan = Get-ComputerZuordnung $geraete $zeilen
-    foreach ($w in $plan.Warnungen) { Log $w 'WARN' }
+    $plan = Get-ClientZuordnung $geraete $zeilen
+    foreach ($w in $plan.Warnungen) { Log "$titel`: $w" 'WARN' }
 
     $stats = @{ updated = 0; created = 0; unchanged = 0; archiviert = 0; reaktiviert = 0; umbenannt = 0; uebersprungen = 0 }
 
     # --- Zugeordnete Zeilen ---------------------------------------------------
     foreach ($zu in $plan.Zuordnungen) {
         $it = $zu.Zeile.Item
-        try { $fields = Build-SccmFields $zu.Geraet.Sys } catch { Log "Fehler beim Aufbereiten von $($zu.Geraet.Name): $_" 'ERROR'; $fehler++; continue }
+        try { $fields = Build-SccmFields $zu.Geraet.Sys } catch { Log "Fehler beim Aufbereiten von $($zu.Geraet.Name): $_" 'ERROR'; $script:fehler++; continue }
 
         $delta = [ordered]@{}
         foreach ($k in $fields.Keys) {
@@ -929,7 +952,7 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
                 $delta['Verlauf'] = Add-VerlaufEintraege -Verlauf ([string]$it.fields.Verlauf) -Texte $zu.VerlaufTexte -Datum $now -Quelle 'sync' -Zeitpunkt $now
             } catch {
                 Log "Verlauf von '$($zu.AlterTitel)' (ID $($zu.ZeileId)) ist unbrauchbar – Zeile übersprungen, damit nichts verloren geht: $_" 'ERROR'
-                $fehler++; $stats.uebersprungen++; continue
+                $script:fehler++; $stats.uebersprungen++; continue
             }
         }
         if ($delta.Count -eq 0) { $stats.unchanged++; continue }
@@ -938,29 +961,29 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
         $delta['SCCM_LastSync'] = $fields['SCCM_LastSync']
         if ($WhatIf) { Log "WHATIF Update $($zu.AlterTitel) (ID $($zu.ZeileId), Treffer über $($zu.Grund)): $($delta.Keys -join ', ')"; $stats.updated++; continue }
         try { Invoke-Graph -Method PATCH -Uri "$itemsBase/$($zu.ZeileId)/fields" -Body $delta | Out-Null; $stats.updated++; Log "Update $($zu.AlterTitel) (ID $($zu.ZeileId)): $($delta.Count) Felder" }
-        catch { Log "Update-Fehler $($zu.AlterTitel): $_" 'ERROR'; $fehler++ }
+        catch { Log "Update-Fehler $($zu.AlterTitel): $_" 'ERROR'; $script:fehler++ }
     }
 
     # --- Neue Geräte ----------------------------------------------------------
     foreach ($n in $plan.Neu) {
-        try { $fields = Build-SccmFields $n.Geraet.Sys } catch { Log "Fehler beim Aufbereiten von $($n.Name): $_" 'ERROR'; $fehler++; continue }
+        try { $fields = Build-SccmFields $n.Geraet.Sys } catch { Log "Fehler beim Aufbereiten von $($n.Name): $_" 'ERROR'; $script:fehler++; continue }
         $new = [ordered]@{ Title = ([string]$n.Name).ToUpperInvariant() }
         if ($hatStatus) { $new['Status'] = $n.Status }
         foreach ($k in $fields.Keys) { if ($null -ne $fields[$k]) { $new[$k] = $fields[$k] } }
         if ($hatVerlauf) { $new['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text $n.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
-        if ($WhatIf) { Log "WHATIF Neu: $($n.Name)"; $stats.created++; continue }
-        try { $r = Invoke-Graph -Method POST -Uri $itemsBase -Body @{ fields = $new }; $stats.created++; Log "Neu angelegt: $($n.Name) (ID $($r.id))" }
-        catch { Log "Anlage-Fehler $($n.Name): $_" 'ERROR'; $fehler++ }
+        if ($WhatIf) { Log "WHATIF Neu in $titel`: $($n.Name)"; $stats.created++; continue }
+        try { $r = Invoke-Graph -Method POST -Uri $itemsBase -Body @{ fields = $new }; $stats.created++; Log "Neu angelegt in $titel`: $($n.Name) (ID $($r.id))" }
+        catch { Log "Anlage-Fehler $($n.Name): $_" 'ERROR'; $script:fehler++ }
     }
 
     # --- Zeilen ohne SCCM-Gerät: archivieren, nie löschen ---------------------
-    # Die Computer-Phase kennt bewusst KEINEN Löschpfad (kein Invoke-Graph -Method DELETE).
+    # Die Client-Phasen kennen bewusst KEINEN Löschpfad (kein Invoke-Graph -Method DELETE).
     # Ein PC verschwindet nie aus der Liste, er wird höchstens auf Status «Archiviert» gesetzt.
     if (-not $OnlyDevices) {
-        $schutz = Test-ArchivSchutz $systems.Count $plan.AktiveZeilen $plan.Archivieren.Count $LoeschSchutzProzent
+        $schutz = Test-ArchivSchutz (@($SccmGeraete).Count) $plan.AktiveZeilen $plan.Archivieren.Count $LoeschSchutzProzent
         if (-not $schutz.Erlaubt) {
-            Log "Archivschutz greift: $($schutz.Grund)" 'ERROR'
-            $fehler++
+            Log "$titel`: Archivschutz greift: $($schutz.Grund)" 'ERROR'
+            $script:fehler++
         } else {
             foreach ($a in $plan.Archivieren) {
                 $it = $a.Zeile.Item
@@ -974,18 +997,39 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
                     try { $body['Verlauf'] = Add-VerlaufEintrag -Verlauf ([string]$it.fields.Verlauf) -Text $a.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
                     catch {
                         Log "Verlauf von '$($a.Titel)' (ID $($a.ZeileId)) ist unbrauchbar – Zeile übersprungen: $_" 'ERROR'
-                        $fehler++; $stats.uebersprungen++; continue
+                        $script:fehler++; $stats.uebersprungen++; continue
                     }
                 }
                 if ($WhatIf) { Log "WHATIF Archivieren (nicht mehr in SCCM): $($a.Titel)"; $stats.archiviert++; continue }
                 try { Invoke-Graph -Method PATCH -Uri "$itemsBase/$($a.ZeileId)/fields" -Body $body | Out-Null; $stats.archiviert++; Log "Archiviert (nicht mehr in SCCM): $($a.Titel)" }
-                catch { Log "Fehler beim Archivieren von $($a.Titel): $_" 'ERROR'; $fehler++ }
+                catch { Log "Fehler beim Archivieren von $($a.Titel): $_" 'ERROR'; $script:fehler++ }
             }
         }
     }
-    Log ('Computer fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} archiviert, {4} reaktiviert, {5} umbenannt, {6} übersprungen' -f $stats.updated, $stats.created, $stats.unchanged, $stats.archiviert, $stats.reaktiviert, $stats.umbenannt, $stats.uebersprungen)
+    Log ("$titel fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} archiviert, {4} reaktiviert, {5} umbenannt, {6} übersprungen" -f $stats.updated, $stats.created, $stats.unchanged, $stats.archiviert, $stats.reaktiviert, $stats.umbenannt, $stats.uebersprungen)
 }
 
+if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
+    # SCCM-Geräte auf die beiden Listen aufteilen – allein über den Namen.
+    $nachListe = @{ admin = New-Object System.Collections.ArrayList; edu = New-Object System.Collections.ArrayList }
+    foreach ($sys in $systems) { [void]$nachListe[(Get-ClientListe ([string]$sys.Name))].Add($sys) }
+    Log "SCCM-Geräte aufgeteilt: $($nachListe.admin.Count) ADMIN-Clients, $($nachListe.edu.Count) EDU-Clients (Präfix «EDU»)"
+
+    $phasen = @(
+        [pscustomobject]@{ Liste = 'admin'; ListId = $AdminClientListId; Schalter = 'Admin' }
+        [pscustomobject]@{ Liste = 'edu'; ListId = $EduClientListId; Schalter = 'Edu' }
+    )
+    foreach ($ph in $phasen) {
+        if ($ClientListen -ne 'Alle' -and $ClientListen -ne $ph.Schalter) { continue }
+        $titel = Get-ClientListenTitel $ph.Liste
+        if (-not $ph.ListId) {
+            Log "$titel`: keine Listen-Id in der Konfiguration – Phase übersprungen. Die Id steht in den Listeneinstellungen in SharePoint." 'ERROR'
+            $fehler++
+            continue
+        }
+        Invoke-ClientPhase -Liste $ph.Liste -ListId $ph.ListId -SccmGeraete @($nachListe[$ph.Liste])
+    }
+}
 # ===========================================================================
 # Phase 2: Benutzer (Active Directory)
 # ===========================================================================
@@ -1152,28 +1196,43 @@ function Get-AdBenutzerAlle {
     return $alle
 }
 
-if (-not $OnlyComputers -and -not $OnlyTelefone) {
+if (-not $OnlyClients -and -not $OnlyTelefone) {
     if (-not $BenutzerListId) { throw 'BenutzerListId fehlt in der Konfiguration.' }
     $benutzerBase = "/sites/$SiteId/lists/$BenutzerListId/items"
 
-    # 1) programme.json laden
-    $programme = $null
-    try {
-        $programme = Invoke-Graph -Uri "/sites/$SiteId/drive/root:/${ProgrammeDateiPfad}:/content"
-    } catch {
-        Log "programme.json konnte nicht aus SharePoint geladen werden ($ProgrammeDateiPfad): $_" 'WARN'
+    # 1) Programmliste aus der SharePoint-Liste «Software» laden.
+    #    Sie ist die einzige Quelle: gepflegt wird sie im Frontend, nicht mehr in einer Datei.
+    #    Fehlt die Liste oder ist sie leer, laufen die AD-Felder trotzdem – nur die
+    #    Programmstufen bleiben dann unangetastet.
+    $programmListe = @()
+    if (-not $SoftwareListId) {
+        Log 'SoftwareListId fehlt in der Konfiguration – die Programmstufen werden nicht abgeglichen. Die Id steht in den Listeneinstellungen der Liste «Software».' 'WARN'
+    } else {
+        try {
+            $swItems = Get-GraphAlle "/sites/$SiteId/lists/$SoftwareListId/items?`$expand=fields(`$select=Title,Name,Kategorie,AdGruppen,Reihenfolge)&`$top=500"
+            $roh = New-Object System.Collections.ArrayList
+            foreach ($it in $swItems) {
+                $prog = ConvertTo-Programm $it.fields
+                if ($null -eq $prog) { Log "Software-Liste: Zeile ID $($it.id) hat keine Programm-Id und wird übergangen." 'WARN'; continue }
+                if (-not (Test-ProgrammId $prog.id)) {
+                    Log "Software-Liste: «$($prog.id)» taugt nicht als Spaltenname (Buchstaben und Ziffern, Beginn mit einem Buchstaben, max. 30 Zeichen) – übergangen." 'WARN'
+                    continue
+                }
+                [void]$roh.Add($prog)
+            }
+            $programmListe = @(Sort-Programme $roh)
+        } catch {
+            Log "Liste «Software» konnte nicht gelesen werden – die Programmstufen werden nicht abgeglichen: $_" 'ERROR'
+            $fehler++
+        }
     }
-    if (-not $programme) {
-        Log 'Verwende lokale Kopie code\programme.json' 'WARN'
-        $programme = Read-JsonDatei (Join-Path $ScriptDir 'programme.json')
-    }
-    Log "Programme: $(@($programme.programme).Count)"
+    Log "Programme: $($programmListe.Count)"
 
     # 2) vorhandene Spalten feststellen: Verlauf und je Programm eine Spalte
-    $erwartet = @('Verlauf') + @($programme.programme | ForEach-Object { [string]$_.id })
+    $erwartet = @('Verlauf') + @($programmListe | ForEach-Object { [string]$_.id })
     $spalten = Get-ListenSpalten $BenutzerListId 'Benutzer-Liste' $erwartet
     # Nur Programme abgleichen, deren Spalte es in der Liste wirklich gibt.
-    $programmIds = @($programme.programme | Where-Object { $spalten.ContainsKey([string]$_.id) } | ForEach-Object { $_.id })
+    $programmIds = @($programmListe | Where-Object { $spalten.ContainsKey([string]$_.id) } | ForEach-Object { $_.id })
 
     # 3) AD-Benutzer lesen
     $adBenutzer = Get-AdBenutzerAlle
@@ -1192,7 +1251,7 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
 
     # 4) Gruppenmitgliedschaften je Programm
     $mitgliedschaft = @{}   # Login -> Liste Programm-Ids
-    foreach ($p in $programme.programme) {
+    foreach ($p in $programmListe) {
         $gruppen = @($p.adGruppen)
         if ($gruppen.Count -eq 0) { continue }
         foreach ($g in $gruppen) {
@@ -1288,7 +1347,7 @@ if (-not $OnlyComputers -and -not $OnlyTelefone) {
 # ===========================================================================
 # Phase 3: Telefonnummern (AD-Attribut telephoneNumber)
 # ===========================================================================
-if (-not $OnlyComputers -and -not $OnlyBenutzer) {
+if (-not $OnlyClients -and -not $OnlyBenutzer) {
     if (-not $TelefonListId) {
         Log 'TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen (ID steht in den Listeneinstellungen und in frontend\konfig.js).' 'WARN'
     } else {

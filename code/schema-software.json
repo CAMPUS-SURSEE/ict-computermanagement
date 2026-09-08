@@ -1,0 +1,56 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "Programm-ID",
+        "type":  "Title",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Interner Spaltenname in der Benutzer-Liste (max. 30 Zeichen, Buchstaben und Ziffern, kein Sonderzeichen). Nach dem ersten Sync nicht mehr ändern – sonst entsteht eine zweite Spalte und die alten Werte bleiben in der ersten liegen"
+    },
+    {
+        "internal":  "Name",
+        "display":  "Name",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Anzeigename des Programms, z. B. «Adobe Creative Suite». Er wird auch der Anzeigename der Spalte in der Benutzer-Liste"
+    },
+    {
+        "internal":  "Kategorie",
+        "display":  "Kategorie",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Gruppe in der Software-Ansicht und in der Spaltenwahl, z. B. «Zusatz-Software». Eine neue Kategorie entsteht, indem man sie hier hinschreibt"
+    },
+    {
+        "internal":  "AdGruppen",
+        "display":  "AD-Gruppen",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "sAMAccountNames der AD-Gruppen, eine je Zeile. Der Sync bildet die Vereinigung und setzt bei Mitgliedschaft die Stufe 2. Leer ist erlaubt: dann gibt es das Programm nur von Hand auf Stufe 0/1"
+    },
+    {
+        "internal":  "Reihenfolge",
+        "display":  "Reihenfolge",
+        "type":  "Number",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Sortiernummer innerhalb der Software-Ansicht. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende"
+    },
+    {
+        "internal":  "Bemerkung",
+        "display":  "Bemerkung",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Freitext: wozu das Programm dient, wer es lizenziert, was beim Vergeben zu beachten ist"
+    }
+]

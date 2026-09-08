@@ -1,7 +1,7 @@
 ﻿<#
 .SYNOPSIS
-  Legt in den Listen «Computer», «Benutzer» und «Telefonnummern» alle Spalten an, die laut
-  schema-computer.json, schema-benutzer.json, schema-telefon.json und programme.json fehlen.
+  Legt in den Listen «ADMIN-Clients», «EDU-Clients», «Benutzer», «Telefonnummern» und «Software»
+  alle Spalten an, die laut den Schemadateien und der Liste «Software» fehlen.
 
 .DESCRIPTION
   Der Sync ändert die Struktur der Listen bewusst nie – er füllt nur Daten und meldet fehlende
@@ -22,7 +22,9 @@
   client flows» auf Nein, sie weist den Device-Code-Flow mit AADSTS7000218 ab.
 
 .PARAMETER Listen
-  Welche Listen geprüft werden: Computer, Benutzer, Telefon oder Alle (Vorgabe).
+  Welche Listen geprüft werden: Admin, Edu, Benutzer, Telefon, Software oder Alle (Vorgabe).
+  Die Programmspalten der Benutzer-Liste kommen aus der Liste «Software»; sie muss dafür
+  schon bestehen (Migriere-Clients.ps1 legt sie an).
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -WhatIf
@@ -37,7 +39,7 @@ param(
     [ValidateSet('DeviceCode', 'Certificate')]
     [string]$Auth = 'DeviceCode',
     [string]$ClientId = '14d82eec-204b-4c2f-b7e8-296a70dab67e',
-    [ValidateSet('Alle', 'Computer', 'Benutzer', 'Telefon')]
+    [ValidateSet('Alle', 'Admin', 'Edu', 'Benutzer', 'Telefon', 'Software')]
     [string[]]$Listen = @('Alle'),
     [switch]$WhatIf
 )
@@ -54,7 +56,11 @@ $ServerDir = Join-Path $ScriptDir 'server'
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ServerDir 'Sync-Inventar.config.json' }
-$cfg = Read-JsonDatei $ConfigPath
+$cfg = Get-InventarKonfiguration -KonfigPfad $ConfigPath `
+    -FrontendPfad (Join-Path (Split-Path -Parent $ScriptDir) 'frontend\konfig.js')
+if ($Auth -eq 'Certificate' -and -not (Test-Path $ConfigPath)) {
+    throw "-Auth Certificate braucht $ConfigPath (Zertifikat-Thumbprint und ClientId)."
+}
 $LogPath = Join-Path $ScriptDir 'Ergaenze-Spalten.log'
 if ($cfg.LogPath) { $LogPath = Join-Path (Split-Path -Parent $cfg.LogPath) 'Ergaenze-Spalten.log' }
 Set-InventarLog $LogPath
@@ -108,32 +114,63 @@ function Sync-Spalten {
     }
 }
 
+function Get-ListId([string]$Wert) {
+    # Platzhalter aus der Vorlage («<...>») gelten als «nicht konfiguriert».
+    $t = ([string]$Wert).Trim()
+    if ($t -match '^<') { return '' }
+    return $t
+}
+
+function Get-SchemaSpalten([string]$Datei) {
+    $schema = @(Read-JsonDatei (Join-Path $ScriptDir $Datei))
+    return @($schema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
+}
+
 $alle = ($Listen -contains 'Alle')
 
-if ($alle -or $Listen -contains 'Computer') {
-    $schema = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-computer.json'))
-    $spalten = @($schema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
-    Sync-Spalten 'Computer' ([string]$cfg.ComputerListId) $spalten
+# Beide Client-Listen haben dieselben Spalten und teilen sich schema-client.json.
+if ($alle -or $Listen -contains 'Admin') {
+    Sync-Spalten 'ADMIN-Clients' (Get-ListId $cfg.AdminClientListId) (Get-SchemaSpalten 'schema-client.json')
+}
+
+if ($alle -or $Listen -contains 'Edu') {
+    Sync-Spalten 'EDU-Clients' (Get-ListId $cfg.EduClientListId) (Get-SchemaSpalten 'schema-client.json')
+}
+
+if ($alle -or $Listen -contains 'Software') {
+    Sync-Spalten 'Software' (Get-ListId $cfg.SoftwareListId) (Get-SchemaSpalten 'schema-software.json')
 }
 
 if ($alle -or $Listen -contains 'Benutzer') {
-    $schema = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-benutzer.json'))
-    $spalten = @($schema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
-    # Programmspalten stehen nicht im Schema, sondern in programme.json (Quelle der Wahrheit).
-    $programme = $null
-    try { $programme = Invoke-Graph -Uri "/sites/$SiteId/drive/root:/$([string]$cfg.ProgrammeDateiPfad):/content" }
-    catch { Log "programme.json aus SharePoint nicht lesbar – verwende die lokale Kopie: $_" 'WARN' }
-    if (-not $programme) { $programme = Read-JsonDatei (Join-Path $ServerDir 'programme.json') }
-    $spalten += @($programme.programme | ForEach-Object { New-ProgrammSpalte $_ })
-    Sync-Spalten 'Benutzer' ([string]$cfg.BenutzerListId) $spalten
+    $spalten = Get-SchemaSpalten 'schema-benutzer.json'
+    # Programmspalten stehen nicht im Schema, sondern in der Liste «Software» (Quelle der Wahrheit).
+    # Im Normalfall legt das Frontend sie beim Erfassen eines Programms gleich mit an; dieses
+    # Skript ist der Reparaturweg, wenn eine Spalte fehlt.
+    $softwareListId = Get-ListId $cfg.SoftwareListId
+    if (-not $softwareListId) {
+        Log 'SoftwareListId fehlt in der Konfiguration – die Programmspalten werden nicht geprüft.' 'WARN'
+    } else {
+        try {
+            $swItems = Get-GraphAlle "/sites/$SiteId/lists/$softwareListId/items?`$expand=fields(`$select=Title,Name,Kategorie,AdGruppen,Reihenfolge)&`$top=500"
+            foreach ($it in $swItems) {
+                $prog = ConvertTo-Programm $it.fields
+                if ($null -eq $prog) { continue }
+                if (-not (Test-ProgrammId $prog.id)) {
+                    Log "Software-Liste: «$($prog.id)» taugt nicht als Spaltenname – übergangen." 'WARN'
+                    continue
+                }
+                $spalten += (New-ProgrammSpalte $prog)
+            }
+        } catch {
+            Log "Liste «Software» nicht lesbar – die Programmspalten werden nicht geprüft: $_" 'ERROR'
+            $fehler++
+        }
+    }
+    Sync-Spalten 'Benutzer' (Get-ListId $cfg.BenutzerListId) $spalten
 }
 
 if ($alle -or $Listen -contains 'Telefon') {
-    $telefonListId = [string]$cfg.TelefonListId
-    if ($telefonListId -match '^<') { $telefonListId = '' }   # Platzhalter aus der Vorlage
-    $schema = @(Read-JsonDatei (Join-Path $ScriptDir 'schema-telefon.json'))
-    $spalten = @($schema | Where-Object { $_.internal -ne 'Title' } | ForEach-Object { ConvertTo-GraphSpalte $_ })
-    Sync-Spalten 'Telefonnummern' $telefonListId $spalten
+    Sync-Spalten 'Telefonnummern' (Get-ListId $cfg.TelefonListId) (Get-SchemaSpalten 'schema-telefon.json')
 }
 
 if ($WhatIf) {

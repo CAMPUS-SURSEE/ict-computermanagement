@@ -1,4 +1,4 @@
-/* telefon.js — Telefonfenster des Computer Inventars.
+/* telefon.js — Telefonfenster des ICT-Inventars.
 
    Wird von der Hauptseite als telefon.html?id=… im selben Tab
    geöffnet und zeigt eine einzelne Zeile der Liste «Telefonnummern» in zwei
@@ -541,7 +541,7 @@ function bereichHinweis(ziel) {
 function kopfZeichnen() {
   const name = anzeigeName();
   $("tf-titel").textContent = name;
-  document.title = name + " — Computer Inventar";
+  document.title = name + " — ICT-Inventar";
 
   const unter = [];
   if (neuModus) {

@@ -1,4 +1,4 @@
-/* auth.js — Anmeldung an Entra ID (Microsoft 365) für «Computer Inventar».
+/* auth.js — Anmeldung an Entra ID (Microsoft 365) für das ICT-Inventar.
 
    Dünner Aufsatz auf MSAL, der offiziellen Anmeldebibliothek von Microsoft.
    MSAL wird per CDN eingebunden, siehe die Script-Zeile in index.html. Hier
@@ -15,7 +15,7 @@
      4. Auth.token() liefert jederzeit ein gültiges Zugriffstoken.
 
    Die Berechtigung ist delegiert und umfasst Lesen und Schreiben
-   (Sites.ReadWrite.All): das Detailfenster geraet.html pflegt die von Hand
+   (Sites.ReadWrite.All): das Detailfenster client.html pflegt die von Hand
    geführten Spalten der Liste. Mehr als die angemeldete Person in SharePoint
    selbst darf, kann das Token nie.
 
@@ -36,10 +36,10 @@ const Auth = (function () {
   /* Die Umleitungsadresse muss exakt so in der App-Registrierung stehen.
      Deshalb immer die Wurzel der Seite, ohne Dateiname, ohne
      Abfragezeichenfolge und ohne Rautezeichen: sonst müsste neben «/» auch
-     «/geraet.html» eingetragen werden, und jede weitere Seite ebenso.
+     «/client.html» eingetragen werden, und jede weitere Seite ebenso.
      navigateToLoginRequestUrl: true bringt MSAL nach der Anmeldung von selbst
      auf die ursprünglich gewünschte Adresse zurück, also auch auf
-     geraet.html?id=… */
+     client.html?liste=admin&id=… */
   function zielUrl() {
     return location.origin + "/";
   }
@@ -54,7 +54,7 @@ const Auth = (function () {
       }
       if (!KONFIG.clientId || KONFIG.clientId.indexOf("HIER-") === 0) {
         throw new Error("In konfig.js ist keine Client-ID eingetragen. "
-          + "Bitte die App-Registrierung «Computer Inventar» in Entra ID anlegen "
+          + "Bitte die App-Registrierung «Computer Inventar Frontend» in Entra ID anlegen "
           + "und die Anwendungs-ID dort eintragen. Zum Anschauen ohne Anmeldung "
           + "die Seite mit ?mock=1 aufrufen.");
       }

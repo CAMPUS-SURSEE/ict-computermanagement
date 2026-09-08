@@ -1,4 +1,4 @@
-/* benutzer.js — Benutzerfenster des Computer Inventars (Spezifikation 3.4).
+/* benutzer.js — Benutzerfenster des ICT-Inventars (Spezifikation 3.4).
 
    Wird von der Hauptseite als benutzer.html?id=… im selben Tab geöffnet und
    zeigt eine einzelne Zeile der Benutzer-Liste in vier Abschnitten:
@@ -6,13 +6,15 @@
      Übersicht        AD-Felder (schreibgeschützt), Gerät, Kennzahlen
      Gerät            Inhaberschaft ändern, aufheben, SCCM-Primärgerät
                       übernehmen
-     Berechtigungen   alle Programme aus programme.json, Tri-State-Schalter
+     Berechtigungen   alle Programme aus der Liste «Software», Tri-State-Schalter
      Bemerkung        freier Text
 
-   Das Feld «Computer» hält das Gerät, dessen Inhaber diese Person ist —
-   die Person, der es formal gehört. Höchstens eines je Person, höchstens
-   eine Person je Gerät, und ausschliesslich von Hand gepflegt: SCCM meldet
-   zwar ein Primärgerät, der Abgleich schreibt «Computer» aber nie.
+   Das Feld «Computer» (angezeigt als «ADMIN-Client») hält den Client, dessen
+   Inhaber diese Person ist — der Client, der ihr formal gehört. Höchstens
+   einer je Person, höchstens eine Person je Client, und ausschliesslich von
+   Hand gepflegt: SCCM meldet zwar ein Primärgerät, der Abgleich schreibt
+   «Computer» aber nie. Es zeigt immer auf die Liste «ADMIN-Clients»;
+   EDU-Clients haben bewusst keinen Inhaber.
 
    Bearbeitbar sind genau «Computer», «Bemerkung» und die Programmspalten mit
    Stufe 0 oder 1. Alles, was aus dem Active Directory oder aus SCCM kommt,
@@ -49,7 +51,7 @@ for (const s of SPALTEN_BENUTZER) SPALTE[s.i] = s;
 const AD_SPALTEN = SPALTEN_BENUTZER.filter(s => s.q === "ad");
 
 /* Spalten, die dieses Fenster schreiben darf. Programmspalten kommen zur
-   Laufzeit aus programme.json dazu und werden getrennt behandelt. */
+   Laufzeit aus der Liste «Software» dazu und werden getrennt behandelt. */
 function istBearbeitbar(spalte) {
   return !!spalte && spalte.q === "manuell";
 }
@@ -73,10 +75,10 @@ const gleichwertig = F.gleichwertig;
    ================================================================== */
 
 let alleBenutzer = [];
-let alleComputer = [];
+let alleClients = [];       // Liste «ADMIN-Clients», angereichert
 let alleTelefone = [];      // Liste «Telefonnummern», für die Karte «Telefon»
-let programmDatei = null;
-let pSpalten = [];          // Programmspalten aus programme.json
+let software = [];          // Zeilen der Liste «Software»
+let pSpalten = [];          // Programmspalten daraus
 let pSpalte = {};           // id -> Spalte
 let kategorien = [];        // Reihenfolge der Kategorien
 
@@ -194,8 +196,8 @@ function programmStufe(id) {
 
 /* Ein kleiner Chip für den Gerätestatus, oder null bei «Aktiv» — der
    Normalfall braucht keine Auszeichnung. */
-function statusMarke(computerZeile) {
-  const status = Modell.status(computerZeile && computerZeile.Status);
+function statusMarke(clientZeile) {
+  const status = Modell.status(clientZeile && clientZeile.Status);
   if (status === "Aktiv") return null;
   const c = el("span", "chip " + (status === "Archiviert" ? "chip-leise" : "chip-info"),
     status);
@@ -210,14 +212,14 @@ function statusMarke(computerZeile) {
 
    Ist das Gerät nicht «Aktiv», steht der Status daneben — sonst wundert
    man sich, warum es in der Geräteliste nicht auftaucht. */
-function geraetLink(computerZeile) {
+function geraetLink(clientZeile) {
   const huelle = el("span", "b-geraetlink");
-  const a = el("a", "name-link", computerZeile.Title);
-  a.href = "geraet.html?id=" + encodeURIComponent(computerZeile.id) + MOCK_ANHANG;
-  a.title = "Listen-ID " + computerZeile.id + " — Gerät öffnen";
+  const a = el("a", "name-link", clientZeile.Title);
+  a.href = "client.html?liste=admin&id=" + encodeURIComponent(clientZeile.id) + MOCK_ANHANG;
+  a.title = "Listen-ID " + clientZeile.id + " — ADMIN-Client öffnen";
   huelle.appendChild(a);
 
-  const marke = statusMarke(computerZeile);
+  const marke = statusMarke(clientZeile);
   if (marke) {
     huelle.appendChild(document.createTextNode(" "));
     huelle.appendChild(marke);
@@ -264,7 +266,7 @@ function geraeteMitDiesemNamen() {
   const name = textWert("Computer").trim();
   if (!name) return [];
   const k = Modell.schluessel(name);
-  return alleComputer.filter(c => Modell.schluessel(c.Title) === k);
+  return alleClients.filter(c => Modell.schluessel(c.Title) === k);
 }
 
 /* Das Gerät, dessen Inhaber diese Person ist, oder null. Bei mehreren
@@ -290,7 +292,7 @@ function mehrdeutigHinweis() {
   for (const c of treffer) {
     const a = el("a", "chip" + (c === gewaehlt ? " chip-marke" : ""),
       "Listen-ID " + c.id + " · " + Modell.status(c.Status));
-    a.href = "geraet.html?id=" + encodeURIComponent(c.id) + MOCK_ANHANG;
+    a.href = "client.html?liste=admin&id=" + encodeURIComponent(c.id) + MOCK_ANHANG;
     a.title = (c === gewaehlt ? "Wird hier angezeigt. " : "") + "Gerät öffnen";
     liste.appendChild(a);
   }
@@ -311,8 +313,8 @@ function primaerAbweichung() {
 
    Ein Gerät hat genau einen Inhaber; kommt hier etwas zurück, ist das ein
    zu bereinigender Datenfehler und wird als Warnung gezeigt. */
-function andereBenutzerVon(computerZeile) {
-  return (computerZeile.__inhaberAlle || [])
+function andereBenutzerVon(clientZeile) {
+  return (clientZeile.__inhaberAlle || [])
     .filter(b => String(b.id) !== String(zeile.id))
     .map(b => b.__name);
 }
@@ -427,9 +429,9 @@ function inhaberschaftSetzen(pcName) {
   zeichneBereich();
 }
 
-function inhaberWerden(computerZeile) {
+function inhaberWerden(clientZeile) {
   geraeteSuche = "";
-  inhaberschaftSetzen(computerZeile.Title);
+  inhaberschaftSetzen(clientZeile.Title);
 }
 
 function inhaberschaftAufheben() {
@@ -441,8 +443,9 @@ function bereichGeraet(ziel) {
   const name = textWert("Computer").trim();
 
   const kAktuell = karte("Gerät dieser Person",
-    "Das Feld «Computer» der Benutzer-Liste: das Gerät, dessen Inhaber diese "
-    + "Person ist. Höchstens eines je Person, höchstens eine Person je Gerät.");
+    "Das Feld «Computer» der Benutzer-Liste, angezeigt als «ADMIN-Client»: der "
+    + "Client, dessen Inhaber diese Person ist. Höchstens einer je Person, "
+    + "höchstens eine Person je Client. EDU-Clients haben keinen Inhaber.");
 
   if (name) {
     const felder = el("div", "datenzeilen");
@@ -497,16 +500,16 @@ function bereichGeraet(ziel) {
 
   ziel.appendChild(kAktuell);
 
-  // Suche über die Computer-Liste
+  // Suche über die Liste «ADMIN-Clients»
   const kSuche = karte("Gerät wählen",
     "Suche über PC-Name, Modell, Seriennummer und Gebäude. Wer schon einen "
     + "Inhaber hat, ist unten vermerkt — die Wahl ersetzt ihn nicht von "
-    + "selbst, das geschieht im Gerätefenster.");
+    + "selbst, das geschieht im Clientfenster.");
   kSuche.inhalt.appendChild(suchfeld("b-suche-geraet", "Gerät suchen …", geraeteSuche,
     function (v) { geraeteSuche = v; zeichneBereich(); }));
 
   const suchbegriff = geraeteSuche.trim().toLowerCase();
-  const treffer = alleComputer.filter(function (c) {
+  const treffer = alleClients.filter(function (c) {
     if (!suchbegriff) return false;
     return String(c.__such || "").indexOf(suchbegriff) > -1;
     /* Archivierte Geräte zuletzt: sie sind zwar auffindbar, aber selten
@@ -518,7 +521,7 @@ function bereichGeraet(ziel) {
   if (!suchbegriff) {
     liste.appendChild(el("p", "hinweis",
       "Mindestens ein Zeichen eingeben. Die Liste umfasst "
-      + alleComputer.length + " Geräte."));
+      + alleClients.length + " ADMIN-Clients."));
   } else if (!treffer.length) {
     liste.appendChild(el("p", "hinweis", "Kein Gerät passt zur Suche."));
   } else {
@@ -585,7 +588,7 @@ function bereichBerechtigungen(ziel) {
     zahlen.aktiv + " von " + zahlen.gesamt + " aktiv"));
   ziel.appendChild(werkzeuge);
 
-  // Nach Kategorie gruppieren, Reihenfolge aus programme.json.
+  // Nach Kategorie gruppieren, Reihenfolge aus der Spalte «Reihenfolge».
   const stapel = el("div", "stapel");
   ziel.appendChild(stapel);
   let gezeigt = 0;
@@ -745,12 +748,12 @@ function zeichnenAlles() {
 /* «still» lädt im Hintergrund nach, ohne die Seite gegen den Spinner zu
    tauschen: nach dem Speichern soll der Inhalt stehen bleiben. */
 async function datenLaden(still) {
-  let anzahlBenutzer = 0, anzahlComputer = 0;
+  let anzahlBenutzer = 0, anzahlClients = 0;
 
   function fortschritt() {
     if (still) return;
     $("b-laden-fortschritt").textContent =
-      "Benutzer " + anzahlBenutzer + " / Geräte " + anzahlComputer;
+      "Benutzer " + anzahlBenutzer + " / ADMIN-Clients " + anzahlClients;
   }
 
   if (!still) {
@@ -759,17 +762,21 @@ async function datenLaden(still) {
   }
 
   /* Alles gleichzeitig holen — nacheinander dauerte es dreimal so lang.
-     Die Telefonliste ist Beigabe: fehlt sie, bleibt die Karte leer. */
-  const [rohBenutzer, rohComputer, programme, rohTelefone] = await Promise.all([
+     Die Telefon- und die Software-Liste sind Beigabe: fehlt eine, bleibt
+     die jeweilige Karte leer, statt das ganze Fenster scheitern zu lassen.
+
+     Nur die ADMIN-Clients werden geladen: die Inhaberschaft zeigt nie auf
+     einen EDU-Client. */
+  const [rohBenutzer, rohClients, rohSoftware, rohTelefone] = await Promise.all([
     Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); }),
-    Daten.computer(function (n) { anzahlComputer = n; fortschritt(); }),
-    Daten.programme(),
+    Daten.clients("admin", function (n) { anzahlClients = n; fortschritt(); }),
+    Daten.software().catch(function () { return []; }),
     Daten.telefone().catch(function () { return []; })
   ]);
-  programmDatei = programme;
+  software = rohSoftware || [];
 
-  const ergebnis = Modell.anreichern(rohComputer, rohBenutzer, programmDatei);
-  alleComputer = ergebnis.computer;
+  const ergebnis = Modell.anreichern(rohClients, rohBenutzer, software);
+  alleClients = ergebnis.clients;
   alleBenutzer = ergebnis.benutzer;
   alleTelefone = Modell.telefoneAnreichern(rohTelefone || [], alleBenutzer);
   pSpalten = ergebnis.programmSpalten;
@@ -777,12 +784,9 @@ async function datenLaden(still) {
   pSpalte = {};
   for (const s of pSpalten) pSpalte[s.i] = s;
 
-  // Reihenfolge der Kategorien: erst die aus programme.json, dann alles,
-  // was dort fehlt, in der Reihenfolge des Vorkommens.
-  kategorien = Array.isArray(programmDatei && programmDatei.kategorien)
-    ? programmDatei.kategorien.slice() : [];
-  for (const s of pSpalten) if (kategorien.indexOf(s.g) === -1) kategorien.push(s.g);
-  kategorien = kategorien.filter(k => pSpalten.some(s => s.g === k));
+  // Reihenfolge der Kategorien: nach der Spalte «Reihenfolge» der Liste
+  // «Software» (Modell.programmSpalten sortiert bereits danach).
+  kategorien = Modell.programmKategorien(pSpalten);
 }
 
 function zeileWaehlen() {
@@ -795,7 +799,7 @@ function zeileWaehlen() {
     throw fehler;
   }
   zeile = treffer;
-  document.title = (zeile.__name || zeile.Title) + " — Computer Inventar";
+  document.title = (zeile.__name || zeile.Title) + " — ICT-Inventar";
 }
 
 async function neuLaden() {
@@ -823,7 +827,7 @@ function ladefehlerZeigen(fehler) {
 
 /* ---------- Automatisch nachladen ---------- */
 
-/* Wie in der Liste und im Gerätefenster: kein Knopf «Neu laden», sondern ein
+/* Wie in der Liste und im Clientfenster: kein Knopf «Neu laden», sondern ein
    ruhiger Takt, der den Stand still nachholt. Wer sofort einen frischen
    Stand will, lädt die Seite neu.
 
@@ -838,7 +842,7 @@ function ladefehlerZeigen(fehler) {
    Sonderfall «Computer»: eine aufgehobene Inhaberschaft wird als null
    gesendet. Graph löscht das Feld damit wirklich; eine leere Zeichenkette
    lässt in SharePoint je nach Spaltentyp einen leeren, aber gesetzten Wert
-   zurück. Das Gerätefenster (inhaberSchreiben) macht es genauso. */
+   zurück. Das Clientfenster (inhaberSchreiben) macht es genauso. */
 function fuerGraph(feld, roh) {
   if (pSpalte[feld]) {
     return Modell.stufe(roh) === 1 ? "1" : "0";

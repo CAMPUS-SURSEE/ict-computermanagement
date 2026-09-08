@@ -1,0 +1,52 @@
+/* software.css — Seitenlayout des Softwarefensters (software.html).
+
+   Wird NACH design.css geladen. Das gesamte Gerüst (App-Leiste, Titelzeile,
+   Seitennavigation, Karten, Datenzeilen, Eingabefelder, Speicherleiste,
+   Toast, Dialog) kommt aus design.css; hier stehen nur Breiten und die
+   wenigen Muster, die es nur in diesem Fenster gibt. Alle eigenen Klassen
+   beginnen mit «sw-», alle Werte sind Tokens. */
+
+
+/* ==================================================================
+   Eingaben
+   ================================================================== */
+
+/* Die Programm-Id ist der Spaltenname: kurz, technisch, ohne Umlaute. */
+.datenzeile-form .sw-eingabe-id {
+  max-width: 280px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.datenzeile-form .sw-eingabe-kategorie { max-width: 360px; }
+
+/* AD-Gruppen: eine je Zeile, darum ein Feld ohne Zeilenumbruch-Zwang. */
+.datenzeile-form textarea.feld-eingabe { min-height: 5.5em; }
+
+
+/* ==================================================================
+   Berechtigte Personen
+   ================================================================== */
+
+.sw-personen {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--a3) var(--a4);
+}
+.sw-person { min-width: 0; }
+.sw-person-unter {
+  font-size: var(--t-xs); color: var(--text-leise);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+
+/* ==================================================================
+   Druck
+   ================================================================== */
+
+@media print {
+  body.sw-seite { background: var(--weiss); }
+  .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .band { display: none; }
+  .fenster-rumpf { grid-template-columns: 1fr; }
+  .fenster-inhalt { padding: 0; }
+  .karte { break-inside: avoid; page-break-inside: avoid; }
+}

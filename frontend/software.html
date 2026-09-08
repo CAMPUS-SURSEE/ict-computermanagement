@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software — ICT-Inventar</title>
+<link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Archivo:wdth,wght@112,500..700&display=swap">
+<!-- design.css liefert Tokens und Komponenten, software.css nur das
+     Seitenlayout dieses Fensters. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="software.css">
+</head>
+<body class="seite fenster sw-seite">
+
+<!-- App-Leiste: Wortmarke links, Aktionen rechts. -->
+<header class="kopf">
+  <div class="kopf-marke">
+    <!-- Die Wortmarke führt zurück zur Übersicht. Im Vorführmodus hängt
+         software.js den Parameter ?mock=1 an die Adresse. -->
+    <a class="logo-link" id="sw-logo" href="index.html" aria-label="Zur Übersicht">
+      <span class="wortmarke">ICT<span class="wortmarke-punkt">.</span>INVENTAR</span>
+    </a>
+  </div>
+  <div class="kopf-rechts" id="sw-aktionen"></div>
+</header>
+
+<!-- Band für den Vorführmodus (?mock=1). -->
+<div class="band band-warnung" id="sw-band" hidden></div>
+
+<div class="fenster-rumpf">
+
+  <nav class="fenster-nav" id="sw-nav" hidden aria-label="Bereiche"></nav>
+
+  <main class="fenster-inhalt">
+
+    <!-- Titelzeile: Name des Programms, Id und Kategorie. -->
+    <div class="seitenkopf">
+      <a class="seitenkopf-pfad" id="sw-pfad" href="index.html#software">Software</a>
+      <h1 id="sw-titel">Programm wird geladen …</h1>
+      <p class="seitenkopf-unter" id="sw-unter"></p>
+      <div class="chips" id="sw-status"></div>
+    </div>
+
+    <div class="lade" id="sw-laden">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="lade-text" id="sw-laden-text">Anmeldung wird geprüft …</p>
+      <p class="lade-fortschritt" id="sw-laden-fortschritt"></p>
+    </div>
+
+    <div class="fehler" id="sw-fehler" hidden>
+      <h2 class="fehler-titel" id="sw-fehler-titel">Es ist ein Fehler aufgetreten</h2>
+      <p class="fehler-text" id="sw-fehler-text"></p>
+      <p class="fehler-hinweis" id="sw-fehler-hinweis"></p>
+      <button type="button" class="knopf knopf-primaer" id="sw-knopf-nochmal">Erneut laden</button>
+    </div>
+
+    <div class="fenster-bahn" id="sw-bereich" hidden></div>
+
+  </main>
+</div>
+
+<div class="speicherleiste" id="sw-speicherleiste" hidden>
+  <span class="speicher-text" id="sw-speicher-text"></span>
+  <span class="speicher-fehler t-gefahr" id="sw-speicher-fehler" hidden></span>
+  <button type="button" class="knopf knopf-leise" id="sw-knopf-verwerfen">Verwerfen</button>
+  <button type="button" class="knopf knopf-primaer" id="sw-knopf-speichern">Speichern</button>
+</div>
+
+<div class="toast" id="sw-toast" hidden role="status" aria-live="polite"></div>
+
+<div class="dialog-hintergrund" id="sw-dialog-hintergrund" hidden></div>
+<div class="dialog" id="sw-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="sw-dialog-titel">
+  <h2 id="sw-dialog-titel"></h2>
+  <div id="sw-dialog-inhalt"></div>
+  <div class="dialog-knoepfe" id="sw-dialog-knoepfe"></div>
+</div>
+
+<div id="sw-datenlisten" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
+        integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="konfig.js"></script>
+<script src="spalten.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="modell.js"></script>
+<script src="fenster.js"></script>
+<script src="software.js"></script>
+
+</body>
+</html>

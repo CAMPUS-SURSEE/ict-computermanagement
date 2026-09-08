@@ -1,7 +1,14 @@
-# Computer Inventar
+# ICT-Inventar
 
-Drei SharePoint-Listen (Computer, Benutzer, Telefonnummern) mit SCCM- und AD-Synchronisation.
-Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
+Fünf SharePoint-Listen (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern, Software) mit
+SCCM- und AD-Synchronisation.
+Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
+
+> **Umbau vom 08.09.2026.** Die Liste «Computer» heisst neu **«ADMIN-Clients»**. Alle SCCM-Geräte,
+> deren Name mit `EDU` beginnt, stehen in der neuen Liste **«EDU-Clients»** — gleiche Spalten,
+> gleiches Frontend, nur ohne Inhaberschaft. Die Programmliste ist von der Datei
+> `programme.json` in die neue SharePoint-Liste **«Software»** gezogen und wird jetzt im Frontend
+> gepflegt. Den Umbau in SharePoint macht `Migriere-Clients.ps1` (Abschnitt 9).
 
 ---
 
@@ -11,18 +18,19 @@ Stand: 04.09.2026 · Betrieb: ICT-Services Campus Sursee
 |---|---|
 | **wissen, ob der Sync läuft** | Log unter `C:\ComputerInventar\Sync-Inventar.log` ansehen; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
 | **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
-| **ein Programm hinzufügen oder ändern** | `programme.json` bearbeiten → `Upload-Programme.ps1` → `Ergaenze-Spalten.ps1` legt die Spalte an (Abschnitt 3) |
-| **eine AD-Gruppe an ein Programm hängen** | in `programme.json` unter `adGruppen` eintragen → `Upload-Programme.ps1` (Abschnitt 3) |
-| **eine Spalte hinzufügen oder umbenennen** | `schema-computer.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
+| **ein Programm hinzufügen oder ändern** | Frontend → Reiter **«Software»** → **«Neue Software»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
+| **eine AD-Gruppe an ein Programm hängen** | Softwarefenster → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
+| **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
 | **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `212 bestanden, 0 fehlgeschlagen` |
 | **eine Telefonnummer freigeben** | Telefonfenster → Knopf **«Nummer freigeben»** oben rechts (nur, wenn die Nummer nicht über das AD zugeordnet ist): Status «Frei», bisheriger Name wandert in den Verlauf |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
-| **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Geräts ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
-| **archivierte Geräte im Frontend sehen** | in der Geräteliste **Filter → «Archivierte Geräte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
-| **einen Verlaufseintrag erfassen** | Gerätefenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
-| **den Inhaber eines Geräts ändern** | Gerätefenster → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8) |
-| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Gerätefenster → Knöpfe oben rechts (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**): setzt Status, Inhaber und Verlauf in einem Schritt |
+| **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Clients ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
+| **wissen, warum ein PC in der EDU-Liste steht** | Der Name entscheidet: alles ab `EDU` gehört in «EDU-Clients», alles Übrige in «ADMIN-Clients» (Abschnitt 2.2) |
+| **archivierte Geräte im Frontend sehen** | in der Client-Liste **Filter → «Archivierte Geräte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
+| **einen Verlaufseintrag erfassen** | Clientfenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
+| **den Inhaber eines Geräts ändern** | Clientfenster eines ADMIN-Clients → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8). EDU-Clients haben bewusst keinen Inhaber |
+| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Clientfenster → Knöpfe oben rechts (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**): setzt Status, Inhaber und Verlauf in einem Schritt |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
@@ -39,23 +47,25 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 
 | Baustein | Inhalt | Wer schreibt |
 |---|---|---|
-| Liste **Computer** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
-| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
+| Liste **ADMIN-Clients** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
+| Liste **EDU-Clients** | dieselben Spalten wie «ADMIN-Clients» (`schema-client.json`); enthält alle SCCM-Geräte, deren Name mit `EDU` beginnt. Ohne Inhaberschaft | dieselben wie oben |
+| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, angezeigt als «ADMIN-Client», Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
-| **programme.json** | die Programmliste mit Kategorie und AD-Gruppen; liegt in `Dokumente/Inventar/` auf der Site | von Hand, hochgeladen mit `Upload-Programme.ps1` |
+| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Reiter «Software») |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
 ┌──────────────────────────────────┐                 ┌────────────────────────────────────┐
-│ SMS Provider root\SMS\site_PS2   │                 │ Liste "Computer"                   │
-│        ▲ WMI                     │  Graph API      │ Liste "Benutzer"                   │
-│ Active Directory (LDAP/ADSI)     │  Zertifikat     │ Liste "Telefonnummern"             │
-│   Benutzer + telephoneNumber     │                 │ Dokumente/Inventar/programme.json  │
-│        ▲                         │ ──────────────▶ │                                    │
-│ Geplante Aufgabe (SYSTEM), 4 h   │  Sites.Selected │ Entra-App "SCCM-SharePoint-Sync"   │
-│  → C:\ComputerInventar\          │                 │ Entra-App "Computer Inventar       │
-│     Sync-Inventar.ps1            │                 │            Frontend" (SPA)         │
-└──────────────────────────────────┘                 └────────────────────────────────────┘
+│ SMS Provider root\SMS\site_PS2   │                 │ Liste "ADMIN-Clients"              │
+│        ▲ WMI                     │  Graph API      │ Liste "EDU-Clients"                │
+│ Active Directory (LDAP/ADSI)     │  Zertifikat     │ Liste "Benutzer"                   │
+│   Benutzer + telephoneNumber     │                 │ Liste "Telefonnummern"             │
+│        ▲                         │ ──────────────▶ │ Liste "Software"                   │
+│ Geplante Aufgabe (SYSTEM), 4 h   │  Sites.Selected │                                    │
+│  → C:\ComputerInventar\          │                 │ Entra-App "SCCM-SharePoint-Sync"   │
+│     Sync-Inventar.ps1            │                 │ Entra-App "Computer Inventar       │
+└──────────────────────────────────┘                 │            Frontend" (SPA)         │
+                                                     └────────────────────────────────────┘
 ```
 
 **Programmstufen** in der Benutzer-Liste (Textwert je Programmspalte):
@@ -69,7 +79,7 @@ adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint
 Der Sync setzt nur `2` und nimmt es wieder weg. **Eine manuelle `1` fasst er nie an** – wer eine
 Berechtigung von Hand vergeben hat, verliert sie nicht, wenn später eine AD-Gruppe dazukommt.
 
-**Status** eines Computers (Textspalte `Status`, leer gilt als `Aktiv`):
+**Status** eines Clients (Textspalte `Status`, leer gilt als `Aktiv`):
 
 | Wert | Bedeutung | Wer setzt ihn |
 |---|---|---|
@@ -80,9 +90,9 @@ Berechtigung von Hand vergeben hat, verliert sie nicht, wenn später eine AD-Gru
 `Archiviert` von Hand zu setzen lohnt sich nur für Geräte, die auch in SCCM verschwunden sind:
 Steht das Gerät noch in SCCM, setzt der nächste Sync es wieder auf `Aktiv` und schreibt
 «Wieder in SCCM vorhanden, reaktiviert» in den Verlauf. Für eingelagerte Geräte ist `Lager`
-gedacht – das fasst der Sync nie an. Im Frontend sind archivierte Geräte in der Geräteliste,
+gedacht – das fasst der Sync nie an. Im Frontend sind archivierte Geräte in den Client-Listen,
 in den Kacheln der Übersicht und im Ersatz-Zeitstrahl ausgeblendet; im Filter-Panel der
-Geräteliste blendet «Archivierte Geräte anzeigen» sie wieder ein (wird im Browser gemerkt und
+Client-Liste blendet «Archivierte Geräte anzeigen» sie wieder ein (wird je Liste im Browser gemerkt und
 steht als `ar=1` im Link).
 
 **Verlauf** (mehrzeilige Klartextspalte `Verlauf` in beiden Listen) enthält ein JSON-Array:
@@ -106,22 +116,23 @@ Geschäftsjahr `Jahr/Jahr+1`, sonst `Jahr-1/Jahr`. Die Helfer stehen in `Inventa
 
 `code/server/` ist der **Inhalt von `C:\ComputerInventar\`** auf `adminsrv319`: genau diese Dateien
 gehören auf den SCCM-Server, sonst keine. Alles andere in `code/` läuft von einem Arbeitsplatz aus
-und wird nie auf den Server kopiert.
+und wird nie auf den Server kopiert. Der Ordnername auf dem Server bleibt bewusst
+`C:\ComputerInventar` – ihn umzubenennen hiesse, die geplante Aufgabe neu zu registrieren, ohne
+dass irgendetwas besser würde.
 
 | `code/server/` – gehört auf den SCCM-Server | Zweck |
 |---|---|
-| `Sync-Inventar.ps1` | der laufende Sync (SCCM → Computer, AD → Benutzer, AD → Telefonnummern) |
+| `Sync-Inventar.ps1` | der laufende Sync (SCCM → ADMIN-/EDU-Clients, AD → Benutzer, AD → Telefonnummern) |
 | `Inventar-Gemeinsam.ps1` | gemeinsame Funktionen: Log, Geschäftsjahr, Graph, Spaltendefinitionen |
-| `Sync-Inventar.config.json` | Konfiguration; bleibt lokal, Vorlage: `Sync-Inventar.config.example.json` |
-| `programme.json` | Programmliste; produktiv gilt die Fassung in SharePoint, diese ist der Rückfall |
+| `Sync-Inventar.config.json` | Konfiguration mit den echten Werten. Liegt im Arbeitsverzeichnis, ist aber in `.gitignore` und kommt nie nach GitHub – sie enthält ClientId und Zertifikat-Thumbprint. Vorlage ohne Geheimnisse: `Sync-Inventar.config.example.json` |
 
 | `code/` – läuft vom Arbeitsplatz | Zweck |
 |---|---|
-| `schema-computer.json` / `schema-benutzer.json` / `schema-telefon.json` | Spalten der drei Listen (Quelle der Wahrheit) |
+| `schema-client.json` / `schema-benutzer.json` / `schema-telefon.json` / `schema-software.json` | Spalten der Listen (Quelle der Wahrheit). `schema-client.json` gilt für **beide** Client-Listen – sie haben dieselben Spalten |
 | `Build-Spalten.ps1` | erzeugt `frontend/spalten.js` aus den Schemadateien |
-| `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und `programme.json` fehlen – der einzige Ort, an dem Spalten entstehen (Abschnitt 4) |
-| `Upload-Programme.ps1` | lädt `server/programme.json` nach SharePoint (mit Sicherung und Kontrolle) |
+| `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und Liste «Software» fehlen – der Reparaturweg, wenn eine Spalte fehlt (Abschnitt 4) |
 | `Entferne-Spalte.ps1` | löscht eine benannte Spalte nach Sicherung ihrer Werte (Gegenstück zu `Ergaenze-Spalten.ps1`) |
+| `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
@@ -146,10 +157,11 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 |---|---|
 | `TenantId`, `ClientId`, `CertThumbprint` | Anmeldung als Anwendung (Zertifikat) |
 | `SiteUrl` / `SiteId` | die SharePoint-Site |
-| `ComputerListId`, `BenutzerListId` | die beiden Listen (siehe Listeneinstellungen in SharePoint) |
+| `AdminClientListId`, `EduClientListId` | die beiden Client-Listen (siehe Listeneinstellungen in SharePoint). Fehlt eine, meldet der Sync das als ERROR und überspringt genau diese Phase |
+| `BenutzerListId` | die Benutzer-Liste |
+| `SoftwareListId` | die Liste «Software»; fehlt sie, laufen die AD-Felder normal weiter und nur die Programmstufen bleiben unangetastet |
 | `TelefonListId` | die Liste «Telefonnummern»; fehlt sie, wird die Telefon-Phase mit einer Warnung übersprungen |
 | `TelefonPraefix` | Nummernblock des Hauses ohne Kurzwahl, Standard `+41 41 926 2`; muss mit `telefonPraefix` in `frontend/konfig.js` übereinstimmen |
-| `ProgrammeDateiPfad` | Standard `Inventar/programme.json` |
 | `AdUserOUs` | **Array von OU-DNs**; nur Benutzer aus diesen OUs kommen in die Liste |
 | `AdServer` | optional ein bestimmter Domänencontroller |
 | `LoeschSchutzProzent` | Standard 50 (siehe 2.3) |
@@ -158,15 +170,19 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 ### 2.2 Ablauf eines Laufs
 
-**Phase Computer**:
+**Phase Clients** – sie läuft **zweimal**, einmal je Liste. Die Aufteilung entscheidet allein der
+Gerätename: alles, was mit `EDU` beginnt, gehört in «EDU-Clients», alles Übrige in «ADMIN-Clients».
+Diese eine Regel steht in `Get-ClientListe` (`Inventar-Gemeinsam.ps1`) und gespiegelt in
+`frontend/modell.js` (`clientListe`); beide Seiten müssen dasselbe rechnen. Der Ablauf ist für beide
+Listen derselbe:
 
-1. Prüfen, ob die Computer-Liste `Status` und `Verlauf` hat. Der Sync **legt keine Spalten an** –
+1. Prüfen, ob die Liste `Status` und `Verlauf` hat. Der Sync **legt keine Spalten an** –
    er füllt nur Daten. Fehlt eine Spalte, meldet er das **einmal** als WARN und lässt genau ihre
    Felder aus; alles andere läuft normal weiter. Das gilt in allen drei Phasen: eine fehlende
    Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile. Anlegen: `Ergaenze-Spalten.ps1`
    oder von Hand in den Listeneinstellungen (Abschnitt 4).
 2. SCCM per WMI lesen.
-3. **Zuordnung über die Seriennummer**, nicht über den Namen. Verglichen wird die SCCM-Seriennummer
+3. **Zuordnung über die Seriennummer**, nicht über den Namen — je Liste getrennt. Verglichen wird die SCCM-Seriennummer
    mit der Spalte `SCCM_SerialNumber` (beides getrimmt und gross geschrieben); eine manuelle
    Seriennummer-Spalte gibt es seit dem 4. September 2026 nicht mehr. Platzhalter wie `To be filled by O.E.M.`, `Default string`,
    `System Serial Number`, `0`, `None` oder reine Füllmuster gelten als **keine** Seriennummer.
@@ -192,12 +208,17 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
    `Lager`-Geräte. Taucht ein archiviertes Gerät wieder in SCCM auf, setzt der Sync es auf `Aktiv`
    und schreibt «Wieder in SCCM vorhanden, reaktiviert». `Lager` bleibt unangetastet, solange das
    Gerät in SCCM ist, ein leerer Status wird beim ersten Kontakt zu `Aktiv`.
-   **Die Computer-Phase löscht nie eine Zeile** – sie kennt keinen `DELETE`-Pfad. Vorgeschaltet ist
-   der Archivschutz aus Abschnitt 2.3.
+   **Die Client-Phasen löschen nie eine Zeile** – sie kennen keinen `DELETE`-Pfad. Vorgeschaltet ist
+   der Archivschutz aus Abschnitt 2.3, und er zählt je Liste einzeln.
+10. **Ein Gerät, das die Seite wechselt** (Umbenennung `CAMPUS-073` → `EDU-073`), verschwindet nicht:
+   in der alten Liste findet der Sync kein SCCM-Gerät mehr und archiviert die Zeile, in der neuen
+   legt er sie neu an. Der Verlauf bleibt in der alten Zeile stehen. Wer ihn mitnehmen will,
+   verschiebt die Zeile von Hand oder mit `Migriere-Clients.ps1 -Schritte Umzug`.
 
 **Phase Benutzer**:
 
-1. `programme.json` aus SharePoint laden (Fallback: lokale Kopie).
+1. Die Programmliste aus der SharePoint-Liste «Software» laden. Zeilen ohne Programm-Id und
+   solche, deren Id kein gültiger Spaltenname wäre, werden gemeldet und übergangen.
 2. Prüfen, welche Spalten die Benutzer-Liste hat: `Verlauf` und je Programm eine Textspalte.
    Programme ohne Spalte werden übersprungen und gemeldet.
 3. AD-Benutzer der konfigurierten OUs lesen (Subtree), Manager-DN in den Anzeigenamen auflösen (Cache).
@@ -227,16 +248,18 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 Exit-Code 1, sobald ein Fehler aufgetreten ist.
 
-### 2.3 Löschschutz (Benutzer) und Archivschutz (Computer)
+### 2.3 Löschschutz (Benutzer) und Archivschutz (Clients)
 
 Gelöscht wird überhaupt nur in der Benutzer-Phase. Nicht gelöscht wird, wenn
 
 - das AD **keinen einzigen** Benutzer geliefert hat (typisch bei falscher OU oder AD-Ausfall), oder
 - mehr als `LoeschSchutzProzent` % der Zeilen gelöscht würden.
 
-In der Computer-Phase gibt es nichts zu schützen, weil dort nie gelöscht wird. Stattdessen greift
-derselbe Prozentsatz beim Archivieren: Würden mehr als `LoeschSchutzProzent` % der nicht archivierten
-Zeilen in einem Lauf archiviert – oder liefert SCCM überhaupt kein Gerät –, archiviert der Sync nichts.
+In den Client-Phasen gibt es nichts zu schützen, weil dort nie gelöscht wird. Stattdessen greift
+derselbe Prozentsatz beim Archivieren, **je Liste einzeln**: Würden mehr als `LoeschSchutzProzent` %
+der nicht archivierten Zeilen einer Liste in einem Lauf archiviert – oder liefert SCCM für diese
+Liste überhaupt kein Gerät –, archiviert der Sync in dieser Liste nichts. Die andere Liste ist davon
+unberührt.
 
 In allen Fällen schreibt der Sync einen ERROR ins Log und endet mit Exit-Code 1, ohne zu löschen oder
 zu archivieren.
@@ -245,31 +268,43 @@ zu archivieren.
 
 ```
 Sync-Inventar.ps1 [-ConfigPath <json>] [-WhatIf] [-IncludeServers]
-                  [-OnlyComputers] [-OnlyBenutzer] [-OnlyTelefone]
+                  [-OnlyClients] [-ClientListen Alle|Admin|Edu]
+                  [-OnlyBenutzer] [-OnlyTelefone]
                   [-DumpOnly] [-OnlyDevices <Name,Name>]
 ```
 
 | Parameter | Zweck |
 |---|---|
 | `-WhatIf` | zeigt nur, was geschrieben/gelöscht würde |
-| `-OnlyComputers` / `-OnlyBenutzer` / `-OnlyTelefone` | nur eine Phase (`-OnlyTelefone` liest kein SCCM) |
+| `-OnlyClients` / `-OnlyBenutzer` / `-OnlyTelefone` | nur eine Phase (`-OnlyTelefone` liest kein SCCM) |
+| `-ClientListen` | nur eine der beiden Client-Listen abgleichen: `Admin` oder `Edu` (Vorgabe `Alle`) |
 | `-DumpOnly` | nur SCCM lesen und die aufbereiteten Felder ausgeben |
 | `-IncludeServers` | Server-Betriebssysteme mitnehmen |
 | `-OnlyDevices` | nur diese Geräte (zum Testen) |
 
 ### 2.5 Auf den Server bringen
 
-`C:\ComputerInventar\` auf `adminsrv319` ist eine flache Kopie von `code/server/`. Nach einer
-Änderung am Sync die fünf Dateien dorthin kopieren – **ohne** `Sync-Inventar.config.json`, die
-gehört dem Server und enthält Zertifikat-Thumbprint und ClientId:
+`C:\ComputerInventar\` auf `adminsrv319` ist eine flache Kopie von `code/server/` – **samt
+Konfiguration**. Es ist also nur noch ein Befehl, und auf dem Server ist nichts von Hand
+nachzuziehen:
 
 ```powershell
-robocopy .\code\server \\adminsrv319\C$\ComputerInventar /XF Sync-Inventar.config.json
+robocopy .\code\server \\adminsrv319\C$\ComputerInventar /XF Sync-Inventar.config.example.json
 ```
 
+Ausgelassen wird einzig die Vorlage – sie hat auf dem Server nichts zu suchen und würde nur
+Verwirrung stiften. Ohne `/MIR`, bewusst: der Ordner enthält auch `Sync-Inventar.log`, und ein
+Spiegelabgleich würde das Log bei jedem Kopieren löschen.
+
+**Damit ist `code/server/Sync-Inventar.config.json` im Arbeitsverzeichnis die führende Fassung.**
+Wer eine Listen-ID, eine OU oder den Zertifikat-Thumbprint ändert, ändert sie hier und kopiert;
+umgekehrt geht nichts zurück. Die Datei steht in `.gitignore` (`Sync-Inventar.config*.json`,
+mit Ausnahme der Vorlage) und kommt darum nie nach GitHub – sie enthält die ClientId der
+Entra-App und den Thumbprint des Anmeldezertifikats.
+
 Danach auf dem Server einmal `Sync-Inventar.ps1 -WhatIf` laufen lassen. Die Werkzeuge aus `code/`
-gehören **nicht** dorthin: sie ändern Listenstrukturen und Programmlisten und werden bewusst von
-Hand von einem Arbeitsplatz aus gestartet.
+gehören **nicht** dorthin: sie ändern Listenstrukturen und die Software-Liste und werden bewusst
+von Hand von einem Arbeitsplatz aus gestartet.
 
 ### 2.6 Geplante Aufgabe
 
@@ -318,22 +353,29 @@ die Spalte und löscht sie. Zuerst mit `-WhatIf`, dann ohne; braucht nur die Dev
 
 ### 2.8 Inhaberschaft (wem ein Gerät gehört)
 
-Jedes Gerät hat **genau einen Inhaber**: die Person, der es formal gehört. Gespeichert wird das in
-der Spalte `Computer` der Benutzer-Liste – dort steht der PC-Name. Daraus folgt beides zugleich:
-eine Person ist Inhaberin von höchstens einem Gerät, und ein Gerät hat höchstens eine Inhaberin.
+Jeder **ADMIN-Client** hat **genau einen Inhaber**: die Person, der er formal gehört. Gespeichert
+wird das in der Spalte `Computer` der Benutzer-Liste (Anzeigename «ADMIN-Client») – dort steht der
+PC-Name. Daraus folgt beides zugleich: eine Person ist Inhaberin von höchstens einem Gerät, und ein
+Gerät hat höchstens eine Inhaberin.
+
+**EDU-Clients haben bewusst keinen Inhaber.** Sie sind Schulungsgeräte und gehören niemandem
+persönlich. Im Clientfenster fehlen dort darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»,
+in der Tabelle die Spalten «Inhaber» und «Inhaber gesetzt». Der interne Spaltenname `Computer` bleibt
+unverändert – SharePoint kann interne Namen nicht mehr ändern, und Sync wie Frontend sprechen die
+Spalte über ihn an.
 
 **Nur von Hand.** Der Sync fasst `Computer` **nie** an; `ConvertTo-BenutzerFelder` schreibt die
 Spalte gar nicht erst. Gepflegt wird sie ausschliesslich im Frontend:
 
 | Wo | Was |
 |---|---|
-| Gerätefenster → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
-| Benutzerfenster → Bereich **«Gerät»** | «Inhaber werden» für ein gesuchtes Gerät, «Inhaberschaft aufheben» |
-| Geräteliste, Spalte **«Inhaber»** | Anzeige mit Verweis ins Benutzerfenster; Facette «Inhaber gesetzt» |
+| Clientfenster → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
+| Benutzerfenster → Bereich **«Gerät»** | «Inhaber werden» für einen gesuchten ADMIN-Client, «Inhaberschaft aufheben» |
+| Liste «ADMIN-Clients», Spalte **«Inhaber»** | Anzeige mit Verweis ins Benutzerfenster; Facette «Inhaber gesetzt» |
 
 **SCCM ist nur Hinweisgeber.** `SCCM_PrimaryUser`, `SCCM_LastLogonUser`, `SCCM_CurrentLogonUser`,
 `SCCM_TopConsoleUser` und `SCCMPrimaerGeraet` sagen, wer an einem Gerät *arbeitet* – nicht, wem es
-*gehört*. Weichen sie vom Inhaber ab, zeigt das Gerätefenster einen Hinweis («Primärer Benutzer
+*gehört*. Weichen sie vom Inhaber ab, zeigt das Clientfenster einen Hinweis («Primärer Benutzer
 (SCCM) ist nicht der Inhaber»); geändert wird nichts. Das SCCM-Primärgerät lässt sich im
 Benutzerfenster auf Klick übernehmen.
 
@@ -341,64 +383,74 @@ Benutzerfenster auf Klick übernehmen.
 
 | Fall | Was das Frontend tut |
 |---|---|
-| Zwei Personen tragen denselben PC-Namen | Gerätefenster meldet «Mehr als ein Inhaber» (rot), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Geräteliste steht ein `+n`-Chip neben dem Namen. |
+| Zwei Personen tragen denselben PC-Namen | Clientfenster meldet «Mehr als ein Inhaber» (rot), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein `+n`-Chip neben dem Namen. |
 | Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; beide Fenster sagen das als Warnung. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
 | Der PC-Name existiert gar nicht | Benutzerfenster zeigt «kein Gerät mit diesem Namen in der Liste» |
+| Der Eintrag zeigt auf einen EDU-Client | Er wird nirgends zum Inhaber: EDU-Clients kennen keine Inhaberschaft. Im Benutzerfenster steht «kein Gerät mit diesem Namen» – der Eintrag gehört gelöscht. |
 
 ---
 
-## 3. Programme pflegen
+## 3. Software pflegen
 
-`programme.json` ist die einzige Quelle der Programmliste – für den Sync **und** für das Frontend.
+Die SharePoint-Liste **«Software»** ist die einzige Quelle der Programmliste – für den Sync **und**
+für das Frontend. Gepflegt wird sie im Frontend: Reiter **«Software»**, Knopf **«Neue Software»**
+oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
+`Inventar/programme.json`; die Datei wird nicht mehr gelesen und kann in SharePoint gelöscht werden.
 
-```json
-{ "id": "AdobeCreativeSuite", "name": "Adobe Creative Suite", "kategorie": "Zusatz-Software",
-  "adGruppen": ["MgmtS_MarKom", "BLD_D&G"], "vorschlaege": [] }
-```
+| Spalte | Bedeutung |
+|---|---|
+| `Title` («Programm-ID») | der **interne Spaltenname** in der Benutzer-Liste: Buchstaben und Ziffern, Beginn mit einem Buchstaben, max. 30 Zeichen. **Nach dem Anlegen unveränderlich** – SharePoint kann interne Namen nicht ändern, und eine neue Id ergäbe eine zweite Spalte, während die bisherigen Berechtigungen in der ersten liegen blieben |
+| `Name` | Anzeigename, z. B. «Adobe Creative Suite». Wird auch der Anzeigename der Spalte |
+| `Kategorie` | Gruppe in der Software-Ansicht und in der Spaltenwahl. Eine neue Kategorie entsteht, indem man sie hinschreibt |
+| `AdGruppen` | sAMAccountNames von AD-Gruppen, **eine je Zeile**. Mehrere sind erlaubt, der Sync bildet die Vereinigung. Leer ist erlaubt: dann gibt es das Programm nur auf Stufe 0/1 von Hand |
+| `Reihenfolge` | Sortiernummer. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende. Die Migration hat in Zehnerschritten vergeben, damit dazwischen Platz bleibt |
+| `Bemerkung` | Freitext: wozu das Programm dient, wer es lizenziert |
 
-- `id` ist der interne Spaltenname in der Benutzer-Liste (max. 30 Zeichen, keine Sonderzeichen).
-  **Nach dem ersten Sync nicht mehr ändern** – sonst entsteht eine zweite Spalte und die alten Werte
-  bleiben in der ersten liegen.
-- `adGruppen` sind sAMAccountNames von AD-Gruppen. **Mehrere sind erlaubt**, der Sync bildet die
-  Vereinigung. Leer ist erlaubt: dann gibt es das Programm nur auf Stufe 0/1 von Hand.
-  Es muss keine reine Software-Gruppe sein – Abteilungs- und Rollengruppen (`MgmtS_*`, `Hot_*`,
-  `BLD_*`, `Spo_*`) sind der Normalfall, `CS_ALLE` für Software, die alle bekommen.
-- `vorschlaege` ist ein Restfeld ohne Wirkung; es wird nicht mehr befüllt.
+**Ein Programm ist zwei Dinge zugleich**: eine Zeile in «Software» *und* eine Textspalte in der
+Benutzer-Liste, deren interner Name die Programm-Id ist. Dort steht je Person die Stufe (0/1/2).
+Ohne diese Spalte wäre das Programm wirkungslos – **darum legt das Softwarefenster sie beim Anlegen
+gleich mit an**, mit den Rechten der angemeldeten Person (delegiert `Sites.ReadWrite.All`).
+Der Sync legt weiterhin nie eine Spalte an; scheitert das Anlegen im Frontend, hilft
+`Ergaenze-Spalten.ps1 -Listen Benutzer` nach.
 
-**Ablauf einer Änderung:**
+**Reihenfolge beim Anlegen**: erst die Spalte, dann die Zeile. Scheitert die Spalte an der
+Berechtigung, entsteht gar kein Programm – besser als eine Software-Zeile, die nirgends wirkt.
+
+**Ein Programm entfernen**: im Softwarefenster «Programm löschen» (Programm-Id zur Bestätigung
+abtippen). Gelöscht wird nur die Zeile in «Software». **Die Spalte in der Benutzer-Liste bleibt mit
+ihren Werten stehen** – sie mitzulöschen hiesse, die Berechtigungen aller Personen zu vernichten.
+Der Sync ignoriert sie ab dann. Wer sie wirklich loswerden will, nimmt `Entferne-Spalte.ps1`
+(sichert die Werte vorher) oder löscht sie in den Listeneinstellungen.
+
+**Vorsicht bei `AdGruppen`**: Stufe 2 ist im Frontend gesperrt. Eine zu weit gefasste Gruppe vergibt
+Berechtigungen automatisch an alle ihre Mitglieder. Es muss keine reine Software-Gruppe sein –
+Abteilungs- und Rollengruppen (`MgmtS_*`, `Hot_*`, `BLD_*`, `Spo_*`) sind der Normalfall, `CS_ALLE`
+für Software, die alle bekommen. Im Zweifel lieber leer lassen und von Hand auf 1 setzen.
+
+Nach einer Änderung an den AD-Gruppen lohnt sich ein Blick auf die Wirkung, bevor der Sync
+wirklich schreibt:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Upload-Programme.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\Upload-Programme.ps1
-powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -Listen Benutzer
 powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -OnlyBenutzer -WhatIf
 ```
-
-Zuerst `programme.json` bearbeiten, dann mit `-WhatIf` vergleichen, hochladen (die bisherige Fassung
-wird als `programme.sicherung.<Zeitstempel>.json` gesichert), die neue Programmspalte anlegen und
-zuletzt die Wirkung ansehen, bevor der Sync wirklich schreibt. Ohne den Schritt mit
-`Ergaenze-Spalten.ps1` meldet der Sync die fehlende Spalte und überspringt das Programm.
-
-**Ein Programm entfernen**: Eintrag aus `programme.json` löschen und hochladen. Die Spalte in der
-Benutzer-Liste bleibt mit ihren Werten stehen; der Sync ignoriert sie. Wer sie wirklich loswerden
-will, löscht sie von Hand in den Listeneinstellungen – die darin gespeicherten Berechtigungen sind
-dann weg.
-
-**Vorsicht bei `adGruppen`**: Stufe 2 ist im Frontend gesperrt. Eine zu weit gefasste Gruppe vergibt
-Berechtigungen automatisch an alle ihre Mitglieder. Im Zweifel lieber leer lassen und von Hand auf 1
-setzen.
 
 ---
 
 ## 4. Spalten ändern
 
-- **Manuelle Spalte** ändern: Eintrag in `schema-computer.json`, `schema-benutzer.json` bzw.
-  `schema-telefon.json` anpassen, Spalte in SharePoint anlegen/umbenennen (siehe unten), dann
-  `Build-Spalten.ps1` ausführen (erzeugt `frontend/spalten.js` neu).
-- **SCCM-Spalte hinzufügen**: (1) Eintrag in `schema-computer.json`, (2) Spalte in der Liste «Computer»
-  anlegen (`SCCM_`-Präfix), (3) Feld in `Build-SccmFields` in `Sync-Inventar.ps1` ergänzen,
-  (4) `-DumpOnly -OnlyDevices` prüfen, (5) `-WhatIf`, (6) laufen lassen, (7) `Build-Spalten.ps1`.
-- **Programmspalte**: nur über `programme.json` (siehe Abschnitt 3). Nie von Hand in `spalten.js`.
+- **Manuelle Spalte** ändern: Eintrag in `schema-client.json`, `schema-benutzer.json`,
+  `schema-telefon.json` bzw. `schema-software.json` anpassen, Spalte in SharePoint
+  anlegen/umbenennen (siehe unten), dann `Build-Spalten.ps1` ausführen (erzeugt
+  `frontend/spalten.js` neu).
+- **SCCM-Spalte hinzufügen**: (1) Eintrag in `schema-client.json`, (2) Spalte in **beiden**
+  Client-Listen anlegen (`SCCM_`-Präfix; `Ergaenze-Spalten.ps1` macht das in einem Lauf),
+  (3) Feld in `Build-SccmFields` in `Sync-Inventar.ps1` ergänzen, (4) `-DumpOnly -OnlyDevices`
+  prüfen, (5) `-WhatIf`, (6) laufen lassen, (7) `Build-Spalten.ps1`.
+- **Programmspalte**: nur über die Liste «Software» (siehe Abschnitt 3). Nie von Hand in
+  `spalten.js`.
+
+`schema-client.json` beschreibt **beide** Client-Listen. Sie auseinanderlaufen zu lassen wäre der
+sicherste Weg, sich zwei Frontends einzuhandeln – deshalb gibt es nur eine Datei.
 **Der Sync legt nie eine Spalte an.** Er füllt nur Daten und meldet fehlende Spalten als WARN.
 Spalten anlegen ist ein bewusster, eigener Schritt – von Hand in den Listeneinstellungen oder mit
 `Ergaenze-Spalten.ps1`:
@@ -408,8 +460,9 @@ powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -WhatIf
 powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1
 ```
 
-Erst mit `-WhatIf` prüfen, was angelegt würde: das Skript vergleicht die drei Listen mit den
-Schemadateien und `programme.json` und legt nur an, was fehlt – gelöscht oder geändert wird nie.
+Erst mit `-WhatIf` prüfen, was angelegt würde: das Skript vergleicht die fünf Listen mit den
+Schemadateien und der Liste «Software» und legt nur an, was fehlt – gelöscht oder geändert wird nie.
+Mit `-Listen Admin|Edu|Benutzer|Telefon|Software` lässt sich eine einzelne Liste prüfen.
 Angemeldet wird per Device-Code mit den Rechten eines Menschen; die Entra-App des Syncs hat auf der
 Site bewusst nur Schreibrecht auf Zeilen und bleibt unberührt.
 
@@ -430,15 +483,13 @@ powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1
 Geprüft werden ohne Pester, ohne Netz, ohne SCCM und ohne AD: Geschäftsjahr-Helfer, Programm-Delta
 des AD-Syncs, Löschschutz und Archivschutz, die Verlauf-Helfer (leer, ungültig, ein Eintrag, mehrere,
 Anhängen ohne Verlust, kompakte Ausgabe), die Seriennummern-Normalisierung samt Platzhaltern, die
-Zuordnung SCCM-Gerät ↔ Computer-Zeile (Seriennummer vor Name, Dublettenwahl, Umbenennung,
-Archivieren und Reaktivieren), die Telefonnummern (Normalisierung, Kurzwahl, Abgleich mit dem AD),
-das Verhalten bei fehlenden Spalten, Anzahl und Eindeutigkeit der Schema- und Programmeinträge sowie
-die Syntax aller `*.ps1` in `code/` und `code/server/`.
+Zuordnung SCCM-Gerät ↔ Client-Zeile (Seriennummer vor Name, Dublettenwahl, Umbenennung,
+Archivieren und Reaktivieren), die **Aufteilung ADMIN-/EDU-Clients** (`Get-ClientListe`), die
+**Umrechnung Software-Zeile → Programm** samt Sortierung und Id-Prüfung, die Telefonnummern
+(Normalisierung, Kurzwahl, Abgleich mit dem AD), das Verhalten bei fehlenden Spalten, Anzahl und
+Form der Schemaeinträge sowie die Syntax aller `*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 212 bestanden, 0 fehlgeschlagen`.
-
-Die Prüfung «`programme.json`: N Programme» ist eine feste Zahl im Test. Wer Programme hinzufügt oder
-entfernt, zieht sie dort nach.
+Erwartete Ausgabe: `Ergebnis: 236 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -450,23 +501,30 @@ entfernt, zieht sie dort nach.
 | `Kein Zugriff auf den privaten Schlüssel` | Task-Konto darf den Schlüssel nicht lesen | in `certlm.msc` Leserecht vergeben oder als SYSTEM laufen lassen |
 | Graph `403` beim Schreiben | Site-Berechtigung fehlt | der App die Rolle `write` auf die Site geben (Abschnitt 7.1, Schritt 5) |
 | `… Spalte(n) fehlen und werden nicht geschrieben: …` | die Spalte gibt es in der Liste nicht (neu im Schema, umbenannt oder gelöscht) | `Ergaenze-Spalten.ps1` ausführen oder die Spalte von Hand in den Listeneinstellungen anlegen (Abschnitt 4). Bis dahin läuft der Sync normal weiter und lässt nur die Felder dieser Spalte aus |
-| Graph `404` bei einer Liste | `ComputerListId`/`BenutzerListId` falsch | IDs aus den Listeneinstellungen in SharePoint übernehmen |
+| Graph `404` bei einer Liste | eine der `*ListId` in der Konfiguration ist falsch | IDs aus den Listeneinstellungen in SharePoint übernehmen |
 | `field … is not recognized` | Spalte fehlt oder wurde umbenannt | Spalte wiederherstellen oder Eintrag im Skript entfernen |
 | `Löschschutz greift: …` | AD lieferte nichts oder zu viele Löschungen | OU-DNs und AD-Verbindung prüfen; bei einer echten Massenmutation `LoeschSchutzProzent` bewusst erhöhen |
 | `AD-Fehler in OU '<…>'` | Platzhalter statt echtem DN in `AdUserOUs` | echten Distinguished Name eintragen |
-| `LDAP-Abfrage für Gruppe '…' fehlgeschlagen` | Gruppe existiert nicht (mehr) oder Name falsch | Name in `programme.json` korrigieren; der Lauf bricht deswegen nicht ab |
-| `programme.json konnte nicht geladen werden` | Datei fehlt in SharePoint oder Pfad stimmt nicht | `Upload-Programme.ps1` ausführen; bis dahin nutzt der Sync die lokale Kopie |
+| `LDAP-Abfrage für Gruppe '…' fehlgeschlagen` | Gruppe existiert nicht (mehr) oder Name falsch | Name im Softwarefenster unter «AD-Gruppen» korrigieren; der Lauf bricht deswegen nicht ab |
+| `SoftwareListId fehlt in der Konfiguration` | `SoftwareListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Software» eintragen (steht auch in `frontend/konfig.js`). Bis dahin bleiben die Programmstufen unangetastet |
+| `Liste «Software» konnte nicht gelesen werden` | Liste fehlt oder keine Berechtigung | Liste in SharePoint prüfen; `Migriere-Clients.ps1 -Schritte Software` legt sie an |
+| `Software-Liste: «…» taugt nicht als Spaltenname` | die Programm-Id enthält Sonderzeichen, beginnt mit einer Ziffer oder ist zu lang | Zeile in der Liste «Software» korrigieren. Achtung: eine schon angelegte Spalte behält ihren Namen – dann die Zeile löschen und neu erfassen |
+| Ein neues Programm wirkt nicht | die Spalte in der Benutzer-Liste fehlt | Softwarefenster → Karte «Spalte in der Benutzer-Liste» → «Spalte anlegen», oder `Ergaenze-Spalten.ps1 -Listen Benutzer` |
 | `Get-WmiObject … Zugriff verweigert` | Konto ohne SCCM-Rechte oder DCOM blockiert | Konto als «Read-only Analyst» eintragen, Firewall prüfen |
 | `Archivschutz greift: …` | SCCM lieferte nichts oder zu viele Zeilen würden archiviert | SCCM-Provider und WMI-Rechte prüfen; bei einer echten Massenausmusterung `LoeschSchutzProzent` bewusst erhöhen |
 | Viele Zeilen plötzlich «Archiviert» | die Seriennummern stimmen nicht überein (z. B. Mainboardtausch, Platzhalter im BIOS) | `SCCM_SerialNumber` der betroffenen Zeilen mit SCCM vergleichen; den Status wieder auf `Aktiv` setzen, der nächste Lauf ordnet über den Namen neu zu |
 | Ein Gerät wird doppelt angelegt statt zugeordnet | die Zeile trägt in `SCCM_SerialNumber` eine andere Seriennummer als das SCCM-Gerät, deshalb greift auch der Namensfallback nicht | `SCCM_SerialNumber` in der Zeile leeren; die überzählige Zeile archivieren |
 | `Verlauf von '…' ist unbrauchbar – Zeile übersprungen` | der Inhalt der Spalte `Verlauf` ist kein gültiges JSON-Array (von Hand bearbeitet?) | Inhalt in der Zeile sichten und auf `[]` oder ein gültiges Array setzen; der Sync überschreibt ihn absichtlich nicht |
-| Ein PC fehlt in der Liste | er wurde nie gelöscht – die Computer-Phase löscht nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen |
+| Ein PC fehlt in der Liste | er wurde nie gelöscht – die Client-Phasen löschen nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen. Zweiter Verdacht: der Name beginnt mit `EDU` und der PC steht in der anderen Liste |
+| Ein PC steht plötzlich in der anderen Client-Liste | er wurde in SCCM umbenannt und hat dabei die Seite gewechselt (`EDU`-Präfix dazu oder weg) | Das ist so gewollt: die alte Zeile ist archiviert, die neue frisch angelegt. Wer den Verlauf mitnehmen will, verschiebt die Zeile mit `Migriere-Clients.ps1 -Schritte Umzug` |
+| Ein Gerät steht in **beiden** Client-Listen | ein Umzug ist zwischen Anlegen und Löschen abgebrochen | Die überzählige Zeile von Hand löschen; das Log von `Migriere-Clients.ps1` nennt den Namen |
 | `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | `TelefonListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Telefonnummern» eintragen (steht auch in `frontend/konfig.js`) |
 | Frontend: Reiter «Telefonnummern» ist leer und nennt konfig.js | `telefonListId` in `frontend/konfig.js` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
+| Ein Client lässt sich nicht speichern: «… gehört in die Liste …» | Der Name passt nicht zur offenen Liste (`EDU`-Präfix) | Namen korrigieren oder den Client in der anderen Liste erfassen. Ohne diese Sperre legte der nächste Sync das Gerät drüben neu an und archivierte die Zeile hier |
 | `Nummer … steht im AD bei 'a' und 'b'` | zwei AD-Konten tragen dieselbe `telephoneNumber` | im AD bereinigen; bis dahin gilt der alphabetisch erste Login |
 | Eine Person steht in der Telefonliste, aber «Person (AD)» ist leer | im AD fehlt bei diesem Konto das Feld «Telefon» (`telephoneNumber`) | Feld im AD setzen; beim nächsten Sync erscheint die Person, `Benutzer` wird geschrieben |
-| Frontend: «Die Daten konnten nicht geladen werden – Failed to fetch», dazu ein CSP-Verstoss gegen `campussursee.sharepoint.com` | Graph leitet für `Inventar/programme.json` auf SharePoint um; fehlt der Host in `connect-src`, blockiert der Browser stillschweigend | In `frontend/_headers` muss `connect-src` den Eintrag `https://campussursee.sharepoint.com` enthalten. Nach dem Ändern neu deployen und hart neu laden |
+| Frontend: Reiter «EDU-Clients» oder «Software» ist leer und nennt konfig.js | `eduClientListId` bzw. `softwareListId` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
+| Frontend: «Neue Software» meldet «Keine Schreibberechtigung» beim Anlegen der Spalte | Das Konto darf in SharePoint keine Spalten anlegen | Entweder das Konto berechtigen oder die Spalte mit `Ergaenze-Spalten.ps1 -Listen Benutzer` nachziehen |
 | Umlaute in der Konsole falsch | OEM-Codepage | nur Anzeige; Log, JSON und SharePoint sind UTF-8 |
 | Ein `.ps1` bricht mit «Zeichenfolge hat kein Abschlusszeichen» ab | Datei wurde ohne UTF-8-BOM gespeichert; PowerShell 5.1 liest sie dann als ANSI und zerlegt die Umlaute | Datei mit BOM speichern (`New-Object Text.UTF8Encoding($true)`). JSON dagegen bleibt **ohne** BOM, sonst kann der Browser es nicht lesen |
 
@@ -548,7 +606,7 @@ SYSTEM auf dem Site-Server, ist das normalerweise schon gegeben. Dasselbe Konto 
 **8 – Probe**:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Sync-Inventar.ps1 -WhatIf -OnlyComputers -OnlyDevices CAMPUS-073
+powershell -ExecutionPolicy Bypass -File .\Sync-Inventar.ps1 -WhatIf -OnlyClients -OnlyDevices CAMPUS-073
 ```
 
 **Zertifikat erneuern** (alle 5 Jahre, oder bei `AADSTS700027`): Schritte 1 und 3 wiederholen, den
@@ -577,6 +635,10 @@ Eigenschaften → **Zuweisung erforderlich = Ja**, dann unter «Benutzer und Gru
 Personen zuweisen. Ohne das darf sich jede Person im Tenant anmelden.
 
 **6 – ClientId** in `frontend/konfig.js` als `clientId` eintragen und neu deployen.
+
+Der Name der Registrierung bleibt `Computer Inventar Frontend` – in Entra ID ist er ein Bezeichner,
+und ihn umzubenennen brächte nichts als eine Nacht voll Umleitungsfehler. Im Frontend heisst die
+Anwendung «ICT-Inventar».
 
 Die Option «Öffentliche Clientflows zulassen» steht bei dieser App auf **Nein**. Sie ist für die SPA
 nicht nötig – deshalb meldet sich `Ergaenze-Spalten.ps1` per Device-Code mit dem öffentlichen Client
@@ -630,7 +692,7 @@ führt ihn in `wrangler.toml` nach.
 | Build output directory | `frontend` (kommt aus `wrangler.toml` und ist deshalb nur lesbar) |
 | Root directory | `/` |
 
-Es gibt keine Umgebungsvariablen. Client-ID, Mandant und die Listen-IDs stehen offen in
+Es gibt keine Umgebungsvariablen. Client-ID, Mandant und die fünf Listen-IDs stehen offen in
 `frontend/konfig.js` – das ist bei einer SPA so vorgesehen, der Schutz kommt aus der Anmeldung und
 aus den SharePoint-Berechtigungen (Abschnitt 7.2).
 
@@ -651,8 +713,8 @@ ist dasselbe wie zuvor bei Netlify; geändert wird ausschliesslich dort, nie im 
 `wrangler.toml`.
 
 **Eigenheit**: Cloudflare Pages liefert Seiten ohne die Endung `.html` aus und leitet
-`/geraet.html?id=…` mit 308 auf `/geraet?id=…` um. Die Abfragezeichenfolge bleibt erhalten, die
-Verweise im Frontend dürfen weiter `geraet.html` heissen. Die Anmeldung ist davon nicht betroffen:
+`/client.html?id=…` mit 308 auf `/client?id=…` um. Die Abfragezeichenfolge bleibt erhalten, die
+Verweise im Frontend dürfen weiter `client.html` heissen. Die Anmeldung ist davon nicht betroffen:
 `auth.js` benutzt als Umleitungsadresse immer die Wurzel, nie einen Dateinamen.
 
 ---
@@ -663,3 +725,76 @@ Verweise im Frontend dürfen weiter `geraet.html` heissen. Die Anmeldung ist dav
 2. App-Registrierungen «SCCM-SharePoint-Sync» und «Computer Inventar Frontend» im Entra Admin Center löschen.
 3. Zertifikat in `certlm.msc` löschen, Ordner `C:\ComputerInventar` entfernen.
 4. Pages-Projekt «campussursee-ictinventar» im Cloudflare-Dashboard löschen und den CNAME für `inventar.campus-sursee.ch` im DNS entfernen.
+
+---
+
+## 9. Der Umbau vom 08.09.2026
+
+Einmaliger Schritt. `Migriere-Clients.ps1` macht in einem Lauf alles, was in SharePoint anzufassen
+ist; Frontend, Sync und Schemadateien stehen bereits im Repository. Fünf Schritte, jeder für sich
+wiederholbar:
+
+| Schritt | Was passiert |
+|---|---|
+| `Umbenennen` | Liste «Computer» heisst neu «ADMIN-Clients» (Anzeigename; die Listen-ID bleibt, darum ändern sich die Konfigurationen nicht). Die Spalte `Computer` der Benutzer-Liste bekommt den Anzeigenamen «ADMIN-Client» |
+| `Edu` | Liste «EDU-Clients» anlegen und mit allen Spalten aus `schema-client.json` füllen |
+| `Software` | Liste «Software» anlegen, mit den Spalten aus `schema-software.json`, und aus der bisherigen `Inventar/programme.json` füllen (Reihenfolge in Zehnerschritten, Kategorienfolge wie in der Datei) |
+| `Umzug` | Zeilen, deren Name mit `EDU` beginnt, von «ADMIN-Clients» nach «EDU-Clients» umziehen: **erst drüben anlegen, dann hier löschen**. Gelöschte Zeilen liegen 93 Tage im Papierkorb der Site; vorher wird alles nach `lokal\` gesichert |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Migriere-Clients.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\Migriere-Clients.ps1
+```
+
+Immer zuerst mit `-WhatIf` – dann wird nur gelesen, gesichert und gezählt. Nicht während eines
+laufenden Syncs starten (geplante Aufgabe alle 4 h, Abschnitt 2.6). Angemeldet wird per Device-Code
+mit einem Konto, das **Vollzugriff auf die Site** hat: Listen anlegen und umbenennen darf die
+Zertifikats-App des Syncs bewusst nicht. Mit `-Schritte Edu` (oder `Software`, `Umzug`,
+`Umbenennen`) läuft nur ein einzelner Schritt.
+
+Am Ende gibt das Skript die drei Listen-IDs aus. Sie gehören an zwei Stellen eingetragen:
+
+| Datei | Schlüssel |
+|---|---|
+| `code/server/Sync-Inventar.config.json` (auf dem Server) | `AdminClientListId`, `EduClientListId`, `SoftwareListId` |
+| `frontend/konfig.js` | `adminClientListId`, `eduClientListId`, `softwareListId` |
+
+**Gelaufen am 08.09.2026, 0 Fehler.** Die Werte stehen bereits in `frontend/konfig.js`, in
+`code/server/Sync-Inventar.config.json` und in der Vorlage daneben. Auf den Server kommen sie
+mit dem Kopierbefehl aus Abschnitt 2.5 – dort ist nichts mehr von Hand einzutragen:
+
+| Liste | Listen-ID | Stand danach |
+|---|---|---|
+| ADMIN-Clients | `7870205c-bfa6-4d18-8035-d16d0a082637` (unverändert) | 163 Zeilen, keine mit EDU-Namen |
+| EDU-Clients | `a7a8bd95-6978-4cf1-bd0b-416319dcd58f` | 31 Zeilen, 13 davon mit übernommenem Verlauf |
+| Software | `047562f5-2646-48e4-a03a-51b5c3a7a5fd` | 71 Programme, 58 davon mit AD-Gruppe |
+
+Die Benutzer-Liste hat alle 71 Programmspalten, und die Spalte `Computer` wird als
+«ADMIN-Client» angezeigt. Die Sicherung der 31 umgezogenen Zeilen liegt unter
+`lokal/Migration-EduClients-20260908-094204.json`.
+
+Bei der Gelegenheit sind aus der Konfiguration drei Schlüssel verschwunden, die kein Skript je
+gelesen hat: `AltListId` (die Liste «Computer Inventar» aus der Zeit vor der Aufteilung),
+`FrontendClientId` und `AdGruppenPraefixe`. `ComputerListId` heisst jetzt `AdminClientListId`,
+`ProgrammeDateiPfad` ist ersatzlos weg. **`TelefonListId` fehlte in der Server-Konfiguration** –
+die Telefon-Phase wurde damit seit dem 04.09.2026 bei jedem Lauf mit einer Warnung übersprungen;
+sie steht jetzt drin.
+
+Danach zur Kontrolle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Ergaenze-Spalten.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -WhatIf
+```
+
+**Was nach dem Umbau liegen bleibt und aufgeräumt werden kann:**
+
+- `Dokumente/Inventar/programme.json` samt den `programme.sicherung.*.json` in SharePoint. Sie werden
+  von niemandem mehr gelesen; das Repository kennt sie nicht mehr.
+- `C:\ComputerInventar\programme.json` auf dem Server: der Rückfall von früher. Der Kopierbefehl aus
+  Abschnitt 2.5 löscht sie nicht (er spiegelt bewusst nicht), also einmal von Hand wegnehmen.
+- `Migriere-Clients.ps1` selbst, sobald der Umbau überall gelaufen ist.
+
+Der Eintrag `https://campussursee.sharepoint.com` in `connect-src` von `frontend/_headers` ist
+bereits entfernt: er war nur für den Dateidownload von `programme.json` nötig. Listenzeilen kommen
+direkt von `graph.microsoft.com`.

@@ -124,11 +124,14 @@ body.seite { height: 100vh; overflow: hidden; }
   gap: var(--a4);
 }
 
+/* Die Karte selbst ist kein Knopf mehr: sie trägt zwei Ziele. Der Name führt
+   ins Softwarefenster (bearbeiten), die Zahlen in die gefilterte
+   Benutzerliste. Ein Knopf im Knopf wäre ungültiges HTML. */
 .sw-karte {
   background: var(--weiss); border: 1px solid var(--linie); border-radius: var(--r);
   padding: var(--a4) var(--a5);
-  font: inherit; color: var(--text); text-align: left;
-  cursor: pointer; display: flex; flex-direction: column; gap: var(--a2);
+  color: var(--text); text-align: left;
+  display: flex; flex-direction: column; gap: var(--a2);
   transition: background .12s, border-color .12s;
 }
 .sw-karte:hover { background: var(--flaeche); border-color: var(--umriss-leicht); }
@@ -136,11 +139,16 @@ body.seite { height: 100vh; overflow: hidden; }
 .sw-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: var(--a3); }
 .sw-name { font-size: var(--t-m); font-weight: 500; overflow: hidden;
            text-overflow: ellipsis; white-space: nowrap; }
-.sw-zahlen { display: flex; gap: var(--a4); font-size: var(--t-xs); color: var(--text-leise); }
-.sw-zahl { font-variant-numeric: tabular-nums; }
+.sw-zahlen {
+  display: flex; gap: var(--a4); font-size: var(--t-xs); color: var(--text-leise);
+  background: none; border: 0; padding: 0; margin: 0;
+  font-family: inherit; cursor: pointer; text-align: right;
+}
+.sw-zahlen:hover b { color: var(--primaer); }
+.sw-zahl { font-variant-numeric: tabular-nums; display: block; }
 .sw-zahl b { font-family: var(--schrift-titel); font-size: var(--t-xl); font-weight: 400;
              color: var(--text); display: block; line-height: 1.2; }
-.sw-vorschlaege { font-size: var(--t-xs); color: var(--text-still); }
+.sw-bemerkung { font-size: var(--t-xs); color: var(--text-still); }
 
 
 /* ==================================================================

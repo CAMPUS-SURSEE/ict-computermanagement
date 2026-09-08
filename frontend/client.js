@@ -1,10 +1,15 @@
-/* geraet.js — Gerätefenster des Computer Inventars (Spezifikation 3.3).
+/* client.js — Clientfenster des ICT-Inventars (Spezifikation 3.3).
 
-   Wird von der Hauptseite als geraet.html?id=… im selben Tab
-   geöffnet und zeigt ein einzelnes Gerät der Liste «Computer»: Übersicht mit
-   Kennzahlen, kompaktem Lebenszyklus und Hinweisen, Beschaffung, Inhaber,
-   Stammdaten, Software aus SCCM, Hardware, System, Sicherheit,
-   Aktivität, Flottenvergleich und alle Rohdaten.
+   Wird von der Hauptseite als client.html?liste=admin|edu&id=… im selben Tab
+   geöffnet und zeigt einen einzelnen Client: Übersicht mit Kennzahlen,
+   kompaktem Lebenszyklus und Hinweisen, Beschaffung, Inhaber, Stammdaten,
+   Software aus SCCM, Hardware, System, Sicherheit, Aktivität,
+   Flottenvergleich und alle Rohdaten.
+
+   Es bedient beide Client-Listen. Sie haben dieselben Spalten und
+   unterscheiden sich nur in einem Punkt: EDU-Clients sind Schulungsgeräte
+   ohne Inhaber. Bei ihnen fehlen darum der Bereich «Inhaber» und die
+   Schnellaktion «Ausgeben an …»; alles Übrige ist gleich.
 
    Bearbeitbar sind genau die von Hand gepflegten Spalten (q = "manuell" in
    spalten.js): Title, GebaeudeStock, Bemerkung, Status, Verlauf,
@@ -17,7 +22,8 @@
    beim Anlegen wirklich kennt: Name, Standort, Beschaffung, Bemerkung.
 
    Der Inhaber — die Person, der das Gerät formal gehört — steht in der
-   Liste «Benutzer» (Spalte «Computer»). Jedes Gerät hat höchstens einen;
+   Liste «Benutzer» (Spalte «Computer», angezeigt als «ADMIN-Client»). Nur
+   ADMIN-Clients haben einen, und höchstens einen;
    gepflegt wird er ausschliesslich von Hand. SCCM meldet zwar Primär- und
    Anmeldebenutzer, schreibt die Inhaberschaft aber nie: der Abgleich rührt
    die Spalte «Computer» nicht an. Weichen die SCCM-Konten vom Inhaber ab,
@@ -54,7 +60,18 @@ const vorlageId = ABFRAGE.get("vorlage");
 let elementId = ABFRAGE.get("id");
 let neuModus = ABFRAGE.get("neu") === "1";
 
-const SPALTEN = SPALTEN_COMPUTER;
+/* Welche der beiden Client-Listen ist gemeint? Ohne den Parameter gilt
+   «admin» — die Liste, aus der die allermeisten Aufrufe kommen. */
+const listenName = ABFRAGE.get("liste") === "edu" ? "edu" : "admin";
+const LISTEN_TITEL = listenName === "edu" ? "EDU-Clients" : "ADMIN-Clients";
+const CLIENT_WORT = listenName === "edu" ? "EDU-Client" : "ADMIN-Client";
+
+/* Inhaberschaft gibt es nur bei den ADMIN-Clients. EDU-Clients gehören
+   niemandem persönlich; die Spalte «Computer» der Benutzer-Liste zeigt
+   bewusst nie auf sie. */
+const mitInhaber = listenName === "admin";
+
+const SPALTEN = SPALTEN_CLIENT;
 
 const SPALTE = {};
 for (const s of SPALTEN) SPALTE[s.i] = s;
@@ -101,7 +118,7 @@ const SYMBOL_ACHTUNG = F.SYMBOL_ACHTUNG, SYMBOL_INFO = F.SYMBOL_INFO;
    3. Zustand, Entwurf, Speicherleiste, Toast
    ================================================================== */
 
-let alleGeraete = [];     // Liste «Computer», angereichert
+let alleClients = [];     // Zeilen der eigenen Client-Liste, angereichert
 let alleBenutzer = [];    // Liste «Benutzer», angereichert
 let zeile = null;         // das Gerät dieses Fensters
 let entwurf = {};         // geänderte, noch nicht gespeicherte Felder
@@ -133,12 +150,15 @@ const BEREICHE = [
 ];
 
 /* Das Anlegen ist ein einziges Formular ohne Navigation. */
-const BEREICH_NEU = { k: "neu", d: "Neues Gerät", f: bereichNeu };
+const BEREICH_NEU = { k: "neu", d: "Neuer " + CLIENT_WORT, f: bereichNeu };
+
+/* Ohne Inhaberschaft gibt es auch keinen Bereich «Inhaber». */
+const BEREICHE_LISTE = mitInhaber ? BEREICHE : BEREICHE.filter(b => b.k !== "inhaber");
 
 function sichtbareBereiche() {
   // Solange die Zeile neu ist, gibt es weder SCCM-Daten noch einen
   // Inhaber — und auch keine Bereiche: nur das eine Formular.
-  return neuModus ? [BEREICH_NEU] : BEREICHE;
+  return neuModus ? [BEREICH_NEU] : BEREICHE_LISTE;
 }
 
 /* ---------- Gerüst-Anbindung ---------- */
@@ -146,7 +166,7 @@ function sichtbareBereiche() {
 function speicherleisteZeichnen() {
   F.speicherleisteZeichnen({
     neuModus: neuModus, geloescht: geloescht, speichertGerade: speichertGerade,
-    speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neues Gerät"
+    speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neuer " + CLIENT_WORT
   });
   /* Die Schnellaktionen im Kopf sind gesperrt, solange etwas Ungespeichertes
      offen ist — sie hängen also am selben Zustand. */
@@ -172,12 +192,16 @@ function bereichWechseln(schluessel) {
   zeichneBereich(false);
 }
 
-function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich; }
+function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE_LISTE) || aktiverBereich; }
 
-function logoZeichnen() { F.logoZeichnen("geraete"); }
+function logoZeichnen() {
+  F.logoZeichnen(listenName);
+  const pfad = $("g-pfad");
+  if (pfad) pfad.textContent = LISTEN_TITEL;
+}
 
 function bandZeichnen() {
-  F.bandZeichnen("Vorführmodus (?mock=1): alle Personen, Geräte und Zahlen sind erfunden. "
+  F.bandZeichnen("Vorführmodus (?mock=1): alle Personen, Clients und Zahlen sind erfunden. "
     + "Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
       entwurf = {};
       melden("zeile-geaendert", elementId);
@@ -334,7 +358,7 @@ function datenliste(name, werte) {
 
 function werteDerSpalte(feld) {
   const werte = [];
-  for (const z of alleGeraete) {
+  for (const z of alleClients) {
     const w = z[feld];
     if (w === null || w === undefined || w === "") continue;
     const t = String(w).trim();
@@ -401,7 +425,7 @@ function formularZeile(spalte, optionen) {
 
 /* Alle Geräte, die in SCCM stehen: Grundlage jedes Vergleichs. */
 function flotte() {
-  return alleGeraete.filter(z => Hilfe.istJa(z.SCCM_Found));
+  return alleClients.filter(z => Hilfe.istJa(z.SCCM_Found));
 }
 
 function zahlOderNull(w) {
@@ -477,7 +501,7 @@ function namensZwillinge() {
   const name = textWert("Title").trim();
   if (!name || !zeile) return [];
   const k = Modell.schluessel(name);
-  return alleGeraete.filter(z =>
+  return alleClients.filter(z =>
     Modell.schluessel(z.Title) === k && String(z.id) !== String(zeile.id));
 }
 
@@ -490,9 +514,13 @@ function namensZwillinge() {
    dasselbe sagen.
 
    Ein Gerät hat genau einen Inhaber. Kommt hier mehr als eine Person
-   zurück, ist das ein zu bereinigender Datenfehler — siehe inhaber(). */
+   zurück, ist das ein zu bereinigender Datenfehler — siehe inhaber().
+
+   Bei EDU-Clients bleibt die Liste immer leer: sie gehören niemandem
+   persönlich. Trüge dort trotzdem jemand den Namen im Feld «Computer», wäre
+   das ein Fehleintrag, den dieses Fenster nicht zum Inhaber befördern soll. */
 function inhaberAlle() {
-  if (!zeile) return [];
+  if (!zeile || !mitInhaber) return [];
   const name = String(zeile.Title || "").trim();
   if (!name) return [];
   const k = Modell.schluessel(name);
@@ -500,7 +528,7 @@ function inhaberAlle() {
   const gefunden = namensZwillinge().length
     /* Mehrdeutig: nur die Personen zeigen, die Modell.anreichern wirklich
        diesem Gerät zugewiesen hat. */
-    ? passend.filter(b => b.__computer && String(b.__computer.id) === String(zeile.id))
+    ? passend.filter(b => b.__client && String(b.__client.id) === String(zeile.id))
     : passend;
   return gefunden.slice()
     .sort((a, b) => Hilfe.vergleiche(a.__name || a.Title, b.__name || b.Title));
@@ -541,7 +569,7 @@ function hinweise() {
   }
   if (betrieb === "Archiviert") {
     info("Gerät ist archiviert", "Es steht nicht mehr im Einsatz und ist in der "
-      + "Geräteliste standardmässig ausgeblendet. Über den Filter «Archivierte "
+      + LISTEN_TITEL + "-Liste standardmässig ausgeblendet. Über den Filter «Archivierte "
       + "anzeigen» wird es wieder sichtbar.");
   } else if (betrieb === "Lager") {
     info("Gerät liegt im Lager", "Es ist einsatzbereit, aber niemandem zugeteilt.");
@@ -694,7 +722,10 @@ function hinweise() {
    Abgleich überschreibt sie. */
 function inhaberAbweichungen() {
   const treffer = [];
-  if (neuModus || !zeile) return treffer;
+  /* Ohne Inhaberschaft gibt es nichts, wovon SCCM abweichen könnte: bei einem
+     EDU-Client sagt der angemeldete Benutzer nur, wer zuletzt dort gearbeitet
+     hat — und das ist der Normalfall, kein Hinweis. */
+  if (neuModus || !zeile || !mitInhaber) return treffer;
   const logins = inhaberAlle().map(b => Modell.schluessel(b.Title));
 
   const pruefe = function (feld, bezeichnung) {
@@ -770,14 +801,19 @@ function bereichUebersicht(ziel) {
     textWert("ErsatzGeplant") ? null : "Vorschlag (+5)",
     status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : null)));
 
-  const wem = inhaber();
-  const zuviele = weitereInhaber();
-  kacheln.appendChild(kachel("Inhaber",
-    wem ? personName(wem) : "",
-    zuviele.length
-      ? "und " + zuviele.length + " überzählige Einträge"
-      : (wem ? String(wem.Title || "") : "kein Inhaber gesetzt"),
-    zuviele.length ? "gefahr" : (wem ? null : "warnung")));
+  /* Die Inhaber-Kachel gibt es nur bei den ADMIN-Clients. Bei einem
+     EDU-Client stünde dort dauerhaft «kein Inhaber gesetzt» — eine Warnung
+     vor einem Zustand, der so gewollt ist. */
+  if (mitInhaber) {
+    const wem = inhaber();
+    const zuviele = weitereInhaber();
+    kacheln.appendChild(kachel("Inhaber",
+      wem ? personName(wem) : "",
+      zuviele.length
+        ? "und " + zuviele.length + " überzählige Einträge"
+        : (wem ? String(wem.Title || "") : "kein Inhaber gesetzt"),
+      zuviele.length ? "gefahr" : (wem ? null : "warnung")));
+  }
 
   ziel.appendChild(kacheln);
 
@@ -1015,7 +1051,7 @@ function bereichInhaber(ziel) {
     const rechts = el("div");
     rechts.appendChild(el("div", "g-hinweis-titel", "PC-Name ist nicht eindeutig"));
     rechts.appendChild(el("div", "g-hinweis-text",
-      "Der PC-Name kommt in der Geräteliste " + (zwillinge.length + 1)
+      "Der PC-Name kommt in der Liste «" + LISTEN_TITEL + "» " + (zwillinge.length + 1)
       + " Mal vor. Weil die Benutzerliste nur den Namen speichert, zählt der "
       + "Eintrag zum nicht archivierten Gerät. Gezeigt wird hier nur, wer "
       + "diesem Gerät zugerechnet wird."));
@@ -1131,12 +1167,12 @@ function statusZeile() {
     hinweisText.className = "datenzeile-hinweis "
       + (Modell.statusKlasse(s) || "t-leise");
     hinweisText.textContent = s === "Archiviert"
-      ? "Ausser Betrieb. Archivierte Geräte sind in der Geräteliste und in "
+      ? "Ausser Betrieb. Archivierte Geräte sind in der Liste und in "
         + "den Kennzahlen der Übersicht standardmässig ausgeblendet. Achtung: "
         + "Solange das Gerät noch in SCCM steht, setzt der nächste Abgleich es "
         + "wieder auf «Aktiv» — für eingelagerte Geräte «Lager» wählen."
       : (s === "Lager"
-          ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Geräteliste."
+          ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Liste."
           : "Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv».");
   };
   hinweisSetzen();
@@ -1828,14 +1864,14 @@ function kopieren(text, meldung) {
    ================================================================== */
 
 function anzeigeName() {
-  if (neuModus) return textWert("Title").trim() || "Neues Gerät";
+  if (neuModus) return textWert("Title").trim() || ("Neuer " + CLIENT_WORT);
   return textWert("Title").trim() || "(ohne Namen)";
 }
 
 function titelZeichnen() {
   const name = anzeigeName();
   $("g-titel").textContent = name;
-  document.title = name + " – Computer Inventar";
+  document.title = name + " – " + LISTEN_TITEL + " – ICT-Inventar";
 }
 
 function kopfZeichnen() {
@@ -1906,10 +1942,17 @@ function aktionenZeichnen() {
     ziel.appendChild(aktion("Reaktivieren", "knopf-leise", reaktivierenDialog));
     return;
   }
-  if (s === "Lager") {
+  if (s === "Lager" && mitInhaber) {
+    /* «Ausgeben an …» setzt einen Inhaber — bei EDU-Clients gibt es den
+       nicht, dort bleibt nur der Weg zurück über den Status. */
     ziel.appendChild(aktion("Ausgeben an …", "knopf-leise", function () { inhaberWaehlenDialog(true); }));
-  } else {
+  } else if (s !== "Lager") {
     ziel.appendChild(aktion("Ins Lager legen", "knopf-leise", insLagerDialog));
+  } else {
+    ziel.appendChild(aktion("In Betrieb nehmen", "knopf-leise", function () {
+      setzeWert("Status", "Aktiv");
+      zeichnenAlles();
+    }));
   }
   ziel.appendChild(aktion("Archivieren", "knopf-leise", archivierenDialog));
 }
@@ -1973,34 +2016,36 @@ async function datenLaden(still) {
     zeigeLaden(mockModus ? "Vorführdaten werden aufgebaut …"
                          : "Daten werden aus SharePoint geladen …");
   }
-  let anzahlGeraete = 0, anzahlBenutzer = 0;
+  let anzahlClients = 0, anzahlBenutzer = 0;
   const fortschritt = function () {
     if (still) return;
     $("g-laden-fortschritt").textContent =
-      "Geräte " + anzahlGeraete + " / Benutzer " + anzahlBenutzer;
+      LISTEN_TITEL + " " + anzahlClients + " / Benutzer " + anzahlBenutzer;
   };
 
-  const [rohGeraete, rohBenutzer] = await Promise.all([
-    Daten.computer(function (n) { anzahlGeraete = n; fortschritt(); }),
+  const [rohClients, rohBenutzer] = await Promise.all([
+    Daten.clients(listenName, function (n) { anzahlClients = n; fortschritt(); }),
     Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); })
   ]);
 
-  /* programme.json wird hier nur für die Vollständigkeit des Modells
-     geladen. Die Berechtigungen selbst stehen im Benutzerfenster; scheitert
-     der Zugriff, ist das für dieses Fenster kein Grund zum Abbruch. */
-  let programme = null;
-  try { programme = await Daten.programme(); } catch (e) { programme = null; }
-
-  const ergebnis = Modell.anreichern(rohGeraete, rohBenutzer, programme);
-  alleGeraete = ergebnis.computer;
-  alleBenutzer = ergebnis.benutzer;
+  /* Die Benutzer werden auch ohne Inhaberschaft gebraucht: die SCCM-Konten
+     (Primärbenutzer, letzte Anmeldung) werden über sie aufgelöst. Bei den
+     EDU-Clients bleibt die Verknüpfung «Inhaber» dabei bewusst leer. */
+  if (mitInhaber) {
+    const ergebnis = Modell.anreichern(rohClients, rohBenutzer, null);
+    alleClients = ergebnis.clients;
+    alleBenutzer = ergebnis.benutzer;
+  } else {
+    alleBenutzer = Modell.anreichern([], rohBenutzer, null).benutzer;
+    alleClients = Modell.clientsAnreichern(rohClients).clients;
+  }
 }
 
 function zeileWaehlen() {
   if (neuModus) {
     const grund = leereZeile();
     if (vorlageId) {
-      const vorlage = alleGeraete.filter(z => String(z.id) === String(vorlageId))[0];
+      const vorlage = alleClients.filter(z => String(z.id) === String(vorlageId))[0];
       if (vorlage) {
         for (const s of SPALTEN) {
           if (!istBearbeitbar(s)) continue;
@@ -2013,10 +2058,11 @@ function zeileWaehlen() {
     return;
   }
 
-  const treffer = alleGeraete.filter(z => String(z.id) === String(elementId))[0];
+  const treffer = alleClients.filter(z => String(z.id) === String(elementId))[0];
   if (!treffer) {
-    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es keine Zeile. "
-      + "Vermutlich wurde sie inzwischen gelöscht.");
+    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es in der Liste «"
+      + LISTEN_TITEL + "» keine Zeile. Vermutlich wurde sie inzwischen gelöscht — "
+      + "oder der Client steht in der anderen Client-Liste.");
     fehler.status = 404;
     throw fehler;
   }
@@ -2057,6 +2103,19 @@ function ladeFehlerZeigen(fehler) {
 function pruefen() {
   const name = textWert("Title").trim();
   if (!name) return { feld: "Title", text: "Der PC-Name darf nicht leer sein." };
+
+  /* Der Name entscheidet, in welche Liste ein Client gehört: alles ab «EDU»
+     in die EDU-Liste, alles Übrige in die ADMIN-Liste (Modell.clientListe,
+     gespiegelt aus Get-ClientListe im Sync). Ein Name, der zur anderen Liste
+     gehörte, wäre kein Tippfehler mit kleinen Folgen: der nächste Sync legt
+     das Gerät drüben neu an und archiviert diese Zeile. */
+  if (Modell.clientListe(name) !== listenName) {
+    return { feld: "Title", text: listenName === "edu"
+      ? "Ein EDU-Client muss mit «" + Modell.EDU_PRAEFIX + "» beginnen. "
+        + "«" + name + "» gehört in die Liste «ADMIN-Clients»."
+      : "«" + name + "» beginnt mit «" + Modell.EDU_PRAEFIX + "» und gehört damit "
+        + "in die Liste «EDU-Clients»." };
+  }
 
   for (const feld of ["Beschaffungsjahr", "ErsatzGeplant"]) {
     const w = textWert(feld).trim();
@@ -2137,7 +2196,7 @@ async function speichern() {
 
   try {
     if (neuModus) {
-      const neueZeile = await Daten.anlegen("computer", felder);
+      const neueZeile = await Daten.anlegen(listenName, felder);
       elementId = String(neueZeile.id);
       neuModus = false;
       entwurf = {};
@@ -2155,7 +2214,7 @@ async function speichern() {
       return;
     }
 
-    await Daten.speichern("computer", elementId, felder, zeile ? zeile.__etag : "");
+    await Daten.speichern(listenName, elementId, felder, zeile ? zeile.__etag : "");
     const anzahl = anzahlAenderungen();
     entwurf = {};
     melden("zeile-geaendert", elementId);
@@ -2202,7 +2261,7 @@ async function verwerfen() {
 async function inhaberSchreiben(schritte, meldung, geraetFelder) {
   try {
     if (geraetFelder) {
-      await Daten.speichern("computer", elementId, geraetFelder, zeile ? zeile.__etag : "");
+      await Daten.speichern(listenName, elementId, geraetFelder, zeile ? zeile.__etag : "");
       melden("zeile-geaendert", elementId);
     }
     for (const schritt of schritte) {
@@ -2395,7 +2454,7 @@ function inhaberSatz() {
 function insLagerDialog() {
   const d = dialogOeffnen("Ins Lager legen");
   d.inhalt.appendChild(el("p", null,
-    "«" + anzeigeName() + "» bekommt den Status «Lager» und bleibt in der Geräteliste."
+    "«" + anzeigeName() + "» bekommt den Status «Lager» und bleibt in der Liste."
     + inhaberSatz()));
   const notiz = notizFeld(d);
   d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
@@ -2415,7 +2474,7 @@ function archivierenDialog() {
   const d = dialogOeffnen("Archivieren");
   d.inhalt.appendChild(el("p", null,
     "«" + anzeigeName() + "» bekommt den Status «Archiviert» und ist in der "
-    + "Geräteliste und in den Kennzahlen ausgeblendet." + inhaberSatz()));
+    + "Liste und in den Kennzahlen ausgeblendet." + inhaberSatz()));
   if (Hilfe.istJa(zeile.SCCM_Found)) {
     d.inhalt.appendChild(el("p", "t-warnung",
       "Das Gerät steht noch in SCCM. Solange das so ist, setzt der nächste "
@@ -2440,7 +2499,7 @@ function reaktivierenDialog() {
   const d = dialogOeffnen("Reaktivieren");
   d.inhalt.appendChild(el("p", null,
     "«" + anzeigeName() + "» kommt zurück ins Lager (Status «Lager») und "
-    + "erscheint wieder in der Geräteliste. Von dort lässt es sich ausgeben."));
+    + "erscheint wieder in der Liste. Von dort lässt es sich ausgeben."));
   const notiz = notizFeld(d);
   d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
   d.knoepfe.appendChild(knopf("Reaktivieren", "knopf-primaer", function () {
@@ -2460,7 +2519,7 @@ function loeschenDialog() {
   const d = dialogOeffnen("Gerät löschen");
 
   d.inhalt.appendChild(el("p", null,
-    "Die Zeile wird aus der Liste «Computer» entfernt und landet im Papierkorb "
+    "Die Zeile wird aus der Liste «" + LISTEN_TITEL + "» entfernt und landet im Papierkorb "
     + "der SharePoint-Site. Von dort lässt sie sich 93 Tage lang zurückholen."));
   const personen = inhaberAlle();
   if (personen.length) {
@@ -2485,7 +2544,7 @@ function loeschenDialog() {
     loeschen.disabled = true;
     loeschen.textContent = "Wird gelöscht …";
     try {
-      await Daten.loeschen("computer", zeile.id);
+      await Daten.loeschen(listenName, zeile.id);
       melden("zeile-geloescht", zeile.id);
       geloescht = true;
       entwurf = {};
@@ -2530,10 +2589,10 @@ async function start() {
       await Auth.anmeldungSicherstellen();
     }
     if (!neuModus && !elementId) {
-      zeigeFehler("Kein Gerät angegeben",
-        "Dieses Fenster braucht die Listen-ID in der Adresse, zum Beispiel "
-        + "geraet.html?id=5.",
-        "Normalerweise wird es aus der Geräteliste heraus geöffnet.");
+      zeigeFehler("Kein Client angegeben",
+        "Dieses Fenster braucht Liste und Listen-ID in der Adresse, zum Beispiel "
+        + "client.html?liste=admin&id=5.",
+        "Normalerweise wird es aus einer der Client-Listen heraus geöffnet.");
       return;
     }
     await datenLaden();
@@ -2554,7 +2613,7 @@ F.ereignisse({
   anzahlAenderungen: anzahlAenderungen,
   verlassenFrei: function () { return geloescht; },
   beiHash: function (h) {
-    if (h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
+    if (h !== aktiverBereich && BEREICHE_LISTE.some(b => b.k === h)) {
       aktiverBereich = h;
       navZeichnen();
       zeichneBereich(false);

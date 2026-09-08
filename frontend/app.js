@@ -1,17 +1,22 @@
-/* app.js — Oberfläche der Hauptseite des Computer Inventars.
+/* app.js — Oberfläche der Hauptseite des ICT-Inventars.
 
-   Fünf Ansichten:
-     Übersicht       Kennzahlen zu Geräten, Benutzern und Telefonnummern,
-                     Ersatzplanung als Zeitstrahl, Verteilungen.
-     Geräte          Tabelle der Computer-Liste, mit Suche, Facetten, Spaltenwahl.
+   Sechs Ansichten:
+     Übersicht       Kennzahlen zu beiden Client-Listen, Benutzern und
+                     Telefonnummern, Ersatzplanung als Zeitstrahl, Verteilungen.
+     ADMIN-Clients   Tabelle der Liste «ADMIN-Clients», mit Suche, Facetten,
+                     Spaltenwahl. Diese Geräte haben einen Inhaber.
+     EDU-Clients     Dieselbe Tabelle für die Liste «EDU-Clients» — Schulungs-
+                     geräte, die bewusst niemandem persönlich gehören.
      Benutzer        Tabelle der Benutzer-Liste, mit Programm-Filter je Stufe.
      Telefonnummern  Tabelle der Telefonliste; nicht zugewiesene Nummern sind
                      hervorgehoben, neue Nummern werden im eigenen Fenster erfasst.
-     Software        Eine Karte je Programm aus programme.json.
+     Software        Eine Karte je Zeile der Liste «Software»; erfasst und
+                     geändert wird im Softwarefenster.
 
-   Die drei Tabellenansichten (TABELLEN) teilen sich den gesamten Code für
+   Die vier Tabellenansichten (TABELLEN) teilen sich den gesamten Code für
    Suche, Filter, Spalten, Sortierung, CSV und Adresszeile; was sich
-   unterscheidet, steht in TAB.
+   unterscheidet, steht in TAB. Die beiden Client-Listen unterscheiden sich
+   nur in einem Punkt: bei den EDU-Clients gibt es keine Inhaberschaft.
 
    Aufbau der Datei:
      1. Spaltenwissen und Filterdefinitionen
@@ -36,9 +41,9 @@
    1. Spaltenwissen und Filterdefinitionen
    ================================================================== */
 
-/* Abgeleitete Spalten der Geräte-Tabelle. Sie stehen nicht in SharePoint;
-   modell.js rechnet sie beim Anreichern aus. */
-const GERAETE_ZUSATZ = [
+/* Abgeleitete Spalten der beiden Client-Tabellen. Sie stehen nicht in
+   SharePoint; modell.js rechnet sie beim Anreichern aus. */
+const CLIENT_ZUSATZ = [
   { i: "__inhaberName",   d: "Inhaber", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   /* «Status» als abgeleitete Spalte, damit ein leeres Feld überall als
      «Aktiv» erscheint — filtern, sortieren und exportieren inbegriffen.
@@ -47,6 +52,10 @@ const GERAETE_ZUSATZ = [
   { i: "__ersatzText",    d: "Ersatzstatus", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__hatInhaber",    d: "Inhaber gesetzt", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
 ];
+
+/* Die Inhaber-Spalten gibt es nur bei den ADMIN-Clients: EDU-Clients gehören
+   niemandem persönlich, eine Spalte «Inhaber» wäre dort immer leer. */
+const INHABER_SPALTEN = ["__inhaberName", "__hatInhaber"];
 
 const BENUTZER_ZUSATZ = [
   { i: "__hatGeraetText", d: "Gerät zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
@@ -98,33 +107,40 @@ const PROGRAMM_STUFEN = [
   { w: "2", d: "nur aus AD-Gruppe (2)" }
 ];
 
-/* Beschreibung der beiden Tabellenansichten. Alles, was sich zwischen
-   Geräten und Benutzern unterscheidet, steht hier — der Rest des Codes ist
-   für beide derselbe. */
-const TAB = {
-  geraete: {
-    schluessel: "geraete",
+/* Beschreibung der Tabellenansichten. Alles, was sich zwischen ihnen
+   unterscheidet, steht hier — der Rest des Codes ist für alle derselbe.
+
+   Die beiden Client-Listen sind bis auf die Inhaberschaft gleich; sie
+   entstehen darum aus einer gemeinsamen Beschreibung. */
+function clientTab(schluessel, titel, mitInhaber, csvName) {
+  const standard = ["Title", "__statusText", "__inhaberName", "GebaeudeStock",
+                    "Beschaffungsjahr", "ErsatzGeplant", "SCCM_Model",
+                    "SCCM_OSVersion", "SCCM_LastActive"];
+  const facetten = [
+    { k: "__statusText",      d: "Status" },
+    { k: "Beschaffungsjahr",  d: "Beschaffungsjahr" },
+    { k: "ErsatzGeplant",     d: "Ersatz geplant" },
+    { k: "__ersatzText",      d: "Ersatzstatus" },
+    { k: "GebaeudeStock",     d: "Gebäude / Stock" },
+    { k: "__hatInhaber",      d: "Inhaber gesetzt" },
+    { k: "SCCM_Found",        d: "In SCCM" },
+    { k: "SCCM_Online",       d: "Online" },
+    { k: "SCCM_ClientActive", d: "Client aktiv" },
+    { k: "SCCM_Manufacturer", d: "Hersteller" },
+    { k: "SCCM_Model",        d: "Modell" },
+    { k: "SCCM_ChassisType",  d: "Gehäusetyp" },
+    { k: "SCCM_OSVersion",    d: "OS-Version" },
+    { k: "SCCM_EPEnabled",    d: "Defender aktiv" }
+  ];
+  return {
+    schluessel: schluessel,
+    titel: titel,
+    mitInhaber: mitInhaber,
+    einheit: " " + titel,
     namensSpalte: "Title",
-    standard: ["Title", "__statusText", "__inhaberName", "GebaeudeStock",
-               "Beschaffungsjahr", "ErsatzGeplant", "SCCM_Model",
-               "SCCM_OSVersion", "SCCM_LastActive"],
+    standard: mitInhaber ? standard : standard.filter(k => INHABER_SPALTEN.indexOf(k) === -1),
     sortSpalte: "Title",
-    facetten: [
-      { k: "__statusText",      d: "Status" },
-      { k: "Beschaffungsjahr",  d: "Beschaffungsjahr" },
-      { k: "ErsatzGeplant",     d: "Ersatz geplant" },
-      { k: "__ersatzText",      d: "Ersatzstatus" },
-      { k: "GebaeudeStock",     d: "Gebäude / Stock" },
-      { k: "__hatInhaber",      d: "Inhaber gesetzt" },
-      { k: "SCCM_Found",        d: "In SCCM" },
-      { k: "SCCM_Online",       d: "Online" },
-      { k: "SCCM_ClientActive", d: "Client aktiv" },
-      { k: "SCCM_Manufacturer", d: "Hersteller" },
-      { k: "SCCM_Model",        d: "Modell" },
-      { k: "SCCM_ChassisType",  d: "Gehäusetyp" },
-      { k: "SCCM_OSVersion",    d: "OS-Version" },
-      { k: "SCCM_EPEnabled",    d: "Defender aktiv" }
-    ],
+    facetten: mitInhaber ? facetten : facetten.filter(f => INHABER_SPALTEN.indexOf(f.k) === -1),
     zeitspalten: [
       { k: "SCCM_LastActive",      d: "Zuletzt aktiv" },
       { k: "SCCM_LastConsoleUse",  d: "Letzte Benutzeranmeldung" },
@@ -133,8 +149,13 @@ const TAB = {
     ],
     hatSpeicher: true,
     hatProgramme: false,
-    csvName: "Geraete"
-  },
+    csvName: csvName
+  };
+}
+
+const TAB = {
+  admin: clientTab("admin", "ADMIN-Clients", true, "ADMIN-Clients"),
+  edu: clientTab("edu", "EDU-Clients", false, "EDU-Clients"),
   benutzer: {
     schluessel: "benutzer",
     namensSpalte: "Anzeigename",
@@ -153,7 +174,8 @@ const TAB = {
     ],
     hatSpeicher: false,
     hatProgramme: true,
-    csvName: "Benutzer"
+    csvName: "Benutzer",
+    einheit: " Benutzer"
   },
   telefone: {
     schluessel: "telefone",
@@ -176,16 +198,23 @@ const TAB = {
     ],
     hatSpeicher: false,
     hatProgramme: false,
-    csvName: "Telefonnummern"
+    csvName: "Telefonnummern",
+    einheit: " Telefonnummern"
   }
 };
 
-/* Die drei Tabellenansichten. Alles, was «für jede Tabelle» gilt, läuft
+/* Die vier Tabellenansichten. Alles, was «für jede Tabelle» gilt, läuft
    über diese Liste. */
-const TABELLEN = ["geraete", "benutzer", "telefone"];
+const TABELLEN = ["admin", "edu", "benutzer", "telefone"];
+
+/* Die beiden Client-Tabellen. Wo im Code «tab === "admin"» stünde, ist fast
+   immer diese Frage gemeint: geht es um eine Liste von Geräten? */
+const CLIENT_TABELLEN = ["admin", "edu"];
+
+function istClientTab(tab) { return CLIENT_TABELLEN.indexOf(tab) > -1; }
 
 /* Spaltenliste einer Ansicht. Bei den Benutzern kommen die Programmspalten
-   aus programme.json dazu, die erst zur Laufzeit bekannt sind. */
+   aus der Liste «Software» dazu, die erst zur Laufzeit bekannt sind. */
 function spaltenListe(tab) {
   if (tab === "benutzer") {
     return SPALTEN_BENUTZER.concat(BENUTZER_ZUSATZ, programmSpalten);
@@ -193,12 +222,13 @@ function spaltenListe(tab) {
   if (tab === "telefone") {
     return SPALTEN_TELEFON.concat(TELEFON_ZUSATZ);
   }
-  return SPALTEN_COMPUTER.concat(GERAETE_ZUSATZ);
+  const alle = SPALTEN_CLIENT.concat(CLIENT_ZUSATZ);
+  return TAB[tab].mitInhaber ? alle : alle.filter(s => INHABER_SPALTEN.indexOf(s.i) === -1);
 }
 
 /* Nachschlagewerk interner Name → Spaltenobjekt. Wird nach dem Laden der
    Programme neu aufgebaut. */
-const SPALTE = { geraete: {}, benutzer: {}, telefone: {} };
+const SPALTE = { admin: {}, edu: {}, benutzer: {}, telefone: {} };
 
 function spaltenIndexAufbauen() {
   for (const tab of TABELLEN) {
@@ -219,10 +249,10 @@ function beschriftung(tab, schluessel) {
    2. Zustand und Adresszeile
    ================================================================== */
 
-const ANSICHTEN = ["uebersicht", "geraete", "benutzer", "telefone", "software"];
-const SPEICHER_SPALTEN = "computerinventar.spalten.";   // + Ansicht
-const SPEICHER_DICHTE  = "computerinventar.dichte";     // alle Listen
-const SPEICHER_ARCHIV  = "computerinventar.archiv";     // nur Geräte
+const ANSICHTEN = ["uebersicht", "admin", "edu", "benutzer", "telefone", "software"];
+const SPEICHER_SPALTEN = "ictinventar.spalten.";   // + Ansicht
+const SPEICHER_DICHTE  = "ictinventar.dichte";     // alle Listen
+const SPEICHER_ARCHIV  = "ictinventar.archiv.";    // + Client-Ansicht
 
 /* Der Wert der Statusspalte, der ein Gerät aus der Liste nimmt. */
 const ARCHIVIERT = "Archiviert";
@@ -247,18 +277,20 @@ function leererTabZustand(tab) {
 
 const zustand = {
   ansicht: "uebersicht",
-  geraete: leererTabZustand("geraete"),
+  admin: leererTabZustand("admin"),
+  edu: leererTabZustand("edu"),
   benutzer: leererTabZustand("benutzer"),
   telefone: leererTabZustand("telefone"),
   software: { suche: "" }
 };
 
-let geraete = [];          // angereicherte Computer-Zeilen
+let adminClients = [];     // angereicherte Zeilen der Liste «ADMIN-Clients»
+let eduClients = [];       // angereicherte Zeilen der Liste «EDU-Clients»
 let benutzer = [];         // angereicherte Benutzer-Zeilen
 let telefone = [];         // angereicherte Zeilen der Telefonliste
-let programme = null;      // Inhalt von programme.json
+let software = [];         // Zeilen der Liste «Software»
 let programmSpalten = [];  // Spaltenobjekte daraus
-const sichtbar = { geraete: [], benutzer: [], telefone: [] };
+const sichtbar = { admin: [], edu: [], benutzer: [], telefone: [] };
 
 /* Zuletzt selbst geschriebener Hash. Damit lässt sich das eigene
    hashchange-Ereignis von einem Klick auf Vor/Zurück unterscheiden. */
@@ -303,7 +335,7 @@ function hashSchreiben(alsVerlaufseintrag) {
     }
     p.set("c", z.spalten.join(","));
     if (z.dicht) p.set("d", "kompakt");
-    if (a === "geraete" && z.archiv) p.set("ar", "1");
+    if (istClientTab(a) && z.archiv) p.set("ar", "1");
   }
 
   const text = p.toString();
@@ -311,7 +343,7 @@ function hashSchreiben(alsVerlaufseintrag) {
   if (location.hash === neu) return;
   eigenerHash = neu;
 
-  /* Ein Ansichtswechsel (Übersicht → Geräte) ist ein Schritt, den die
+  /* Ein Ansichtswechsel (Übersicht → ADMIN-Clients) ist ein Schritt, den die
      Zurück-Taste rückgängig machen soll: pushState. Filter, Sortierung und
      Spaltenwahl ersetzen dagegen nur den aktuellen Eintrag — jede Änderung
      als Verlaufseintrag würde die Zurück-Taste unbrauchbar machen. Bewusst
@@ -387,7 +419,7 @@ function hashLesen() {
 
   /* Archivierte: steht der Parameter im Link, gewinnt er; sonst bleibt,
      was im Browser gemerkt ist. */
-  if (a === "geraete") {
+  if (istClientTab(a)) {
     const ar = p.get("ar");
     if (ar !== null) z.archiv = ar === "1";
   }
@@ -409,19 +441,22 @@ function einstellungenLaden() {
       zustand[tab].dicht = localStorage.getItem(SPEICHER_DICHTE) === "kompakt";
     } catch (e) { /* Ohne Speicher gilt die Standardauswahl. */ }
   }
-  /* Der Archiv-Schalter wird wie Spalten und Dichte gemerkt. Fehlt der
-     Eintrag, bleibt er AUS — archivierte Geräte sind ausgeblendet. */
-  try {
-    zustand.geraete.archiv = localStorage.getItem(SPEICHER_ARCHIV) === "1";
-  } catch (e) { /* Ohne Speicher bleibt es beim Standard. */ }
+  /* Der Archiv-Schalter wird wie Spalten und Dichte gemerkt, je Client-
+     Liste einzeln. Fehlt der Eintrag, bleibt er AUS — archivierte Geräte
+     sind ausgeblendet. */
+  for (const tab of CLIENT_TABELLEN) {
+    try {
+      zustand[tab].archiv = localStorage.getItem(SPEICHER_ARCHIV + tab) === "1";
+    } catch (e) { /* Ohne Speicher bleibt es beim Standard. */ }
+  }
 }
 
 function einstellungenMerken(tab) {
   try {
     localStorage.setItem(SPEICHER_SPALTEN + tab, JSON.stringify(zustand[tab].spalten));
     localStorage.setItem(SPEICHER_DICHTE, zustand[tab].dicht ? "kompakt" : "normal");
-    if (tab === "geraete") {
-      localStorage.setItem(SPEICHER_ARCHIV, zustand.geraete.archiv ? "1" : "0");
+    if (istClientTab(tab)) {
+      localStorage.setItem(SPEICHER_ARCHIV + tab, zustand[tab].archiv ? "1" : "0");
     }
   } catch (e) { /* Privater Modus: dann eben nur für diese Sitzung. */ }
 }
@@ -505,12 +540,13 @@ function knopfSinnbild(id, name) {
    4. Laden und Anreichern
    ================================================================== */
 
-const fortschritt = { geraete: 0, benutzer: 0, telefone: 0, programme: false };
+const fortschritt = { admin: 0, edu: 0, benutzer: 0, telefone: 0, software: 0 };
 
 function fortschrittZeigen() {
-  const teile = ["Geräte " + fortschritt.geraete, "Benutzer " + fortschritt.benutzer,
+  const teile = ["ADMIN-Clients " + fortschritt.admin, "EDU-Clients " + fortschritt.edu,
+                 "Benutzer " + fortschritt.benutzer,
                  "Telefonnummern " + fortschritt.telefone,
-                 "Programme" + (fortschritt.programme ? " ✓" : " …")];
+                 "Software " + fortschritt.software];
   $("lade-fortschritt").textContent = teile.join("  /  ");
 }
 
@@ -541,7 +577,7 @@ function zeigeInhalt() {
 /* Zusätzliche Felder, die nur die Hauptseite braucht (Facettenwerte als
    lesbarer Text). modell.js liefert die eigentliche Verknüpfung. */
 function nachbereiten() {
-  for (const c of geraete) {
+  for (const c of adminClients.concat(eduClients)) {
     c.__ersatzText = ERSATZ_TEXT[c.__ersatzStatus] || "unbekannt";
     c.__hatInhaber = c.__inhaber ? "Ja" : "Nein";
     // __status setzt Modell.anreichern; hier nur als Facettenwert gespiegelt.
@@ -568,59 +604,77 @@ function nachbereiten() {
 /* «still» lädt im Hintergrund nach, ohne die Ladeanzeige einzublenden. */
 async function datenLaden(still) {
   if (!still) {
-    fortschritt.geraete = 0; fortschritt.benutzer = 0; fortschritt.telefone = 0;
-    fortschritt.programme = false;
+    for (const k of Object.keys(fortschritt)) fortschritt[k] = 0;
     zeigeLaden("Daten werden geladen …");
     fortschrittZeigen();
   }
 
-  const [rohGeraete, rohBenutzer, rohTelefone, rohProgramme] = await Promise.all([
-    Daten.computer(function (n) {
-      fortschritt.geraete = n; if (!still) fortschrittZeigen();
+  const [rohAdmin, rohEdu, rohBenutzer, rohTelefone, rohSoftware] = await Promise.all([
+    Daten.clients("admin", function (n) {
+      fortschritt.admin = n; if (!still) fortschrittZeigen();
+    }),
+    listeLaden("edu", function (n) {
+      fortschritt.edu = n; if (!still) fortschrittZeigen();
     }),
     Daten.benutzer(function (n) {
       fortschritt.benutzer = n; if (!still) fortschrittZeigen();
     }),
-    telefoneLaden(function (n) {
+    listeLaden("telefon", function (n) {
       fortschritt.telefone = n; if (!still) fortschrittZeigen();
     }),
-    Daten.programme()
+    listeLaden("software", function (n) {
+      fortschritt.software = n; if (!still) fortschrittZeigen();
+    })
   ]);
 
-  fortschritt.geraete = rohGeraete.length;
+  fortschritt.admin = rohAdmin.length;
+  fortschritt.edu = rohEdu.length;
   fortschritt.benutzer = rohBenutzer.length;
   fortschritt.telefone = rohTelefone.length;
-  fortschritt.programme = true;
+  fortschritt.software = rohSoftware.length;
   if (!still) fortschrittZeigen();
 
-  programme = rohProgramme;
-  programmSpalten = Modell.programmSpalten(programme);
+  software = rohSoftware;
+  programmSpalten = Modell.programmSpalten(software);
   spaltenIndexAufbauen();
   spaltenPruefen();
 
-  const ergebnis = Modell.anreichern(rohGeraete, rohBenutzer, programme);
-  geraete = ergebnis.computer;
+  const ergebnis = Modell.anreichern(rohAdmin, rohBenutzer, software);
+  adminClients = ergebnis.clients;
   benutzer = ergebnis.benutzer;
+  eduClients = Modell.clientsAnreichern(rohEdu).clients;
   telefone = Modell.telefoneAnreichern(rohTelefone, benutzer).telefone;
   nachbereiten();
 }
 
-/* Die Telefonliste ist neu und darf noch fehlen: Solange in konfig.js keine
-   Listen-ID steht, bleibt die Ansicht leer und die übrigen Ansichten laufen
-   ganz normal. Eine fehlende Liste soll nicht die ganze Seite lahmlegen. */
-let telefonHinweis = "";
+/* Nachzügler-Listen: «EDU-Clients», «Telefonnummern» und «Software» sind
+   jünger als der Rest. Solange in konfig.js keine Listen-ID steht oder die
+   Liste in SharePoint noch fehlt, bleibt die betroffene Ansicht leer und
+   sagt, was zu tun ist — die übrigen laufen ganz normal weiter. Eine
+   fehlende Liste soll nie die ganze Seite lahmlegen. */
+const listenHinweis = { edu: "", telefon: "", software: "" };
 
-async function telefoneLaden(fortschrittRuf) {
-  telefonHinweis = "";
-  if (!Daten.mockModus && !KONFIG.listeBereit("telefon")) {
-    telefonHinweis = "In konfig.js fehlt die Listen-ID der Liste «Telefonnummern». "
-      + "Die ID steht in den Listeneinstellungen in SharePoint und gehört als telefonListId in konfig.js.";
+const LISTEN_KONFIG = {
+  edu: { titel: "EDU-Clients", schluessel: "eduClientListId" },
+  telefon: { titel: "Telefonnummern", schluessel: "telefonListId" },
+  software: { titel: "Software", schluessel: "softwareListId" }
+};
+
+async function listeLaden(liste, fortschrittRuf) {
+  const k = LISTEN_KONFIG[liste];
+  listenHinweis[liste] = "";
+  if (!Daten.mockModus && !KONFIG.listeBereit(liste)) {
+    listenHinweis[liste] = "In konfig.js fehlt die Listen-ID der Liste «" + k.titel + "». "
+      + "Die ID steht in den Listeneinstellungen in SharePoint und gehört als "
+      + k.schluessel + " in konfig.js.";
     return [];
   }
   try {
-    return await Daten.telefone(fortschrittRuf);
+    if (liste === "edu") return await Daten.clients("edu", fortschrittRuf);
+    if (liste === "telefon") return await Daten.telefone(fortschrittRuf);
+    return await Daten.software(fortschrittRuf);
   } catch (e) {
-    telefonHinweis = "Die Liste «Telefonnummern» konnte nicht geladen werden: "
+    listenHinweis[liste] = "Die Liste «" + k.titel + "» konnte nicht geladen werden: "
       + (e && e.message ? e.message : String(e));
     return [];
   }
@@ -634,7 +688,8 @@ async function telefoneLaden(fortschrittRuf) {
 function zeilenVon(tab) {
   if (tab === "benutzer") return benutzer;
   if (tab === "telefone") return telefone;
-  return geraete;
+  if (tab === "edu") return eduClients;
+  return adminClients;
 }
 
 /* Wert einer Facette als Text, inklusive der abgeleiteten. */
@@ -671,8 +726,9 @@ function speicherPasst(wert, stufe) {
 /* Sind archivierte Geräte gerade sichtbar? Entweder weil der Schalter an
    ist, oder weil ausdrücklich nach dem Status «Archiviert» gefiltert wird —
    sonst führte dieser Filter in eine garantiert leere Liste. */
-function archivSichtbar() {
-  const z = zustand.geraete;
+function archivSichtbar(tab) {
+  const z = zustand[tab];
+  if (!z || !istClientTab(tab)) return true;
   if (z.archiv) return true;
   const gewaehlt = z.facetten["__statusText"] || [];
   return gewaehlt.indexOf(ARCHIVIERT) > -1;
@@ -681,7 +737,7 @@ function archivSichtbar() {
 function filtern(tab) {
   const z = zustand[tab];
   const worte = z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const archivWeg = tab === "geraete" && !archivSichtbar();
+  const archivWeg = istClientTab(tab) && !archivSichtbar(tab);
 
   return zeilenVon(tab).filter(function (zeile) {
     if (archivWeg && zeile.__archiviert) return false;
@@ -770,7 +826,7 @@ function zelle(tab, zeile, schluessel) {
 
   // Namensspalte: echter Verweis, damit Mittelklick und Ctrl-Klick wirken.
   if (schluessel === TAB[tab].namensSpalte) {
-    if (tab === "geraete") {
+    if (istClientTab(tab)) {
       const punkt = el("span", "punkt" + (zeile.__online ? "" : " punkt-aus"));
       punkt.title = zeile.__online ? "online" : "nicht online";
       td.appendChild(punkt);
@@ -836,7 +892,7 @@ function zelle(tab, zeile, schluessel) {
 
   /* Status: die Farbe sitzt auf dem Text, nie auf einer Fläche.
      «Aktiv» bleibt schwarz — der Normalfall braucht keine Auszeichnung. */
-  if (tab === "geraete" && (schluessel === "__statusText" || schluessel === "Status")) {
+  if (istClientTab(tab) && (schluessel === "__statusText" || schluessel === "Status")) {
     const s = Modell.status(schluessel === "Status" ? wert : zeile.__status);
     const klasse = Modell.statusKlasse(s);
     td.appendChild(klasse ? el("span", klasse, s) : document.createTextNode(s));
@@ -847,9 +903,10 @@ function zelle(tab, zeile, schluessel) {
   }
 
   /* Der Inhaber ist genau eine Person; sie bekommt einen Verweis ins
-     Benutzerfenster. Zeigen mehrere Personen auf dasselbe Gerät, ist das
-     ein zu bereinigender Datenfehler und wird als Chip angezeigt. */
-  if (tab === "geraete" && schluessel === "__inhaberName") {
+     Benutzerfenster. Zeigen mehrere Personen auf denselben Client, ist das
+     ein zu bereinigender Datenfehler und wird als Chip angezeigt.
+     Nur die ADMIN-Clients haben Inhaber. */
+  if (istClientTab(tab) && schluessel === "__inhaberName") {
     if (!zeile.__inhaber) {
       td.appendChild(el("span", "t-still", "–"));
       td.title = "Kein Inhaber gesetzt";
@@ -864,7 +921,7 @@ function zelle(tab, zeile, schluessel) {
       td.appendChild(document.createTextNode(" "));
       const chip = el("span", "chip chip-warnung",
         "+" + (zeile.__inhaberAlle.length - 1));
-      chip.title = "Mehrere Personen zeigen auf dieses Gerät: "
+      chip.title = "Mehrere Personen zeigen auf diesen Client: "
         + zeile.__inhaberAlle.map(p => p.__name).join(", ");
       td.appendChild(chip);
     }
@@ -977,20 +1034,24 @@ function zeichneTabelle(tab) {
   /* Bezugsgrösse ist, was ohne Filter zu sehen wäre: sind die archivierten
      ausgeblendet, gehören sie nicht in den Nenner — sonst stünde dort
      dauerhaft «x von y», ohne dass jemand einen Filter gesetzt hätte. */
-  const grundmenge = tab === "geraete" && !archivSichtbar()
+  const grundmenge = istClientTab(tab) && !archivSichtbar(tab)
     ? zeilenVon(tab).filter(z => !z.__archiviert) : zeilenVon(tab);
   const alle = grundmenge.length;
   $(tab + "-leer").hidden = sichtbar[tab].length > 0;
   $(tab + "-tabelle").hidden = sichtbar[tab].length === 0;
-  const einheit = { geraete: " Geräte", benutzer: " Benutzer", telefone: " Telefonnummern" };
   $(tab + "-anzahl").textContent = sichtbar[tab].length === alle
-    ? alle + einheit[tab]
+    ? alle + TAB[tab].einheit
     : sichtbar[tab].length + " von " + alle;
 
-  /* Fehlt die Telefonliste (noch), sagt die leere Tabelle, was zu tun ist. */
+  /* Fehlt eine der jüngeren Listen noch, sagt die leere Tabelle, was zu
+     tun ist — statt bloss «keine Treffer». */
+  if (tab === "edu") {
+    $("edu-leer").textContent = listenHinweis.edu && !eduClients.length
+      ? listenHinweis.edu : "Kein EDU-Client passt zu den aktuellen Filtern.";
+  }
   if (tab === "telefone") {
-    $("telefone-leer").textContent = telefonHinweis && !telefone.length
-      ? telefonHinweis : "Keine Telefonnummer passt zu den aktuellen Filtern.";
+    $("telefone-leer").textContent = listenHinweis.telefon && !telefone.length
+      ? listenHinweis.telefon : "Keine Telefonnummer passt zu den aktuellen Filtern.";
   }
 }
 
@@ -1090,7 +1151,7 @@ function zeichneChips(tab) {
      Filter WEG. Als Chip steht er trotzdem hier, damit sichtbar ist,
      warum plötzlich mehr Geräte in der Liste stehen. Er zählt nicht in
      «anzahl» mit: «Alle Filter entfernen» soll ihn nicht umlegen. */
-  if (tab === "geraete" && z.archiv) {
+  if (istClientTab(tab) && z.archiv) {
     const c = el("button", "chip");
     c.type = "button";
     c.appendChild(document.createTextNode("Archivierte eingeblendet"));
@@ -1099,7 +1160,7 @@ function zeichneChips(tab) {
     c.addEventListener("click", function () {
       z.archiv = false;
       einstellungenMerken(tab);
-      archivAnwenden();
+      archivAnwenden(tab);
       nachFilter(tab);
     });
     ziel.appendChild(c);
@@ -1179,8 +1240,8 @@ function panelKopf(titel, unter) {
    Einzige Ausnahme ist die Statusfacette selbst: ohne sie liesse sich
    «Archiviert» nie anwählen. */
 function verteilung(tab, schluessel) {
-  const archivWeg = tab === "geraete" && schluessel !== "__statusText"
-    && !archivSichtbar();
+  const archivWeg = istClientTab(tab) && schluessel !== "__statusText"
+    && !archivSichtbar(tab);
   const zaehler = new Map();
   for (const z of zeilenVon(tab)) {
     if (archivWeg && z.__archiviert) continue;
@@ -1210,8 +1271,8 @@ function zeichneFilterleiste(tab) {
 
   /* Archivierte Geräte sind standardmässig ausgeblendet. Der Schalter
      steht hier bei den Filtern — er nimmt einen Filter weg. */
-  if (tab === "geraete") {
-    const archivierte = zaehle(geraete, g => g.__archiviert);
+  if (istClientTab(tab)) {
+    const archivierte = zaehle(zeilenVon(tab), g => g.__archiviert);
     const zeileArchiv = el("label", "panel-schalter");
     const box = el("input");
     box.type = "checkbox";
@@ -1417,7 +1478,7 @@ function csvWert(tab, zeile, schluessel) {
   const wert = zeile[schluessel];
   if (s && s.q === "programm") return String(Modell.stufe(wert));
   // Status leer heisst «Aktiv» — das gehört auch so in den Export.
-  if (tab === "geraete" && (schluessel === "Status" || schluessel === "__statusText")) {
+  if (istClientTab(tab) && (schluessel === "Status" || schluessel === "__statusText")) {
     return Modell.status(schluessel === "Status" ? wert : zeile.__status);
   }
   // Der Verlauf als Klartext, ein Eintrag je Abschnitt.
@@ -1509,12 +1570,12 @@ function zaehle(liste, pruefung) {
   return n;
 }
 
-/* Die Geräte, die für Kennzahlen und Planung zählen: alles ausser den
+/* Die Clients, die für Kennzahlen und Planung zählen: alles ausser den
    archivierten. Ein ausgemustertes Gerät verzerrt sonst jede Zahl — es ist
    weder online noch ersatzbedürftig, steht aber im Nenner. Die archivierten
    bekommen dafür eine eigene Kachel. */
-function aktiveGeraete() {
-  return geraete.filter(z => !z.__archiviert);
+function aktiveClients(tab) {
+  return zeilenVon(tab).filter(z => !z.__archiviert);
 }
 
 /* Eine Kennzahl landet zuoberst unter «Handlungsbedarf», wenn sie einen
@@ -1532,42 +1593,60 @@ function kachelnEinordnen(zielBestand, herkunft, liste) {
   }
 }
 
-function zeichneUebersicht() {
-  leeren($("kacheln-handlungsbedarf"));
+/* Die Kennzahlen einer Client-Liste. Beide Listen bekommen denselben Satz;
+   «ohne Inhaber» fällt bei den EDU-Clients weg, weil es dort bewusst keine
+   Inhaberschaft gibt. */
+function clientKacheln(tab) {
+  const ziel = $("kacheln-" + tab);
+  leeren(ziel);
 
-  /* ---- Kennzahlen Geräte ---- */
-  const zielG = $("kacheln-geraete");
-  leeren(zielG);
-
-  const imEinsatz = aktiveGeraete();
-  const archiviert = geraete.length - imEinsatz.length;
+  const titel = TAB[tab].titel;
+  const alleZeilen = zeilenVon(tab);
+  const imEinsatz = aktiveClients(tab);
+  const archiviert = alleZeilen.length - imEinsatz.length;
   const online = zaehle(imEinsatz, z => z.__online);
   const ohneSccm = zaehle(imEinsatz, z => !z.__inSccm);
   const ueberfaellig = zaehle(imEinsatz, z => z.__ersatzStatus === "ueberfaellig");
   const ohneJahr = zaehle(imEinsatz, z => !String(z.Beschaffungsjahr || "").trim());
-  const ohneInhaber = zaehle(imEinsatz, z => !z.__inhaber);
 
-  /* Ein Sprung in die Geräteliste mit einer Facette blendet die
-     archivierten weiter aus — genau wie die Kachel sie nicht mitzählt. */
-  const kachelnG = [
-    [imEinsatz.length, "Geräte im Einsatz",  null,
+  /* Ein Sprung in die Liste mit einer Facette blendet die archivierten
+     weiter aus — genau wie die Kachel sie nicht mitzählt. */
+  const kacheln = [
+    [imEinsatz.length, "im Einsatz", null,
       archiviert ? "ohne " + archiviert + " archivierte" : "keine archivierten",
-      () => springeMitFilter("geraete", function () { })],
+      () => springeMitFilter(tab, function () { })],
     [online, "gerade online", online ? "erfolg" : null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "SCCM_Online", "Ja"))],
+      () => springeMitFilter(tab, z => facetteSetzen(z, "SCCM_Online", "Ja"))],
     [ohneSccm, "nicht in SCCM", ohneSccm ? "warnung" : null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "SCCM_Found", "Nein"))],
+      () => springeMitFilter(tab, z => facetteSetzen(z, "SCCM_Found", "Nein"))],
     [ueberfaellig, "Ersatz überfällig", ueberfaellig ? "gefahr" : null,
       "Ersatz geplant vor " + Modell.gjAktuell(),
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig))],
+      () => springeMitFilter(tab, z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig))],
     [ohneJahr, "ohne Beschaffungsjahr", ohneJahr ? "warnung" : null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.unbekannt))],
-    [ohneInhaber, "ohne Inhaber", ohneInhaber ? "warnung" : null, null,
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__hatInhaber", "Nein"))],
-    [archiviert, "archiviert", null, "in der Liste ausgeblendet",
-      () => springeMitFilter("geraete", z => facetteSetzen(z, "__statusText", ARCHIVIERT))]
+      () => springeMitFilter(tab, z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.unbekannt))]
   ];
-  kachelnEinordnen(zielG, "Geräte", kachelnG);
+  if (TAB[tab].mitInhaber) {
+    const ohneInhaber = zaehle(imEinsatz, z => !z.__inhaber);
+    kacheln.push([ohneInhaber, "ohne Inhaber", ohneInhaber ? "warnung" : null, null,
+      () => springeMitFilter(tab, z => facetteSetzen(z, "__hatInhaber", "Nein"))]);
+  }
+  kacheln.push([archiviert, "archiviert", null, "in der Liste ausgeblendet",
+    () => springeMitFilter(tab, z => facetteSetzen(z, "__statusText", ARCHIVIERT))]);
+
+  kachelnEinordnen(ziel, titel, kacheln);
+
+  /* Fehlt die EDU-Liste noch, steht hier statt lauter Nullen der Weg dahin. */
+  if (tab === "edu" && listenHinweis.edu && !alleZeilen.length) {
+    ziel.appendChild(el("p", "hinweis", listenHinweis.edu));
+  }
+}
+
+function zeichneUebersicht() {
+  leeren($("kacheln-handlungsbedarf"));
+
+  /* ---- Kennzahlen der beiden Client-Listen ---- */
+  clientKacheln("admin");
+  clientKacheln("edu");
 
   /* ---- Kennzahlen Benutzer ---- */
   const zielB = $("kacheln-benutzer");
@@ -1585,7 +1664,7 @@ function zeichneUebersicht() {
     [inaktiv, "AD-Konto deaktiviert", inaktiv ? "gefahr" : null, null,
       () => springeMitFilter("benutzer", z => facetteSetzen(z, "ADAktiviert", "Nein"))],
     [abweichung, "Primärgerät weicht ab", abweichung ? "warnung" : null,
-      "SCCM-Primärgerät ≠ Gerät der Person", null]
+      "SCCM-Primärgerät ≠ ADMIN-Client der Person", null]
   ];
   kachelnEinordnen(zielB, "Benutzer", kachelnB);
 
@@ -1623,27 +1702,30 @@ function zeichneUebersicht() {
       })]
   ];
   kachelnEinordnen(zielT, "Telefonnummern", kachelnT);
-  if (telefonHinweis && !telefone.length) {
-    zielT.appendChild(el("p", "hinweis", telefonHinweis));
+  if (listenHinweis.telefon && !telefone.length) {
+    zielT.appendChild(el("p", "hinweis", listenHinweis.telefon));
   }
 
   $("handlungsbedarf-leer").hidden = $("kacheln-handlungsbedarf").children.length > 0;
 
-  zeichneZeitstrahl();
+  for (const tab of CLIENT_TABELLEN) zeichneZeitstrahl(tab);
   zeichneVerteilungen();
 }
 
 /* ---------- Ersatzplanung als Zeitstrahl ---------- */
 
-function zeichneZeitstrahl() {
-  const ziel = $("zeitstrahl");
-  const legende = $("zeitstrahl-legende");
+/* Je Client-Liste ein Zeitstrahl. Zwei Listen in einer Achse wären zwar
+   kompakter, aber ein Klick auf eine Säule müsste dann in zwei Tabellen
+   zugleich springen — darum lieber zwei ehrliche Achsen. */
+function zeichneZeitstrahl(tab) {
+  const ziel = $("zeitstrahl-" + tab);
+  const legende = $("zeitstrahl-legende-" + tab);
   leeren(ziel);
   leeren(legende);
 
-  /* Geplant wird nur für Geräte, die im Einsatz sind: ein archiviertes
+  /* Geplant wird nur für Clients, die im Einsatz sind: ein archiviertes
      Gerät braucht keinen Ersatz mehr. */
-  const planbar = aktiveGeraete();
+  const planbar = aktiveClients(tab);
 
   const heute = Modell.gjAktuell();
   let von = heute, bis = heute;
@@ -1697,7 +1779,7 @@ function zeichneZeitstrahl() {
       if (anzahl) {
         s.type = "button";
         s.addEventListener("click", function () {
-          springeMitFilter("geraete", z => facetteSetzen(z, schluessel, jahr));
+          springeMitFilter(tab, z => facetteSetzen(z, schluessel, jahr));
         });
       }
       s.style.height = Math.max(3, Math.round(anzahl / hoechste * 84)) + "px";
@@ -1783,14 +1865,17 @@ function zeichneVerteilungen() {
   const ziel = $("verteilungen");
   leeren(ziel);
 
-  ziel.appendChild(verteilungsKarte("Geräte nach Modell", verteilung("geraete", "SCCM_Model"),
-    w => springeMitFilter("geraete", z => facetteSetzen(z, "SCCM_Model", w))));
+  function karteFuer(tab, spaltenName, titel) {
+    return verteilungsKarte(TAB[tab].titel + " nach " + titel,
+      verteilung(tab, spaltenName),
+      w => springeMitFilter(tab, z => facetteSetzen(z, spaltenName, w)));
+  }
 
-  ziel.appendChild(verteilungsKarte("Geräte nach OS-Version", verteilung("geraete", "SCCM_OSVersion"),
-    w => springeMitFilter("geraete", z => facetteSetzen(z, "SCCM_OSVersion", w))));
-
-  ziel.appendChild(verteilungsKarte("Geräte nach Gebäude / Stock", verteilung("geraete", "GebaeudeStock"),
-    w => springeMitFilter("geraete", z => facetteSetzen(z, "GebaeudeStock", w))));
+  ziel.appendChild(karteFuer("admin", "SCCM_Model", "Modell"));
+  ziel.appendChild(karteFuer("admin", "SCCM_OSVersion", "OS-Version"));
+  ziel.appendChild(karteFuer("edu", "SCCM_Model", "Modell"));
+  ziel.appendChild(karteFuer("edu", "SCCM_OSVersion", "OS-Version"));
+  ziel.appendChild(karteFuer("admin", "GebaeudeStock", "Gebäude / Stock"));
 
   ziel.appendChild(verteilungsKarte("Benutzer nach Abteilung", verteilung("benutzer", "Abteilung"),
     w => springeMitFilter("benutzer", z => facetteSetzen(z, "Abteilung", w))));
@@ -1806,7 +1891,6 @@ function zeichneSoftware() {
   leeren(ziel);
 
   const suche = zustand.software.suche.trim().toLowerCase();
-  const kategorien = (programme && programme.kategorien) || [];
   let gezeigt = 0;
 
   /* Zählen: je Programm die Benutzer mit Stufe 1 und mit Stufe 2. */
@@ -1821,10 +1905,20 @@ function zeichneSoftware() {
     }
   }
 
-  const reihenfolge = kategorien.slice();
-  for (const p of programmSpalten) if (reihenfolge.indexOf(p.g) === -1) reihenfolge.push(p.g);
+  /* Fehlt die Liste «Software» noch, sagt die Ansicht, was zu tun ist —
+     ohne sie gibt es weder Programme noch Berechtigungen. */
+  if (listenHinweis.software && !software.length) {
+    const leer = el("div", "leerzustand");
+    anhaengen(leer, [
+      el("p", "leer-titel", "Die Liste «Software» fehlt"),
+      el("p", "leer-text", listenHinweis.software)
+    ]);
+    ziel.appendChild(leer);
+    $("software-anzahl").textContent = "";
+    return;
+  }
 
-  for (const kategorie of reihenfolge) {
+  for (const kategorie of Modell.programmKategorien(programmSpalten)) {
     const spalten = programmSpalten.filter(function (p) {
       if (p.g !== kategorie) return false;
       if (!suche) return true;
@@ -1840,32 +1934,36 @@ function zeichneSoftware() {
 
     for (const p of spalten) {
       const e = zaehler.get(p.i) || { eins: 0, zwei: 0 };
-      const karte = el("button", "sw-karte");
-      karte.type = "button";
-      karte.title = "Benutzer mit dieser Berechtigung anzeigen";
-      karte.addEventListener("click", function () {
+
+      /* Die Karte ist keine Schaltfläche mehr, sondern trägt zwei: den
+         Namen (öffnet das Softwarefenster zum Bearbeiten) und die Zahlen
+         (zeigen die berechtigten Benutzer). Eine Schaltfläche in einer
+         Schaltfläche wäre ungültiges HTML. */
+      const karte = el("div", "sw-karte");
+
+      const kopf = el("div", "sw-kopf");
+      const name = el("a", "sw-name name-link", p.d);
+      name.href = softwareUrl(p.zeilenId);
+      name.title = p.d + "  (" + p.i + ") — Programm bearbeiten";
+      kopf.appendChild(name);
+
+      const zahlen = el("button", "sw-zahlen");
+      zahlen.type = "button";
+      zahlen.title = "Benutzer mit dieser Berechtigung anzeigen";
+      zahlen.addEventListener("click", function () {
         springeMitFilter("benutzer", function (z) {
           z.programm = p.i;
           z.programmStufe = "";
         });
       });
-
-      const kopf = el("div", "sw-kopf");
-      const name = el("div", "sw-name", p.d);
-      name.title = p.d + "  (" + p.i + ")";
-      kopf.appendChild(name);
-
-      const zahlen = el("div", "sw-zahlen");
-      const z1 = el("div", "sw-zahl");
+      const z1 = el("span", "sw-zahl");
       z1.appendChild(el("b", null, e.eins));
       z1.appendChild(el("span", "t-leise", "manuell"));
-      z1.title = e.eins + " Benutzer mit Stufe 1 (manuell aktiviert)";
-      const z2 = el("div", "sw-zahl");
+      const z2 = el("span", "sw-zahl");
       // Grün nur, wenn es tatsächlich Berechtigungen aus dem AD gibt —
       // eine farbige Null hätte keine Aussage.
       z2.appendChild(el("b", e.zwei ? "t-erfolg" : null, e.zwei));
       z2.appendChild(el("span", "t-leise", "aus AD"));
-      z2.title = e.zwei + " Benutzer mit Stufe 2 (durch AD-Gruppe)";
       anhaengen(zahlen, [z1, z2]);
       kopf.appendChild(zahlen);
       karte.appendChild(kopf);
@@ -1878,10 +1976,7 @@ function zeichneSoftware() {
         karte.appendChild(el("p", "hinweis", "Keine AD-Gruppe hinterlegt."));
       }
 
-      if (p.vorschlaege && p.vorschlaege.length) {
-        karte.appendChild(el("p", "sw-vorschlaege",
-          "Vorschlag: " + p.vorschlaege.join(", ")));
-      }
+      if (p.bemerkung) karte.appendChild(el("p", "sw-bemerkung", p.bemerkung));
 
       gitter.appendChild(karte);
       gezeigt++;
@@ -1893,9 +1988,10 @@ function zeichneSoftware() {
   if (!gezeigt) {
     const leer = el("div", "leerzustand");
     anhaengen(leer, [
-      el("p", "leer-titel", "Kein Programm gefunden"),
-      el("p", "leer-text", "Die Suche «" + suche + "» passt auf keinen Eintrag "
-        + "in programme.json.")
+      el("p", "leer-titel", programmSpalten.length ? "Kein Programm gefunden" : "Noch kein Programm erfasst"),
+      el("p", "leer-text", programmSpalten.length
+        ? "Die Suche «" + suche + "» passt auf keinen Eintrag in der Liste «Software»."
+        : "Mit «Neue Software» das erste Programm erfassen.")
     ]);
     ziel.appendChild(leer);
   }
@@ -1910,8 +2006,12 @@ function zeichneSoftware() {
    7. Detailfenster und Rundfunkkanal
    ================================================================== */
 
-function geraetUrl(id) {
-  return "geraet.html?id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
+/* Das Clientfenster bedient beide Listen; welche gemeint ist, steht als
+   «liste» in der Adresse. Ohne den Parameter würde eine Listen-ID aus der
+   einen Liste in der anderen gesucht — und dort nicht gefunden. */
+function clientUrl(tab, id) {
+  return "client.html?liste=" + encodeURIComponent(tab)
+    + "&id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
 }
 
 function benutzerUrl(id) {
@@ -1922,10 +2022,14 @@ function telefonUrl(id) {
   return "telefon.html?id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
 }
 
+function softwareUrl(id) {
+  return "software.html?id=" + encodeURIComponent(id) + (mockModus ? "&mock=1" : "");
+}
+
 function detailUrl(tab, id) {
   if (tab === "benutzer") return benutzerUrl(id);
   if (tab === "telefone") return telefonUrl(id);
-  return geraetUrl(id);
+  return clientUrl(tab, id);
 }
 
 /* Detailseiten öffnen im selben Tab; die Zurück-Taste führt zur Liste mit
@@ -1938,12 +2042,17 @@ function detailOeffnen(tab, id, neuerTab) {
   else location.href = detailUrl(tab, id);
 }
 
-function neuesGeraetOeffnen() {
-  location.href = "geraet.html?neu=1" + (mockModus ? "&mock=1" : "");
+function neuenClientOeffnen(tab) {
+  location.href = "client.html?liste=" + encodeURIComponent(tab) + "&neu=1"
+    + (mockModus ? "&mock=1" : "");
 }
 
 function neueTelefonnummerOeffnen() {
   location.href = "telefon.html?neu=1" + (mockModus ? "&mock=1" : "");
+}
+
+function neueSoftwareOeffnen() {
+  location.href = "software.html?neu=1" + (mockModus ? "&mock=1" : "");
 }
 
 let hinweisZeitgeber = null;
@@ -2009,7 +2118,8 @@ function autoNachladenStarten() {
    nächsten automatischen Takt. */
 const MELDUNGEN = ["zeile-geaendert", "zeile-neu", "zeile-geloescht",
                    "benutzer-geaendert", "benutzer-neu", "benutzer-geloescht",
-                   "telefon-geaendert", "telefon-neu", "telefon-geloescht"];
+                   "telefon-geaendert", "telefon-neu", "telefon-geloescht",
+                   "software-geaendert", "software-neu", "software-geloescht"];
 
 function kanalVerbinden() {
   if (!window.BroadcastChannel) return;
@@ -2029,11 +2139,10 @@ function kanalVerbinden() {
    Zeichnen der gewählten Ansicht
    ================================================================== */
 
-/* Den Archiv-Schalter der Geräte-Werkzeugleiste nachführen. */
 /* Der Archiv-Schalter sitzt im Filter-Panel; hier ist nichts mehr
    nachzuführen ausser dem Panel selbst, wenn es offen ist. */
-function archivAnwenden() {
-  if (!$("geraete-filterleiste").hidden) zeichneFilterleiste("geraete");
+function archivAnwenden(tab) {
+  if (!$(tab + "-filterleiste").hidden) zeichneFilterleiste(tab);
 }
 
 /* «Kompakt» gilt für alle Listen gleich und sitzt im Spalten-Panel. */
@@ -2067,8 +2176,8 @@ function ansichtWechseln(name) {
 
 /* Tab-Titel und Reiter-Beschriftung je Ansicht. */
 const ANSICHT_TITEL = {
-  uebersicht: "Übersicht", geraete: "Geräte", benutzer: "Benutzer",
-  telefone: "Telefonnummern", software: "Software"
+  uebersicht: "Übersicht", admin: "ADMIN-Clients", edu: "EDU-Clients",
+  benutzer: "Benutzer", telefone: "Telefonnummern", software: "Software"
 };
 
 function zeichneAnsicht() {
@@ -2078,7 +2187,7 @@ function zeichneAnsicht() {
     k.classList.toggle("aktiv", aktiv);
     if (aktiv) k.setAttribute("aria-current", "page"); else k.removeAttribute("aria-current");
   }
-  document.title = (ANSICHT_TITEL[zustand.ansicht] || "Übersicht") + " — Computer Inventar";
+  document.title = (ANSICHT_TITEL[zustand.ansicht] || "Übersicht") + " — ICT-Inventar";
 
   if (zustand.ansicht === "uebersicht") zeichneUebersicht();
 
@@ -2086,7 +2195,7 @@ function zeichneAnsicht() {
     if (zustand.ansicht !== tab) continue;
     $(tab + "-suche").value = zustand[tab].suche;
     dichteAnwenden(tab);
-    if (tab === "geraete") archivAnwenden();
+    if (istClientTab(tab)) archivAnwenden(tab);
     zeichneChips(tab);
     zeichneTabelle(tab);
     if (!$(tab + "-filterleiste").hidden) zeichneFilterleiste(tab);
@@ -2106,7 +2215,7 @@ function zeichneAnsicht() {
    ================================================================== */
 
 function standAnzeigen() {
-  const letzterSync = geraete.reduce(function (max, z) {
+  const letzterSync = adminClients.concat(eduClients).reduce(function (max, z) {
     const d = Hilfe.datum(z.SCCM_LastSync);
     return d && (!max || d > max) ? d : max;
   }, null);
@@ -2123,8 +2232,8 @@ function mockBandZeigen() {
   const band = $("mock-band");
   band.hidden = false;
   band.appendChild(document.createTextNode(
-    "Vorführmodus (?mock=1): alle Personen, Geräte und Zahlen auf dieser Seite "
-    + "sind erfunden. Es besteht keine Verbindung zu SharePoint."));
+    "Vorführmodus (?mock=1): alle Personen, Clients, Programme und Zahlen auf "
+    + "dieser Seite sind erfunden. Es besteht keine Verbindung zu SharePoint."));
   band.appendChild(knopf("Vorführ-Änderungen zurücksetzen", "knopf-leise", function () {
     if (!window.confirm("Alle im Vorführmodus gemachten Änderungen verwerfen?")) return;
     Mock.zuruecksetzen();
@@ -2221,12 +2330,20 @@ function ereignisseVerbinden() {
     }, 150);
   });
 
-  knopfSinnbild("knopf-neu", "plus");
+  for (const tab of CLIENT_TABELLEN) {
+    const k = $(tab + "-knopf-neu");
+    knopfSinnbild(tab + "-knopf-neu", "plus");
+    k.title = "Einen neuen " + (tab === "edu" ? "EDU-Client" : "ADMIN-Client")
+      + " in einem eigenen Fenster erfassen";
+    k.addEventListener("click", function () { neuenClientOeffnen(tab); });
+  }
   knopfSinnbild("knopf-neu-telefon", "plus");
+  knopfSinnbild("knopf-neu-software", "plus");
   knopfSinnbild("knopf-abmelden", "abmelden");
-  $("knopf-neu").title = "Ein neues Gerät in einem eigenen Fenster erfassen";
   $("knopf-neu-telefon").title = "Eine neue Telefonnummer in einem eigenen Fenster erfassen";
   $("knopf-neu-telefon").addEventListener("click", neueTelefonnummerOeffnen);
+  $("knopf-neu-software").title = "Ein neues Programm in einem eigenen Fenster erfassen";
+  $("knopf-neu-software").addEventListener("click", neueSoftwareOeffnen);
 
   for (const k of document.querySelectorAll(".reiter-knopf")) {
     k.addEventListener("click", function () {
@@ -2242,8 +2359,6 @@ function ereignisseVerbinden() {
     ansichtWechseln("uebersicht");
   });
 
-  $("knopf-neu").addEventListener("click", neuesGeraetOeffnen);
-
   $("knopf-abmelden").addEventListener("click", function () { Auth.abmelden(); });
   $("knopf-nochmal").addEventListener("click", function () { location.reload(); });
 
@@ -2257,7 +2372,7 @@ function ereignisseVerbinden() {
       e.preventDefault();
       let tab = zustand.ansicht;
       if (TABELLEN.indexOf(tab) === -1 && tab !== "software") {
-        tab = "geraete";
+        tab = "admin";
         ansichtWechseln(tab);
       }
       const feld = $(tab + "-suche");
@@ -2276,7 +2391,8 @@ function ereignisseVerbinden() {
     if (location.hash === eigenerHash) { eigenerHash = null; return; }
     eigenerHash = null;
     hashLesen();
-    if (!geraete.length && !benutzer.length && !telefone.length) return;
+    if (!adminClients.length && !eduClients.length && !benutzer.length
+        && !telefone.length) return;
     spaltenPruefen();
     alleNeuBerechnen();
     zeichneAnsicht();

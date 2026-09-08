@@ -6,7 +6,7 @@
         "group":  "Stammdaten",
         "source":  "manuell",
         "inDefaultView":  true,
-        "description":  "Gerätename in Grossbuchstaben, eindeutig; Schlüssel für den SCCM-Abgleich"
+        "description":  "Clientname in Grossbuchstaben; Schlüssel für den SCCM-Abgleich (Namensfallback, sonst zählt die Seriennummer)"
     },
     {
         "internal":  "GebaeudeStock",

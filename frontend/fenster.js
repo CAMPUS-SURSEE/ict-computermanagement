@@ -5,7 +5,7 @@
    Bereichsnavigation, Lade- und Fehlerzustand, Speicherleiste, Toast,
    Dialog, Vorführ-Band, automatisches Nachladen, Tastatur (Ctrl+S, Esc)
    und der Schutz vor dem Verlassen mit ungespeicherten Änderungen. Früher
-   stand das dreimal in geraet.js, benutzer.js und telefon.js — mit kleinen
+   stand das dreimal in client.js, benutzer.js und telefon.js — mit kleinen
    Abweichungen, die niemand wollte. Jetzt steht es einmal hier.
 
    Was hier NICHT steht: der Entwurf (entwurf, zeile, neuModus …), die

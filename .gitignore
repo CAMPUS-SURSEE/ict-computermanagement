@@ -1,5 +1,15 @@
-# Konfiguration mit echten IDs, Logs und Datenexporte bleiben lokal
-code/server/Sync-Inventar.config.json
+# Die echte Sync-Konfiguration enthält Geheimnisse: ClientId der Entra-App und den
+# Thumbprint des Anmeldezertifikats. Sie gehört nie nach GitHub – im Repository steht
+# nur Sync-Inventar.config.example.json als Vorlage.
+#
+# Bewusst ohne Pfad und mit Stern: die Datei ist damit auch dann ignoriert, wenn sie
+# jemand woanders ablegt oder als Sync-Inventar.config.alt.json daneben sichert.
+# Die Ausnahme am Schluss holt genau die Vorlage wieder herein.
+Sync-Inventar.config*.json
+!Sync-Inventar.config.example.json
+
+# Logdateien der Skripte (Sync, Spalten ergänzen, Migrationen)
 *.log
-programme.sicherung.*.json
+
+# Datenexporte und Sicherungen der Migrationsskripte
 lokal

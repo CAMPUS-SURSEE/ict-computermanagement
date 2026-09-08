@@ -1,26 +1,27 @@
-/* graph.js — Daten für «Computer Inventar».
+/* graph.js — Daten für das ICT-Inventar.
 
    Drei Teile:
      1. Hilfe   — Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
-     2. Daten   — Lesen und Schreiben der drei SharePoint-Listen und der
-                  Datei programme.json über Microsoft Graph.
+     2. Daten   — Lesen und Schreiben der fünf SharePoint-Listen über Microsoft Graph.
      3. Mock    — Fantasie-Datensatz für den Modus ?mock=1.
 
    Die Berechtigung ist delegiert (Sites.ReadWrite.All): das Token kann genau
    das, was die angemeldete Person in SharePoint ohnehin darf.
 
    Öffentliche Schnittstelle (auch im Vorführmodus identisch):
-     await Daten.computer(fortschritt)     → Array flacher Zeilen
+     await Daten.clients(liste, fortschritt) → Array flacher Zeilen ("admin" | "edu")
      await Daten.benutzer(fortschritt)     → Array flacher Zeilen
      await Daten.telefone(fortschritt)     → Array flacher Zeilen (mit __etag)
-     await Daten.programme()               → Objekt aus programme.json
+     await Daten.software(fortschritt)     → Array flacher Zeilen der Liste «Software»
      await Daten.zeile(liste, id)          → eine Zeile
      await Daten.speichern(liste, id, f)   → geänderte Zeile
      await Daten.anlegen(liste, felder)    → neue Zeile
      await Daten.loeschen(liste, id)       → true
-   «liste» ist "computer", "benutzer" oder "telefon". «fortschritt» ist eine
-   Rückrufe-Funktion, die nach jeder geladenen Seite die bisherige Anzahl
-   bekommt.
+     await Daten.programmSpalteAnlegen(id, name) → legt die Spalte eines neuen
+                                             Programms in der Benutzer-Liste an
+   «liste» ist "admin", "edu", "benutzer", "telefon" oder "software".
+   «fortschritt» ist eine Rückrufe-Funktion, die nach jeder geladenen Seite die
+   bisherige Anzahl bekommt.
 
    Setzt konfig.js, spalten.js und auth.js voraus. */
 
@@ -141,7 +142,10 @@ const Daten = (function () {
   const ABFRAGE = new URLSearchParams(location.search);
   const mockModus = ABFRAGE.get("mock") === "1";
 
-  const LISTEN_TITEL = { computer: "Computer", benutzer: "Benutzer", telefon: "Telefonnummern" };
+  const LISTEN_TITEL = {
+    admin: "ADMIN-Clients", edu: "EDU-Clients", benutzer: "Benutzer",
+    telefon: "Telefonnummern", software: "Software"
+  };
 
   function listenPfad(liste) {
     if (!KONFIG.listeBereit(liste)) {
@@ -232,8 +236,8 @@ const Daten = (function () {
   }
 
   /* Alle Zeilen einer Liste, inklusive Folgeseiten.
-     Bewusst ohne $select und ohne serverseitiges $filter: die Computer-Liste
-     hat rund 85 Spalten, die Benutzer-Liste wächst mit jedem Programm, und
+     Bewusst ohne $select und ohne serverseitiges $filter: die Client-Listen
+     haben rund 86 Spalten, die Benutzer-Liste wächst mit jedem Programm, und
      ein paar hundert Zeilen filtert der Browser mühelos selbst. */
   async function alleZeilen(liste, fortschritt) {
     if (mockModus) return Mock.zeilen(liste);
@@ -248,8 +252,10 @@ const Daten = (function () {
     return treffer;
   }
 
-  /** Alle Geräte. */
-  async function computer(fortschritt) { return alleZeilen("computer", fortschritt); }
+  /** Alle Clients einer der beiden Listen ("admin" | "edu"). */
+  async function clients(liste, fortschritt) {
+    return alleZeilen(liste === "edu" ? "edu" : "admin", fortschritt);
+  }
 
   /** Alle Benutzer. */
   async function benutzer(fortschritt) { return alleZeilen("benutzer", fortschritt); }
@@ -257,63 +263,44 @@ const Daten = (function () {
   /** Alle Telefonnummern. */
   async function telefone(fortschritt) { return alleZeilen("telefon", fortschritt); }
 
-  /* Verständliche Meldung, wenn programme.json nicht geladen werden kann. */
-  function programmFehler(ursache) {
-    const fehler = new Error(
-      "Die Datei " + KONFIG.programmeDateiPfad + " konnte nicht geladen werden. "
-      + "Microsoft Graph leitet für Dateien auf campussursee.sharepoint.com weiter. "
-      + "Diese Adresse muss in frontend/_headers unter «connect-src» stehen, sonst "
-      + "blockiert der Browser den Abruf. Ohne die Datei fehlen alle Berechtigungen. "
-      + "(" + ((ursache && ursache.message) || "unbekannter Fehler") + ")");
-    fehler.programme = true;
-    return fehler;
+  /** Alle Zeilen der Liste «Software» (eine je Programm). */
+  async function software(fortschritt) { return alleZeilen("software", fortschritt); }
+
+  /** Legt die Spalte eines neuen Programms in der Benutzer-Liste an.
+
+     Ein Programm ohne Spalte ist wirkungslos: die Berechtigungsstufe steht
+     je Person in einer eigenen Textspalte der Benutzer-Liste, deren interner
+     Name die Programm-Id ist. Deshalb legt das Softwarefenster die Spalte
+     gleich beim Erfassen an — sonst müsste jemand von Hand
+     Ergaenze-Spalten.ps1 nachschieben.
+
+     Der Sync legt weiterhin nie eine Spalte an; das hier tut ein Mensch mit
+     seinen eigenen Rechten (delegiert Sites.ReadWrite.All).
+
+     Gibt es die Spalte schon, ist das kein Fehler — dann war sie von einem
+     früheren Versuch übrig. */
+  async function programmSpalteAnlegen(id, name) {
+    if (mockModus) return Mock.programmSpalteAnlegen(id, name);
+    const pfad = listenPfad("benutzer") + "/columns";
+    const was = "die Spalte «" + id + "» der Liste «Benutzer»";
+    const vorhanden = await anfrage(pfad + "?$select=id,name", { was: was });
+    for (const c of (vorhanden.value || [])) {
+      if (String(c.name) === String(id)) return false;
+    }
+    await anfrage(pfad, {
+      methode: "POST", was: was,
+      rumpf: {
+        name: id,
+        displayName: name || id,
+        description: "Berechtigungsstufe: 0 = aus, 1 = manuell aktiviert, "
+          + "2 = durch AD-Gruppe aktiviert",
+        text: { allowMultipleLines: false, maxLength: 8 }
+      }
+    });
+    return true;
   }
 
-  /** Inhalt von programme.json aus der Dokumentbibliothek der Site.
-
-     Graph liefert Dateiinhalte nicht selbst aus: der Aufruf von «:/content»
-     endet in einer Weiterleitung auf campussursee.sharepoint.com. Diese Adresse
-     muss in frontend/_headers unter connect-src stehen, sonst bricht der Browser
-     mit «Failed to fetch» ab. Scheitert der Weg trotzdem (etwa weil der
-     Authorization-Kopf bei der Weiterleitung verloren geht), wird die von Graph
-     gemeldete Download-Adresse ohne Kopfzeilen nachgeladen. */
-  async function programme() {
-    if (mockModus) return Mock.programme();
-    const wurzel = "/sites/" + KONFIG.siteId + "/drive/root:/"
-      + KONFIG.programmeDateiPfad.split("/").map(encodeURIComponent).join("/");
-    const was = "die Datei " + KONFIG.programmeDateiPfad;
-
-    let inhalt = null;
-    try {
-      inhalt = await anfrage(wurzel + ":/content", { was: was });
-    } catch (e) {
-      if (e && e.status !== undefined && e.status !== 0) throw e;
-      // Netzwerk- oder Richtlinienfehler: über die Download-Adresse versuchen.
-      let beschreibung;
-      try {
-        beschreibung = await anfrage(wurzel, { was: was });
-      } catch (e2) {
-        throw programmFehler(e2);
-      }
-      const adresse = beschreibung && beschreibung["@microsoft.graph.downloadUrl"];
-      if (!adresse) throw programmFehler(e);
-      try {
-        const antwort = await fetch(adresse);
-        if (!antwort.ok) throw new Error("HTTP " + antwort.status);
-        inhalt = await antwort.json();
-      } catch (e3) {
-        throw programmFehler(e3);
-      }
-    }
-
-    if (!inhalt || !Array.isArray(inhalt.programme)) {
-      throw new Error("Die Datei " + KONFIG.programmeDateiPfad
-        + " ist leer oder hat nicht die erwartete Form (Schlüssel «programme»).");
-    }
-    return inhalt;
-  }
-
-  /** Eine einzelne Zeile, flach wie bei computer()/benutzer(). */
+  /** Eine einzelne Zeile, flach wie bei clients()/benutzer(). */
   async function zeile(liste, id) {
     if (mockModus) return Mock.zeile(liste, id);
     const el = await anfrage(listenPfad(liste) + "/items/" + encodeURIComponent(id)
@@ -368,33 +355,17 @@ const Daten = (function () {
     return true;
   }
 
-  /* Ältere Schnittstelle für das Gerätefenster: eine Quelle mit immer
-     gleicher Signatur, fest auf die Computer-Liste. Neuer Code ruft besser
-     direkt Daten.computer() / Daten.speichern("computer", …) auf. */
-  function quelle(mock, liste) {
-    const l = liste || "computer";
-    return {
-      mock: !!mock || mockModus,
-      liste: l,
-      alleZeilen: function (fortschritt) { return alleZeilen(l, fortschritt); },
-      zeile: function (id) { return zeile(l, id); },
-      speichern: function (id, felder) { return speichern(l, id, felder); },
-      anlegen: function (felder) { return anlegen(l, felder); },
-      loeschen: function (id) { return loeschen(l, id); }
-    };
-  }
-
   return {
     mockModus: mockModus,
-    computer: computer,
+    clients: clients,
     benutzer: benutzer,
     telefone: telefone,
-    programme: programme,
+    software: software,
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,
     loeschen: loeschen,
-    quelle: quelle
+    programmSpalteAnlegen: programmSpalteAnlegen
   };
 })();
 
@@ -411,7 +382,8 @@ const Daten = (function () {
      - Benutzer, die Inhaber keines Geräts sind
      - Geräte ohne Inhaber
      - Geräte mit zwei Inhaber-Einträgen (die zu bereinigende Altlast)
-     - Programme mit Stufe 0, 1 und 2 sowie Vorschlägen
+     - Programme mit Stufe 0, 1 und 2, mit und ohne AD-Gruppe
+     - EDU-Clients, die bewusst keinen Inhaber haben
      - Geräte ohne Beschaffungsjahr und mit überfälligem Ersatz
 
    Mit ?mock=1&fehler=1 wirft jeder Ladevorgang einen Fehler. Damit lässt
@@ -477,7 +449,7 @@ const Mock = (function () {
   }
 
 
-  /* ---------- programme.json ---------- */
+  /* ---------- Liste «Software» ---------- */
 
   /* [id, Anzeigename] je Kategorie. Anzeigenamen wie in der bisherigen
      Spaltendefinition. */
@@ -559,25 +531,29 @@ const Mock = (function () {
     BpandaConsumer: ["Bpanda_Consumer"]
   };
 
-  function programme() {
-    fehlerPruefen();
+  /* Die Zeilen der Liste «Software»: je Programm eine. «Reihenfolge» in
+     Zehnerschritten, damit die Kategorien in derselben Folge erscheinen wie
+     in PROGRAMME_ROH und zwischen zwei Einträgen Platz zum Einschieben ist. */
+  function softwareZeilen() {
     const liste = [];
-    const kategorien = Object.keys(PROGRAMME_ROH);
-    for (const kategorie of kategorien) {
+    let nr = 0;
+    for (const kategorie of Object.keys(PROGRAMME_ROH)) {
       for (const [id, name] of PROGRAMME_ROH[kategorie]) {
-        liste.push({
-          id: id, name: name, kategorie: kategorie,
-          adGruppen: (AD_GRUPPEN[id] || []).slice(),
-          vorschlaege: (VORSCHLAEGE[id] || []).slice()
-        });
+        nr += 10;
+        const z = leereZeile(SPALTEN_SOFTWARE);
+        z.id = String(nr);
+        z.Title = id;
+        z.Name = name;
+        z.Kategorie = kategorie;
+        z.AdGruppen = (AD_GRUPPEN[id] || []).join("\n");
+        z.Reihenfolge = nr;
+        z.Bemerkung = (VORSCHLAEGE[id] || []).length
+          ? "Mögliche AD-Gruppe: " + VORSCHLAEGE[id].join(", ")
+          : "";
+        liste.push(z);
       }
     }
-    return {
-      version: 1,
-      aktualisiert: vorTagen(1, 6),
-      kategorien: kategorien,
-      programme: liste
-    };
+    return liste;
   }
 
   /* Alle Programm-IDs, für die leeren Benutzerzeilen. */
@@ -744,9 +720,13 @@ const Mock = (function () {
     return JSON.stringify(eintraege);
   }
 
-  function geraet(r, nummer) {
-    const z = leereZeile(SPALTEN_COMPUTER);
-    const name = "CAMPUS-9" + String(nummer).padStart(2, "0");
+  /* Ein Client. «praefix» entscheidet über den Namen und damit über die
+     Liste: «CAMPUS-9xx» gehört zu den ADMIN-Clients, «EDU-9xx» zu den
+     EDU-Clients. Die Zeilen sind sonst gleich gebaut — die beiden Listen
+     haben dieselben Spalten. */
+  function geraet(r, nummer, praefix) {
+    const z = leereZeile(SPALTEN_CLIENT);
+    const name = (praefix || "CAMPUS-") + "9" + String(nummer).padStart(2, "0");
 
     z.id = String(nummer);
     z.Title = name;
@@ -791,7 +771,7 @@ const Mock = (function () {
     z.SCCM_ResourceID = 16770000 + nummer;
     z.SCCM_SMSID = "GUID:00000000-0000-0000-0000-" + String(nummer).padStart(12, "0");
     z.SCCM_Domain = "SASADMIN";
-    z.SCCM_OU = "CN=" + name + ",OU=Computer,DC=sasadmin,DC=local";
+    z.SCCM_OU = "CN=" + name + ",OU=Clients,DC=sasadmin,DC=local";
     z.SCCM_ADSite = "Sursee";
     z.SCCM_ADCreated = vorTagen(400 + nummer * 3, 9);
     z.SCCM_ADLastLogon = vorTagen(aktivVorTagen, 7);
@@ -964,7 +944,7 @@ const Mock = (function () {
     return login ? DOMAENE + "\\" + login : "";
   }
 
-  function benutzerkontenAbgleichen(r, computer, benutzer) {
+  function benutzerkontenAbgleichen(r, clients, benutzer) {
     // Logins je Gerät, in der Reihenfolge der Benutzerliste.
     const nachGeraet = new Map();
     for (const b of benutzer) {
@@ -974,10 +954,10 @@ const Mock = (function () {
       nachGeraet.get(pc).push(b.Title);
     }
     const alleLogins = benutzer.map(b => b.Title);
-    const inSccm = computer.filter(z => Hilfe.istJa(z.SCCM_Found));
+    const inSccm = clients.filter(z => Hilfe.istJa(z.SCCM_Found));
 
     /* --- Geräteseite --- */
-    for (const z of computer) {
+    for (const z of clients) {
       if (!Hilfe.istJa(z.SCCM_Found)) continue;
       const logins = nachGeraet.get(String(z.Title || "").toLowerCase()) || [];
       const online = Hilfe.istJa(z.SCCM_Online);
@@ -1041,28 +1021,43 @@ const Mock = (function () {
     const r = wuerfel(20260902);
     const ids = programmIds();
 
-    const computer = [];
-    for (let i = 1; i <= 50; i++) computer.push(geraet(r, i));
+    const admin = [];
+    for (let i = 1; i <= 50; i++) admin.push(geraet(r, i, "CAMPUS-"));
+
+    /* Die EDU-Clients: Schulungsgeräte ohne Inhaber. Sie bekommen eigene
+       Listen-Ids ab 500, damit sich die beiden Listen im Vorführmodus nicht
+       ins Gehege kommen. */
+    const edu = [];
+    for (let i = 1; i <= 18; i++) {
+      const z = geraet(r, i, "EDU-");
+      z.id = String(500 + i);
+      edu.push(z);
+    }
 
     const benutzer = [];
     let nr = 1;
-    // Die ersten 42 Geräte bekommen ihren Inhaber.
-    for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, computer[i].Title, ids));
+    // Die ersten 42 ADMIN-Clients bekommen ihren Inhaber.
+    for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, admin[i].Title, ids));
     /* Zwei Altlasten: hier trägt eine zweite Person dasselbe Gerät. Ein
        Gerät hat genau einen Inhaber, darum zeigt das Frontend darauf den
        Fehler «Mehr als ein Inhaber» — ohne solche Zeilen wäre er im
        Vorführmodus nie zu sehen. */
-    for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, computer[i * 3].Title, ids));
+    for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, admin[i * 3].Title, ids));
     // Zwölf Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Inhaber.
     for (let i = 0; i < 12; i++) benutzer.push(benutzerZeile(r, nr++, "", ids));
 
-    // Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten.
-    benutzerkontenAbgleichen(r, computer, benutzer);
+    /* Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten. Die
+       EDU-Clients kommen mit: SCCM meldet auch dort Anmeldungen, nur die
+       Inhaberschaft gibt es bei ihnen bewusst nicht. */
+    benutzerkontenAbgleichen(r, admin.concat(edu), benutzer);
 
     // Die Telefonliste hängt an den Benutzern (Kurzwahl = 200 + Nummer).
     const telefon = telefone(r, benutzer);
 
-    zwischenspeicher = { computer: computer, benutzer: benutzer, telefon: telefon };
+    zwischenspeicher = {
+      admin: admin, edu: edu, benutzer: benutzer,
+      telefon: telefon, software: softwareZeilen()
+    };
     return zwischenspeicher;
   }
 
@@ -1073,23 +1068,24 @@ const Mock = (function () {
      etwas bewirkt und alle Fenster dasselbe sehen, landen Änderungen im
      localStorage, getrennt nach Liste:
 
-       { computer: { geaendert:{}, neu:[], geloescht:[] },
-         benutzer: { … }, telefon: { … } }
+       { admin: { geaendert:{}, neu:[], geloescht:[] },
+         edu: { … }, benutzer: { … }, telefon: { … }, software: { … } }
 
      Mock.zuruecksetzen() räumt alles wieder weg. */
 
-  const SCHLUESSEL = "computerinventar.mock.aenderungen.v2";
-  const LISTEN = ["computer", "benutzer", "telefon"];
+  const SCHLUESSEL = "ictinventar.mock.aenderungen.v3";
+  const LISTEN = ["admin", "edu", "benutzer", "telefon", "software"];
 
-  /* Listenname auf die drei bekannten bringen; Unbekanntes gilt als Computer. */
+  /* Listenname auf die fünf bekannten bringen; Unbekanntes gilt als ADMIN-Clients. */
   function listenName(liste) {
-    return LISTEN.indexOf(liste) > -1 ? liste : "computer";
+    return LISTEN.indexOf(liste) > -1 ? liste : "admin";
   }
 
   function spaltenVon(liste) {
     if (liste === "benutzer") return SPALTEN_BENUTZER;
     if (liste === "telefon") return SPALTEN_TELEFON;
-    return SPALTEN_COMPUTER;
+    if (liste === "software") return SPALTEN_SOFTWARE;
+    return SPALTEN_CLIENT;
   }
 
   // Ersatzspeicher, falls localStorage nicht zur Verfügung steht.
@@ -1208,16 +1204,22 @@ const Mock = (function () {
     return n;
   }
 
+  /* Im Vorführmodus gibt es keine SharePoint-Spalten – das Anlegen tut
+     nichts und meldet Erfolg, damit sich das Softwarefenster ganz normal
+     bedienen lässt. */
+  function programmSpalteAnlegen() { return true; }
+
   return {
     zeilen: zeilen,
-    computer: function () { return zeilen("computer"); },
+    clients: function (liste) { return zeilen(liste === "edu" ? "edu" : "admin"); },
     benutzer: function () { return zeilen("benutzer"); },
     telefone: function () { return zeilen("telefon"); },
-    programme: programme,
+    software: function () { return zeilen("software"); },
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,
     loeschen: loeschen,
+    programmSpalteAnlegen: programmSpalteAnlegen,
     zuruecksetzen: zuruecksetzen,
     anzahlAenderungen: anzahlAenderungen
   };

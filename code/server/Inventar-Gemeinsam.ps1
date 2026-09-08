@@ -162,6 +162,34 @@ function Get-Text {
 }
 
 # ---------------------------------------------------------------------------
+# 3a0) Client-Listen: ADMIN-Clients und EDU-Clients
+# ---------------------------------------------------------------------------
+# Es gibt zwei Client-Listen mit identischen Spalten. Welche für ein SCCM-Gerät zuständig ist,
+# entscheidet allein sein Name: alles, was mit «EDU» beginnt, gehört in die Liste «EDU-Clients»,
+# alles Übrige in «ADMIN-Clients». Diese eine Regel steht hier – und gespiegelt in
+# frontend/modell.js (clientListe). Beide Seiten müssen dasselbe rechnen.
+$script:EduPraefix = 'EDU'
+
+function Get-ClientListe {
+    <#
+      Zu welcher Client-Liste gehört dieser Gerätename?
+      Rückgabe: 'edu' für Namen, die mit EDU beginnen, sonst 'admin'.
+      Ein leerer Name gilt als 'admin' – er landet dort, wo alles Unbekannte hingehört.
+    #>
+    param([string]$Name)
+    $n = ([string]$Name).Trim()
+    if ($n -and $n.ToUpperInvariant().StartsWith($script:EduPraefix)) { return 'edu' }
+    return 'admin'
+}
+
+function Get-ClientListenTitel {
+    <# Anzeigename einer Client-Liste ('admin' | 'edu') für Log und Meldungen. #>
+    param([string]$Liste)
+    if ($Liste -eq 'edu') { return 'EDU-Clients' }
+    return 'ADMIN-Clients'
+}
+
+# ---------------------------------------------------------------------------
 # 3a) Seriennummern
 # ---------------------------------------------------------------------------
 # Werte, die zwar in SCCM/BIOS stehen, aber keine echte Seriennummer sind.
@@ -394,6 +422,47 @@ function Add-VerlaufEintraege {
     return $t
 }
 
+function Get-InventarKonfiguration {
+    <#
+      Die Konfiguration für ein Werkzeug aus code\: bevorzugt Sync-Inventar.config.json, sonst die
+      öffentlichen Werte aus frontend\konfig.js.
+
+      Die Werkzeuge (Ergaenze-Spalten, Entferne-Spalte, die Migrationsskripte) melden sich per
+      Device-Code an und brauchen darum weder Zertifikat noch ClientId des Syncs – nur Mandant,
+      Site und die Listen-Ids. Genau die stehen auch in konfig.js, öffentlich und aktuell. So
+      lassen sich die Werkzeuge von jedem Arbeitsplatz aus starten, ohne dass jemand die
+      Serverdatei kopiert (in der Zertifikat-Thumbprint und ClientId stehen).
+
+      $KonfigPfad ist Sync-Inventar.config.json; $FrontendPfad ist frontend\konfig.js.
+    #>
+    param([string]$KonfigPfad, [string]$FrontendPfad)
+    if ($KonfigPfad -and (Test-Path $KonfigPfad)) { return Read-JsonDatei $KonfigPfad }
+    if (-not $FrontendPfad -or -not (Test-Path $FrontendPfad)) {
+        throw "Weder $KonfigPfad noch $FrontendPfad gefunden."
+    }
+    $js = Get-Content $FrontendPfad -Raw -Encoding UTF8
+    $wert = {
+        param([string]$Name)
+        if ($js -match ('(?m)^\s*' + [regex]::Escape($Name) + '\s*:\s*"([^"]*)"')) { return $Matches[1] }
+        return ''
+    }
+    $cfg = [pscustomobject]@{
+        TenantId          = (& $wert 'mandantId')
+        SiteId            = (& $wert 'siteId')
+        SiteUrl           = ''
+        AdminClientListId = (& $wert 'adminClientListId')
+        EduClientListId   = (& $wert 'eduClientListId')
+        BenutzerListId    = (& $wert 'benutzerListId')
+        TelefonListId     = (& $wert 'telefonListId')
+        SoftwareListId    = (& $wert 'softwareListId')
+        LogPath           = $null
+    }
+    foreach ($n in 'TenantId', 'SiteId') {
+        if (-not $cfg.$n) { throw "In $FrontendPfad fehlt der Wert für $n." }
+    }
+    return $cfg
+}
+
 function Read-JsonDatei {
     <# Liest eine JSON-Datei als UTF-8 ein. #>
     param([string]$Pfad)
@@ -579,7 +648,7 @@ function Get-GraphAlle {
 # ---------------------------------------------------------------------------
 function ConvertTo-GraphSpalte {
     <#
-      Wandelt eine Spaltendefinition aus schema-computer.json / schema-benutzer.json in das
+      Wandelt eine Spaltendefinition aus schema-client.json / schema-benutzer.json in das
       columnDefinition-Format von Microsoft Graph. Die Titelspalte kommt hier nicht vor,
       sie wird nachträglich per PATCH umbenannt.
     #>
@@ -635,4 +704,62 @@ function New-ProgrammSpalte {
         description = 'Berechtigungsstufe: 0 = aus, 1 = manuell aktiviert, 2 = durch AD-Gruppe aktiviert'
         text        = @{ allowMultipleLines = $false; maxLength = 8 }
     }
+}
+
+# ---------------------------------------------------------------------------
+# 6) Software-Liste
+# ---------------------------------------------------------------------------
+function ConvertTo-Programm {
+    <#
+      Eine Zeile der SharePoint-Liste «Software» in ein Programm-Objekt umwandeln.
+        Title        -> id          (interner Spaltenname in der Benutzer-Liste)
+        Name         -> name        (Anzeigename; leer fällt auf die Id zurück)
+        Kategorie    -> kategorie   (leer wird «Programme»)
+        AdGruppen    -> adGruppen   (eine Gruppe je Zeile, leere Zeilen fallen weg)
+        Reihenfolge  -> reihenfolge (leer sortiert ans Ende)
+
+      Zeilen ohne Id sind unbrauchbar – der Aufrufer wirft sie weg.
+      Dieselbe Umrechnung steht in frontend/modell.js (programmSpalten).
+    #>
+    param($Felder)
+    $id = Get-Text $Felder 'Title'
+    if ($id -eq '') { return $null }
+    $name = Get-Text $Felder 'Name'
+    if ($name -eq '') { $name = $id }
+    $kategorie = Get-Text $Felder 'Kategorie'
+    if ($kategorie -eq '') { $kategorie = 'Programme' }
+    $gruppen = @()
+    foreach ($z in ((Get-Text $Felder 'AdGruppen') -split "`r?`n")) {
+        $g = ([string]$z).Trim()
+        if ($g -ne '' -and $gruppen -notcontains $g) { $gruppen += $g }
+    }
+    $reihenfolge = [double]::MaxValue
+    $r = Get-Feld $Felder 'Reihenfolge'
+    if ($null -ne $r -and "$r" -ne '') { try { $reihenfolge = [double]$r } catch { } }
+    return [pscustomobject]@{
+        id          = $id
+        name        = $name
+        kategorie   = $kategorie
+        adGruppen   = $gruppen
+        reihenfolge = $reihenfolge
+    }
+}
+
+function Sort-Programme {
+    <#
+      Reihenfolge der Programmliste: erst nach «Reihenfolge», bei Gleichstand nach Name.
+      Ohne Sortierung hinge die Anzeige an der Zufallsreihenfolge der Listenzeilen.
+    #>
+    param($Programme)
+    return @($Programme | Sort-Object -Property @{ Expression = 'reihenfolge' }, @{ Expression = 'name' })
+}
+
+function Test-ProgrammId {
+    <#
+      Taugt der Text als interner Spaltenname der Benutzer-Liste?
+      Erlaubt sind Buchstaben und Ziffern, beginnend mit einem Buchstaben, höchstens 30 Zeichen.
+      Dieselbe Regel prüft das Frontend, bevor es eine Spalte anlegt.
+    #>
+    param([string]$Id)
+    return [bool](([string]$Id) -match '^[A-Za-z][A-Za-z0-9]{0,29}$')
 }

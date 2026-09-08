@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Computer Inventar — Campus Sursee</title>
+<title>ICT-Inventar — Campus Sursee</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
 <!-- Roboto und Archivo (Wortmarke) von Google Fonts. Die Inhaltsrichtlinie in
      _headers erlaubt fonts.googleapis.com (Stil) und fonts.gstatic.com (Schriftdateien). -->
@@ -51,9 +51,13 @@
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z"/></svg>
       <span>Übersicht</span>
     </button>
-    <button type="button" class="reiter-knopf" data-ansicht="geraete">
+    <button type="button" class="reiter-knopf" data-ansicht="admin">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v10H4z"/><path d="M2 19h20"/></svg>
-      <span>Geräte</span>
+      <span>ADMIN-Clients</span>
+    </button>
+    <button type="button" class="reiter-knopf" data-ansicht="edu">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4L2 9l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+      <span>EDU-Clients</span>
     </button>
     <button type="button" class="reiter-knopf" data-ansicht="benutzer">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5"/></svg>
@@ -91,7 +95,7 @@
       <div class="bahn">
 
         <!-- Zuoberst, was Aufmerksamkeit braucht: alle Kennzahlen mit Warn-
-             oder Gefahrenton und einem Wert über null, aus allen drei Listen.
+             oder Gefahrenton und einem Wert über null, aus allen Listen.
              Ein Klick öffnet die passende Liste gefiltert. -->
         <section class="bereich">
           <h2 class="bereich-titel">Handlungsbedarf</h2>
@@ -100,8 +104,13 @@
         </section>
 
         <section class="bereich">
-          <h2 class="bereich-titel">Geräte</h2>
-          <div class="kacheln" id="kacheln-geraete"></div>
+          <h2 class="bereich-titel">ADMIN-Clients</h2>
+          <div class="kacheln" id="kacheln-admin"></div>
+        </section>
+
+        <section class="bereich">
+          <h2 class="bereich-titel">EDU-Clients</h2>
+          <div class="kacheln" id="kacheln-edu"></div>
         </section>
 
         <section class="bereich">
@@ -114,11 +123,19 @@
           <div class="kacheln" id="kacheln-telefone"></div>
         </section>
 
+        <!-- Ersatzplanung: je Client-Liste eine eigene Achse, damit ein Klick
+             auf eine Säule eindeutig in die passende Tabelle springt. -->
         <section class="bereich">
           <h2 class="bereich-titel">Ersatzplanung</h2>
           <div class="karte">
-            <div class="zeitstrahl" id="zeitstrahl"></div>
-            <div class="zeitstrahl-legende" id="zeitstrahl-legende"></div>
+            <div class="karte-kopf"><h3 class="karte-titel">ADMIN-Clients</h3></div>
+            <div class="zeitstrahl" id="zeitstrahl-admin"></div>
+            <div class="zeitstrahl-legende" id="zeitstrahl-legende-admin"></div>
+          </div>
+          <div class="karte">
+            <div class="karte-kopf"><h3 class="karte-titel">EDU-Clients</h3></div>
+            <div class="zeitstrahl" id="zeitstrahl-edu"></div>
+            <div class="zeitstrahl-legende" id="zeitstrahl-legende-edu"></div>
           </div>
         </section>
 
@@ -130,33 +147,63 @@
       </div>
     </main>
 
-    <!-- Geräte -->
-    <main class="inhalt-fest ansicht" id="ansicht-geraete" hidden>
-      <div class="werkzeug-bereich" id="geraete-werkzeuge">
+    <!-- ADMIN-Clients -->
+    <main class="inhalt-fest ansicht" id="ansicht-admin" hidden>
+      <div class="werkzeug-bereich" id="admin-werkzeuge">
         <div class="toolbar">
           <div class="suchfeld">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="geraete-suche" class="suche" placeholder="Geräte durchsuchen"
-                   autocomplete="off" aria-label="Geräte durchsuchen">
+            <input type="search" id="admin-suche" class="suche" placeholder="ADMIN-Clients durchsuchen"
+                   autocomplete="off" aria-label="ADMIN-Clients durchsuchen">
             <kbd class="kuerzel" aria-hidden="true">/</kbd>
           </div>
-          <button type="button" class="knopf" id="geraete-knopf-filter" aria-expanded="false">Filter</button>
-          <button type="button" class="knopf" id="geraete-knopf-spalten" aria-expanded="false">Spalten</button>
-          <button type="button" class="knopf" id="geraete-knopf-csv">CSV</button>
-          <span class="anzahl" id="geraete-anzahl"></span>
-          <button type="button" class="knopf knopf-primaer" id="knopf-neu">Neues Gerät</button>
+          <button type="button" class="knopf" id="admin-knopf-filter" aria-expanded="false">Filter</button>
+          <button type="button" class="knopf" id="admin-knopf-spalten" aria-expanded="false">Spalten</button>
+          <button type="button" class="knopf" id="admin-knopf-csv">CSV</button>
+          <span class="anzahl" id="admin-anzahl"></span>
+          <button type="button" class="knopf knopf-primaer" id="admin-knopf-neu">Neuer ADMIN-Client</button>
         </div>
-        <div class="chips" id="geraete-chips"></div>
-        <div class="panel" id="geraete-filterleiste" hidden></div>
-        <div class="panel" id="geraete-spaltenwahl" hidden></div>
+        <div class="chips" id="admin-chips"></div>
+        <div class="panel" id="admin-filterleiste" hidden></div>
+        <div class="panel" id="admin-spaltenwahl" hidden></div>
       </div>
 
-      <div class="tabelle-rahmen" id="geraete-rahmen">
-        <table class="tabelle" id="geraete-tabelle">
-          <thead id="geraete-kopf"></thead>
-          <tbody id="geraete-koerper"></tbody>
+      <div class="tabelle-rahmen" id="admin-rahmen">
+        <table class="tabelle" id="admin-tabelle">
+          <thead id="admin-kopf"></thead>
+          <tbody id="admin-koerper"></tbody>
         </table>
-        <p class="tabelle-leer" id="geraete-leer" hidden>Kein Gerät passt zu den aktuellen Filtern.</p>
+        <p class="tabelle-leer" id="admin-leer" hidden>Kein ADMIN-Client passt zu den aktuellen Filtern.</p>
+      </div>
+    </main>
+
+    <!-- EDU-Clients -->
+    <main class="inhalt-fest ansicht" id="ansicht-edu" hidden>
+      <div class="werkzeug-bereich" id="edu-werkzeuge">
+        <div class="toolbar">
+          <div class="suchfeld">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
+            <input type="search" id="edu-suche" class="suche" placeholder="EDU-Clients durchsuchen"
+                   autocomplete="off" aria-label="EDU-Clients durchsuchen">
+            <kbd class="kuerzel" aria-hidden="true">/</kbd>
+          </div>
+          <button type="button" class="knopf" id="edu-knopf-filter" aria-expanded="false">Filter</button>
+          <button type="button" class="knopf" id="edu-knopf-spalten" aria-expanded="false">Spalten</button>
+          <button type="button" class="knopf" id="edu-knopf-csv">CSV</button>
+          <span class="anzahl" id="edu-anzahl"></span>
+          <button type="button" class="knopf knopf-primaer" id="edu-knopf-neu">Neuer EDU-Client</button>
+        </div>
+        <div class="chips" id="edu-chips"></div>
+        <div class="panel" id="edu-filterleiste" hidden></div>
+        <div class="panel" id="edu-spaltenwahl" hidden></div>
+      </div>
+
+      <div class="tabelle-rahmen" id="edu-rahmen">
+        <table class="tabelle" id="edu-tabelle">
+          <thead id="edu-kopf"></thead>
+          <tbody id="edu-koerper"></tbody>
+        </table>
+        <p class="tabelle-leer" id="edu-leer" hidden>Kein EDU-Client passt zu den aktuellen Filtern.</p>
       </div>
     </main>
 
@@ -229,6 +276,7 @@
                    autocomplete="off" aria-label="Programm suchen">
           </div>
           <span class="anzahl" id="software-anzahl"></span>
+          <button type="button" class="knopf knopf-primaer" id="knopf-neu-software">Neue Software</button>
         </div>
         <div id="software-liste"></div>
       </div>

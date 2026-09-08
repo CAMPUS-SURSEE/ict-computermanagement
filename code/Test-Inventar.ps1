@@ -7,10 +7,11 @@
   dann vor ihrem Hauptteil zurück) und prüft:
    - Geschäftsjahr-Helfer,
    - Programm-Delta des AD-Syncs,
-   - Löschschutz (Benutzer) und Archivschutz (Computer),
+   - Löschschutz (Benutzer) und Archivschutz (Clients),
    - Verlauf-Helfer (JSON-Array in der Spalte «Verlauf»),
    - Seriennummern-Normalisierung und Platzhalter-Erkennung,
-   - Zuordnung SCCM-Gerät <-> Computer-Zeile (Seriennummer, Namensfallback, Umbenennung,
+   - Aufteilung ADMIN-/EDU-Clients und Zuordnung SCCM-Gerät <-> Client-Zeile
+     (Seriennummer, Namensfallback, Umbenennung,
      Archivieren/Reaktivieren),
    - Telefonnummern: Normalisierung, Kurzwahl, Abgleich mit dem AD,
    - Verhalten bei fehlenden Spalten,
@@ -179,12 +180,12 @@ Pruefe 'Zeilenserie: kein Fallback' ''    (Get-ZeilenSeriennummer ([pscustomobje
 Pruefe 'Zeilenserie: keine'         ''    (Get-ZeilenSeriennummer ([pscustomobject]@{ SCCM_SerialNumber = 'Default string' }))
 
 # ---------------------------------------------------------------------------
-Abschnitt 'Zuordnung SCCM <-> Computer-Liste'
+Abschnitt 'Zuordnung SCCM <-> Client-Liste'
 function Geraet($rid, $name, $sn, $akt) { [pscustomobject]@{ ResourceId = $rid; Name = $name; Seriennummer = $sn; Aktivitaet = $akt } }
 function Zeile($id, $titel, $sccmSn, $sn, $status) { [pscustomobject]@{ Id = $id; Title = $titel; SCCM_SerialNumber = $sccmSn; Seriennummer = $sn; Status = $status } }
 
 # a) Seriennummer schlägt Name
-$p = Get-ComputerZuordnung @((Geraet 1 'PC-NEU' 'SN-A' '2026-09-01')) @((Zeile 10 'PC-ALT' 'SN-A' '' 'Aktiv'), (Zeile 11 'PC-NEU' '' '' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC-NEU' 'SN-A' '2026-09-01')) @((Zeile 10 'PC-ALT' 'SN-A' '' 'Aktiv'), (Zeile 11 'PC-NEU' '' '' 'Aktiv'))
 Pruefe 'Treffer über Seriennummer'      '10' $p.Zuordnungen[0].ZeileId
 Pruefe 'Grund Seriennummer'             'Seriennummer' $p.Zuordnungen[0].Grund
 Pruefe 'Umbenennung erkannt'            'True' $p.Zuordnungen[0].Umbenennen
@@ -195,19 +196,19 @@ Pruefe 'Unbelegte Zeile wird archiviert' '11' $p.Archivieren[0].ZeileId
 Pruefe 'Kein neues Gerät'               0 $p.Neu.Count
 
 # b) Gleiche Seriennummer, gleicher Name: keine Umbenennung
-$p = Get-ComputerZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'))
 Pruefe 'Keine Umbenennung bei gleichem Namen' 'False' $p.Zuordnungen[0].Umbenennen
 Pruefe 'Status Aktiv bleibt'                  '' $p.Zuordnungen[0].StatusNeu
 
 # c) Namensfallback nur gegen Zeilen ohne Seriennummer
-$p = Get-ComputerZuordnung @((Geraet 1 'VM1' 'To be filled by O.E.M.' '2026-09-01')) @((Zeile 10 'VM1' '' '' ''), (Zeile 11 'VM1' 'SN-X' '' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'VM1' 'To be filled by O.E.M.' '2026-09-01')) @((Zeile 10 'VM1' '' '' ''), (Zeile 11 'VM1' 'SN-X' '' 'Aktiv'))
 Pruefe 'Namensfallback trifft serienlose Zeile' '10' $p.Zuordnungen[0].ZeileId
 Pruefe 'Grund Name'                             'Name' $p.Zuordnungen[0].Grund
 Pruefe 'Leerer Status wird Aktiv'               'Aktiv' $p.Zuordnungen[0].StatusNeu
 Pruefe 'Zeile mit fremder Serie archivieren'    '11' $p.Archivieren[0].ZeileId
 
 # d) Archivierte Zeile wird nie über den Namen wiederverwendet
-$p = Get-ComputerZuordnung @((Geraet 1 'PC9' '' '2026-09-01')) @((Zeile 10 'PC9' '' '' 'Archiviert'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC9' '' '2026-09-01')) @((Zeile 10 'PC9' '' '' 'Archiviert'))
 Pruefe 'Archivierte Zeile nicht über Namen'  0 $p.Zuordnungen.Count
 Pruefe 'Stattdessen neu angelegt'            1 $p.Neu.Count
 Pruefe 'Neu mit Status Aktiv'                'Aktiv' $p.Neu[0].Status
@@ -215,26 +216,26 @@ Pruefe 'Neu mit Verlaufstext'                'Aus SCCM neu angelegt' $p.Neu[0].V
 Pruefe 'Archivierte Zeile bleibt liegen'     0 $p.Archivieren.Count
 
 # e) Reaktivieren über die Seriennummer
-$p = Get-ComputerZuordnung @((Geraet 1 'PC9' 'SN-B' '2026-09-01')) @((Zeile 10 'PC9' 'SN-B' '' 'Archiviert'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC9' 'SN-B' '2026-09-01')) @((Zeile 10 'PC9' 'SN-B' '' 'Archiviert'))
 Pruefe 'Archiviert -> Aktiv'          'Aktiv' $p.Zuordnungen[0].StatusNeu
 Pruefe 'Verlaufstext Reaktivierung'   'Wieder in SCCM vorhanden, reaktiviert' $p.Zuordnungen[0].VerlaufTexte[0]
 
 # f) Lager bleibt Lager, solange das Gerät in SCCM ist
-$p = Get-ComputerZuordnung @((Geraet 1 'PC5' 'SN-C' '2026-09-01')) @((Zeile 10 'PC5' 'SN-C' '' 'Lager'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC5' 'SN-C' '2026-09-01')) @((Zeile 10 'PC5' 'SN-C' '' 'Lager'))
 Pruefe 'Lager bleibt unangetastet' '' $p.Zuordnungen[0].StatusNeu
 # … ist es nicht mehr in SCCM, wird auch ein Lager-Gerät archiviert
-$p = Get-ComputerZuordnung @((Geraet 1 'PC6' 'SN-D' '2026-09-01')) @((Zeile 10 'PC5' 'SN-C' '' 'Lager'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC6' 'SN-D' '2026-09-01')) @((Zeile 10 'PC5' 'SN-C' '' 'Lager'))
 Pruefe 'Lager ohne SCCM wird archiviert' '10' $p.Archivieren[0].ZeileId
 Pruefe 'Verlaufstext Archivierung' 'In SCCM nicht mehr vorhanden, archiviert' $p.Archivieren[0].Verlauf
 
 # g) Dublette in SCCM: jüngste Aktivität gewinnt
-$p = Get-ComputerZuordnung @((Geraet 1 'PC-ALT' 'SN-E' '2025-01-01'), (Geraet 2 'PC-NEU' 'SN-E' '2026-09-01')) @((Zeile 10 'PC-ALT' 'SN-E' '' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC-ALT' 'SN-E' '2025-01-01'), (Geraet 2 'PC-NEU' 'SN-E' '2026-09-01')) @((Zeile 10 'PC-ALT' 'SN-E' '' 'Aktiv'))
 Pruefe 'Dublette: jüngstes Gerät gewinnt' '2' $p.Zuordnungen[0].Geraet.ResourceId
 Pruefe 'Dublette wird gemeldet'           'True' ($p.Warnungen.Count -ge 1)
 Pruefe 'Dublette: keine neue Zeile'       0 $p.Neu.Count
 
 # h) Mehrere Zeilen und Geräte mit demselben Namen
-$p = Get-ComputerZuordnung @((Geraet 1 'PC7' '' '2026-09-01'), (Geraet 2 'PC7' '' '2024-01-01')) @((Zeile 10 'PC7' '' '' 'Aktiv'), (Zeile 11 'PC7' '' '' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC7' '' '2026-09-01'), (Geraet 2 'PC7' '' '2024-01-01')) @((Zeile 10 'PC7' '' '' 'Aktiv'), (Zeile 11 'PC7' '' '' 'Aktiv'))
 Pruefe 'Doppelter Name: beide zugeordnet' 2 $p.Zuordnungen.Count
 Pruefe 'Doppelter Name: nichts archiviert' 0 $p.Archivieren.Count
 Pruefe 'Doppelter Name: nichts neu'        0 $p.Neu.Count
@@ -242,12 +243,12 @@ $zuJung = @($p.Zuordnungen | Where-Object { $_.ZeileId -eq '10' })[0]
 Pruefe 'Jüngstes Gerät zuerst' '1' $zuJung.Geraet.ResourceId
 
 # i) Eine manuelle Spalte «Seriennummer» gibt es nicht mehr – ein solcher Wert zählt nicht.
-$p = Get-ComputerZuordnung @((Geraet 1 'PC8' 'SN-F' '2026-09-01')) @((Zeile 10 'ALT8' '' 'sn-f' 'Aktiv'))
+$p = Get-ClientZuordnung @((Geraet 1 'PC8' 'SN-F' '2026-09-01')) @((Zeile 10 'ALT8' '' 'sn-f' 'Aktiv'))
 Pruefe 'Manuelle Seriennummer zählt nicht'  0 $p.Zuordnungen.Count
 Pruefe 'Gerät wird neu angelegt'           1 $p.Neu.Count
 
 # j) Leere Zeile (weder Titel noch Seriennummer) wird ignoriert
-$p = Get-ComputerZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'), (Zeile 11 '' '' '' ''))
+$p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((Zeile 10 'PC1' 'SN-A' '' 'Aktiv'), (Zeile 11 '' '' '' ''))
 Pruefe 'Leere Zeile wird ignoriert' 0 $p.Archivieren.Count
 
 # ---------------------------------------------------------------------------
@@ -347,27 +348,61 @@ Pruefe 'Abgleich: nur eine Zeile je Nummer' 1 $t.Updates.Count
 Pruefe 'Abgleich: Nummer aus AD nicht neu' 0 $t.Neu.Count
 
 # ---------------------------------------------------------------------------
-Abschnitt 'Schema- und Programmdateien'
-$schemaC = @(Read-JsonDatei (Join-Path $TestDir 'schema-computer.json'))
+Abschnitt 'Schemadateien'
+$schemaC = @(Read-JsonDatei (Join-Path $TestDir 'schema-client.json'))
 $schemaB = @(Read-JsonDatei (Join-Path $TestDir 'schema-benutzer.json'))
 $schemaT = @(Read-JsonDatei (Join-Path $TestDir 'schema-telefon.json'))
-$prg = Read-JsonDatei (Join-Path $ServerDir 'programme.json')
-Pruefe 'Computer-Schema: 7 manuelle Spalten' 7 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
-Pruefe 'Computer-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
+$schemaS = @(Read-JsonDatei (Join-Path $TestDir 'schema-software.json'))
+Pruefe 'Client-Schema: 7 manuelle Spalten' 7 (@($schemaC | Where-Object { $_.source -eq 'manuell' }).Count)
+Pruefe 'Client-Schema: 79 SCCM-Spalten'   79 (@($schemaC | Where-Object { $_.source -eq 'sccm' }).Count)
 Pruefe 'Benutzer-Schema: 14 Spalten'        14 $schemaB.Count
 Pruefe 'Telefon-Schema: 11 Spalten'         11 $schemaT.Count
 Pruefe 'Telefon-Schema: 2 AD-Spalten'       2 (@($schemaT | Where-Object { $_.source -eq 'ad' }).Count)
 Pruefe 'Telefon-Schema: Verlauf ist Note'   'Note' (@($schemaT | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
 Pruefe 'Telefon-Schema: Titel heisst Kurzwahl' 'Kurzwahl' (@($schemaT | Where-Object { $_.internal -eq 'Title' })[0].display)
-Pruefe 'Computer-Schema: Status vorhanden'  'Text' (@($schemaC | Where-Object { $_.internal -eq 'Status' })[0].type)
-Pruefe 'Computer-Schema: Verlauf ist Note'  'Note' (@($schemaC | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
+Pruefe 'Client-Schema: Status vorhanden'  'Text' (@($schemaC | Where-Object { $_.internal -eq 'Status' })[0].type)
+Pruefe 'Client-Schema: Verlauf ist Note'  'Note' (@($schemaC | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
 Pruefe 'Benutzer-Schema: Verlauf ist Note'  'Note' (@($schemaB | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
-Pruefe 'programme.json: 71 Programme'       71 @($prg.programme).Count
-Pruefe 'programme.json: 6 Kategorien'        6 @($prg.kategorien).Count
-$ids = @($prg.programme | ForEach-Object { $_.id })
-Pruefe 'Programm-Ids eindeutig' $ids.Count (@($ids | Sort-Object -Unique).Count)
-$zuLang = @($ids | Where-Object { $_.Length -gt 30 })
-Pruefe 'Programm-Ids max. 30 Zeichen' 0 $zuLang.Count
+Pruefe 'Software-Schema: 6 Spalten'          6 $schemaS.Count
+Pruefe 'Software-Schema: Titel heisst Programm-ID' 'Programm-ID' (@($schemaS | Where-Object { $_.internal -eq 'Title' })[0].display)
+Pruefe 'Software-Schema: AdGruppen ist Note' 'Note' (@($schemaS | Where-Object { $_.internal -eq 'AdGruppen' })[0].type)
+Pruefe 'Benutzer-Schema: Computer heisst ADMIN-Client' 'ADMIN-Client' (@($schemaB | Where-Object { $_.internal -eq 'Computer' })[0].display)
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Aufteilung ADMIN-Clients / EDU-Clients'
+Pruefe 'EDU-Name -> edu'              'edu'   (Get-ClientListe 'EDU-101')
+Pruefe 'Kleinschreibung zaehlt auch'  'edu'   (Get-ClientListe 'edu-101')
+Pruefe 'EDU ohne Trennzeichen'        'edu'   (Get-ClientListe 'EDUPC1')
+Pruefe 'CAMPUS-Name -> admin'         'admin' (Get-ClientListe 'CAMPUS-073')
+Pruefe 'EDU nur am Anfang'            'admin' (Get-ClientListe 'PC-EDU-1')
+Pruefe 'Leerer Name -> admin'         'admin' (Get-ClientListe '')
+Pruefe 'Titel admin'  'ADMIN-Clients' (Get-ClientListenTitel 'admin')
+Pruefe 'Titel edu'    'EDU-Clients'   (Get-ClientListenTitel 'edu')
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Liste «Software» -> Programme'
+$swZeile = [pscustomobject]@{ Title = 'AdobeCS'; Name = 'Adobe Creative Suite'; Kategorie = 'Zusatz-Software'
+    AdGruppen = "MgmtS_MarKom`r`n`r`n BLD_D&G "; Reihenfolge = 30 }
+$swProg = ConvertTo-Programm $swZeile
+Pruefe 'Software: Id'          'AdobeCS'              $swProg.id
+Pruefe 'Software: Name'        'Adobe Creative Suite' $swProg.name
+Pruefe 'Software: Kategorie'   'Zusatz-Software'      $swProg.kategorie
+Pruefe 'Software: 2 AD-Gruppen' 2                     @($swProg.adGruppen).Count
+Pruefe 'Software: Gruppe getrimmt' 'BLD_D&G'          $swProg.adGruppen[1]
+Pruefe 'Software: Reihenfolge' 30                     $swProg.reihenfolge
+$swLeer = ConvertTo-Programm ([pscustomobject]@{ Title = ' '; Name = 'X' })
+Pruefe 'Software: Zeile ohne Id faellt weg' '<null>' $(if ($null -eq $swLeer) { '<null>' } else { 'da' })
+$swOhne = ConvertTo-Programm ([pscustomobject]@{ Title = 'NurId' })
+Pruefe 'Software: Name faellt auf Id zurueck' 'NurId'     $swOhne.name
+Pruefe 'Software: Kategorie faellt auf Programme zurueck' 'Programme' $swOhne.kategorie
+Pruefe 'Software: keine Gruppen'  0 @($swOhne.adGruppen).Count
+$swSort = @(Sort-Programme @($swOhne, $swProg))
+Pruefe 'Software: Reihenfolge sortiert' 'AdobeCS' $swSort[0].id
+Pruefe 'Programm-Id gueltig'      'True'  (Test-ProgrammId 'Microsoft365').ToString()
+Pruefe 'Programm-Id mit Zeichen'  'False' (Test-ProgrammId 'Adobe CS').ToString()
+Pruefe 'Programm-Id mit Ziffer vorn' 'False' (Test-ProgrammId '365Office').ToString()
+Pruefe 'Programm-Id zu lang'      'False' (Test-ProgrammId ('A' * 31)).ToString()
+Pruefe 'Programm-Id leer'         'False' (Test-ProgrammId '').ToString()
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Fehlende Spalten'

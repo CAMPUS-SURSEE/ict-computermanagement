@@ -1,6 +1,7 @@
-<#
+﻿<#
 .SYNOPSIS
-  Löscht eine Spalte aus einer der Listen «Computer», «Benutzer» oder «Telefonnummern» –
+  Löscht eine Spalte aus einer der Listen «ADMIN-Clients», «EDU-Clients», «Benutzer»,
+  «Telefonnummern» oder «Software» –
   nach einer Sicherung ihrer Werte.
 
 .DESCRIPTION
@@ -11,11 +12,11 @@
 
   Mit -WhatIf wird nur gezählt und gesichert, nicht gelöscht – immer zuerst so laufen lassen.
 
-  Erster Einsatz (2026-09-04): die manuelle Spalte «Seriennummer» der Computer-Liste. Die
+  Erster Einsatz (2026-09-04): die manuelle Spalte «Seriennummer» der Client-Liste. Die
   Seriennummer kommt seither ausschliesslich aus SCCM (SCCM_SerialNumber).
 
 .PARAMETER Liste
-  Computer, Benutzer oder Telefon.
+  Admin, Edu, Benutzer, Telefon oder Software.
 
 .PARAMETER Spalte
   Interner Name der Spalte (wie in schema-*.json «internal»), z. B. Seriennummer.
@@ -24,8 +25,8 @@
   App-Registrierung für die Device-Code-Anmeldung, siehe Ergaenze-Spalten.ps1.
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\Entferne-Spalte.ps1 -Liste Computer -Spalte Seriennummer -WhatIf
-  powershell -ExecutionPolicy Bypass -File .\Entferne-Spalte.ps1 -Liste Computer -Spalte Seriennummer
+  powershell -ExecutionPolicy Bypass -File .\Entferne-Spalte.ps1 -Liste Admin -Spalte Seriennummer -WhatIf
+  powershell -ExecutionPolicy Bypass -File .\Entferne-Spalte.ps1 -Liste Admin -Spalte Seriennummer
 
 .NOTES
   Windows PowerShell 5.1. Danach Build-Spalten.ps1 laufen lassen, falls das Schema geändert wurde.
@@ -33,7 +34,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Computer', 'Benutzer', 'Telefon')]
+    [ValidateSet('Admin', 'Edu', 'Benutzer', 'Telefon', 'Software')]
     [string]$Liste,
     [Parameter(Mandatory = $true)]
     [string]$Spalte,
@@ -56,7 +57,8 @@ $ServerDir = Join-Path $ScriptDir 'server'
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ServerDir 'Sync-Inventar.config.json' }
-$cfg = Read-JsonDatei $ConfigPath
+$cfg = Get-InventarKonfiguration -KonfigPfad $ConfigPath `
+    -FrontendPfad (Join-Path (Split-Path -Parent $ScriptDir) 'frontend\konfig.js')
 $LogPath = Join-Path $ScriptDir 'Entferne-Spalte.log'
 if ($cfg.LogPath) { $LogPath = Join-Path (Split-Path -Parent $cfg.LogPath) 'Entferne-Spalte.log' }
 Set-InventarLog $LogPath
@@ -64,10 +66,13 @@ Set-InventarLog $LogPath
 Log "==== Spalte entfernen: $Liste / $Spalte $(if ($WhatIf) { '(WhatIf)' }) ===="
 
 $ListId = switch ($Liste) {
-    'Computer' { $cfg.ComputerListId }
+    'Admin'    { $cfg.AdminClientListId }
+    'Edu'      { $cfg.EduClientListId }
     'Benutzer' { $cfg.BenutzerListId }
     'Telefon'  { $cfg.TelefonListId }
+    'Software' { $cfg.SoftwareListId }
 }
+if ("$ListId" -match '^<') { $ListId = '' }   # Platzhalter aus der Vorlage
 if (-not $ListId) { throw "Für die Liste «$Liste» steht keine Listen-Id in der Konfiguration." }
 
 Log "Device-Code-Anmeldung mit ClientId $ClientId"

@@ -1,13 +1,13 @@
-/* modell.js — gemeinsame Logik von Hauptseite, Gerätefenster und
-   Benutzerfenster.
+/* modell.js — gemeinsame Logik von Hauptseite, Clientfenster,
+   Benutzerfenster, Telefonfenster und Softwarefenster.
 
    Enthält:
      1. Geschäftsjahr-Helfer (1. August bis 31. Juli, Schreibweise «2026/2027»)
-     2. Programmspalten aus programme.json
+     2. Programmspalten aus der Liste «Software»
      3. Berechtigungsstufen (0 / 1 / 2)
-     4. Gerätestatus (Aktiv / Lager / Archiviert)
+     4. Clientstatus (Aktiv / Lager / Archiviert)
      5. Verlauf (Note-Spalte mit JSON-Array in allen Listen)
-     6. Anreicherung und Verknüpfung Computer ↔ Benutzer
+     6. Anreicherung und Verknüpfung ADMIN-Clients ↔ Benutzer
      7. Telefonnummern: Normalisierung, Kurzwahl, Status, Verknüpfung mit Benutzern
 
    Setzt spalten.js und graph.js (Hilfe) voraus. Keine Abhängigkeit zu einer
@@ -161,25 +161,92 @@ const Modell = (function () {
     return 0;
   }
 
+  /* Die AD-Gruppen einer Software-Zeile: eine Gruppe je Zeile der
+     Note-Spalte «AdGruppen», leere Zeilen und Doppelte fallen weg.
+     Dieselbe Umrechnung steht in Inventar-Gemeinsam.ps1 (ConvertTo-Programm) —
+     beide Seiten müssen dasselbe lesen. */
+  function adGruppen(wert) {
+    const gefunden = [];
+    for (const z of Hilfe.zeilen(wert)) {
+      if (gefunden.indexOf(z) === -1) gefunden.push(z);
+    }
+    return gefunden;
+  }
+
   /**
-   * Spaltenobjekte für die Programme aus programme.json — dieselbe Form wie
-   * die Einträge in spalten.js, plus das Feld «adGruppen».
-   * @param {{programme:Array}} programme  Inhalt von programme.json
-   * @returns {Array<{i:string,d:string,t:string,g:string,q:string,adGruppen:string[]}>}
+   * Ein Programm aus einer Zeile der Liste «Software».
+   * @param {Object} zeile  flache Zeile mit Title, Name, Kategorie, AdGruppen, Reihenfolge
+   * @returns {{i:string,d:string,t:string,g:string,q:string,adGruppen:string[],
+   *            reihenfolge:number,bemerkung:string,zeilenId:string}|null}
+   *          null, wenn die Zeile keine Programm-Id trägt.
    */
-  function programmSpalten(programme) {
-    const liste = (programme && programme.programme) || [];
-    return liste.map(function (p) {
-      return {
-        i: p.id,
-        d: p.name || p.id,
-        t: "Text",
-        g: p.kategorie || "Programme",
-        q: "programm",
-        adGruppen: Array.isArray(p.adGruppen) ? p.adGruppen.slice() : [],
-        vorschlaege: Array.isArray(p.vorschlaege) ? p.vorschlaege.slice() : []
-      };
+  function programmSpalte(zeile) {
+    const id = String((zeile && zeile.Title) || "").trim();
+    if (!id) return null;
+    const r = Number(zeile.Reihenfolge);
+    return {
+      i: id,
+      d: String(zeile.Name || "").trim() || id,
+      t: "Text",
+      g: String(zeile.Kategorie || "").trim() || "Programme",
+      q: "programm",
+      adGruppen: adGruppen(zeile.AdGruppen),
+      reihenfolge: isNaN(r) || zeile.Reihenfolge === null || zeile.Reihenfolge === ""
+        ? Number.MAX_SAFE_INTEGER : r,
+      bemerkung: String(zeile.Bemerkung || ""),
+      zeilenId: String(zeile.id || "")
+    };
+  }
+
+  /**
+   * Spaltenobjekte für die Programme aus der Liste «Software» — dieselbe Form
+   * wie die Einträge in spalten.js, plus «adGruppen», «reihenfolge» und die
+   * Listen-Id der Software-Zeile (zum Öffnen des Softwarefensters).
+   *
+   * Sortiert nach «Reihenfolge», bei Gleichstand nach Name. Zeilen ohne
+   * Programm-Id fallen weg: ohne Id gibt es keine Spalte in der Benutzer-Liste.
+   *
+   * @param {Array} softwareZeilen  Zeilen der Liste «Software»
+   * @returns {Array}
+   */
+  function programmSpalten(softwareZeilen) {
+    const liste = [];
+    for (const z of (softwareZeilen || [])) {
+      const p = programmSpalte(z);
+      if (p) liste.push(p);
+    }
+    liste.sort(function (a, b) {
+      if (a.reihenfolge !== b.reihenfolge) return a.reihenfolge - b.reihenfolge;
+      return Hilfe.vergleiche(a.d, b.d);
     });
+    return liste;
+  }
+
+  /**
+   * Kategorien in der Reihenfolge, in der sie angezeigt werden: nach der
+   * kleinsten «Reihenfolge» ihrer Programme. Ohne diese Ableitung hinge die
+   * Anzeige an der Zufallsreihenfolge der Listenzeilen.
+   * @param {Array} spalten  Ergebnis von programmSpalten()
+   * @returns {string[]}
+   */
+  function programmKategorien(spalten) {
+    const gesehen = [];
+    for (const p of (spalten || [])) {
+      if (gesehen.indexOf(p.g) === -1) gesehen.push(p.g);
+    }
+    return gesehen;
+  }
+
+  /**
+   * Taugt der Text als Programm-Id, also als interner Spaltenname der
+   * Benutzer-Liste? Buchstaben und Ziffern, Beginn mit einem Buchstaben,
+   * höchstens 30 Zeichen. Dieselbe Regel prüft Test-ProgrammId in
+   * Inventar-Gemeinsam.ps1.
+   * @param {string} id
+   * @returns {boolean}
+   */
+  function programmIdGueltig(id) {
+    return /^[A-Za-z][A-Za-z0-9]{0,29}$/.test(String(id || "").trim());
   }
 
   /**
@@ -197,7 +264,7 @@ const Modell = (function () {
      3. Gerätestatus
      ================================================================== */
 
-  /* Die drei erlaubten Werte der Spalte «Status» der Computer-Liste. Leer
+  /* Die drei erlaubten Werte der Spalte «Status» der Client-Listen. Leer
      oder unbekannt gilt als «Aktiv» — so war die Liste vor der Einführung
      der Spalte, und so schreibt es auch der Sync. */
   const STATUS_WERTE = ["Aktiv", "Lager", "Archiviert"];
@@ -441,21 +508,90 @@ const Modell = (function () {
     return "ok";
   }
 
+  /* In welche Client-Liste gehört ein Name? Es gibt genau eine Regel: alles,
+     was mit «EDU» beginnt, gehört zu den EDU-Clients, alles Übrige zu den
+     ADMIN-Clients. Dieselbe Regel steht in Inventar-Gemeinsam.ps1
+     (Get-ClientListe) — der Sync teilt danach auf, das Frontend prüft damit
+     nur, ob ein von Hand erfasster Name zur offenen Liste passt. */
+  const EDU_PRAEFIX = "EDU";
+
   /**
-   * Verknüpft Computer und Benutzer und hängt abgeleitete Felder an.
+   * Zuständige Client-Liste für einen Namen.
+   * @param {string} name
+   * @returns {"admin"|"edu"}
+   */
+  function clientListe(name) {
+    const n = String(name === null || name === undefined ? "" : name).trim();
+    return n.toUpperCase().indexOf(EDU_PRAEFIX) === 0 ? "edu" : "admin";
+  }
+
+  /* Die abgeleiteten Felder, die ein Client ganz für sich hat — ohne einen
+     Blick in die Benutzer-Liste. Sie gelten für beide Client-Listen gleich;
+     die Inhaberschaft kommt nur bei den ADMIN-Clients dazu. */
+  function clientGrundfelder(clients) {
+    const liste = clients || [];
+
+    /* PC-Namen sind kein Schlüssel: es darf mehrere Clients mit demselben
+       Namen geben (ein ersetztes Gerät, das archiviert liegen bleibt).
+       Deshalb steht unter jedem Namen eine LISTE. */
+    const nachName = new Map();
+    for (const c of liste) {
+      c.__status = status(c.Status);
+      c.__archiviert = c.__status === "Archiviert";
+      const k = schluessel(c.Title);
+      if (!nachName.has(k)) nachName.set(k, []);
+      nachName.get(k).push(c);
+    }
+    for (const c of liste) {
+      c.__namensDublette = (nachName.get(schluessel(c.Title)) || []).length > 1;
+      c.__inSccm = Hilfe.istJa(c.SCCM_Found);
+      c.__online = Hilfe.istJa(c.SCCM_Online);
+      c.__ersatzJahr = String(c.ErsatzGeplant || "").trim()
+        || ersatzVorschlag(c.Beschaffungsjahr);
+      c.__ersatzStatus = ersatzStatus(c.ErsatzGeplant, c.Beschaffungsjahr);
+    }
+    return nachName;
+  }
+
+  /**
+   * Abgeleitete Felder für eine Client-Liste ohne Inhaberschaft — die
+   * EDU-Clients. Sie sind Schulungsgeräte und gehören niemandem persönlich;
+   * die Spalte «Computer» der Benutzer-Liste zeigt bewusst nie auf sie.
+   *
+   * Die Inhaber-Felder werden trotzdem gesetzt (leer), damit Tabelle,
+   * Fenster und CSV-Ausgabe für beide Listen derselbe Code sein können.
+   *
+   * @param {Array} clients  Zeilen der Liste «EDU-Clients»
+   * @returns {{clients:Array}}
+   */
+  function clientsAnreichern(clients) {
+    const liste = clients || [];
+    clientGrundfelder(liste);
+    for (const c of liste) {
+      c.__inhaberAlle = [];
+      c.__inhaber = null;
+      c.__inhaberName = "";
+      c.__mehrfachInhaber = false;
+      c.__such = suchtext(c, SPALTEN_CLIENT);
+    }
+    return { clients: liste };
+  }
+
+  /**
+   * Verknüpft ADMIN-Clients und Benutzer und hängt abgeleitete Felder an.
    * Verändert die übergebenen Objekte in place und gibt sie zurück.
    *
-   * Computer bekommen:
+   * Clients bekommen:
    *   __inhaber       Benutzerzeile des Inhabers, sonst null
    *   __inhaberName   Anzeigename des Inhabers, sonst "" (Tabellenspalte
    *                   «Inhaber»)
-   *   __inhaberAlle   alle Benutzerzeilen, deren Feld «Computer» auf dieses
-   *                   Gerät zeigt — im Normalfall keine oder genau eine
+   *   __inhaberAlle   alle Benutzerzeilen, deren Feld «Computer» auf diesen
+   *                   Client zeigt — im Normalfall keine oder genau eine
    *   __mehrfachInhaber true, wenn mehr als eine Person darauf zeigt; das
    *                   ist ein zu bereinigender Datenfehler, kein Zustand
    *   __status        "Aktiv" | "Lager" | "Archiviert" (leer gilt als Aktiv)
    *   __archiviert    true/false
-   *   __namensDublette true, wenn ein weiteres Gerät genauso heisst
+   *   __namensDublette true, wenn ein weiterer Client genauso heisst
    *   __ersatzStatus  "ok" | "bald" | "ueberfaellig" | "unbekannt"
    *   __ersatzJahr    ErsatzGeplant, oder der Vorschlag falls leer
    *   __inSccm        true/false
@@ -463,42 +599,29 @@ const Modell = (function () {
    *   __such          Volltextindex (klein geschrieben)
    *
    * Benutzer bekommen:
-   *   __computer      Computerzeile oder null (bevorzugt ein nicht
+   *   __client        Clientzeile oder null (bevorzugt ein nicht
    *                   archiviertes Gerät, wenn mehrere gleich heissen);
-   *                   das Gerät, dessen Inhaber die Person ist
-   *   __computerAlle  alle Computerzeilen mit diesem Namen
-   *   __computerMehrdeutig true, wenn es mehr als eine ist
+   *                   der ADMIN-Client, dessen Inhaber die Person ist
+   *   __clientAlle    alle Clientzeilen mit diesem Namen
+   *   __clientMehrdeutig true, wenn es mehr als eine ist
    *   __hatGeraet     true/false
    *   __adAktiv       true/false
    *   __primaerAbweichung  true, wenn SCCMPrimaerGeraet ≠ Computer (beide gesetzt)
    *   __name          Anzeigename, ersatzweise der Login
    *   __such          Volltextindex
    *
-   * @param {Array} computer   Zeilen der Computer-Liste
+   * @param {Array} clients    Zeilen der Liste «ADMIN-Clients»
    * @param {Array} benutzer   Zeilen der Benutzer-Liste
-   * @param {Object} programme Inhalt von programme.json (optional)
-   * @returns {{computer:Array, benutzer:Array, programmSpalten:Array}}
+   * @param {Array} software   Zeilen der Liste «Software» (optional)
+   * @returns {{clients:Array, benutzer:Array, programmSpalten:Array}}
    */
-  function anreichern(computer, benutzer, programme) {
-    const geraete = computer || [];
+  function anreichern(clients, benutzer, software) {
+    const geraete = clients || [];
     const leute = benutzer || [];
-    const pSpalten = programmSpalten(programme);
+    const pSpalten = programmSpalten(software);
 
-    /* PC-Namen sind kein Schlüssel: es darf mehrere Geräte mit demselben
-       Namen geben (ein ersetztes Gerät, das archiviert liegen bleibt).
-       Deshalb steht unter jedem Namen eine LISTE. */
-    const nachName = new Map();
-    for (const c of geraete) {
-      c.__inhaberAlle = [];
-      c.__status = status(c.Status);
-      c.__archiviert = c.__status === "Archiviert";
-      const k = schluessel(c.Title);
-      if (!nachName.has(k)) nachName.set(k, []);
-      nachName.get(k).push(c);
-    }
-    for (const c of geraete) {
-      c.__namensDublette = (nachName.get(schluessel(c.Title)) || []).length > 1;
-    }
+    for (const c of geraete) c.__inhaberAlle = [];
+    const nachName = clientGrundfelder(geraete);
 
     for (const b of leute) {
       const pcName = String(b.Computer || "").trim();
@@ -506,9 +629,9 @@ const Modell = (function () {
       /* Bei mehreren gleichnamigen Geräten gewinnt das nicht archivierte:
          die Zuordnung meint fast immer das Gerät, das im Einsatz steht. */
       const c = treffer.filter(z => !z.__archiviert)[0] || treffer[0] || null;
-      b.__computer = c;
-      b.__computerAlle = treffer.slice();
-      b.__computerMehrdeutig = treffer.length > 1;
+      b.__client = c;
+      b.__clientAlle = treffer.slice();
+      b.__clientMehrdeutig = treffer.length > 1;
       b.__hatGeraet = !!pcName;
       b.__name = String(b.Anzeigename || "").trim() || String(b.Title || "").trim();
       b.__adAktiv = Hilfe.istJa(b.ADAktiviert);
@@ -518,25 +641,20 @@ const Modell = (function () {
     }
 
     for (const c of geraete) {
-      /* Ein Gerät hat genau einen Inhaber. Zeigen mehrere Personen darauf,
+      /* Ein Client hat genau einen Inhaber. Zeigen mehrere Personen darauf,
          ist das ein Altlast- oder Tippfehler: der erste Name gilt als
-         Inhaber, die übrigen meldet das Gerätefenster zur Bereinigung. */
+         Inhaber, die übrigen meldet das Clientfenster zur Bereinigung. */
       c.__inhaberAlle.sort((a, b) => Hilfe.vergleiche(a.__name, b.__name));
       c.__inhaber = c.__inhaberAlle[0] || null;
       c.__inhaberName = c.__inhaber ? c.__inhaber.__name : "";
       c.__mehrfachInhaber = c.__inhaberAlle.length > 1;
-      c.__inSccm = Hilfe.istJa(c.SCCM_Found);
-      c.__online = Hilfe.istJa(c.SCCM_Online);
-      c.__ersatzJahr = String(c.ErsatzGeplant || "").trim()
-        || ersatzVorschlag(c.Beschaffungsjahr);
-      c.__ersatzStatus = ersatzStatus(c.ErsatzGeplant, c.Beschaffungsjahr);
       /* Der Volltext kennt alle Namen, auch die überzähligen — sonst wäre
          eine falsche Zuordnung nicht auffindbar. */
-      c.__such = (suchtext(c, SPALTEN_COMPUTER) + "  "
+      c.__such = (suchtext(c, SPALTEN_CLIENT) + "  "
         + c.__inhaberAlle.map(b => b.__name).join(", ")).toLowerCase();
     }
 
-    return { computer: geraete, benutzer: leute, programmSpalten: pSpalten };
+    return { clients: geraete, benutzer: leute, programmSpalten: pSpalten };
   }
 
 
@@ -717,9 +835,13 @@ const Modell = (function () {
     ersatzVorschlag: ersatzVorschlag,
     ersatzStatus: ersatzStatus,
     primaerWeichtAb: primaerWeichtAb,
-    // Programme
+    // Programme (Liste «Software»)
     stufe: stufe,
+    programmSpalte: programmSpalte,
     programmSpalten: programmSpalten,
+    programmKategorien: programmKategorien,
+    programmIdGueltig: programmIdGueltig,
+    adGruppen: adGruppen,
     sperrHinweis: sperrHinweis,
     // Status
     STATUS_WERTE: STATUS_WERTE,
@@ -739,6 +861,9 @@ const Modell = (function () {
     datumIsoGueltig: datumIsoGueltig,
     // Verknüpfung
     anreichern: anreichern,
+    clientsAnreichern: clientsAnreichern,
+    clientListe: clientListe,
+    EDU_PRAEFIX: EDU_PRAEFIX,
     schluessel: schluessel,
     // Telefonnummern
     telefonPraefix: telefonPraefix,

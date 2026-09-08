@@ -1,6 +1,6 @@
-# Styleguide «Computer Inventar»
+# Styleguide «ICT-Inventar»
 
-Stand: 04.09.2026 · Gilt für alle Seiten unter `frontend/` (index.html, geraet.html, benutzer.html, telefon.html).
+Stand: 08.09.2026 · Gilt für alle Seiten unter `frontend/` (index.html, client.html, benutzer.html, telefon.html, software.html).
 Lebende Komponentenübersicht mit echtem Markup: **[styleguide.html](styleguide.html)** (lokal über `code\serve.ps1` öffnen).
 
 Das Design folgt **Google Material Design 3**, so wie Google es in seinen eigenen Konsolen einsetzt
@@ -129,7 +129,7 @@ Maximale Textbreite `.bahn` und `.fenster-bahn`: 1400 px.
 - Der Datenstand (`.stand`) ist ab 1000 px sichtbar; sein Tooltip nennt zusätzlich den automatischen Nachlade-Takt.
 - Es gibt **keinen** Knopf «Neu laden». Alle Seiten holen den Stand selbst nach (`KONFIG.autoTaktMs`, still und nur im sichtbaren Fenster); für sofort frische Daten lädt man die Seite neu.
 
-### 3.2 Detailfenster (geraet.html, benutzer.html, telefon.html)
+### 3.2 Detailfenster (client.html, benutzer.html, telefon.html, software.html)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -214,7 +214,7 @@ Für jede Komponente: Markup, Regeln, Zustände. Das vollständige Markup steht 
 | Deaktiviert | `[disabled]` | grau 6 %, Text 38 % | |
 
 - Höhe 36 px (Handy 40 px), Schrift 14 px 500 `--schrift-titel`, Innenabstand 16 px (mit Icon links 12 px).
-- Icon 18 px in `currentColor`, per `sinnbild()` (app.js) oder `symbol()` (geraet.js) als inline-SVG.
+- Icon 18 px in `currentColor`, per `sinnbild()` (app.js) oder `symbol()` (client.js) als inline-SVG.
 - Zähler im Knopf: `.zaehler` (blau) oder `.zaehler-still` (grau).
 - Knöpfe in Dialogen: rechts, Abbrechen links davon, Hauptaktion ganz rechts.
 

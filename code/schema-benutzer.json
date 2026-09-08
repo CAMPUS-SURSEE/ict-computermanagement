@@ -100,12 +100,12 @@
     },
     {
         "internal":  "Computer",
-        "display":  "Computer",
+        "display":  "ADMIN-Client",
         "type":  "Text",
         "group":  "Zuordnung",
         "source":  "manuell",
         "inDefaultView":  true,
-        "description":  "Inhaberschaft: PC-Name aus der Liste «Computer» — das Gerät, dem diese Person formal vorsteht. Höchstens eines je Person, höchstens eine Person je Gerät. Nur im Frontend von Hand gepflegt; der Sync schreibt diese Spalte nie. Leer bedeutet: Inhaber keines Geräts"
+        "description":  "Inhaberschaft: Clientname aus der Liste «ADMIN-Clients» — das Gerät, dem diese Person formal vorsteht. EDU-Clients haben bewusst keinen Inhaber. Höchstens eines je Person, höchstens eine Person je Gerät. Nur im Frontend von Hand gepflegt; der Sync schreibt diese Spalte nie. Leer bedeutet: Inhaber keines Geräts"
     },
     {
         "internal":  "Bemerkung",
