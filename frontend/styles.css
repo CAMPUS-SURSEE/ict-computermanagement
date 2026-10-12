@@ -1,174 +1,327 @@
-/* styles.css — Seitenlayout der Hauptseite.
+/* styles.css — Seitenlayout der Hauptseite (index.html).
 
-   Alle Farben, Abstände und Komponenten stehen in design.css. Hier steht
-   nur, wie die vier Ansichten der Hauptseite angeordnet sind.
+   Alles Gemeinsame steht im Fundament: Tokens und Bausteine in design.css
+   (auch Zahlmarke und klickbare Kennwerte), Bewegung in bewegung.css,
+   Rahmen und Ebenen in rahmen.css. Hier steht nur, wie die sechs Ansichten
+   der Hauptseite angeordnet sind, dazu das Einzige, was es nur hier gibt:
+   der Zeitstrahl der Ersatzplanung (ChatBob-Mapping 7.2 #11).
+   Werte nur über Tokens; keine Keyframes (die Säulen wachsen über
+   .saeule-fuell und Bewegung.aufziehen, nicht über eigene Regeln).
 
-   Gerüst: body.seite ist eine Flex-Spalte über die volle Fensterhöhe.
-   Darunter liegt .rumpf mit der linken Navigation (.reiter) und der
-   Bühne (.buehne), in der genau eine Ansicht sichtbar ist. Die
-   Tabellenansichten (.inhalt-fest) geben ihre Höhe an den Tabellenrahmen
-   weiter, der dann selbst rollt. Gerollt wird immer INNEN, die Seite
-   selbst rollt nie. */
+   Gerüst: rahmen.css macht die sichtbare Tabellenansicht (Rahmen.fest)
+   zur Spalte, in der .tabelle-rahmen selbst rollt. Übersicht und Software
+   rollen mit der Tafel.
 
-body.seite { height: 100vh; overflow: hidden; }
-
-.ansicht { flex: 1 1 auto; min-height: 0; }
-
-.buehne > .lade,
-.buehne > .fehler {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  overflow: auto;
-}
+   Klassen ohne eigene Regel (Haken für app.js und die Prüfskripte):
+   .ansicht (jede Ansicht in index.html), .bestand-karte, .planung,
+   .planung-karte. */
 
 
 /* ==================================================================
-   Kopfzeile
+   1. Werkzeugleiste und Tabellen
    ================================================================== */
 
-/* Der Daten-Stand weicht erst spät: Seit der Knopf «Neu laden» weg ist, hat
-   die Kopfzeile mehr Platz, und der Stand ist die einzige Stelle, an der man
-   sieht, wie frisch die Daten sind. */
-@media (max-width: 1000px) {
-  .stand { display: none; }
-}
-
-
-/* ==================================================================
-   Übersicht
-   ================================================================== */
-
-/* Die Bausteine der Übersicht (Aufgaben, Bestandskarten, Planung) stehen
-   in design.css, Abschnitt 5b. Hier nur, was allein diese Seite braucht. */
-
-.zeitstrahl { overscroll-behavior-x: contain; }
-
-.verteilung-name {
-  display: block; font-size: var(--t-s);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-
-/* ==================================================================
-   Tabellenansichten (Geräte, Benutzer, Telefonnummern)
-   ================================================================== */
-
-.werkzeug-bereich {
-  position: relative;
-  flex: none;
+/* Trefferzahl und Primäraktion «Neuer …» stehen als Gruppe ganz rechts;
+   bricht die Leiste um, rückt die Gruppe rechtsbündig auf die nächste
+   Zeile (Fehler E4: Klasse statt der alten id #knopf-neu). */
+.werkzeugleiste-ende {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--a2) var(--a3);
+  margin-left: auto;
+}
+
+.werkzeugleiste-ende > .knopf-neu { flex-shrink: 0; }
+
+/* Online-Zustand vor dem PC-Namen: Form (WLAN/durchgestrichen) und ein
+   unsichtbares Wort sagen ihn, die Farbe nur zusätzlich. Der Platz ist
+   immer 16 px breit, auch leer (Gerät nicht in SCCM): so fluchten die
+   Namen. Die Unterkante liegt wie beim Sinnbild allein 3 px unter der
+   Grundlinie. */
+.name-zustand {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--a2);
+  vertical-align: -3px;
+}
+
+.name-zustand > svg { display: block; }
+
+/* Der Leerzustand steht an der Stelle der Liste, nicht gestreckt. */
+.tabelle-leer { flex: none; }
+
+/* Vorlagen im Spaltenblatt: Text-Knöpfe hängen ihr Polster in den Rand. */
+.blatt-vorlagen { margin-left: calc(-1 * var(--a3)); }
+
+/* Schmale Bahn: die Suche nimmt eine eigene Zeile, darunter die Knöpfe;
+   Zahl und «Neu» bleiben rechts. */
+@container bahn (max-width: 600px) {
+  .werkzeugleiste > .suchfeld {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+
+/* ==================================================================
+   2. Übersicht: Abschnitte
+   ================================================================== */
+
+/* Ein Abschnitt (Handlungsbedarf, Bestand, Ersatzplanung, Verteilungen,
+   Software-Kategorie): Titel mit Zahl rechts, darunter sein Inhalt. Der
+   Titel steht näher an seinem Inhalt (12 px) als am vorigen Abschnitt
+   (20 + 12 px), damit die Gruppen auf einen Blick zu sehen sind. */
+.uebersicht-abschnitt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--a3);
+  min-width: 0;
 }
 
-.werkzeug-bereich .anzahl { margin-left: auto; }
+.uebersicht-abschnitt + .uebersicht-abschnitt { margin-top: var(--a3); }
 
-.filtergitter {
+.abschnitt-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--a1) var(--a3);
+  min-width: 0;
+}
+
+
+/* ==================================================================
+   3. Handlungsbedarf (Mapping 7.2 #14)
+   Eine umrandete Zeilenliste mit Zahlmarken (UI.listenZeile({ marke:
+   UI.zahlmarke(…) })); ab 2 × 360 px Platz in zwei Spalten. Die
+   Haarlinien zwischen den Zellen entstehen aus je einer Linie rechts und
+   unten, die um 1 px in den Nachbarn ragt (negativer Aussenabstand); am
+   Rand schneidet die Liste sie ab (overflow: hidden in .zeilenliste), dort
+   steht ihr eigener Rahmen. Bleibt die letzte Reihe unvollständig, hat
+   die leere Restzelle so trotzdem oben und links ihre Linie – der Umriss
+   bleibt ein geschlossenes Raster statt einer Treppe. Seitenlayout dieser
+   einen Liste, darum hier und nicht im Fundament.
+   ================================================================== */
+
+.zeilenliste.aufgaben {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+}
+
+.zeilenliste.aufgaben > .listen-zeile {
+  width: auto;
+  margin: 0 -1px -1px 0;
+  border: 0;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+}
+
+/* ==================================================================
+   4. Ersatzplanung: Zeitstrahl je Client-Liste (Mapping 7.2 #11)
+   Je Geschäftsjahr zwei Säulen (beschafft, Ersatz geplant), die Höhe ist
+   ein scaleY über --anteil (.saeule-fuell, design.css). Das laufende
+   Geschäftsjahr steht auf einer ruhigen Fläche, sein Jahr 500. Der Strahl
+   rollt in der Karte seitlich, nie die Seite; rechts blendet er aus,
+   solange es dort weitergeht (data-mehr-rechts setzt UI.rollKanten).
+   ================================================================== */
+
+/* Positioniert: unsichtbare Beschriftungen (.nur-sr, absolut) rollen mit
+   und weiten sonst die Tafel (waagrechtes Rollen der Seite auf dem Handy). */
+.zeitstrahl {
+  position: relative;
+  margin-inline: calc(-1 * var(--a1));
+  padding: 0 var(--a1) var(--a2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--linie-stark) transparent;
+}
+
+.zeitstrahl[data-mehr-rechts] {
+  mask-image: linear-gradient(to left, transparent, var(--text) var(--a8));
+}
+
+.zeitstrahl[data-gerollt-x] {
+  mask-image: linear-gradient(to right, transparent, var(--text) var(--a8));
+}
+
+.zeitstrahl[data-gerollt-x][data-mehr-rechts] {
+  mask-image: linear-gradient(to right, transparent, var(--text) var(--a8),
+    var(--text) calc(100% - var(--a8)), transparent);
+}
+
+.zeitstrahl-achse {
+  display: flex;
+  gap: var(--a1);
+  width: max-content;
+  min-width: 100%;
+}
+
+.zeitstrahl-jahr {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: var(--a4) var(--a5);
+  flex: 1 0 auto;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  gap: var(--a2);
+  min-width: 56px;
+  padding: var(--a2) var(--a1);
+  box-sizing: border-box;
+  border-radius: var(--r-s);
 }
 
-.spaltengruppe { margin-bottom: var(--a4); }
-.spaltengruppe h3 {
-  color: var(--text-leise); font-size: var(--t-xs); font-weight: 500;
-  margin-bottom: var(--a2);
-}
-.spaltengruppe .liste {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 0 var(--a4);
-}
-.spaltengruppe label { font-size: var(--t-m); cursor: pointer; display: block; padding: 3px 0; }
-.spaltengruppe input { margin-right: var(--a2); }
+.zeitstrahl-jahr.aktuell { background: var(--flaeche-tief); }
 
-.werkzeugzeile { display: flex; gap: var(--a2); margin-top: var(--a3); flex-wrap: wrap; }
-
-.filterfeld > label {
-  display: block; font-size: var(--t-xs); font-weight: 500;
-  color: var(--text-leise); margin-bottom: var(--a1);
+/* Die Säulenfläche: oben Platz für die Marke einer vollen Säule, unten
+   die Grundlinie als Haarlinie. */
+.zeitstrahl-saeulen {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--a1);
+  width: 100%;
+  height: 128px;
+  padding-top: var(--a5);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--linie);
 }
-/* Die Auswahlfelder sind .feld-eingabe aus design.css. */
 
-/* Eine Schalterzeile im Panel (Archivierte anzeigen, Kompakte Zeilen). */
-.panel-schalter {
-  display: flex; align-items: center; gap: var(--a2);
-  font-size: var(--t-s); color: var(--text);
-  margin: 0 0 var(--a4);
+.zeitstrahl-saeule {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  width: 16px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.zeitstrahl-saeule.beschafft > .saeule-fuell { background: var(--diagramm-a); }
+
+/* Pastell braucht eine feine Kante in Primärgrün, sonst verschwindet die
+   Säule auf der ruhigen Fläche des laufenden Jahrs. */
+.zeitstrahl-saeule.ersatz > .saeule-fuell {
+  background: var(--diagramm-b);
+  box-shadow: inset 0 0 0 1px var(--primaer);
+}
+
+.zeitstrahl-saeule.faellig > .saeule-fuell { background: var(--diagramm-warnung); }
+.zeitstrahl-saeule.ueberfaellig > .saeule-fuell { background: var(--diagramm-gefahr); }
+
+/* Überfällig zusätzlich mit Sinnbild über der Säule. */
+.zeitstrahl-marke {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--anteil, 0) * 100% + var(--a1));
+  color: var(--gefahr);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Klickbare Säule: 6-%-Ebene etwas breiter als die Säule, Fokusring. */
+button.zeitstrahl-saeule {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.panel-schalter input { accent-color: var(--primaer); width: 16px; height: 16px; margin: 0; }
-.werkzeugzeile + .panel-schalter { margin: var(--a4) 0 0; }
+
+button.zeitstrahl-saeule::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc(-1 * var(--a1) / 2);
+  z-index: -1;
+  border-radius: var(--r-xs);
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dauer-schnell) var(--kurve-standard);
+}
+
+@media (hover: hover) {
+  button.zeitstrahl-saeule:hover::before { opacity: var(--zustand-hover-gross); }
+}
+
+button.zeitstrahl-saeule:active::before {
+  opacity: var(--zustand-druck);
+  transition-duration: var(--dauer-sofort);
+}
+
+.zeitstrahl-label {
+  color: var(--text-leise);
+  font: var(--t-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.zeitstrahl-jahr.aktuell .zeitstrahl-label {
+  color: var(--text);
+  font: var(--t-klein);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Legende unter einer Haarlinie: 10-px-Quadrate in denselben Farben wie
+   die Säulen (dieselben Klassen, Inventar §8 Nr. 5). */
+.zeitstrahl-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--a2) var(--a5);
+  margin: 0;
+  padding: var(--a3) 0 0;
+  border-top: 1px solid var(--linie);
+  color: var(--text-leise);
+  font: var(--t-meta);
+  list-style: none;
+}
+
+.zeitstrahl-legende > li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--a2);
+}
+
+.zeitstrahl-legende > li > svg { margin-left: calc(-1 * var(--a1)); }
+
+.legende-marke {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: calc(var(--r-xs) / 2);
+}
+
+.legende-marke.beschafft { background: var(--diagramm-a); }
+.legende-marke.ersatz { background: var(--diagramm-b); box-shadow: inset 0 0 0 1px var(--primaer); }
+.legende-marke.faellig { background: var(--diagramm-warnung); }
+.legende-marke.ueberfaellig { background: var(--diagramm-gefahr); }
+
+@media (forced-colors: active) {
+  .legende-marke { forced-color-adjust: none; background: CanvasText; }
+  .zeitstrahl-jahr.aktuell { outline: 1px solid CanvasText; }
+}
 
 
 /* ==================================================================
-   Software
+   5. Software
    ================================================================== */
 
-.sw-toolbar { margin-bottom: var(--a5); }
-
-.sw-kategorie { margin-bottom: var(--a6); }
-.sw-kategorie h2 {
-  font-size: var(--t-l); font-weight: 500;
-  color: var(--text); margin-bottom: var(--a3);
-}
-
-.sw-gitter {
+/* Kategorien untereinander; in jeder die Programme als Karten, so viele
+   nebeneinander, wie 300 px breit Platz haben. */
+.software-liste {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--a4);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--a5);
+  min-width: 0;
 }
 
-/* Die Karte selbst ist kein Knopf mehr: sie trägt zwei Ziele. Der Name führt
-   ins Softwarefenster (bearbeiten), die Zahlen in die gefilterte
-   Benutzerliste. Ein Knopf im Knopf wäre ungültiges HTML. */
-.sw-karte {
-  background: var(--weiss); border: 1px solid var(--linie); border-radius: var(--r);
-  padding: var(--a4) var(--a5);
-  color: var(--text); text-align: left;
-  display: flex; flex-direction: column; gap: var(--a2);
-  transition: background .12s, border-color .12s;
-}
-.sw-karte:hover { background: var(--flaeche); border-color: var(--umriss-leicht); }
+.software-liste:empty { display: none; }
 
-.sw-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: var(--a3); }
-.sw-name { font-size: var(--t-m); font-weight: 500; overflow: hidden;
-           text-overflow: ellipsis; white-space: nowrap; }
-.sw-zahlen {
-  display: flex; gap: var(--a4); font-size: var(--t-xs); color: var(--text-leise);
-  background: none; border: 0; padding: 0; margin: 0;
-  font-family: inherit; cursor: pointer; text-align: right;
-}
-.sw-zahlen:hover b { color: var(--primaer); }
-.sw-zahl { font-variant-numeric: tabular-nums; display: block; }
-.sw-zahl b { font-family: var(--schrift-titel); font-size: var(--t-xl); font-weight: 400;
-             color: var(--text); display: block; line-height: 1.2; }
-.sw-bemerkung { font-size: var(--t-xs); color: var(--text-still); }
-
-
-/* ==================================================================
-   Schmale Fenster
-   ================================================================== */
-
-@media (max-width: 760px) {
-  .kopf-marke { flex: 1 1 auto; }
-  .kopf-rechts { flex: 0 0 auto; }
-
-  .kopf .knopf,
-  .toolbar .knopf,
-  .toolbar .suche { min-height: 40px; }
-
-  .werkzeug-bereich .anzahl { margin-left: 0; order: 99; flex-basis: 100%; }
-  .toolbar #knopf-neu,
-  .toolbar #knopf-neu-telefon { margin-left: auto; }
-
-  .sw-gitter { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-
-  .filtergitter,
-  .spaltengruppe .liste { grid-template-columns: 1fr; }
+.karten.software-karten {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
 }
 
-@media (max-width: 380px) {
-  .kacheln { gap: var(--a2); }
-}
+/* Der Programmname ist ein Link; ein langer Name bricht um. */
+.software-karte .karte-titel { overflow-wrap: anywhere; }

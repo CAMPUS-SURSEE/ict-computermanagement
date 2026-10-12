@@ -2,89 +2,61 @@
 <html lang="de-CH">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Benutzer — ICT-Inventar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f4f2">
+<!-- Platzhalter: benutzer.js setzt «<Name> – ICT-Inventar» über
+     F.seitenkopf; im Fehlerzustand setzt F.zeigeFehler den Titel. -->
+<title>Benutzer – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Archivo:wdth,wght@112,500..700&display=swap">
-<!-- design.css liefert Tokens und Komponenten, benutzer.css nur das
-     Seitenlayout dieses Fensters. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400..700&family=Archivo:wdth,wght@112,500..700&display=swap">
+<!-- Reihenfolge ist wichtig: Tokens und Komponenten, Bewegung, Rahmen,
+     dann nur noch das Seitenlayout dieses Fensters und der Verlauf. -->
 <link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="bewegung.css">
+<link rel="stylesheet" href="rahmen.css">
+<!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
+     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §13). -->
+<style>@view-transition { navigation: auto; }</style>
 <link rel="stylesheet" href="benutzer.css">
-<!-- verlauf.css gehört zur Verlaufs-Zeitachse (verlauf.js) und wird von
-     beiden Detailfenstern geladen. -->
 <link rel="stylesheet" href="verlauf.css">
 </head>
-<body class="seite fenster b-seite">
+<!-- rahmen.js baut Kopf und Schublade sofort beim Laden; die Bereiche
+     (Übersicht, Gerät, Berechtigungen, Bemerkung) zeichnet fenster.js
+     (F.navZeichnen) in die Schublade. -->
+<body class="app" data-seite="benutzer">
 
-<!-- App-Leiste: Wortmarke links, Aktionen rechts. -->
-<header class="kopf">
-  <div class="kopf-marke">
-    <!-- Die Wortmarke führt zurück zur Übersicht. Im Vorführmodus hängt
-         benutzer.js den Parameter ?mock=1 an die Adresse. -->
-    <a class="logo-link" id="b-logo" href="index.html" aria-label="Zur Übersicht">
-      <span class="wortmarke">ICT<span class="wortmarke-punkt">.</span>INVENTAR</span>
-    </a>
-  </div>
-  <div class="kopf-rechts" id="b-aktionen"></div>
-</header>
+<a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
 
-<!-- Band für den Vorführmodus (?mock=1). -->
-<div class="band band-warnung" id="b-band" hidden></div>
+<!-- Kopfzeile: Wortmarke, Konto, «Abmelden» (rahmen.js). -->
+<header class="kopf" id="kopf"></header>
 
-<div class="fenster-rumpf">
+<!-- Schublade mit den Bereichen der Person (≤ 900 px modal). -->
+<nav class="schublade" id="schublade" aria-label="Bereiche"></nav>
 
-  <nav class="fenster-nav" id="b-nav" hidden aria-label="Bereiche"></nav>
-
-  <main class="fenster-inhalt">
-
-    <!-- Titelzeile: Name, Kennzeichnung und AD-Status. -->
-    <div class="seitenkopf">
-      <a class="seitenkopf-pfad" id="b-pfad" href="index.html#benutzer">Benutzer</a>
-      <h1 id="b-titel">Benutzer wird geladen …</h1>
-      <p class="seitenkopf-unter" id="b-unter"></p>
-      <div class="chips" id="b-status"></div>
+<!-- Die weisse Tafel: der Rahmen rundet, main rollt (einziger Roller). -->
+<div class="tafel-rahmen">
+  <main class="tafel" id="tafel" tabindex="-1">
+    <div class="ladebalken" id="ladebalken" hidden></div>
+    <!-- data-zustand="laden": bis zum ersten Inhalt ausgeblendet, nach
+         200 ms erscheint das Skelett. Den Seitenkopf füllt F.seitenkopf,
+         den Bereich F.zeichneBereich. Dialog, Meldungen, Tooltip und
+         Speicherleiste baut rahmen.js selbst: KEIN statisches Markup. -->
+    <div class="bahn" id="inhalt" data-zustand="laden">
+      <header class="seitenkopf" id="b-kopf"></header>
+      <div class="fenster-bereich" id="b-bereich"></div>
     </div>
-
-    <div class="lade" id="b-laden">
-      <div class="spinner" aria-hidden="true"></div>
-      <p class="lade-text" id="b-laden-text">Anmeldung wird geprüft …</p>
-      <p class="lade-fortschritt" id="b-laden-fortschritt"></p>
-    </div>
-
-    <div class="fehler" id="b-fehler" hidden>
-      <h2 class="fehler-titel" id="b-fehler-titel">Es ist ein Fehler aufgetreten</h2>
-      <p class="fehler-text" id="b-fehler-text"></p>
-      <p class="fehler-hinweis" id="b-fehler-hinweis"></p>
-      <button type="button" class="knopf knopf-primaer" id="b-knopf-nochmal">Erneut laden</button>
-    </div>
-
-    <div class="fenster-bahn" id="b-bereich" hidden></div>
-
   </main>
 </div>
 
-<div class="speicherleiste" id="b-speicherleiste" hidden>
-  <span class="speicher-text" id="b-speicher-text"></span>
-  <span class="speicher-fehler t-gefahr" id="b-speicher-fehler" hidden></span>
-  <button type="button" class="knopf knopf-leise" id="b-knopf-verwerfen">Verwerfen</button>
-  <button type="button" class="knopf knopf-primaer" id="b-knopf-speichern">Speichern</button>
-</div>
-
-<div class="toast" id="b-toast" hidden role="status" aria-live="polite"></div>
-
-<div class="dialog-hintergrund" id="b-dialog-hintergrund" hidden></div>
-<div class="dialog" id="b-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="b-dialog-titel">
-  <h2 id="b-dialog-titel"></h2>
-  <div id="b-dialog-inhalt"></div>
-  <div class="dialog-knoepfe" id="b-dialog-knoepfe"></div>
-</div>
-
+<script src="konfig.js"></script>
+<script src="bewegung.js"></script>
+<script src="bausteine.js"></script>
+<script src="rahmen.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="konfig.js"></script>
 <script src="spalten.js"></script>
 <script src="auth.js"></script>
 <script src="graph.js"></script>

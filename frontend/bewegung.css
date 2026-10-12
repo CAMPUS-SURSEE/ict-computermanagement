@@ -1,0 +1,328 @@
+/* bewegung.css — Bewegung des Design-Systems «ICT-Inventar».
+
+   Der EINZIGE Ort mit @keyframes. Port von ChatBob design/motion.css und
+   design/components/indicator.css mit deutschen Namen; die JS-Hälfte ist
+   bewegung.js (Namensraum Bewegung).
+
+   Haltung (ChatBob, «Charakter kommt aus Form und Farbe, nicht aus
+   Bewegung»):
+     - nur transform, opacity, Farben, box-shadow, clip-path animieren
+       (Ausnahmen: der Indikator gleitet in Lage UND Grösse; .aufklappbar
+       animiert die Höhe nur, wo der Browser interpolate-size kann)
+     - Deckkraft IMMER auf der Standardkurve; ein Eintritt sind darum ZWEI
+       Animationen: einblenden (Standardkurve) + eine Bewegung (bremsen)
+     - Austritte sind kürzer als Eintritte (250 → 150, 350 → 200 ms) und
+       laufen auf der Beschleunigungskurve
+     - kleine Wege (4–12 px, Blatt 24 px), Skala höchstens .98 → 1; kein
+       Überschwingen, keine Feder, keine Drehung (ausser Ladeanzeigen)
+     - Staffelung 30 ms × höchstens 6, nur beim ersten Zeigen
+     - reduzierte Bewegung über EINEN Token-Schalter in design.css
+
+   ------------------------------------------------------------------
+   ÜBERSICHT
+   ------------------------------------------------------------------
+   Keyframes (Eintritt: nur «from», das Element läuft zu seinen eigenen
+   Stilen; Austritt: nur «to»):
+     einblenden   Deckkraft 0 → 1                       (cb-fade-in)
+     anheben      von unten (--bewegung-weg, sonst 8 px) (cb-lift-in)
+     wachsen      von unten + Skala .98                 (cb-grow-in)
+     einschieben  von der Seite (sonst 24 px von rechts) (cb-shift-in)
+     einrollen    eine Zeile kommt von unten            (cb-roll-in)
+     aufploppen   Plaketten wachsen ab .6               (cb-pop-in)
+     zeichnen     ein Strich zeichnet sich (pathLength=1) (cb-draw)
+     aufziehen    Balken wächst ab scaleX(0)            (neu, für .balken)
+     aufrichten   Säule wächst ab scaleY(0)             (neu, für .saeulen)
+     ausblenden   Deckkraft → 0                         (cb-fade-out)
+     absinken     ausblenden + nach unten               (cb-sink-out)
+     schrumpfen   ausblenden + 4 px + Skala .98         (cb-scale-out)
+     wegschieben  ausblenden + zur Seite (sonst 12 px)  (cb-slide-out)
+     ausrollen    eine Zeile geht nach oben             (cb-roll-out)
+     drehen       Spinner                               (cb-spin)
+     pulsieren    Skelett 1 → .45 → 1                   (cb-pulse)
+     unbestimmt   Ladebalken-Segment −100 % → 286 %     (cb-indeterminate)
+
+   Hilfsklassen:
+     .eintritt.eintritt          einmaliger Eintritt (einblenden + anheben, 250 ms)
+       .eintritt--blenden        nur einblenden
+       .eintritt--skalieren      einblenden + wachsen
+       .eintritt--schieben       einblenden + einschieben, 350 ms, betont
+       .eintritt--tausch         Standard mit dem kleinsten Weg (4 px): ersetzt
+                                 einen Platzhalter oder eine andere Ansicht
+       .eintritt--verzoegert     einblenden erst nach 200 ms (Ladeanzeigen)
+       .eintritt--ploppen        einblenden + aufploppen (Zähler, Plaketten)
+       .eintritt--aufziehen      Balken wächst (600 ms)
+       .eintritt--aufrichten     Säule wächst (600 ms)
+     .austritt.austritt          einmaliger Austritt (ausblenden, 200 ms)
+       .austritt--sinken         absinken
+       .austritt--skalieren      schrumpfen
+       .austritt--schieben       wegschieben
+     .staffel > *                Kinder blenden nacheinander ein (--i × 30 ms)
+     details.aufklappbar         Höhe animiert, wo der Browser es kann
+     .veraltet                   Inhalt, der gleich ersetzt wird (gedimmt)
+     .hat-indikator > .indikator Gleitender Auswahl-Indikator (Bewegung.indikator)
+
+   Variablen pro Element: --i (Staffelstufe, gesetzt von Bewegung.staffeln),
+   --bewegung-weg, --bewegung-skala, --eintritt-dauer, --eintritt-verzoegerung,
+   --austritt-dauer, --zeichnen-laenge, --indikator-x/-y/-w/-h.
+   ------------------------------------------------------------------ */
+
+
+/* ==================================================================
+   Keyframes: Eintritt
+   ================================================================== */
+
+@keyframes einblenden {
+  from { opacity: 0; }
+}
+
+/* Nur Bewegung. Deckkraft muss auf der Standardkurve laufen, während die
+   Bewegung bremst, und ein Keyframe läuft auf einer Kurve – darum paart
+   jeder Eintritt einblenden mit einer dieser Bewegungen:
+     animation: einblenden var(--dauer-mittel) var(--kurve-standard) backwards,
+                anheben var(--dauer-mittel) var(--kurve-bremsen) backwards; */
+@keyframes anheben {
+  from { transform: translate3d(0, var(--bewegung-weg, var(--weg-m)), 0); }
+}
+
+@keyframes wachsen {
+  from { transform: translate3d(0, var(--bewegung-weg, var(--weg-m)), 0) scale(var(--skala-eintritt)); }
+}
+
+@keyframes einschieben {
+  from { transform: translate3d(var(--bewegung-weg, var(--weg-xl)), 0, 0); }
+}
+
+/* Eine Zeile kommt von unten in ihren Platz (laufende Ladezeile). */
+@keyframes einrollen {
+  from { transform: translate3d(0, var(--bewegung-weg, 100%), 0); }
+}
+
+/* Kleine Marken, die erscheinen (Zähler): die einzige Skala unter .98. */
+@keyframes aufploppen {
+  from { transform: scale(var(--bewegung-skala, var(--skala-klein))); }
+}
+
+/* Ein Strich zeichnet sich selbst (Häkchen mit pathLength="1"). */
+@keyframes zeichnen {
+  from { stroke-dashoffset: var(--zeichnen-laenge, 1); }
+}
+
+/* Balken und Säulen wachsen beim ersten Zeigen zu ihrem Anteil. */
+@keyframes aufziehen {
+  from { transform: scaleX(0); }
+}
+
+@keyframes aufrichten {
+  from { transform: scaleY(0); }
+}
+
+
+/* ==================================================================
+   Keyframes: Austritt
+   ================================================================== */
+
+@keyframes ausblenden {
+  to { opacity: 0; }
+}
+
+@keyframes absinken {
+  to { opacity: 0; transform: translate3d(0, var(--bewegung-weg, var(--weg-m)), 0); }
+}
+
+@keyframes schrumpfen {
+  to { opacity: 0; transform: translate3d(0, var(--weg-s), 0) scale(var(--skala-eintritt)); }
+}
+
+@keyframes wegschieben {
+  to { opacity: 0; transform: translate3d(var(--bewegung-weg, var(--weg-l)), 0, 0); }
+}
+
+@keyframes ausrollen {
+  to { transform: translate3d(0, var(--bewegung-weg, -100%), 0); }
+}
+
+
+/* ==================================================================
+   Keyframes: Schleifen (nur Ladeanzeigen; kein Schimmer, Skelette pulsieren)
+   ================================================================== */
+
+@keyframes drehen {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulsieren {
+  50% { opacity: .45; }
+}
+
+/* Das Segment (35 % der Spur) tritt links ein und rechts aus. */
+@keyframes unbestimmt {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(286%); }
+}
+
+
+/* ==================================================================
+   Einmaliger Eintritt. Die Variante wählt die Keyframes; --i (gesetzt von
+   Bewegung.staffeln) verzögert um je eine --staffel-Stufe. Die doppelte
+   Klasse ist Absicht: die Hilfsklasse muss den eigenen Auftritt einer
+   Komponente überstimmen.
+   ================================================================== */
+
+.eintritt.eintritt {
+  animation-name: var(--eintritt-keyframes, einblenden, anheben);
+  animation-duration: var(--eintritt-dauer, var(--dauer-mittel));
+  animation-timing-function: var(--eintritt-kurve, var(--kurve-standard), var(--kurve-bremsen));
+  animation-delay: calc(var(--i, 0) * var(--staffel) + var(--eintritt-verzoegerung, 0ms));
+  /* backwards: hält den Startzustand während der Verzögerung und gibt
+     danach an die eigenen Stile zurück (Hover-Transforms gehen weiter). */
+  animation-fill-mode: backwards;
+}
+
+.eintritt--blenden {
+  --eintritt-keyframes: einblenden;
+  --eintritt-kurve: var(--kurve-standard);
+}
+
+.eintritt--skalieren {
+  --eintritt-keyframes: einblenden, wachsen;
+}
+
+.eintritt--schieben {
+  --eintritt-keyframes: einblenden, einschieben;
+  --eintritt-dauer: var(--dauer-langsam);
+  --eintritt-kurve: var(--kurve-standard), var(--kurve-betont);
+}
+
+/* Inhalt, der einen Platzhalter oder eine andere Ansicht ersetzt:
+   Durchblenden mit dem kleinsten Weg (4 px). */
+.eintritt--tausch {
+  --bewegung-weg: var(--weg-s);
+}
+
+/* Wartet, bevor es sich zeigt: schnelle Ladevorgänge blitzen nie auf. */
+.eintritt--verzoegert {
+  --eintritt-keyframes: einblenden;
+  --eintritt-kurve: var(--kurve-standard);
+  --eintritt-verzoegerung: var(--verzoegerung-lader);
+}
+
+.eintritt--ploppen {
+  --eintritt-keyframes: einblenden, aufploppen;
+}
+
+/* Werte, die reisen, gleiten 600 ms auf der Standardkurve. */
+.eintritt--aufziehen {
+  --eintritt-keyframes: einblenden, aufziehen;
+  --eintritt-dauer: var(--dauer-gleiten);
+  --eintritt-kurve: var(--kurve-standard), var(--kurve-standard);
+}
+
+.eintritt--aufrichten {
+  --eintritt-keyframes: einblenden, aufrichten;
+  --eintritt-dauer: var(--dauer-gleiten);
+  --eintritt-kurve: var(--kurve-standard), var(--kurve-standard);
+}
+
+
+/* ==================================================================
+   Einmaliger Austritt. Bewegung.austreten() entfernt oder verbirgt das
+   Element danach. Er beginnt sofort und läuft einmal, egal welche
+   Verzögerung oder Schleife das Element hatte.
+   ================================================================== */
+
+.austritt.austritt {
+  animation-name: var(--austritt-keyframes, ausblenden);
+  animation-duration: var(--austritt-dauer, var(--dauer-basis));
+  animation-timing-function: var(--kurve-beschleunigen);
+  animation-delay: 0ms;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+
+.austritt--sinken { --austritt-keyframes: absinken; }
+.austritt--skalieren { --austritt-keyframes: schrumpfen; }
+.austritt--schieben { --austritt-keyframes: wegschieben; }
+
+
+/* ==================================================================
+   Staffelung: nur beim ersten Laden (Bewegung.auftritt) blenden Karten
+   und Kacheln nacheinander ein, höchstens sechs Stufen. Neu gezeichnete
+   Daten animieren nie: die Klasse wird danach wieder entfernt.
+   ================================================================== */
+
+.staffel > * {
+  animation: einblenden var(--dauer-mittel) var(--kurve-standard) backwards;
+  animation-delay: calc(var(--i, 0) * var(--staffel));
+}
+
+/* Einträge einer Liste blenden kürzer ein als Karten (ChatBob
+   .cba-fb-list > li: 150 ms). */
+.staffel.zeilenliste > * {
+  animation-duration: var(--dauer-schnell);
+}
+
+
+/* ==================================================================
+   Aufklappen: <details class="aufklappbar"> animiert die Höhe nur, wo
+   der Browser nach «auto» interpolieren kann (progressive Verbesserung).
+   Der Pfeil im summary dreht nicht, er kippt sofort.
+   ================================================================== */
+
+@supports (interpolate-size: allow-keywords) {
+  .aufklappbar { interpolate-size: allow-keywords; }
+
+  .aufklappbar::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height var(--dauer-mittel) var(--kurve-standard),
+      content-visibility var(--dauer-mittel) allow-discrete;
+  }
+
+  .aufklappbar[open]::details-content { height: auto; }
+}
+
+
+/* ==================================================================
+   Veraltet: Inhalt auf dem Weg hinaus (Filter, erneuter Test) bleibt
+   gedimmt stehen, bis das Neue ihn in einem Schritt ersetzt.
+   ================================================================== */
+
+.veraltet {
+  opacity: var(--deckkraft-veraltet);
+  transition: opacity var(--dauer-basis) var(--kurve-standard);
+}
+
+
+/* ==================================================================
+   Gleitender Indikator (Bewegung.indikator). Die Komponente gibt ihm
+   das Aussehen (Fläche, Radius); hier wird er nur bewegt. Lage und
+   Grösse gleiten zusammen auf der Standardkurve, die Pille dehnt sich
+   nie über ihr Ziel hinaus (keine Feder). Erste Platzierung und
+   Grössenänderungen springen.
+   ================================================================== */
+
+.hat-indikator {
+  position: relative;
+  isolation: isolate;
+}
+
+.indikator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: var(--indikator-w, 0);
+  height: var(--indikator-h, 0);
+  transform: translate3d(var(--indikator-x, 0), var(--indikator-y, 0), 0);
+  pointer-events: none;
+  transition:
+    transform var(--dauer-mittel) var(--kurve-standard),
+    width var(--dauer-mittel) var(--kurve-standard),
+    height var(--dauer-mittel) var(--kurve-standard),
+    opacity var(--dauer-schnell) var(--kurve-standard);
+}
+
+.indikator--sofort { transition: none; }
+.indikator[data-leer] { opacity: 0; }

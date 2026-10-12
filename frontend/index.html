@@ -2,312 +2,64 @@
 <html lang="de-CH">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ICT-Inventar — Campus Sursee</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f4f2">
+<title>Übersicht – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<!-- Roboto und Archivo (Wortmarke) von Google Fonts. Die Inhaltsrichtlinie in
-     _headers erlaubt fonts.googleapis.com (Stil) und fonts.gstatic.com (Schriftdateien). -->
+<!-- Google Sans und Archivo (Wortmarke) von Google Fonts. Die Inhaltsrichtlinie
+     in _headers erlaubt fonts.googleapis.com (Stil) und fonts.gstatic.com
+     (Schriftdateien). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Archivo:wdth,wght@112,500..700&display=swap">
-<!-- design.css liefert Tokens und Komponenten, styles.css nur das
-     Seitenlayout dieser Seite. Reihenfolge ist wichtig. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400..700&family=Archivo:wdth,wght@112,500..700&display=swap">
+<!-- design.css: Tokens und Bausteine; bewegung.css: alle Bewegungen;
+     rahmen.css: Rahmen und Ebenen; styles.css: nur das Layout dieser Seite. -->
 <link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="bewegung.css">
+<link rel="stylesheet" href="rahmen.css">
 <link rel="stylesheet" href="styles.css">
+<!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
+     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §13). -->
+<style>@view-transition { navigation: auto; }</style>
 </head>
-<body class="seite">
+<!-- rahmen.js baut Kopf und Schublade sofort aus Rahmen.HAUPTZIELE; der
+     aktive Eintrag kommt aus dem Hash (#admin, #edu …) und ist vom ersten
+     Bild an markiert. -->
+<body class="app" data-seite="index">
 
-<!-- App-Leiste: Marke links, Datenstand und Konto rechts. -->
-<header class="kopf">
+<a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
 
-  <div class="kopf-marke">
-    <!-- Die Wortmarke führt zurück zur Übersicht. Als echter Link (mit href),
-         damit Mittelklick und Tastatur funktionieren; app.js fängt den
-         gewöhnlichen Klick ab und behält dabei ?mock=1 in der Adresse. -->
-    <a class="marke-logo" id="marke-logo" href="#uebersicht" aria-label="Zur Übersicht">
-      <span class="wortmarke">ICT<span class="wortmarke-punkt">.</span>INVENTAR</span>
-    </a>
-  </div>
+<header class="kopf" id="kopf"></header>
 
-  <div class="kopf-rechts">
-    <span class="stand" id="stand"></span>
-    <span class="konto" id="konto"></span>
-    <!-- Abmelden steht rechts aussen und zeigt nur das Sinnbild; der Zweck
-         steht in title und aria-label. -->
-    <button type="button" class="knopf knopf-still knopf-sinnbild" id="knopf-abmelden"
-            title="Abmelden" aria-label="Abmelden" hidden></button>
-  </div>
+<nav class="schublade" id="schublade" aria-label="Hauptnavigation"></nav>
 
-</header>
-
-<div class="band band-warnung" id="mock-band" hidden></div>
-
-<div class="rumpf">
-
-  <!-- Linke Navigation. Die Sinnbilder sind eingebettetes SVG, weil die
-       Inhaltsrichtlinie keine fremden Bilder erlaubt. -->
-  <nav class="reiter" id="reiter" hidden aria-label="Ansicht wählen">
-    <button type="button" class="reiter-knopf" data-ansicht="uebersicht">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z"/></svg>
-      <span>Übersicht</span>
-    </button>
-    <button type="button" class="reiter-knopf" data-ansicht="admin">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v10H4z"/><path d="M2 19h20"/></svg>
-      <span>ADMIN-Clients</span>
-    </button>
-    <button type="button" class="reiter-knopf" data-ansicht="edu">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4L2 9l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-      <span>EDU-Clients</span>
-    </button>
-    <button type="button" class="reiter-knopf" data-ansicht="benutzer">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5"/></svg>
-      <span>Benutzer</span>
-    </button>
-    <button type="button" class="reiter-knopf" data-ansicht="telefone">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
-      <span>Telefonnummern</span>
-    </button>
-    <button type="button" class="reiter-knopf" data-ansicht="software">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h5v5H4zM10 4h5v5h-5zM16 4h4v5h-4zM4 10h5v5H4zM10 10h5v5h-5zM16 10h4v5h-4zM4 16h5v4H4zM10 16h5v4h-5zM16 16h4v4h-4z"/></svg>
-      <span>Software</span>
-    </button>
-  </nav>
-
-  <div class="buehne">
-
-    <!-- Ladezustand: zentriert im Inhaltsbereich -->
-    <div class="lade" id="lade">
-      <div class="spinner" aria-hidden="true"></div>
-      <p class="lade-text" id="lade-text">Anmeldung wird geprüft …</p>
-      <p class="lade-fortschritt" id="lade-fortschritt"></p>
+<div class="tafel-rahmen">
+  <main class="tafel" id="tafel" tabindex="-1">
+    <div class="ladebalken" id="ladebalken" hidden></div>
+    <!-- Sechs Ansichten, jede mit eigenem Seitenkopf; app.js baut ihren
+         Inhalt einmal beim Start und zeichnet danach nur nach. Sichtbar ist
+         genau eine, die übrigen tragen hidden. Bis zum ersten Inhalt
+         (Rahmen.zustand('inhalt')) blendet data-zustand="laden" alle aus;
+         nach 200 ms erscheint das Skelett. Tabellenansichten füllen die
+         Tafel (Rahmen.fest), ihr Tabellenrahmen rollt selbst. -->
+    <div class="bahn" id="inhalt" data-zustand="laden">
+      <section class="ansicht stapel" id="ansicht-uebersicht" aria-labelledby="uebersicht-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-admin" aria-labelledby="admin-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-edu" aria-labelledby="edu-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-benutzer" aria-labelledby="benutzer-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-telefone" aria-labelledby="telefone-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-software" aria-labelledby="software-titel" hidden></section>
     </div>
-
-    <!-- Fehlerzustand: ebenfalls zentriert -->
-    <div class="fehler" id="fehler" hidden>
-      <h2 class="fehler-titel" id="fehler-titel">Es ist ein Fehler aufgetreten</h2>
-      <p class="fehler-text" id="fehler-text"></p>
-      <p class="fehler-hinweis" id="fehler-hinweis"></p>
-      <button type="button" class="knopf knopf-primaer" id="knopf-nochmal">Erneut laden</button>
-    </div>
-
-    <!-- Übersicht -->
-    <main class="inhalt ansicht" id="ansicht-uebersicht" hidden>
-      <div class="bahn">
-
-        <div class="uebersicht-kopf">
-          <h1 class="uebersicht-titel">Übersicht</h1>
-          <p class="uebersicht-unter">Kennzahlen aus allen Listen. Ein Klick auf eine Zahl öffnet die passende Liste gefiltert.</p>
-        </div>
-
-        <!-- Zuoberst, was Aufmerksamkeit braucht: alle Kennzahlen mit Warn-
-             oder Gefahrenton und einem Wert über null, aus allen Listen.
-             Eine Zeile je Punkt, sortiert nach Dringlichkeit. -->
-        <section class="bereich">
-          <div class="bereich-kopf">
-            <h2 class="bereich-titel">Handlungsbedarf</h2>
-            <span class="bereich-zaehler" id="handlungsbedarf-anzahl" hidden></span>
-          </div>
-          <div class="karte">
-            <div class="aufgaben" id="kacheln-handlungsbedarf"></div>
-            <p class="aufgaben-leer" id="handlungsbedarf-leer" hidden>
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/><path d="M8 12l3 3 5-6"/></svg>
-              <span>Nichts offen — alle geprüften Regeln sind erfüllt.</span>
-            </p>
-          </div>
-        </section>
-
-        <!-- Bestand: je Liste eine Karte mit derselben Form — Hauptzahl oben,
-             darunter die weiteren Kennzahlen als Zeilen. Die Karten einer
-             Reihe sind gleich hoch. -->
-        <section class="bereich">
-          <div class="bereich-kopf">
-            <h2 class="bereich-titel">Bestand</h2>
-          </div>
-          <div class="bestaende">
-            <div class="karte bestand" id="bestand-admin"></div>
-            <div class="karte bestand" id="bestand-edu"></div>
-            <div class="karte bestand" id="bestand-benutzer"></div>
-            <div class="karte bestand" id="bestand-telefone"></div>
-          </div>
-        </section>
-
-        <!-- Ersatzplanung: je Client-Liste eine eigene Achse, damit ein Klick
-             auf eine Säule eindeutig in die passende Tabelle springt. Beide
-             Achsen teilen sich eine Karte und eine Legende. -->
-        <section class="bereich">
-          <div class="bereich-kopf">
-            <h2 class="bereich-titel">Ersatzplanung</h2>
-          </div>
-          <div class="karte">
-            <div class="planung">
-              <div class="planung-teil">
-                <h3 class="planung-titel">ADMIN-Clients</h3>
-                <div class="zeitstrahl" id="zeitstrahl-admin"></div>
-              </div>
-              <div class="planung-teil">
-                <h3 class="planung-titel">EDU-Clients</h3>
-                <div class="zeitstrahl" id="zeitstrahl-edu"></div>
-              </div>
-            </div>
-            <div class="zeitstrahl-legende" id="zeitstrahl-legende"></div>
-          </div>
-        </section>
-
-        <section class="bereich">
-          <div class="bereich-kopf">
-            <h2 class="bereich-titel">Verteilungen</h2>
-          </div>
-          <div class="gitter gitter-2 gitter-gleich" id="verteilungen"></div>
-        </section>
-
-      </div>
-    </main>
-
-    <!-- ADMIN-Clients -->
-    <main class="inhalt-fest ansicht" id="ansicht-admin" hidden>
-      <div class="werkzeug-bereich" id="admin-werkzeuge">
-        <div class="toolbar">
-          <div class="suchfeld">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="admin-suche" class="suche" placeholder="ADMIN-Clients durchsuchen"
-                   autocomplete="off" aria-label="ADMIN-Clients durchsuchen">
-            <kbd class="kuerzel" aria-hidden="true">/</kbd>
-          </div>
-          <button type="button" class="knopf" id="admin-knopf-filter" aria-expanded="false">Filter</button>
-          <button type="button" class="knopf" id="admin-knopf-spalten" aria-expanded="false">Spalten</button>
-          <button type="button" class="knopf" id="admin-knopf-csv">CSV</button>
-          <span class="anzahl" id="admin-anzahl"></span>
-          <button type="button" class="knopf knopf-primaer" id="admin-knopf-neu">Neuer ADMIN-Client</button>
-        </div>
-        <div class="chips" id="admin-chips"></div>
-        <div class="panel" id="admin-filterleiste" hidden></div>
-        <div class="panel" id="admin-spaltenwahl" hidden></div>
-      </div>
-
-      <div class="tabelle-rahmen" id="admin-rahmen">
-        <table class="tabelle" id="admin-tabelle">
-          <thead id="admin-kopf"></thead>
-          <tbody id="admin-koerper"></tbody>
-        </table>
-        <p class="tabelle-leer" id="admin-leer" hidden>Kein ADMIN-Client passt zu den aktuellen Filtern.</p>
-      </div>
-    </main>
-
-    <!-- EDU-Clients -->
-    <main class="inhalt-fest ansicht" id="ansicht-edu" hidden>
-      <div class="werkzeug-bereich" id="edu-werkzeuge">
-        <div class="toolbar">
-          <div class="suchfeld">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="edu-suche" class="suche" placeholder="EDU-Clients durchsuchen"
-                   autocomplete="off" aria-label="EDU-Clients durchsuchen">
-            <kbd class="kuerzel" aria-hidden="true">/</kbd>
-          </div>
-          <button type="button" class="knopf" id="edu-knopf-filter" aria-expanded="false">Filter</button>
-          <button type="button" class="knopf" id="edu-knopf-spalten" aria-expanded="false">Spalten</button>
-          <button type="button" class="knopf" id="edu-knopf-csv">CSV</button>
-          <span class="anzahl" id="edu-anzahl"></span>
-          <button type="button" class="knopf knopf-primaer" id="edu-knopf-neu">Neuer EDU-Client</button>
-        </div>
-        <div class="chips" id="edu-chips"></div>
-        <div class="panel" id="edu-filterleiste" hidden></div>
-        <div class="panel" id="edu-spaltenwahl" hidden></div>
-      </div>
-
-      <div class="tabelle-rahmen" id="edu-rahmen">
-        <table class="tabelle" id="edu-tabelle">
-          <thead id="edu-kopf"></thead>
-          <tbody id="edu-koerper"></tbody>
-        </table>
-        <p class="tabelle-leer" id="edu-leer" hidden>Kein EDU-Client passt zu den aktuellen Filtern.</p>
-      </div>
-    </main>
-
-    <!-- Benutzer -->
-    <main class="inhalt-fest ansicht" id="ansicht-benutzer" hidden>
-      <div class="werkzeug-bereich" id="benutzer-werkzeuge">
-        <div class="toolbar">
-          <div class="suchfeld">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="benutzer-suche" class="suche" placeholder="Benutzer durchsuchen"
-                   autocomplete="off" aria-label="Benutzer durchsuchen">
-            <kbd class="kuerzel" aria-hidden="true">/</kbd>
-          </div>
-          <button type="button" class="knopf" id="benutzer-knopf-filter" aria-expanded="false">Filter</button>
-          <button type="button" class="knopf" id="benutzer-knopf-spalten" aria-expanded="false">Spalten</button>
-          <button type="button" class="knopf" id="benutzer-knopf-csv">CSV</button>
-          <span class="anzahl" id="benutzer-anzahl"></span>
-        </div>
-        <div class="chips" id="benutzer-chips"></div>
-        <div class="panel" id="benutzer-filterleiste" hidden></div>
-        <div class="panel" id="benutzer-spaltenwahl" hidden></div>
-      </div>
-
-      <div class="tabelle-rahmen" id="benutzer-rahmen">
-        <table class="tabelle" id="benutzer-tabelle">
-          <thead id="benutzer-kopf"></thead>
-          <tbody id="benutzer-koerper"></tbody>
-        </table>
-        <p class="tabelle-leer" id="benutzer-leer" hidden>Kein Benutzer passt zu den aktuellen Filtern.</p>
-      </div>
-    </main>
-
-    <!-- Telefonnummern -->
-    <main class="inhalt-fest ansicht" id="ansicht-telefone" hidden>
-      <div class="werkzeug-bereich" id="telefone-werkzeuge">
-        <div class="toolbar">
-          <div class="suchfeld">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="telefone-suche" class="suche" placeholder="Telefonnummern durchsuchen"
-                   autocomplete="off" aria-label="Telefonnummern durchsuchen">
-            <kbd class="kuerzel" aria-hidden="true">/</kbd>
-          </div>
-          <button type="button" class="knopf" id="telefone-knopf-filter" aria-expanded="false">Filter</button>
-          <button type="button" class="knopf" id="telefone-knopf-spalten" aria-expanded="false">Spalten</button>
-          <button type="button" class="knopf" id="telefone-knopf-csv">CSV</button>
-          <span class="anzahl" id="telefone-anzahl"></span>
-          <button type="button" class="knopf knopf-primaer" id="knopf-neu-telefon">Neue Telefonnummer</button>
-        </div>
-        <div class="chips" id="telefone-chips"></div>
-        <div class="panel" id="telefone-filterleiste" hidden></div>
-        <div class="panel" id="telefone-spaltenwahl" hidden></div>
-      </div>
-
-      <div class="tabelle-rahmen" id="telefone-rahmen">
-        <table class="tabelle" id="telefone-tabelle">
-          <thead id="telefone-kopf"></thead>
-          <tbody id="telefone-koerper"></tbody>
-        </table>
-        <p class="tabelle-leer" id="telefone-leer" hidden>Keine Telefonnummer passt zu den aktuellen Filtern.</p>
-      </div>
-    </main>
-
-    <!-- Software -->
-    <main class="inhalt ansicht" id="ansicht-software" hidden>
-      <div class="bahn">
-        <div class="toolbar sw-toolbar">
-          <div class="suchfeld">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/><path d="M20 20l-4.3-4.3"/></svg>
-            <input type="search" id="software-suche" class="suche" placeholder="Programm suchen"
-                   autocomplete="off" aria-label="Programm suchen">
-          </div>
-          <span class="anzahl" id="software-anzahl"></span>
-          <button type="button" class="knopf knopf-primaer" id="knopf-neu-software">Neue Software</button>
-        </div>
-        <div id="software-liste"></div>
-      </div>
-    </main>
-
-  </div>
+  </main>
 </div>
 
-<!-- Kurzer Hinweis unten rechts, etwa nach einer Änderung im Detailfenster. -->
-<div class="hinweisband" id="hinweisband" role="status" aria-live="polite" hidden></div>
-
+<script src="konfig.js"></script>
+<script src="bewegung.js"></script>
+<script src="bausteine.js"></script>
+<script src="rahmen.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="konfig.js"></script>
 <script src="spalten.js"></script>
 <script src="auth.js"></script>
 <script src="graph.js"></script>

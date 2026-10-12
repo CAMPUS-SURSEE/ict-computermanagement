@@ -37,7 +37,8 @@ const KONFIG = {
 
   /* Liste «Software»: eine Zeile je Programm, und je Zeile eine Spalte in der
      Benutzer-Liste. Sie ersetzt die frühere Datei Inventar/programme.json und
-     wird im Frontend gepflegt (Reiter «Software»). */
+     wird im Frontend gepflegt (Ansicht «Software» der Hauptseite und das
+     Softwarefenster software.html). */
   softwareListId: "047562f5-2646-48e4-a03a-51b5c3a7a5fd",
 
   /* Nummernblock des Hauses ohne Kurzwahl: aus der Kurzwahl 373 wird
@@ -60,10 +61,7 @@ const KONFIG = {
   /* Wie oft geprüft wird, ob der Takt abgelaufen ist. Kurz genug, damit ein
      Fenster nach der Rückkehr aus dem Hintergrund rasch aktuell ist; das
      Prüfen selbst löst keine Abfrage aus. */
-  autoPruefTaktMs: 30 * 1000,
-
-  /* ---- Logo und Favicon ---- */
-  logoUrl: "https://www.campus-sursee.ch/wp-content/themes/campus-sursee/assets/images/Campus_Sursee_Hauptlogo_RGB.svg"
+  autoPruefTaktMs: 30 * 1000
 };
 
 /* Listen-ID nach Name. «liste» ist einer dieser fünf Namen; alles andere

@@ -11,14 +11,20 @@
    Öffentliche Schnittstelle (auch im Vorführmodus identisch):
      await Daten.clients(liste, fortschritt) → Array flacher Zeilen ("admin" | "edu")
      await Daten.benutzer(fortschritt)     → Array flacher Zeilen
-     await Daten.telefone(fortschritt)     → Array flacher Zeilen (mit __etag)
+     await Daten.telefone(fortschritt)     → Array flacher Zeilen
      await Daten.software(fortschritt)     → Array flacher Zeilen der Liste «Software»
+       (jede flache Zeile trägt ihr eTag als «__etag»)
      await Daten.zeile(liste, id)          → eine Zeile
-     await Daten.speichern(liste, id, f)   → geänderte Zeile
+     await Daten.speichern(liste, id, felder, etagErwartet?)
+                                           → geänderte Felder mit «__etag» (das neue
+                                             eTag; F.uebernehmen trägt es in die Zeile).
+                                             etagErwartet: 412 statt Überschreiben, wenn
+                                             die Zeile inzwischen anders ist
      await Daten.anlegen(liste, felder)    → neue Zeile
      await Daten.loeschen(liste, id)       → true
      await Daten.programmSpalteAnlegen(id, name) → legt die Spalte eines neuen
                                              Programms in der Benutzer-Liste an
+     Daten.mockModus                       → true im Vorführmodus (?mock=1)
    «liste» ist "admin", "edu", "benutzer", "telefon" oder "software".
    «fortschritt» ist eine Rückrufe-Funktion, die nach jeder geladenen Seite die
    bisherige Anzahl bekommt.
@@ -83,15 +89,15 @@ const Hilfe = (function () {
     return jahre <= 1 ? "vor einem Jahr" : "vor " + jahre + " Jahren";
   }
 
-  /* Zahlen in Schweizer Schreibweise. */
+  /* Zahlen in Schweizer Schreibweise: derselbe Formatierer wie UI.zahlText
+     (bausteine.js, auf allen Seiten vor graph.js geladen) – ohne
+     «nachkomma» höchstens eine Nachkommastelle, sonst genau so viele. Der
+     Rückfall gilt nur, wo graph.js ohne die Bausteine läuft. */
   function zahlText(wert, nachkomma) {
+    if (typeof UI !== "undefined" && UI.zahlText) return UI.zahlText(wert, nachkomma);
     if (wert === null || wert === undefined || wert === "") return "";
     const n = Number(wert);
-    if (isNaN(n)) return String(wert);
-    return n.toLocaleString("de-CH", {
-      minimumFractionDigits: nachkomma || 0,
-      maximumFractionDigits: nachkomma === undefined ? 1 : nachkomma
-    });
+    return isNaN(n) ? String(wert) : String(n);
   }
 
   /* Ja/Nein: SCCM und AD liefern Text, ältere Spalten echte Wahrheitswerte. */
@@ -181,6 +187,7 @@ const Daten = (function () {
         "Accept": e.roh ? "*/*" : "application/json"
       };
       if (rumpf !== undefined) kopfzeilen["Content-Type"] = "application/json";
+      if (e.kopf) for (const name in e.kopf) kopfzeilen[name] = e.kopf[name];
 
       const antwort = await fetch(url, { method: methode, headers: kopfzeilen, body: rumpf });
 
@@ -316,24 +323,54 @@ const Daten = (function () {
      Ist es gesetzt, wird vor dem Schreiben nachgesehen, ob die Zeile noch
      dieselbe ist — sonst hätte die zweite Person die Änderung der ersten
      stillschweigend überschrieben. Bei Abweichung kommt Fehler 412 zurück:
-     neu laden, dann noch einmal. */
+     neu laden, dann noch einmal.
+
+     Zwischen Nachsehen und Schreiben könnte trotzdem jemand schreiben. Der
+     PATCH trägt darum zusätzlich «If-Match»: dann prüft Graph selbst, im
+     selben Schritt, und antwortet bei einem Konflikt mit 412 (Fehler A9).
+     Weil sich das gegen das echte SharePoint nicht vorab prüfen lässt, ist
+     der Kopf nur ein Zusatz: scheitert der PATCH mit If-Match aus einem
+     anderen Grund als einem bestätigten Konflikt (412 und das eTag hat sich
+     wirklich geändert), wird er einmal ohne den Kopf wiederholt — schlimmstens
+     also das Verhalten von vorher. */
   async function speichern(liste, id, felder, etagErwartet) {
     if (mockModus) return Mock.speichern(liste, id, felder);
+    const was = "die Liste «" + LISTEN_TITEL[liste] + "»";
+    const elementPfad = listenPfad(liste) + "/items/" + encodeURIComponent(id);
+    async function etagJetzt() {
+      const jetzt = await anfrage(elementPfad + "?$select=id,eTag", { was: was });
+      return String(jetzt && jetzt.eTag || "");
+    }
+    function konflikt() {
+      const fehler = new Error(lesbarerFehler(412, null, "PATCH", was));
+      fehler.status = 412;
+      return fehler;
+    }
     if (etagErwartet) {
-      const jetzt = await anfrage(listenPfad(liste) + "/items/" + encodeURIComponent(id)
-        + "?$select=id,eTag", { was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
-      const aktuell = String(jetzt && jetzt.eTag || "");
-      if (aktuell && aktuell !== String(etagErwartet)) {
-        const fehler = new Error(lesbarerFehler(412, null, "PATCH", "die Liste «" + LISTEN_TITEL[liste] + "»"));
-        fehler.status = 412;
-        throw fehler;
+      const aktuell = await etagJetzt();
+      if (aktuell && aktuell !== String(etagErwartet)) throw konflikt();
+    }
+    const schreiben = { methode: "PATCH", rumpf: felder, was: was };
+    let geaendert;
+    if (!etagErwartet) {
+      geaendert = await anfrage(elementPfad + "/fields", schreiben);
+    } else {
+      try {
+        geaendert = await anfrage(elementPfad + "/fields",
+          Object.assign({ kopf: { "If-Match": String(etagErwartet) } }, schreiben));
+      } catch (fehler) {
+        if (fehler && (fehler.status === 412 || fehler.status === 409)) {
+          const aktuell = await etagJetzt();
+          if (aktuell && aktuell !== String(etagErwartet)) throw konflikt();
+        }
+        geaendert = await anfrage(elementPfad + "/fields", schreiben);
       }
     }
-    const geaendert = await anfrage(
-      listenPfad(liste) + "/items/" + encodeURIComponent(id) + "/fields",
-      { methode: "PATCH", rumpf: felder, was: "die Liste «" + LISTEN_TITEL[liste] + "»" });
     const satz = Object.assign({}, geaendert || {});
     satz.id = String(id);
+    // Das neue eTag der Zeile (Graph liefert es mit den Feldern): wer die
+    // Zeile lokal weiterführt, schickt beim nächsten Speichern das richtige.
+    if (satz["@odata.etag"]) satz.__etag = String(satz["@odata.etag"]);
     return satz;
   }
 

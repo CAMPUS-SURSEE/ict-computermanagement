@@ -1,8 +1,10 @@
 /* auth.js — Anmeldung an Entra ID (Microsoft 365) für das ICT-Inventar.
 
    Dünner Aufsatz auf MSAL, der offiziellen Anmeldebibliothek von Microsoft.
-   MSAL wird per CDN eingebunden, siehe die Script-Zeile in index.html. Hier
-   steht nur die Übersetzung in die vier Funktionen, welche die Seite braucht.
+   MSAL wird per CDN eingebunden, siehe die Script-Zeile in jeder der fünf
+   Seiten (index, client, benutzer, telefon, software; _headers erklärt die
+   Prüfsumme). Hier steht nur die Übersetzung in die vier Funktionen, welche
+   die Seiten brauchen.
    Den OAuth-Ablauf selbst, das Zwischenspeichern der Token und die stille
    Erneuerung erledigt MSAL.
 
@@ -15,13 +17,13 @@
      4. Auth.token() liefert jederzeit ein gültiges Zugriffstoken.
 
    Die Berechtigung ist delegiert und umfasst Lesen und Schreiben
-   (Sites.ReadWrite.All): das Detailfenster client.html pflegt die von Hand
-   geführten Spalten der Liste. Mehr als die angemeldete Person in SharePoint
-   selbst darf, kann das Token nie.
+   (Sites.ReadWrite.All): alle vier Detailseiten (client, benutzer, telefon,
+   software) pflegen die von Hand geführten Spalten ihrer Liste. Mehr als die
+   angemeldete Person in SharePoint selbst darf, kann das Token nie.
 
-   Ablage: localStorage. Damit übernimmt das Detailfenster, das die Hauptseite
-   mit window.open() öffnet, die bestehende Anmeldung, statt eine zweite
-   Umleitung auszulösen. Abmelden räumt den Speicher auf. */
+   Ablage: localStorage. Detailseiten öffnen im selben Tab, mit Ctrl- oder
+   Mittelklick in einem neuen; beide übernehmen so die bestehende Anmeldung,
+   statt eine zweite Umleitung auszulösen. Abmelden räumt den Speicher auf. */
 
 const Auth = (function () {
 
@@ -67,8 +69,8 @@ const Auth = (function () {
           navigateToLoginRequestUrl: true
         },
         cache: {
-          // localStorage statt sessionStorage: nur so teilen Hauptseite und
-          // das mit window.open() geöffnete Detailfenster dieselbe Anmeldung.
+          // localStorage statt sessionStorage: nur so teilen alle Tabs (auch
+          // ein per Ctrl-/Mittelklick geöffnetes Detailfenster) die Anmeldung.
           cacheLocation: "localStorage",
           storeAuthStateInCookie: false
         }

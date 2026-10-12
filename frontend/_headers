@@ -13,26 +13,34 @@
 #                               In den HTML-Seiten steht bewusst kein einziges
 #                               inline-Script, deshalb braucht es hier kein
 #                               'unsafe-inline'. Wer je ein <script>…</script>
-#                               direkt in index.html schreibt, muss das hier
+#                               direkt in eine Seite schreibt, muss das hier
 #                               aufweichen: besser den Code in eine .js-Datei.
 #   script-src cdn.jsdelivr.net Für MSAL, die Anmeldebibliothek von Microsoft.
-#                               Sie ist in index.html mit einer
-#                               Integritätsprüfsumme (integrity="sha384-…") auf
-#                               eine feste Fassung festgenagelt. Wird die
-#                               Version angehoben, muss die Prüfsumme mit.
-#   style-src 'unsafe-inline'   Die Balken der Übersicht bekommen ihre Breite
-#                               über style.width gesetzt. Für Stile ist das
+#                               Sie ist in ALLEN FÜNF Seiten (index, client,
+#                               benutzer, telefon, software .html) mit
+#                               derselben Integritätsprüfsumme
+#                               (integrity="sha384-…") auf eine feste Fassung
+#                               festgenagelt. Wird die Version angehoben, müssen
+#                               Adresse und Prüfsumme in allen fünf mit – wer
+#                               nur index.html anhebt, bricht die Detailseiten.
+#   style-src 'unsafe-inline'   Jede Seite trägt im <head> die Zeile
+#                               <style>@view-transition { navigation: auto; }</style>
+#                               (Seitenübergänge: aus einer Stilvorlage bricht
+#                               Chrome sie meist ab), styleguide.html dazu einen
+#                               <style>-Block für sein Layout; Skripte setzen
+#                               Custom Properties über element.style (Säulen,
+#                               Indikator, Meldungen). Für Stile ist das
 #                               ungefährlich, für Skripte wäre es das nicht.
-#   style-src fonts.googleapis  Roboto und Archivo (Google Fonts): das
+#   style-src fonts.googleapis  Google Sans und Archivo (Google Fonts): das
 #   font-src fonts.gstatic      Stylesheet kommt von fonts.googleapis.com, die
 #                               Schriftdateien von fonts.gstatic.com. Fällt
-#                               beides weg, greift der Fallback
-#                               (Helvetica/Arial), nichts bricht. Archivo ist
-#                               nur für die Wortmarke «ICT.INVENTAR».
+#                               beides weg, greift der Fallback ('Segoe UI',
+#                               system-ui), nichts bricht. Archivo ist nur für
+#                               die Wortmarke «ICT.INVENTAR».
 #   img-src campus-sursee.ch    Nur für das Favicon. Es wird bewusst direkt
-#                               von der Hauptseite geladen und nicht ins
-#                               Repository kopiert. (Das Campus-Logo in der
-#                               App-Leiste ist der Wortmarke gewichen.)
+#                               von campus-sursee.ch geladen (alle Seiten) und
+#                               nicht ins Repository kopiert. (Das Campus-Logo
+#                               in der App-Leiste ist der Wortmarke gewichen.)
 #   connect-src                 Microsoft Graph liefert die Listendaten,
 #                               login.microsoftonline.com die Token.
 #                               Seit dem 08.09.2026 steht die Programmliste in

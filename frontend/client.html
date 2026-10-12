@@ -2,94 +2,61 @@
 <html lang="de-CH">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Client — ICT-Inventar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f4f2">
+<!-- Platzhalter: client.js setzt «<PC-Name> – ICT-Inventar» über
+     F.seitenkopf({ titel }); im Fehlerzustand setzt F.zeigeFehler den Titel. -->
+<title>Client – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Archivo:wdth,wght@112,500..700&display=swap">
-<!-- design.css liefert Tokens und Komponenten, client.css nur das
-     Seitenlayout dieses Fensters. Reihenfolge ist wichtig.
-     styles.css wird hier bewusst NICHT geladen. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400..700&family=Archivo:wdth,wght@112,500..700&display=swap">
+<!-- Reihenfolge ist wichtig: Tokens und Komponenten, Bewegung, Rahmen, dann
+     nur noch das Seitenlayout dieses Fensters und des Verlaufs. -->
 <link rel="stylesheet" href="design.css">
+<link rel="stylesheet" href="bewegung.css">
+<link rel="stylesheet" href="rahmen.css">
+<!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
+     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §13). -->
+<style>@view-transition { navigation: auto; }</style>
 <link rel="stylesheet" href="client.css">
-<!-- verlauf.css gehört zur Verlaufs-Zeitachse (verlauf.js) und wird von
-     beiden Detailfenstern geladen. -->
 <link rel="stylesheet" href="verlauf.css">
 </head>
-<body class="seite fenster g-seite">
+<!-- rahmen.js baut Kopf und Schublade sofort beim Laden; die Bereiche des
+     Geräts zeichnet client.js über fenster.js (F.navZeichnen) hinein. -->
+<body class="app" data-seite="client">
 
-<!-- App-Leiste: Wortmarke links, Aktionen rechts. -->
-<header class="kopf">
-  <div class="kopf-marke">
-    <!-- Die Wortmarke führt zurück zur Übersicht. Im Vorführmodus hängt
-         client.js den Parameter ?mock=1 an die Adresse. -->
-    <a class="logo-link" id="g-logo" href="index.html" aria-label="Zur Übersicht">
-      <span class="wortmarke">ICT<span class="wortmarke-punkt">.</span>INVENTAR</span>
-    </a>
-  </div>
-  <div class="kopf-rechts" id="g-aktionen"></div>
-</header>
+<a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
 
-<!-- Band für den Vorführmodus, volle Breite. -->
-<div class="band band-warnung g-band" id="g-band" hidden></div>
+<!-- Kopfzeile: Wortmarke, Datenstand, Konto, «Abmelden» (rahmen.js). -->
+<header class="kopf" id="kopf"></header>
 
-<div class="fenster-rumpf">
+<!-- Schublade mit den Bereichen des Geräts (≤ 900 px modal). -->
+<nav class="schublade" id="schublade" aria-label="Bereiche"></nav>
 
-  <nav class="fenster-nav" id="g-nav" hidden aria-label="Bereiche"></nav>
-
-  <main class="fenster-inhalt" id="g-inhalt">
-
-    <!-- Titelzeile: Name des Clients, Kennzeichnung und Statuschips.
-         Der Pfad zeigt auf die Liste, aus der dieser Client kommt; client.js
-         setzt Beschriftung und Ziel je nach ?liste=admin|edu. -->
-    <div class="seitenkopf">
-      <a class="seitenkopf-pfad" id="g-pfad" href="index.html#admin">ADMIN-Clients</a>
-      <h1 id="g-titel">Client wird geladen …</h1>
-      <p class="seitenkopf-unter" id="g-unter"></p>
-      <div class="chips g-status" id="g-status"></div>
+<!-- Die weisse Tafel: der Rahmen rundet, main rollt (einziger Roller). -->
+<div class="tafel-rahmen">
+  <main class="tafel" id="tafel" tabindex="-1">
+    <div class="ladebalken" id="ladebalken" hidden></div>
+    <!-- data-zustand="laden": bis zum ersten Inhalt sind Seitenkopf und
+         Bereich ausgeblendet, nach 200 ms erscheint das Skelett. Den
+         Seitenkopf füllt F.seitenkopf, den Bereich F.zeichneBereich.
+         Dialoge, Meldungen, Tooltip und Speicherleiste baut rahmen.js
+         selbst: kein statisches Markup dafür. -->
+    <div class="bahn" id="inhalt" data-zustand="laden">
+      <header class="seitenkopf" id="g-kopf"></header>
+      <div class="fenster-bereich" id="g-bereich"></div>
     </div>
-
-    <div class="lade" id="g-laden">
-      <div class="spinner" aria-hidden="true"></div>
-      <p class="lade-text" id="g-laden-text">Anmeldung wird geprüft …</p>
-      <p class="lade-fortschritt" id="g-laden-fortschritt"></p>
-    </div>
-
-    <div class="fehler" id="g-fehler" hidden>
-      <h2 class="fehler-titel" id="g-fehler-titel">Es ist ein Fehler aufgetreten</h2>
-      <p class="fehler-text" id="g-fehler-text"></p>
-      <p class="fehler-hinweis" id="g-fehler-hinweis"></p>
-      <button type="button" class="knopf knopf-primaer" id="g-knopf-nochmal">Erneut laden</button>
-    </div>
-
-    <div class="fenster-bahn" id="g-bereich" hidden></div>
-
   </main>
 </div>
 
-<div class="speicherleiste" id="g-speicherleiste" hidden>
-  <span class="speicher-text" id="g-speicher-text"></span>
-  <span class="speicher-fehler t-gefahr" id="g-speicher-fehler" hidden></span>
-  <button type="button" class="knopf knopf-leise" id="g-knopf-verwerfen">Verwerfen</button>
-  <button type="button" class="knopf knopf-primaer" id="g-knopf-speichern">Speichern</button>
-</div>
-
-<div class="toast" id="g-toast" hidden role="status" aria-live="polite"></div>
-
-<div class="dialog-hintergrund" id="g-dialog-hintergrund" hidden></div>
-<div class="dialog" id="g-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="g-dialog-titel">
-  <h2 id="g-dialog-titel"></h2>
-  <div id="g-dialog-inhalt"></div>
-  <div class="dialog-knoepfe" id="g-dialog-knoepfe"></div>
-</div>
-
-<div id="g-datenlisten" hidden></div>
-
+<script src="konfig.js"></script>
+<script src="bewegung.js"></script>
+<script src="bausteine.js"></script>
+<script src="rahmen.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="konfig.js"></script>
 <script src="spalten.js"></script>
 <script src="auth.js"></script>
 <script src="graph.js"></script>

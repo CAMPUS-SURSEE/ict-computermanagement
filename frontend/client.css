@@ -1,300 +1,79 @@
 /* client.css — Seitenlayout des Clientfensters (client.html).
 
-   Das gesamte Gerüst kommt aus design.css: App-Leiste (.kopf), Titelzeile
-   (.seitenkopf), Rumpf mit Seitennavigation (.fenster-rumpf, .fenster-nav,
-   .fenster-inhalt), Kartenraster, Datenzeilen, Tabellen, Zustände,
-   Speicherleiste, Toast und Dialog. Hier steht nur, was es genau in
-   diesem Fenster gibt. Alle eigenen Klassen beginnen mit «g-».
+   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Seitenkopf,
+   Karten, Kacheln, Hinweise, Datenzeilen, Formularzeilen, Banner, Listen-
+   zeilen, Zeitachse, Säulen, schlichte Tabellen, Leerzustände. Raster und
+   Abstände kommen aus .stapel, .raster-2 und .karten (design.css), der
+   Bereich aus .fenster-bereich (rahmen.css).
 
-   Die Seite rollt senkrecht von selbst (kein overflow:hidden auf body),
-   waagrecht rollt sie nie; Tabellen rollen in ihrem eigenen Rahmen. */
-
-
-/* ==================================================================
-   Band, Werkzeugzeilen, Zwischenüberschriften
-   ================================================================== */
-
-.g-band { display: flex; align-items: center; gap: var(--a3); flex-wrap: wrap; }
-
-.g-werkzeuge {
-  display: flex;
-  gap: var(--a2);
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: var(--a4);
-}
-.g-werkzeuge .feld-eingabe { max-width: 320px; }
-
-.g-schalterchen {
-  display: flex; align-items: center; gap: var(--a2);
-  font-size: var(--t-s); color: var(--text-leise); cursor: pointer;
-}
-
-.g-untertitel {
-  font-size: var(--t-xs); font-weight: 500;
-  color: var(--text-leise);
-  margin: var(--a5) 0 var(--a2);
-}
+   Hier steht nur, was dieses Fenster an Anordnung zusätzlich braucht –
+   Raster, Breiten, Positionen, alle Werte als Tokens. Keine Farben, Radien,
+   Schatten, Schriften, Dauern oder Kurven. Klassen beginnen mit «g-». */
 
 
+/* Warnungen unter einem Feld («Name schon vergeben», «Archiviert, aber noch
+   in SCCM») sind UI.hinweisPlatz: Abstand und Verbergen kommen aus
+   design.css (.hinweis-platz). */
 
-/* ==================================================================
-   Hinweise
-   ================================================================== */
 
-.g-hinweis {
+/* ------------------------------------------------------------------
+   Stammdaten: Verlauf neben der Stammdaten-Karte
+   ------------------------------------------------------------------ */
+
+/* Die Hülle, in die verlauf.js seine Karte baut, ist das Rasterfeld. Als
+   Raster gibt sie ihre Höhe an die Karte weiter: beide Karten der Zeile
+   sind gleich hoch wie überall in .raster-2. */
+.g-verlauf {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: var(--a3);
-  padding: var(--a2) 0;
-  align-items: start;
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.g-hinweis:last-child { border-bottom: none; }
-.g-hinweis .icon { margin-top: 2px; }
-.g-hinweis-titel { font-size: var(--t-m); font-weight: 500; }
-.g-hinweis-text { font-size: var(--t-s); color: var(--text-leise); margin-top: 1px; }
-
-
-/* ==================================================================
-   Lebenszyklus
-   ================================================================== */
-
-.g-lebenszyklus { margin-bottom: var(--a5); }
-
-.g-lz {
-  background: var(--weiss);
-  border: 1px solid var(--linie);
-  border-radius: var(--r);
-  padding: var(--a4) var(--a5);
-}
-
-.g-lz-zeile {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--a2) var(--a3);
-  flex-wrap: wrap;
-}
-
-.g-lz-daten {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--a1) var(--a3);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
 }
-.g-lz-teil { display: inline-flex; align-items: baseline; gap: 6px; }
-.g-lz-name { font-size: var(--t-s); color: var(--text-leise); }
-.g-lz-jahr {
-  font-size: var(--t-m); font-weight: 500;
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-.g-lz-punkt { color: var(--text-still); }
-
-.g-lz-spur {
-  height: 4px;
-  margin-top: var(--a3);
-  border-radius: 2px;
-  background: var(--flaeche-3);
-  overflow: hidden;
-}
-.g-lz-fuell {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--primaer);
-}
-.g-lz-fuell.g-lz-warnung { background: var(--diagramm-warnung); }
-.g-lz-fuell.g-lz-gefahr  { background: var(--diagramm-gefahr); }
-
-.g-lz-erfassen {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--a2);
-  margin-top: var(--a3);
-}
 
 
-/* ==================================================================
-   Benutzerliste des Geräts
-   ================================================================== */
-
-.g-person {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--a1) var(--a3);
-  padding: var(--a3) 0;
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.g-person:last-child { border-bottom: none; }
-.g-person > div:first-child { flex: 1 1 220px; min-width: 0; }
-.g-person-name { font-size: var(--t-m); font-weight: 500; }
-.g-person-unter { font-size: var(--t-s); color: var(--text-leise); }
-.g-person-knoepfe { display: flex; gap: var(--a2); flex-wrap: wrap; }
-
-.g-trefferliste {
-  max-height: 260px;
-  overflow-y: auto;
-  margin-top: var(--a2);
-  border: 1px solid var(--linie);
-  border-radius: var(--r-klein);
-}
-.g-treffer {
-  display: block; width: 100%;
-  font: inherit; text-align: left;
-  background: none; border: none;
-  padding: var(--a2) var(--a3);
-  cursor: pointer;
-}
-.g-treffer:hover { background: var(--flaeche); }
-.g-treffer .g-person-unter { margin-top: 1px; }
+/* Die Trefferliste im Inhaber-Dialog ist eine .dialog-liste (rahmen.css):
+   sie rollt selbst und nimmt die Resthöhe des Dialogs; Titel, Suchfeld und
+   Knöpfe bleiben stehen. Hier steht dafür nichts mehr. */
 
 
-/* ==================================================================
-   Rohdaten («Alle Felder»)
-   ================================================================== */
-
-.g-roh-zeile {
-  display: grid;
-  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
-  gap: var(--a3);
-  padding: var(--a2) 0;
-  align-items: start;
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.g-roh-zeile:last-child { border-bottom: none; }
-.g-roh-name { color: var(--text-leise); font-size: var(--t-s); }
-.g-roh-intern { display: block; font-size: var(--t-xs); color: var(--text-still); }
-.g-roh-wert { font-size: var(--t-m); white-space: pre-wrap; overflow-wrap: anywhere; }
-.g-kopierknopf {
-  font: inherit; font-size: var(--t-xs); font-weight: 500;
-  background: none; border: none;
-  border-radius: var(--r-rund);
-  color: var(--primaer);
-  padding: 4px 10px; cursor: pointer;
-}
-.g-kopierknopf:hover { background: var(--primaer-hover); }
-
-
-/* ==================================================================
-   Zeitachse der SCCM-Zeitstempel
-   ================================================================== */
-
-.g-achse { position: relative; margin-left: 6px; padding-left: 20px; }
-.g-achse::before {
-  content: "";
-  position: absolute;
-  left: 3px; top: 8px; bottom: 8px;
-  width: 2px;
-  background: var(--linie);
-}
-.g-achse-punkt { position: relative; padding: 6px 0; }
-.g-achse-punkt::before {
-  content: "";
-  position: absolute;
-  left: -20px; top: 12px;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--primaer);
-}
-.g-achse-punkt.g-alt::before { background: var(--umriss-leicht); }
-.g-achse-titel { font-size: var(--t-m); }
-.g-achse-zeit { color: var(--text-leise); font-size: var(--t-s); }
-
-
-/* ==================================================================
+/* ------------------------------------------------------------------
    Flottenvergleich
-   ================================================================== */
+   ------------------------------------------------------------------ */
 
-.g-vergleich {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px var(--a3);
-  padding: var(--a2) 0;
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.g-vergleich:last-child { border-bottom: none; }
-.g-vergleich-name { font-size: var(--t-m); }
-.g-vergleich-wert {
-  font-size: var(--t-m); font-weight: 500; text-align: right;
-  white-space: nowrap; font-variant-numeric: tabular-nums;
-}
-.g-vergleich-neben { grid-column: 1 / -1; color: var(--text-leise); font-size: var(--t-s); }
-
-.g-verteilung { display: flex; align-items: flex-end; gap: 2px; height: 36px; margin-top: 6px; max-width: 360px; }
-.g-verteilung-saeule {
-  flex: 1 1 0; background: var(--flaeche-3);
-  border-radius: 2px 2px 0 0; min-height: 2px;
-}
-.g-verteilung-saeule.g-hier { background: var(--primaer); }
-
-
-/* ==================================================================
-   Stammdaten: Reihe gleich hoher Karten
-   ================================================================== */
-
-/* Stammdaten, Bemerkung und (bei gespeicherten Geräten) Herkunft stehen
-   nebeneinander über die volle Breite und sind gleich hoch. Das Textfeld
-   der Bemerkung wächst mit der Karte. Darunter folgt der Verlauf. */
-.g-stamm-reihe {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-  margin-bottom: var(--a4);
-}
-.g-stamm-reihe .feld-eingabe { max-width: none; }
-.g-stamm-reihe .eingabe-schmal { max-width: 200px; }
-
-.g-bemerkung { display: flex; flex-direction: column; }
-.g-bemerkung .karte-inhalt { flex: 1 1 auto; display: flex; flex-direction: column; }
-.g-bemerkung-huelle { flex: 1 1 auto; display: flex; }
-.g-bemerkung .feld-eingabe {
-  flex: 1 1 auto;
-  max-width: none;
-  min-height: 160px;
-  resize: none;
-}
-
-@media (max-width: 1100px) {
+/* Die kleine Verteilung steht unter Wert und Median, so breit wie ein
+   Formularfeld höchstens wird. */
+.g-vergleich-saeulen {
+  max-width: 360px;
+  margin-top: var(--a2);
 }
 
 
-/* ==================================================================
-   Neues Gerät: ein Formular ohne Navigation
-   ================================================================== */
+/* ------------------------------------------------------------------
+   Alle Felder
+   ------------------------------------------------------------------ */
 
-.g-ohne-nav .fenster-rumpf { grid-template-columns: minmax(0, 1fr); }
-.g-ohne-nav .fenster-inhalt { grid-column: 1; }
-.g-ohne-nav .fenster-bahn { max-width: 720px; }
-
-
-/* ==================================================================
-   Schmale Fenster
-   ================================================================== */
-
-@media (max-width: 760px) {
-  .g-stamm-reihe { grid-template-columns: 1fr; }
-  .g-bemerkung .feld-eingabe { min-height: 120px; resize: vertical; }
-
-  .g-roh-zeile { grid-template-columns: minmax(0, 1fr) auto; }
-  .g-roh-name { grid-column: 1 / -1; }
-
-  .g-werkzeuge .feld-eingabe { max-width: none; }
+/* Interner Spaltenname, Typ und Quelle stehen unter der Beschriftung. */
+.g-feld-intern {
+  display: block;
+  margin-top: var(--a1);
+  overflow-wrap: anywhere;
 }
 
+/* Wert links, Kopierknopf rechts in derselben Zeile. Der 32-px-Knopf ragt
+   über die 20-px-Textzeile hinaus, statt die Zeile höher zu machen. */
+.g-feld-wert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--a2);
+}
 
-/* ==================================================================
-   Druck
-   ================================================================== */
+.g-feld-text {
+  min-width: 0;
+  white-space: pre-line;
+}
 
-@media print {
-  body.g-seite { background: var(--weiss); }
-  .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .g-band,
-  .g-werkzeuge, .g-kopierknopf, .g-person-knoepfe { display: none; }
-  .fenster-rumpf { grid-template-columns: 1fr; }
-  .fenster-inhalt { padding: 0; }
-  .karte, .kachel, .g-lz { break-inside: avoid; page-break-inside: avoid; }
-  .karten { grid-template-columns: 1fr 1fr; }
+.g-feld-wert > .knopf {
+  flex-shrink: 0;
+  margin-block: calc(-1 * var(--a3) / 2);
 }

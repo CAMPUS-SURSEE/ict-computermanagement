@@ -1,52 +1,15 @@
 /* telefon.css — Seitenlayout des Telefonfensters.
 
-   Wird NACH design.css geladen. Das gesamte Gerüst (App-Leiste, Titelzeile,
-   Seitennavigation, Karten, Datenzeilen, Eingabefelder, Speicherleiste,
-   Toast, Dialog) kommt aus design.css. Die Eingabefelder sind die
-   Material-Outlined-Felder des Design-Systems (.feld-eingabe, Styleguide
-   4.9); hier stehen nur Breiten und die wenigen Muster, die es nur in
-   diesem Fenster gibt. Alle eigenen Klassen beginnen
-   mit «tf-», alle Werte sind Tokens. */
+   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Karten,
+   Datenzeilen mit Formularfeldern, Banner, Listenzeile der Person,
+   Leerzustand. Raster und Abstände kommen aus .karten und .stapel
+   (design.css), der Bereich aus .fenster-bereich (rahmen.css); schmale
+   Felder (Kurzwahl, Auswahlen) aus .eingabe-schmal.
 
+   Bewusst leer gelassen statt gelöscht: die Datei bleibt der Ort für ein
+   künftiges Seitenlayout (nur Raster, Breiten, Positionen – mit Tokens,
+   ohne Farben, Radien, Schatten, Schriften oder Dauern). Klassen dieser
+   Seite beginnen mit «tf-».
 
-/* ==================================================================
-   Eingaben: Breiten und Zustände
-   ================================================================== */
-
-/* Die Kurzwahl ist der Schlüssel: kurzes Feld mit festen Ziffernbreiten. */
-.datenzeile-form .tf-eingabe-kurzwahl {
-  max-width: 160px;
-  font-size: var(--t-l);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Schmale Felder für Auswahlen: Breite kommt aus design.css (.eingabe-schmal). */
-
-
-
-/* ==================================================================
-   Person aus dem Active Directory
-   ================================================================== */
-
-.tf-person {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--a2) var(--a3);
-}
-.tf-person-name { font-size: var(--t-l); font-weight: 500; overflow-wrap: anywhere; }
-.tf-person-unter { font-size: var(--t-s); color: var(--text-leise); overflow-wrap: anywhere; }
-
-
-/* ==================================================================
-   Druck
-   ================================================================== */
-
-@media print {
-  body.tf-seite { background: var(--weiss); }
-  .fenster-nav, .kopf-rechts, .speicherleiste, .toast, .band { display: none; }
-  .fenster-rumpf { grid-template-columns: 1fr; }
-  .fenster-inhalt { padding: 0; }
-  .karte { break-inside: avoid; page-break-inside: avoid; }
-}
+   Klasse ohne eigene Regel (Haken): .tf-verlauf (Hülle des Verlaufs). */

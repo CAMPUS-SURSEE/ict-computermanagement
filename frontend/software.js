@@ -1,291 +1,141 @@
-/* software.js — Softwarefenster des ICT-Inventars.
+/* software.js — Softwarefenster des ICT-Inventars (software.html).
 
-   Wird von der Hauptseite als software.html?id=… im selben Tab geöffnet und
-   zeigt eine einzelne Zeile der Liste «Software» in zwei Bereichen:
+   Wird aus der Software-Ansicht der Hauptseite als software.html?id=… im
+   selben Tab geöffnet und zeigt eine Zeile der Liste «Software» in zwei
+   Bereichen (Schublade):
 
-     Stammdaten     Programm-Id, Name, Kategorie, AD-Gruppen, Reihenfolge,
-                    Bemerkung.
-     Berechtigte    Wer das Programm hat — gezählt nach Stufe 1 (von Hand)
-                    und Stufe 2 (über eine AD-Gruppe), mit Namensliste.
+     Stammdaten     Name, Programm-ID, Kategorie, Reihenfolge (Karte
+                    «Programm»), AD-Gruppen und Bemerkung (Karte «Vergabe»).
+     Berechtigte    Wer das Programm hat – Kennzahlen und die Personen nach
+                    Stufe 2 (über eine AD-Gruppe) und Stufe 1 (von Hand).
 
-   Mit ?neu=1 wird ein neues Programm erfasst: dasselbe Formular, «Anlegen»
-   statt «Speichern».
+   Mit ?neu=1 wird ein neues Programm erfasst: dasselbe Formular ohne
+   Schublade, «Anlegen» statt «Speichern».
 
    Ein Programm ist zwei Dinge zugleich: eine Zeile in der Liste «Software»
    UND eine Textspalte in der Benutzer-Liste, deren interner Name die
-   Programm-Id ist. Dort steht je Person die Berechtigungsstufe (0/1/2).
-   Ohne diese Spalte wäre ein Programm wirkungslos, darum legt dieses Fenster
-   sie beim Anlegen gleich mit an (Daten.programmSpalteAnlegen). Der Sync
-   legt weiterhin nie eine Spalte an — das hier tut ein Mensch mit seinen
-   eigenen Rechten.
+   Programm-ID ist. Dort steht je Person die Berechtigungsstufe (0/1/2).
+   Ohne diese Spalte wäre ein Programm wirkungslos, darum legt dieses
+   Fenster sie beim Anlegen gleich mit an (Daten.programmSpalteAnlegen).
+   Der Sync legt weiterhin nie eine Spalte an – das tut hier ein Mensch mit
+   seinen eigenen Rechten.
 
-   Daraus folgt auch die wichtigste Regel dieses Fensters: die Programm-Id
-   ist nach dem Anlegen unveränderlich. Ein interner Spaltenname lässt sich
-   in SharePoint nicht mehr ändern; eine neue Id ergäbe eine zweite Spalte,
+   Daraus folgt die wichtigste Regel dieses Fensters: die Programm-ID ist
+   nach dem Anlegen unveränderlich. Ein interner Spaltenname lässt sich in
+   SharePoint nicht mehr ändern; eine neue ID ergäbe eine zweite Spalte,
    und alle bisherigen Berechtigungen blieben in der ersten liegen.
 
-   Löschen entfernt nur die Zeile aus der Liste «Software». Die Spalte in der
-   Benutzer-Liste bleibt mitsamt ihren Werten stehen — sie zu löschen würde
-   Berechtigungen vernichten, und das gehört in die Listeneinstellungen von
-   SharePoint (oder zu Entferne-Spalte.ps1), nicht in einen Klick hier.
+   Löschen entfernt nur die Zeile aus der Liste «Software». Die Spalte in
+   der Benutzer-Liste bleibt mitsamt ihren Werten stehen – sie zu löschen
+   würde Berechtigungen vernichten, und das gehört in die Listeneinstellungen
+   von SharePoint (oder zu Entferne-Spalte.ps1), nicht in einen Klick hier.
 
-   Grundsätze wie in den anderen Fenstern: kein Framework, keine globalen
-   Variablen ausser den Modulen der anderen Dateien, kein Inline-Script und
-   niemals innerHTML mit Daten — jeder Wert geht über textContent in die
-   Seite. */
+   Gebaut wird nur über UI.* (bausteine.js, rahmen.js), Rahmen.*,
+   Bewegung.* und das Gerüst der Detailseiten F (fenster.js, Präfix «sw»):
+   Seitenkopf, Bereiche, Entwurf, Speicherablauf, Löschdialog, Nachladen.
+   Neu gezeichnet wird an Ort und Stelle (F.zeichneBereich hält Fokus,
+   Schreibmarke und Rollen); bewegt wird nur beim ersten Zeigen, beim
+   Bereichswechsel und bei Handlungen der Person, nie beim Nachladen.
+
+   Grundsätze wie überall: kein Framework, kein Inline-Script und niemals
+   innerHTML mit Daten – jeder Wert geht über textContent in die Seite. */
 
 "use strict";
 
 (function () {
 
 /* ==================================================================
-   1. Parameter und Spaltenwissen
+   1. Parameter, Gerüst, Zustand
    ================================================================== */
 
 const ABFRAGE = new URLSearchParams(location.search);
-const mockModus = ABFRAGE.get("mock") === "1";
+const mockModus = UI.adresse.mock();
 
 let elementId = ABFRAGE.get("id");
 let neuModus = ABFRAGE.get("neu") === "1";
 
-/* Anhang für Links in andere Fenster, damit der Vorführmodus erhalten bleibt. */
-const MOCK_ANHANG = mockModus ? "&mock=1" : "";
-
-const SPALTEN = SPALTEN_SOFTWARE;
 const SPALTE = {};
-for (const s of SPALTEN) SPALTE[s.i] = s;
+for (const s of SPALTEN_SOFTWARE) SPALTE[s.i] = s;
 
+const el = UI.el, $ = UI.$;
 
-/* ==================================================================
-   2. Gerüst (fenster.js) und DOM-Helfer
-   ================================================================== */
+/* So viele Personen zeigt eine Liste zuerst; der Rest auf Klick. */
+const PERSONEN_ANFANG = 20;
 
-const F = Fenster.erstellen("sw", { neuLaden: function () { neuLaden(); } });
-const $ = F.$, el = F.el, leeren = F.leeren, knopf = F.knopf, text = F.text, chip = F.chip;
-const karte = F.karte, feldGesperrt = F.feldGesperrt, feldFrei = F.feldFrei;
-const toast = F.toast, melden = F.melden;
-const dialogOeffnen = F.dialogOeffnen, dialogSchliessen = F.dialogSchliessen;
-const zeigeLaden = F.zeigeLaden, zeigeFehler = F.zeigeFehler, zeigeInhalt = F.zeigeInhalt;
-const gleichwertig = F.gleichwertig, anhaengen = F.anhaengen;
-const leerzustand = F.leerzustand;
-
-
-/* ==================================================================
-   3. Zustand, Entwurf, Speicherleiste
-   ================================================================== */
+const LEAD = "Stammdaten pflegen und sehen, wer das Programm nutzen darf.";
+const LEAD_NEU = "Name, Programm-ID und Kategorie genügen. Beim Anlegen entsteht auch die Spalte in der Benutzer-Liste.";
 
 let alleSoftware = [];      // Liste «Software»
-let alleBenutzer = [];      // Liste «Benutzer», angereichert
+let alleBenutzer = [];      // Liste «Benutzer», angereichert (__name, __adAktiv)
 let zeile = null;           // die Zeile dieses Fensters
-let entwurf = {};           // geänderte, noch nicht gespeicherte Felder
-let speichertGerade = false;
-let speicherFehler = "";
-let geloescht = false;
 
-/* Solange niemand den Namen von Hand angefasst hat, folgt die Programm-Id
-   dem Namen — «Adobe Acrobat Pro» wird zu «AdobeAcrobatPro». */
+/* Solange niemand die ID von Hand angefasst hat, folgt sie dem Namen –
+   «Adobe Acrobat Pro» wird zu «AdobeAcrobatPro». */
 let idVonHand = false;
 
 let aktiverBereich = "stammdaten";
+const aufgeklappt = { 1: false, 2: false };
+
+const F = Fenster.erstellen("sw", { liste: "software", neuLaden: neuLaden, nachladen: nachladenStill });
+
+/* Der Entwurf: was getippt, aber noch nicht gespeichert ist. Jede Änderung
+   führt Speicherleiste und Kopf nach (an Ort und Stelle, ohne Neuaufbau).
+   Beim Anlegen ist alles neu: F.feld zeigt dann keinen Punkt «geändert». */
+const entwurf = F.entwurf(function () { return zeile; }, {
+  beiAenderung: function () { speicherleisteZeichnen(); kopfZeichnen(); },
+  neu: function () { return neuModus; }
+});
 
 const BEREICHE = [
-  { k: "stammdaten",  d: "Stammdaten",  f: bereichStammdaten },
-  { k: "berechtigte", d: "Berechtigte", f: bereichBerechtigte }
+  { k: "stammdaten", d: "Stammdaten", sinnbild: "dateiText", f: bereichStammdaten },
+  { k: "berechtigte", d: "Berechtigte", sinnbild: "benutzerGruppe", f: bereichBerechtigte }
 ];
 
 function sichtbareBereiche() {
-  /* Ein noch nicht angelegtes Programm hat keine Berechtigten. */
+  // Ein noch nicht angelegtes Programm hat keine Berechtigten.
   return neuModus ? [BEREICHE[0]] : BEREICHE;
 }
 
-/* ---------- Gerüst-Anbindung ---------- */
-
-function speicherleisteZeichnen() {
-  F.speicherleisteZeichnen({
-    neuModus: neuModus, geloescht: geloescht, speichertGerade: speichertGerade,
-    speicherFehler: speicherFehler, anzahl: anzahlAenderungen(), neuText: "Neue Software"
-  });
-}
-
-function navZeichnen() {
-  F.navZeichnen(sichtbareBereiche(), aktiverBereich, bereichWechseln,
-    { verstecken: neuModus });
-}
-
-function zeichneBereich(fokusHalten) {
-  aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich, fokusHalten);
-}
-
-function bereichWechseln(schluessel) {
-  aktiverBereich = schluessel;
-  location.hash = "#" + schluessel;
-  navZeichnen();
-  zeichneBereich(false);
-}
-
-function hashLesen() { aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich; }
-
-function logoZeichnen() { F.logoZeichnen("software"); }
-
-function bandZeichnen() {
-  F.bandZeichnen("Vorführmodus (?mock=1): alle Programme, Gruppen und Zahlen sind "
-    + "erfunden. Änderungen bleiben im Browser und gehen nie nach SharePoint.",
-    function () {
-      entwurf = {};
-      melden("software-geaendert", elementId);
-      neuLaden();
-    });
-}
-
-function autoStarten() {
-  F.autoStarten(
-    function () { return !neuModus && !geloescht && !speichertGerade && !anzahlAenderungen(); },
-    async function () {
-      await datenLaden(true);
-      zeileWaehlen();
-      zeigeInhalt();
-      zeichnenAlles();
-    });
-}
-
-function zeichnenAlles() {
-  kopfZeichnen();
-  navZeichnen();
-  zeichneBereich(false);
-  speicherleisteZeichnen();
-}
-
-/* Formularzeile mit Punkt, wenn das Feld im Entwurf steht. */
-function formZeile(beschriftung, feldKnoten, feldName, hinweis) {
-  return F.formZeile(beschriftung, feldKnoten, feldName && istGeaendert(feldName), hinweis);
-}
-
-
-/* ---------- Werte lesen und schreiben ---------- */
-
-function wert(feld) {
-  if (Object.prototype.hasOwnProperty.call(entwurf, feld)) return entwurf[feld];
-  return zeile ? zeile[feld] : "";
-}
-
-function textWert(feld) { return text(wert(feld)); }
-
-function setzeWert(feld, neuerWert) {
-  const alt = zeile ? zeile[feld] : "";
-  if (gleichwertig(alt, neuerWert)) delete entwurf[feld];
-  else entwurf[feld] = neuerWert;
-  speicherFehler = "";
-  speicherleisteZeichnen();
-}
-
-function anzahlAenderungen() { return Object.keys(entwurf).length; }
-
-function istGeaendert(feld) {
-  return Object.prototype.hasOwnProperty.call(entwurf, feld);
-}
-
 
 /* ==================================================================
-   4. Bausteine
+   2. Auswertung
    ================================================================== */
 
-/* Vorschlagslisten aus den vorhandenen Werten einer Spalte — für die
-   Kategorie: eine neue entsteht, indem man sie hinschreibt, aber die
-   bestehenden sollen mit einem Klick erreichbar sein. */
-const datenlistenGebaut = {};
-
-function datenliste(feld) {
-  const id = "sw-liste-" + feld;
-  if (datenlistenGebaut[id]) return id;
-  const werte = [];
-  for (const z of alleSoftware) {
-    const w = String(z[feld] || "").trim();
-    if (w && werte.indexOf(w) === -1) werte.push(w);
-  }
-  if (!werte.length) return null;
-  werte.sort(Hilfe.vergleiche);
-  const liste = el("datalist");
-  liste.id = id;
-  for (const w of werte) {
-    const o = el("option");
-    o.value = w;
-    liste.appendChild(o);
-  }
-  $("sw-datenlisten").appendChild(liste);
-  datenlistenGebaut[id] = true;
-  return id;
-}
-
-function eingabeFuer(spalte, optionen) {
-  const o = optionen || {};
-  const istNote = spalte.t === "Note";
-  const feld = el(istNote ? "textarea" : "input",
-    "feld-eingabe" + (o.klasse ? " " + o.klasse : ""));
-  if (!istNote) feld.type = spalte.t === "Number" ? "number" : "text";
-  feld.value = textWert(spalte.i);
-  feld.id = "sw-eingabe-" + spalte.i;
-  feld.autocomplete = "off";
-  feld.setAttribute("aria-label", spalte.d);
-  if (o.platzhalter) feld.placeholder = o.platzhalter;
-  if (o.zeilen && istNote) feld.rows = o.zeilen;
-  if (!istNote && o.vorschlaege) {
-    const id = datenliste(spalte.i);
-    if (id) feld.setAttribute("list", id);
-  }
-  if (o.gesperrt) {
-    feld.disabled = true;
-    feld.title = o.gesperrtHinweis || "";
-  }
-  feld.addEventListener("input", function () {
-    feld.classList.remove("ungueltig");
-    setzeWert(spalte.i, feld.value);
-    const z = feld.closest ? feld.closest(".datenzeile") : null;
-    if (z) z.classList.toggle("geaendert", istGeaendert(spalte.i));
-    if (o.beiEingabe) o.beiEingabe(feld.value);
-  });
-  return feld;
-}
-
-
-/* ==================================================================
-   5. Auswertung
-   ================================================================== */
-
-function programmId() { return textWert("Title").trim(); }
+function programmId() { return entwurf.textWert("Title").trim(); }
 
 function anzeigeName() {
-  const name = textWert("Name").trim();
+  const name = entwurf.textWert("Name").trim();
   if (name) return name;
   const id = programmId();
   if (id) return id;
-  return neuModus ? "Neue Software" : "(ohne Namen)";
+  return neuModus ? "Neues Programm" : "(ohne Namen)";
 }
 
-/* Die AD-Gruppen des Entwurfs — eine je Zeile. */
-function adGruppen() {
-  return Modell.adGruppen(wert("AdGruppen"));
-}
+/* Die AD-Gruppen des Entwurfs (eine je Zeile) bzw. der gespeicherten Zeile. */
+function adGruppen() { return Modell.adGruppen(entwurf.wert("AdGruppen")); }
+function gespeicherteGruppen() { return Modell.adGruppen(zeile ? zeile.AdGruppen : ""); }
 
-/* Andere Zeilen mit derselben Programm-Id: die Id ist der Spaltenname und
+/* Andere Zeilen mit derselben Programm-ID: die ID ist der Spaltenname und
    darf darum nur einmal vorkommen. */
 function idZwillinge() {
   const id = programmId();
   if (!id) return [];
-  return alleSoftware.filter(z => String(z.id) !== String(elementId)
-    && Modell.schluessel(z.Title) === Modell.schluessel(id));
+  return alleSoftware.filter(function (z) {
+    return String(z.id) !== String(elementId) && Modell.schluessel(z.Title) === Modell.schluessel(id);
+  });
 }
 
-/* Vorschlag für die Programm-Id aus dem Namen: Buchstaben und Ziffern,
+/* Vorschlag für die Programm-ID aus dem Namen: Buchstaben und Ziffern,
    Umlaute aufgelöst, höchstens 30 Zeichen, Beginn mit einem Buchstaben. */
 function idAusName(name) {
-  const roh = String(name || "")
+  return String(name || "")
     .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
     .replace(/Ä/g, "Ae").replace(/Ö/g, "Oe").replace(/Ü/g, "Ue")
     .replace(/ß/g, "ss")
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^A-Za-z0-9]/g, "")
-    .replace(/^[0-9]+/, "");
-  return roh.slice(0, 30);
+    .replace(/^[0-9]+/, "")
+    .slice(0, 30);
 }
 
 /* Benutzer mit einer Berechtigung für dieses Programm, nach Stufe. */
@@ -293,325 +143,492 @@ function berechtigte(stufe) {
   const id = programmId();
   if (!id) return [];
   return alleBenutzer
-    .filter(b => Modell.stufe(b[id]) === stufe)
-    .sort((a, b) => Hilfe.vergleiche(a.__name, b.__name));
+    .filter(function (b) { return Modell.stufe(b[id]) === stufe; })
+    .sort(function (a, b) { return Hilfe.vergleiche(a.__name, b.__name); });
 }
 
-/* Gibt es die Spalte in der Benutzer-Liste schon? Sie steht nicht in
-   spalten.js, darum wird sie an den geladenen Benutzerzeilen abgelesen:
-   Graph liefert ein Feld erst, wenn die Spalte existiert und einen Wert
-   trägt. Eine ganz leere Spalte lässt sich so nicht von einer fehlenden
-   unterscheiden — deshalb ist die Antwort «nein» hier nur ein Hinweis,
-   keine Fehlermeldung. */
+function anzahlBerechtigte() { return berechtigte(1).length + berechtigte(2).length; }
+
+function kategorien() {
+  const werte = [];
+  for (const z of alleSoftware) {
+    const w = String(z.Kategorie || "").trim();
+    if (w && werte.indexOf(w) === -1) werte.push(w);
+  }
+  return werte.sort(Hilfe.vergleiche);
+}
+
+function personenText(n) { return n === 1 ? "1 Person" : UI.zahlText(n) + " Personen"; }
+
+/* ---------- Gibt es die Spalte in der Benutzer-Liste? ----------
+
+   Sie steht nicht in spalten.js, darum wird sie an den geladenen
+   Benutzerzeilen abgelesen: Graph liefert ein Feld erst, wenn die Spalte
+   existiert UND einen Wert trägt. Eine ganz leere Spalte lässt sich so nicht
+   von einer fehlenden unterscheiden – deshalb ist «nicht gefunden» nur ein
+   Hinweis. Hat jemand die Spalte hier angelegt oder bestätigt, merkt sich
+   der Tab das (sessionStorage), sonst stünde der Hinweis bei jedem Laden
+   wieder da, bis die erste Person das Programm bekommt. */
+const SPALTEN_SPEICHER = "ictinventar.software.spalten" + (mockModus ? ".mock" : "");
+
+function bestaetigteSpalten() {
+  try {
+    const liste = JSON.parse(sessionStorage.getItem(SPALTEN_SPEICHER) || "[]");
+    return Array.isArray(liste) ? liste : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function spalteBestaetigen(id) {
+  const liste = bestaetigteSpalten();
+  if (liste.indexOf(id) === -1) liste.push(id);
+  try { sessionStorage.setItem(SPALTEN_SPEICHER, JSON.stringify(liste)); } catch (e) { /* privat */ }
+}
+
 function spalteGefunden() {
   const id = programmId();
   if (!id) return false;
-  for (const b of alleBenutzer) {
-    if (Object.prototype.hasOwnProperty.call(b, id)) return true;
+  if (bestaetigteSpalten().indexOf(id) !== -1) return true;
+  return alleBenutzer.some(function (b) { return Object.prototype.hasOwnProperty.call(b, id); });
+}
+
+function spalteFehlt() { return !neuModus && !!programmId() && !spalteGefunden(); }
+
+
+/* ==================================================================
+   3. Felder
+   ================================================================== */
+
+/* Ein Feld der Liste am Entwurf über F.feld: id «sw-eingabe-<Feld>»
+   (Fokus beim Neuzeichnen, Feldfehler aus F.speicherAblauf), Beschriftung
+   aus spalten.js, die Art aus dem Spaltentyp; der Punkt «geändert» folgt
+   dem Entwurf (beim Anlegen keiner, Option «neu» des Entwurfs).
+   Die Reihenfolge ist ein Textfeld, kein Zahlenfeld (reihenfolgeZeile). */
+function feldZeile(feld, optionen) {
+  const s = SPALTE[feld];
+  return F.feld(feld, Object.assign({
+    beschriftung: s.d,
+    art: s.t === "Note" ? "textbereich" : (s.t === "Number" ? "zahl" : "text")
+  }, optionen));
+}
+
+const ID_REGEL = "Buchstaben und Ziffern, zuerst ein Buchstabe, höchstens 30 Zeichen.";
+
+/* Live-Prüfung der Programm-ID (nur beim Anlegen): ein Fehler steht am Feld
+   (UI.feldFehler, wie beim Speichern), «in Ordnung» als Hinweis mit Haken
+   (UI.feldHinweis).
+   UI.feldFehler löscht sich bei der nächsten Eingabe selbst; weil dieser
+   Zuhörer vorher registriert ist, setzt er den Fehler davor neu. */
+function idPruefen(feldKnoten, hinweisKnoten) {
+  const feld = feldKnoten || $("sw-eingabe-Title");
+  const hinweis = hinweisKnoten || $("sw-id-pruefung");
+  if (!feld || !hinweis || !neuModus) return;
+  const id = programmId();
+  let fehler = "";
+  if (id && !Modell.programmIdGueltig(id)) {
+    fehler = "«" + id + "» taugt nicht als Spaltenname: " + ID_REGEL;
+  } else if (id && idZwillinge().length) {
+    fehler = "Die Programm-ID «" + id + "» gibt es schon.";
   }
-  return false;
+  UI.feldFehler(feld, fehler);
+  if (fehler) UI.feldHinweis(hinweis, "");
+  else if (id) {
+    UI.feldHinweis(hinweis, "Wird als Spalte «" + id + "» in der Benutzer-Liste angelegt und ist danach fest.",
+      { sinnbild: "checkKreis", ton: "erfolg" });
+  } else UI.feldHinweis(hinweis, ID_REGEL);
+}
+
+/* Der Name zieht die ID mit, solange sie niemand von Hand gesetzt hat. */
+function nameGeaendert(w) {
+  if (!neuModus || idVonHand) return;
+  const vorschlag = idAusName(w);
+  entwurf.setzeWert("Title", vorschlag);
+  const f = $("sw-eingabe-Title");
+  if (f && f.value !== vorschlag) f.value = vorschlag;
+  idPruefen();
+}
+
+/* Live-Vorschau der AD-Gruppen als neutrale Status-Chips (so, wie der
+   Sync die Zeilen liest: ohne Leerzeilen und Doppelte). Nichts darin ist
+   fokussierbar, darum darf sie bei jedem Tastendruck neu entstehen. */
+function gruppenVorschauZeichnen(zielKnoten) {
+  const ziel = zielKnoten || $("sw-gruppen-vorschau");
+  if (!ziel) return;
+  UI.leeren(ziel);
+  const gruppen = adGruppen();
+  for (const g of gruppen) ziel.appendChild(UI.status(g, "neutral", { sinnbild: "benutzerGruppe" }));
+  ziel.hidden = !gruppen.length;
 }
 
 
 /* ==================================================================
-   6. Die Bereiche
+   4. Bereich «Stammdaten»
    ================================================================== */
 
-/* ---------- Stammdaten ---------- */
-
 function bereichStammdaten(ziel) {
-  const k = karte("Stammdaten", neuModus
-    ? "Name und Kategorie sind frei wählbar. Die Programm-Id wird der interne "
-      + "Spaltenname in der Benutzer-Liste und lässt sich später nicht mehr ändern."
-    : "Der Name ist zugleich der Anzeigename der Spalte in der Benutzer-Liste.");
-
-  const felder = el("div", "datenzeilen");
-
-  /* Name zuerst: er ist das, was ein Mensch kennt. Die Id folgt ihm,
-     solange sie niemand von Hand angefasst hat. */
-  const nameFeld = eingabeFuer(SPALTE["Name"], {
-    platzhalter: "Adobe Acrobat Pro",
-    beiEingabe: function (v) {
-      if (neuModus && !idVonHand) {
-        const vorschlag = idAusName(v);
-        setzeWert("Title", vorschlag);
-        const f = $("sw-eingabe-Title");
-        if (f) f.value = vorschlag;
-        idPruefungZeichnen();
-      }
-      kopfZeichnen();
-    }
-  });
-  felder.appendChild(formZeile(SPALTE["Name"].d, nameFeld, "Name",
-    "Wird in der Software-Ansicht und als Spaltenname in der Benutzer-Liste angezeigt."));
-
-  felder.appendChild(idZeile());
-
-  const kategorieFeld = eingabeFuer(SPALTE["Kategorie"], {
-    klasse: "sw-eingabe-kategorie",
-    platzhalter: "Zusatz-Software",
-    vorschlaege: true,
-    beiEingabe: function () { kopfZeichnen(); }
-  });
-  felder.appendChild(formZeile(SPALTE["Kategorie"].d, kategorieFeld, "Kategorie",
-    "Gruppe in der Software-Ansicht. Eine neue Kategorie entsteht, indem man sie hinschreibt."));
-
-  const gruppenFeld = eingabeFuer(SPALTE["AdGruppen"], {
-    zeilen: 4,
-    platzhalter: "MgmtS_MarKom\nBLD_D&G",
-    beiEingabe: function () { gruppenVorschauZeichnen(); }
-  });
-  const gruppenZeile = formZeile(SPALTE["AdGruppen"].d, gruppenFeld, "AdGruppen",
-    "Eine AD-Gruppe je Zeile (sAMAccountName). Der Sync setzt bei Mitgliedschaft "
-    + "die Stufe 2; im Frontend ist sie dann gesperrt. Leer lassen heisst: das "
-    + "Programm wird nur von Hand vergeben.");
-  const vorschau = el("div", "chips");
-  vorschau.id = "sw-gruppen-vorschau";
-  gruppenZeile.querySelector(".datenzeile-wert").appendChild(vorschau);
-  felder.appendChild(gruppenZeile);
-
-  const reiheFeld = eingabeFuer(SPALTE["Reihenfolge"], { klasse: "eingabe-schmal" });
-  felder.appendChild(formZeile(SPALTE["Reihenfolge"].d, reiheFeld, "Reihenfolge",
-    "Sortiernummer. Kategorien erscheinen in der Reihenfolge ihres kleinsten "
-    + "Werts; leer sortiert ans Ende."));
-
-  const bemerkungFeld = eingabeFuer(SPALTE["Bemerkung"], { zeilen: 3 });
-  felder.appendChild(formZeile(SPALTE["Bemerkung"].d, bemerkungFeld, "Bemerkung",
-    "Wozu das Programm dient, wer es lizenziert, was beim Vergeben zu beachten ist."));
-
-  k.inhalt.appendChild(felder);
-  gruppenVorschauZeichnen(vorschau);
-
-  if (!neuModus) {
-    const werkzeuge = el("div", "werkzeugzeile");
-    werkzeuge.appendChild(knopf("Berechtigte Benutzer anzeigen", null, function () {
-      location.href = "index.html?" + (mockModus ? "mock=1" : "")
-        + "#benutzer?pg=" + encodeURIComponent(programmId());
-    }));
-    werkzeuge.appendChild(knopf("Programm löschen", "knopf-gefahr", loeschenDialog));
-    k.inhalt.appendChild(werkzeuge);
-  }
-
-  ziel.appendChild(k);
-
-  if (!neuModus) ziel.appendChild(spaltenKarte());
+  if (spalteFehlt()) ziel.appendChild(spaltenBanner());
+  ziel.appendChild(UI.anhaengen(el("div", "karten"), [programmKarte(), vergabeKarte()]));
 }
 
-/* Die Programm-Id: beim Anlegen frei, danach unveränderlich. */
-function idZeile() {
-  const s = SPALTE["Title"];
-  if (!neuModus) {
-    const zeileFest = feldGesperrt(s.d, textWert("Title"),
-      "Der interne Spaltenname in der Benutzer-Liste. SharePoint kann ihn nicht "
-      + "mehr ändern — eine neue Id ergäbe eine zweite Spalte, und die bisherigen "
-      + "Berechtigungen blieben in der ersten liegen.");
-    return zeileFest;
-  }
-  const feld = eingabeFuer(s, {
-    klasse: "eingabe-schmal sw-eingabe-id",
-    platzhalter: "AdobeAcrobatPro",
-    beiEingabe: function () {
-      idVonHand = true;
-      idPruefungZeichnen();
-      kopfZeichnen();
-    }
+function programmKarte() {
+  const k = UI.karte({
+    titel: "Programm",
+    unter: neuModus
+      ? "Name und Kategorie sind frei wählbar. Die Programm-ID wird der interne Spaltenname und ist nach dem Anlegen fest."
+      : "Name und Kategorie bestimmen, wo das Programm in der Software-Ansicht und im Benutzerfenster steht."
   });
-  const w = el("div");
-  w.appendChild(feld);
-  const meldung = el("div", "datenzeile-hinweis");
-  meldung.id = "sw-id-pruefung";
-  w.appendChild(meldung);
-  const z = formZeile(s.d, w, "Title",
-    "Buchstaben und Ziffern, Beginn mit einem Buchstaben, höchstens 30 Zeichen. "
-    + "Wird der interne Spaltenname in der Benutzer-Liste und ist danach fest.");
-  idPruefungZeichnen(meldung);
+
+  k.inhalt.appendChild(UI.datenzeilen([
+    // Name zuerst: er ist das, was ein Mensch kennt. Die ID folgt ihm.
+    feldZeile("Name", { eingabe: { platzhalter: "Adobe Acrobat Pro" }, beiEingabe: nameGeaendert,
+      hinweis: "So heisst das Programm in der Software-Ansicht und in der Benutzer-Liste." }),
+    idZeile(),
+    feldZeile("Kategorie", {
+      eingabe: { platzhalter: "Zusatz-Software", vorschlaege: kategorien(), klasse: "sw-eingabe-kategorie" },
+      hinweis: "Gruppe in der Software-Ansicht. Eine neue Kategorie entsteht, indem man sie hinschreibt."
+    }),
+    reihenfolgeZeile()
+  ]));
+  return k;
+}
+
+/* Die Reihenfolge ist eine ganze Zahl ab 0. Als Textfeld (mit Ziffern-
+   tastatur), nicht als type=number: dort deutet der Browser still um –
+   «1,5» wurde zu «15» (Komma als Tausendertrenner), «1e» meldete er als
+   leer. So kommt in den Entwurf, was dasteht, und pruefen() hält jede
+   andere Eingabe (Komma, Punkt, Buchstaben, Minus) mit einem Feldfehler
+   auf, statt sie umzudeuten. */
+function reihenfolgeZeile() {
+  const z = feldZeile("Reihenfolge", {
+    art: "text",
+    eingabe: { schmal: true, platzhalter: "z. B. 10" },
+    hinweis: "Ganze Zahl ab 0. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende."
+  });
+  z.feld.inputMode = "numeric";
   return z;
 }
 
-function idPruefungZeichnen(knoten) {
-  const ziel = knoten || $("sw-id-pruefung");
-  if (!ziel) return;
-  leeren(ziel);
-  ziel.className = "datenzeile-hinweis";
-  const id = programmId();
-  if (!id) return;
-  if (!Modell.programmIdGueltig(id)) {
-    ziel.className = "datenzeile-hinweis t-gefahr";
-    ziel.textContent = "«" + id + "» taugt nicht als Spaltenname: erlaubt sind "
-      + "Buchstaben und Ziffern, beginnend mit einem Buchstaben, höchstens 30 Zeichen.";
-    return;
-  }
-  if (idZwillinge().length) {
-    ziel.className = "datenzeile-hinweis t-gefahr";
-    ziel.textContent = "Die Programm-Id «" + id + "» gibt es schon.";
-    return;
-  }
-  ziel.className = "datenzeile-hinweis t-erfolg";
-  ziel.textContent = "Wird als Spalte «" + id + "» in der Benutzer-Liste angelegt.";
+/** Leer oder eine ganze Zahl ab 0 (nur Ziffern). */
+function reihenfolgeGueltig(roh) {
+  const t = String(roh === null || roh === undefined ? "" : roh).trim();
+  return t === "" || (/^\d+$/.test(t) && Number.isSafeInteger(Number(t)));
 }
 
-function gruppenVorschauZeichnen(knoten) {
-  const ziel = knoten || $("sw-gruppen-vorschau");
-  if (!ziel) return;
-  leeren(ziel);
-  for (const g of adGruppen()) ziel.appendChild(el("span", "chip chip-info", g));
+/* Die Programm-ID: beim Anlegen frei (mit Live-Prüfung), danach nur lesbar. */
+function idZeile() {
+  if (!neuModus) {
+    const fest = UI.eingabe({ id: "sw-eingabe-Title", wert: entwurf.textWert("Title"), nurLesen: true,
+      klasse: "sw-eingabe-id" });
+    return UI.formZeile(SPALTE.Title.d, fest, {
+      hinweis: "Interner Spaltenname in der Benutzer-Liste; dort steht je Person die Stufe 0, 1 oder 2. "
+        + "Lässt sich nicht mehr ändern – eine neue ID ergäbe eine zweite Spalte."
+    });
+  }
+  const hinweis = el("div", "datenzeile-hinweis");
+  hinweis.id = "sw-id-pruefung";
+  hinweis.setAttribute("aria-live", "polite");
+  const z = feldZeile("Title", {
+    eingabe: { platzhalter: "AdobeAcrobatPro", klasse: "sw-eingabe-id", maxLaenge: 30 },
+    zusatz: hinweis,
+    beiEingabe: function (w) {
+      // Leer geräumt, folgt die ID beim nächsten Tippen im Namen wieder ihm.
+      idVonHand = w.trim() !== "";
+      idPruefen();
+    }
+  });
+  idPruefen(z.feld, hinweis);
+  return z;
 }
 
-/* Was in der Benutzer-Liste passiert — der zweite Teil eines Programms. */
-function spaltenKarte() {
-  const k = karte("Spalte in der Benutzer-Liste",
-    "Je Person steht dort die Berechtigungsstufe: 0 = aus, 1 = von Hand "
-    + "aktiviert, 2 = über eine AD-Gruppe.");
-  const felder = el("div", "datenzeilen");
-  felder.appendChild(feldGesperrt("Interner Name", programmId(),
-    "Entspricht der Programm-Id."));
-  felder.appendChild(feldGesperrt("Anzeigename", textWert("Name").trim() || programmId(),
-    "Wird beim Anlegen der Spalte gesetzt; späteres Umbenennen ändert nur die Anzeige."));
-  k.inhalt.appendChild(felder);
-
-  if (!spalteGefunden()) {
-    const band = el("div", "banner");
-    band.appendChild(el("span", "t-warnung",
-      "In den geladenen Benutzerzeilen kommt die Spalte «" + programmId() + "» nicht vor. "
-      + "Entweder ist sie überall leer — dann ist alles in Ordnung — oder sie fehlt."));
-    band.appendChild(knopf("Spalte anlegen", "knopf-primaer", spalteAnlegen));
-    k.inhalt.appendChild(band);
-  }
+function vergabeKarte() {
+  const k = UI.karte({
+    titel: "Vergabe",
+    unter: "Über AD-Gruppen vergibt der Abgleich das Programm selbst (Stufe 2); von Hand geht es im "
+      + "Benutzerfenster (Stufe 1)."
+  });
+  const vorschau = el("div", "datenzeile-zeile");
+  vorschau.id = "sw-gruppen-vorschau";
+  k.inhalt.appendChild(UI.datenzeilen([
+    feldZeile("AdGruppen", {
+      eingabe: { zeilen: 4, platzhalter: "MgmtS_MarKom\nBLD_D&G" },
+      beiEingabe: function () { gruppenVorschauZeichnen(); },
+      hinweis: "Eine AD-Gruppe je Zeile (sAMAccountName). Leer heisst: nur von Hand vergeben.",
+      zusatz: vorschau
+    }),
+    feldZeile("Bemerkung", {
+      eingabe: { zeilen: 3, platzhalter: "Wozu das Programm dient, wer es lizenziert …" },
+      hinweis: "Was beim Vergeben zu beachten ist, wer die Lizenzen verwaltet."
+    })
+  ]));
+  gruppenVorschauZeichnen(vorschau);
   return k;
 }
 
-async function spalteAnlegen() {
+function spaltenBanner() {
   const id = programmId();
-  if (!id) return;
-  try {
-    const neu = await Daten.programmSpalteAnlegen(id, textWert("Name").trim() || id);
-    toast(neu ? "Spalte «" + id + "» in der Benutzer-Liste angelegt."
-              : "Die Spalte «" + id + "» gibt es bereits.");
-    await datenLaden(true);
-    zeileWaehlen();
-    zeichnenAlles();
-  } catch (e) {
-    toast("Spalte konnte nicht angelegt werden. " + (e && e.message ? e.message : e), true);
-  }
+  const knopf = UI.knopf({ text: "Spalte anlegen", variante: "leise", beiKlick: spalteAnlegen, fokus: "sw-spalte-anlegen" });
+  const b = UI.banner({
+    ton: "warnung",
+    titel: "Spalte nicht gefunden.",
+    text: "In den Benutzerzeilen kommt «" + id + "» nicht vor. Ist die Spalte überall leer, ist alles "
+      + "in Ordnung; fehlt sie, wirkt das Programm nicht.",
+    knopf: knopf
+  });
+  b.id = "sw-spalten-banner";
+  return b;
 }
 
-/* ---------- Berechtigte ---------- */
+/* Legt die Spalte an (oder stellt fest, dass es sie schon gibt). Läuft in
+   F.beschaeftigt: Speicherleiste und Kopfaktionen sind so lange gesperrt,
+   danach wird still nachgeladen; das Banner blendet dabei aus. */
+async function spalteAnlegen(ev) {
+  const id = programmId();
+  if (!id || F.istBeschaeftigt()) return;
+  const knopf = ev && ev.currentTarget;
+  if (knopf) UI.beschaeftigt(knopf, true, "Spalte wird angelegt …");
+  let erledigt = false;
+  await F.beschaeftigt(async function () {
+    try {
+      const neu = await Daten.programmSpalteAnlegen(id, entwurf.textWert("Name").trim() || id);
+      spalteBestaetigen(id);
+      erledigt = true;
+      UI.meldung(neu ? "Spalte «" + id + "» in der Benutzer-Liste angelegt."
+        : "Die Spalte «" + id + "» gibt es schon – sie ist nur überall leer.");
+    } catch (fehler) {
+      if (knopf) UI.beschaeftigt(knopf, false);
+      UI.meldung("Spalte konnte nicht angelegt werden. " + F.fehlerText(fehler), { ton: "fehler" });
+    }
+  }, {
+    nachladen: async function () {
+      const banner = $("sw-spalten-banner");
+      const fokusDrin = !!banner && banner.contains(document.activeElement);
+      if (erledigt && banner) await Bewegung.austreten(banner, "", { dann: "behalten" });
+      await nachladenStill();
+      // Der Knopf ist weg: der Fokus geht an den Seitentitel, nicht ins erste Feld.
+      if (fokusDrin && !$("sw-spalten-banner")) {
+        const titel = $("sw-titel");
+        if (titel) titel.focus({ preventScroll: true });
+      }
+    }
+  });
+}
+
+
+/* ==================================================================
+   5. Bereich «Berechtigte»
+   ================================================================== */
 
 function bereichBerechtigte(ziel) {
   const id = programmId();
-  const manuell = berechtigte(1);
-  const ausAd = berechtigte(2);
+  const stufe2 = berechtigte(2);
+  const stufe1 = berechtigte(1);
+  const alle = stufe1.length + stufe2.length;
+  const inaktiv = stufe1.concat(stufe2).filter(function (b) { return !Modell.adStatus(b).aktiv; }).length;
+  const gruppen = gespeicherteGruppen();
 
-  const kZahlen = karte("Berechtigte", "Gezählt über die Spalte «" + id
-    + "» der Benutzer-Liste.");
-  const kacheln = el("div", "kacheln");
-  kacheln.appendChild(F.kachel("mit Berechtigung", String(manuell.length + ausAd.length), null));
-  kacheln.appendChild(F.kachel("von Hand (Stufe 1)", String(manuell.length), null));
-  kacheln.appendChild(F.kachel("aus AD-Gruppe (Stufe 2)", String(ausAd.length), null,
-    ausAd.length ? "erfolg" : null));
-  kZahlen.inhalt.appendChild(kacheln);
-  if (!adGruppen().length) {
-    kZahlen.inhalt.appendChild(el("p", "hinweis",
-      "Keine AD-Gruppe hinterlegt — Stufe 2 kann hier gar nicht entstehen."));
-  }
-  ziel.appendChild(kZahlen);
+  const k = UI.karte({
+    titel: "Berechtigte",
+    unter: "Gezählt über die Spalte «" + id + "» der Benutzer-Liste. Vergeben wird im Benutzerfenster "
+      + "unter «Berechtigungen».",
+    // Die Benutzerliste der Hauptseite, gefiltert auf dieses Programm; wie
+    // der Filter im Hash heisst, weiss nur UI.adresse (gleich wie app.js).
+    fuss: [UI.knopf({ text: "In der Benutzerliste zeigen", variante: "leise", weiter: true,
+      href: UI.adresse.liste("benutzer", { programm: id }),
+      fokus: "sw-benutzerliste" })]
+  });
+  k.inhalt.appendChild(UI.kacheln([
+    UI.kachel({ text: "Mit Berechtigung", wert: UI.zahlText(alle), zahl: alle,
+      unter: "von " + UI.zahlText(alleBenutzer.length) + " Benutzern" }),
+    UI.kachel({ text: "Aus AD-Gruppe (Stufe 2)", wert: UI.zahlText(stufe2.length), zahl: stufe2.length,
+      unter: gruppen.length ? "vom Abgleich gesetzt" : "keine AD-Gruppe hinterlegt" }),
+    UI.kachel({ text: "Von Hand (Stufe 1)", wert: UI.zahlText(stufe1.length), zahl: stufe1.length,
+      unter: "im Benutzerfenster gesetzt" }),
+    UI.kachel({ text: "AD-Konto deaktiviert", wert: UI.zahlText(inaktiv), zahl: inaktiv, ton: inaktiv ? "gefahr" : undefined,
+      unter: inaktiv ? "Berechtigung noch nötig?" : "alle Konten aktiv" })
+  ]));
+  ziel.appendChild(k);
 
-  ziel.appendChild(personenKarte("Aus einer AD-Gruppe (Stufe 2)", ausAd,
-    "Diese Berechtigungen setzt der Sync. Im Benutzerfenster sind sie gesperrt; "
-    + "wegnehmen lassen sie sich nur über die AD-Gruppe."));
-  ziel.appendChild(personenKarte("Von Hand vergeben (Stufe 1)", manuell,
-    "Diese Berechtigungen hat jemand im Benutzerfenster gesetzt. Der Sync fasst "
-    + "eine Stufe 1 nie an."));
+  ziel.appendChild(UI.anhaengen(el("div", "karten"), [
+    personenKarte(2, stufe2, gruppen),
+    personenKarte(1, stufe1, gruppen)
+  ]));
 }
 
-function personenKarte(titel, liste, unter) {
-  const k = karte(titel + " — " + liste.length, unter);
+function personenKarte(stufe, liste, gruppen) {
+  const k = UI.karte({
+    titel: stufe === 2 ? "Aus einer AD-Gruppe" : "Von Hand vergeben",
+    unter: stufe === 2
+      ? "Stufe 2 setzt der Abgleich. Im Benutzerfenster ist sie gesperrt; wegnehmen lässt sie sich nur über die AD-Gruppe."
+      : "Stufe 1 hat jemand im Benutzerfenster gesetzt. Der Abgleich fasst sie nie an.",
+    aktionen: liste.length ? [el("span", "anzahl", personenText(liste.length))] : []
+  });
+
   if (!liste.length) {
-    k.inhalt.appendChild(leerzustand("Niemand", "Keine Person auf dieser Stufe."));
+    k.inhalt.appendChild(stufe === 2 ? leerStufe2(gruppen) : UI.leerzustand({
+      sinnbild: "benutzer",
+      titel: "Niemand von Hand berechtigt",
+      text: "Vergeben wird im Benutzerfenster unter «Berechtigungen»."
+    }));
     return k;
   }
-  const bahn = el("div", "sw-personen");
-  for (const b of liste) {
-    const a = el("a", "name-link", b.__name || b.Title);
-    a.href = "benutzer.html?id=" + encodeURIComponent(b.id) + MOCK_ANHANG;
-    a.title = (b.Title || "") + (b.Abteilung ? " · " + b.Abteilung : "") + " — Benutzer öffnen";
-    const p = el("div", "sw-person");
-    p.appendChild(a);
-    const unterZeile = [];
-    if (b.Abteilung) unterZeile.push(text(b.Abteilung));
-    if (!b.__adAktiv) unterZeile.push("AD-Konto deaktiviert");
-    if (unterZeile.length) p.appendChild(el("div", "sw-person-unter", unterZeile.join(" · ")));
-    bahn.appendChild(p);
+
+  const sichtbar = aufgeklappt[stufe] ? liste : liste.slice(0, PERSONEN_ANFANG);
+  k.inhalt.appendChild(UI.zeilenliste(sichtbar.map(function (b) { return personZeile(b, stufe); })));
+  if (sichtbar.length < liste.length) {
+    // Die übrigen auf Klick; der Fokus landet danach auf der ersten neuen Zeile
+    // (F.zeichneBereich findet die Stelle über die Reihenfolge wieder).
+    const mehr = UI.knopf({ text: "Alle " + personenText(liste.length) + " zeigen", beiKlick: function () {
+      aufgeklappt[stufe] = true;
+      zeichneBereich();
+    }, fokus: "sw-alle-" + stufe });
+    k.inhalt.appendChild(mehr);
   }
-  k.inhalt.appendChild(bahn);
   return k;
 }
 
-
-/* ==================================================================
-   7. Kopf
-   ================================================================== */
-
-function kopfZeichnen() {
-  const name = anzeigeName();
-  $("sw-titel").textContent = name;
-  document.title = name + " — Software — ICT-Inventar";
-
-  const unter = [];
-  if (neuModus) {
-    unter.push("Neues Programm, noch nicht angelegt");
-  } else {
-    if (programmId()) unter.push(programmId());
-    if (textWert("Kategorie").trim()) unter.push(textWert("Kategorie").trim());
+function leerStufe2(gruppen) {
+  if (gruppen.length) {
+    return UI.leerzustand({
+      sinnbild: "benutzerGruppe",
+      titel: "Niemand über AD-Gruppen",
+      text: "Kein Mitglied von «" + gruppen.join("», «") + "» hat das Programm. Der Abgleich setzt die "
+        + "Stufe bei seinem nächsten Lauf."
+    });
   }
-  const unterText = unter.join(" · ");
-  $("sw-unter").textContent = unterText;
-  $("sw-unter").title = unterText;
+  const l = UI.leerzustand({
+    sinnbild: "benutzerGruppe",
+    titel: "Keine AD-Gruppe hinterlegt",
+    text: "Ohne AD-Gruppe entsteht keine Stufe 2. Gruppen gehören unter «Stammdaten» in die Karte «Vergabe».",
+    aktion: { text: "AD-Gruppen eintragen", beiKlick: zuDenGruppen, fokus: "sw-zu-gruppen" }
+  });
+  return l;
+}
 
-  const status = leeren($("sw-status"));
-  if (neuModus) return;
-  const gruppen = adGruppen();
-  status.appendChild(gruppen.length
-    ? chip(gruppen.length === 1 ? "1 AD-Gruppe" : gruppen.length + " AD-Gruppen", "info")
-    : chip("Ohne AD-Gruppe", null));
-  const anzahl = berechtigte(1).length + berechtigte(2).length;
-  status.appendChild(chip(anzahl === 1 ? "1 Berechtigter" : anzahl + " Berechtigte",
-    anzahl ? "erfolg" : null));
+function zuDenGruppen() {
+  bereichWechseln("stammdaten").then(function () {
+    const f = $("sw-eingabe-AdGruppen");
+    if (f) f.focus();
+  });
+}
+
+function personZeile(b, stufe) {
+  const name = b.__name || String(b.Title || "").trim() || "–";
+  const login = String(b.Title || "").trim();
+  const teile = [login !== name ? login : "", String(b.Abteilung || "").trim()].filter(Boolean);
+  // Eine Regel und ein Text für alle Seiten (Modell.adStatus).
+  const ad = Modell.adStatus(b);
+  const z = UI.listenZeile({
+    titel: name,
+    unter: teile.length ? teile : null,
+    href: UI.adresse.benutzer(b.id, { bereich: "berechtigungen" }),
+    status: ad.aktiv ? null : UI.status(ad.text, ad.ton),
+    fokus: "sw-person-" + stufe + "-" + b.id
+  });
+  return z;
 }
 
 
 /* ==================================================================
-   8. Laden, Speichern, Anlegen, Löschen
+   6. Seitenkopf, Schublade, Speicherleiste
+   ================================================================== */
+
+/* Kennzeichen als Chips mit Sinnbild (nie Farbe allein). */
+function statusChips() {
+  if (neuModus) return [];
+  const gruppen = adGruppen();
+  const n = anzahlBerechtigte();
+  const chips = [
+    gruppen.length
+      ? UI.status(gruppen.length === 1 ? "1 AD-Gruppe" : gruppen.length + " AD-Gruppen", "neutral", { sinnbild: "benutzerGruppe" })
+      : UI.status("Nur von Hand vergeben", "neutral", { sinnbild: "bearbeiten" }),
+    UI.status(n ? personenText(n) + " berechtigt" : "Niemand berechtigt", "neutral", { sinnbild: "benutzer" })
+  ];
+  if (spalteFehlt()) chips.push(UI.status("Spalte nicht gefunden", "warnung"));
+  return chips;
+}
+
+/* «Löschen …» steht im Kopf statt als roter Knopf in der Karte. Mit
+   ungespeicherten Änderungen ist es gesperrt und nennt den Grund. */
+function kopfAktionen() {
+  if (neuModus || F.geloescht()) return [];
+  return [UI.knopf({ text: "Löschen …", variante: "leise", sinnbild: "papierkorb", beiKlick: loeschenDialog,
+    gesperrt: entwurf.anzahl() > 0 ? "Zuerst speichern oder verwerfen." : "" })];
+}
+
+/* Darf bei jedem Tastendruck laufen: F.seitenkopf gleicht an Ort und
+   Stelle ab (Titel, Teile, Chips nur bei Änderung; Knöpfe bleiben stehen). */
+function kopfZeichnen() {
+  F.seitenkopf({
+    titel: anzeigeName(),
+    lead: neuModus ? LEAD_NEU : LEAD,
+    unter: neuModus ? [] : [programmId(), entwurf.textWert("Kategorie").trim()],
+    status: statusChips(),
+    aktionen: kopfAktionen()
+  });
+}
+
+function navZeichnen() {
+  if (neuModus) {
+    F.navZeichnen([], null, null, { verstecken: true });
+    return;
+  }
+  F.navZeichnen(BEREICHE, aktiverBereich, bereichWechseln, {
+    zusatz: function (b) { return b.k === "berechtigte" ? (anzahlBerechtigte() || null) : null; }
+  });
+}
+
+function zeichneBereich() {
+  aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich);
+}
+
+/* Fehler A4: replaceState statt location.hash (kein Verlaufseintrag je
+   Bereich), die Pille gleitet, der Bereich blendet durch. */
+function bereichWechseln(schluessel) {
+  aktiverBereich = schluessel;
+  return F.bereichWechseln(sichtbareBereiche(), schluessel).then(function (k) {
+    if (k) aktiverBereich = k;
+    return k;
+  });
+}
+
+function speicherleisteZeichnen() {
+  F.speicherleisteZeichnen({ neuModus: neuModus, anzahl: entwurf.anzahl(), neuText: "Neues Programm" });
+}
+
+function zeichnenAlles() {
+  kopfZeichnen();
+  navZeichnen();
+  zeichneBereich();
+  speicherleisteZeichnen();
+}
+
+
+/* ==================================================================
+   7. Laden
    ================================================================== */
 
 function leereZeile() {
   const z = {};
-  for (const s of SPALTEN) z[s.i] = "";
+  for (const s of SPALTEN_SOFTWARE) z[s.i] = "";
   z.id = null;
   return z;
 }
 
 async function datenLaden(still) {
-  let anzahlSoftware = 0, anzahlBenutzer = 0;
+  let nSoftware = 0, nBenutzer = 0;
   function fortschritt() {
-    if (still) return;
-    $("sw-laden-fortschritt").textContent =
-      "Software " + anzahlSoftware + " / Benutzer " + anzahlBenutzer;
+    if (!still) F.fortschritt("Software " + UI.zahlText(nSoftware) + " · Benutzer " + UI.zahlText(nBenutzer));
   }
-  if (!still) {
-    zeigeLaden(mockModus ? "Vorführdaten werden aufgebaut …"
-                         : "Daten werden aus SharePoint geladen …", "");
-  }
-
-  const [rohSoftware, rohBenutzer] = await Promise.all([
-    Daten.software(function (n) { anzahlSoftware = n; fortschritt(); }),
-    Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); })
+  const ergebnis = await Promise.all([
+    Daten.software(function (n) { nSoftware = n; fortschritt(); }),
+    Daten.benutzer(function (n) { nBenutzer = n; fortschritt(); })
   ]);
-
-  alleSoftware = rohSoftware;
+  alleSoftware = ergebnis[0];
   /* Die Benutzer brauchen ihre abgeleiteten Felder (__name, __adAktiv);
      Modell.anreichern liefert sie auch ohne Clients und Programme. */
-  alleBenutzer = Modell.anreichern([], rohBenutzer, null).benutzer;
+  alleBenutzer = Modell.anreichern([], ergebnis[1], null).benutzer;
+  F.stand();
 }
 
 function zeileWaehlen() {
@@ -619,58 +636,64 @@ function zeileWaehlen() {
     zeile = leereZeile();
     return;
   }
-  const treffer = alleSoftware.filter(z => String(z.id) === String(elementId))[0];
+  const treffer = alleSoftware.filter(function (z) { return String(z.id) === String(elementId); })[0];
   if (!treffer) {
-    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es keine Zeile in "
-      + "der Liste «Software». Vermutlich wurde sie inzwischen gelöscht.");
+    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es keine Zeile in der Liste «Software».");
     fehler.nichtGefunden = true;
     throw fehler;
   }
   zeile = treffer;
 }
 
+/* Still nachladen und neu zeichnen (Auto-Nachladen, nach dem Speichern,
+   nach F.beschaeftigt): ohne Ladezustand, ohne Bewegung. */
+async function nachladenStill() {
+  await datenLaden(true);
+  zeileWaehlen();
+  zeichnenAlles();
+}
+
+/* Mit Ladezustand («Erneut laden» nach einem Fehler, Vorführ-Reset). */
 async function neuLaden() {
+  F.zeigeLaden(neuModus ? "Formular wird vorbereitet …" : "Programm wird geladen …");
   try {
-    await datenLaden();
+    await datenLaden(false);
     zeileWaehlen();
-    zeigeInhalt();
     zeichnenAlles();
+    await F.zeigeInhalt();
   } catch (fehler) {
     ladefehlerZeigen(fehler);
   }
 }
 
+/* Fehler C6: Titel und Dokumenttitel nennen den Fehler (F.zeigeFehler). */
 function ladefehlerZeigen(fehler) {
-  const meldung = fehler && fehler.message ? fehler.message : String(fehler);
-  if (fehler && fehler.nichtGefunden) {
-    zeigeFehler("Programm nicht gefunden", meldung, "");
-    return;
-  }
-  zeigeFehler("Die Daten konnten nicht geladen werden", meldung,
-    mockModus ? "" : "Zum Anschauen ohne Anmeldung dieses Fenster mit &mock=1 aufrufen.");
+  F.ladefehler(fehler, { titel: "Programm nicht gefunden", knopfText: "Zur Software-Liste",
+    hinweis: "Vielleicht wurde es inzwischen gelöscht. Gelöschte Zeilen liegen 93 Tage im Papierkorb der SharePoint-Site." });
 }
 
 
-/* ---------- Prüfen ---------- */
+/* ==================================================================
+   8. Speichern, Anlegen, Verwerfen, Löschen
+   ================================================================== */
 
 function pruefen() {
-  const id = programmId();
-  if (!id) return { feld: "Title", text: "Die Programm-Id darf nicht leer sein." };
-  if (!Modell.programmIdGueltig(id)) {
-    return { feld: "Title", text: "Die Programm-Id besteht aus Buchstaben und Ziffern, "
-      + "beginnt mit einem Buchstaben und ist höchstens 30 Zeichen lang. "
-      + "Sie wird der interne Spaltenname in der Benutzer-Liste." };
+  if (!entwurf.textWert("Name").trim()) return { feld: "Name", text: "Bitte einen Namen eingeben." };
+  if (neuModus) {
+    const id = programmId();
+    if (!id) return { feld: "Title", text: "Die Programm-ID darf nicht leer sein." };
+    if (!Modell.programmIdGueltig(id)) {
+      return { feld: "Title", text: "Die Programm-ID wird der interne Spaltenname: " + ID_REGEL };
+    }
+    if (idZwillinge().length) {
+      return { feld: "Title", text: "Die Programm-ID «" + id + "» gibt es schon. Jede ID darf nur einmal "
+        + "vorkommen – sie ist der Spaltenname." };
+    }
   }
-  if (idZwillinge().length) {
-    return { feld: "Title", text: "Die Programm-Id «" + id + "» gibt es schon. "
-      + "Jede Id darf nur einmal vorkommen — sie ist der Spaltenname." };
-  }
-  if (!textWert("Name").trim()) {
-    return { feld: "Name", text: "Der Name darf nicht leer sein." };
-  }
-  const r = textWert("Reihenfolge").trim();
-  if (r && isNaN(Number(r))) {
-    return { feld: "Reihenfolge", text: "«Reihenfolge» muss eine Zahl sein." };
+  // Nur, was hier eingegeben wurde: ein älterer gespeicherter Wert hält
+  // das Speichern anderer Felder nicht auf.
+  if (entwurf.istGeaendert("Reihenfolge") && !reihenfolgeGueltig(entwurf.wert("Reihenfolge"))) {
+    return { feld: "Reihenfolge", text: "Die Reihenfolge ist eine ganze Zahl ab 0, ohne Komma, Punkt oder Buchstaben (z. B. 10)." };
   }
   return null;
 }
@@ -685,157 +708,115 @@ function fuerGraph(feld, roh) {
   }
   if (feld === "AdGruppen") {
     /* Aufgeräumt speichern: eine Gruppe je Zeile, ohne Leerzeilen und
-       Doppelte — genau so liest der Sync sie wieder. */
+       Doppelte – genau so liest der Sync sie wieder. */
     const g = Modell.adGruppen(t);
     return g.length ? g.join("\n") : null;
   }
   return t.trim() === "" ? null : t.trim();
 }
 
-async function speichern() {
-  if (speichertGerade || geloescht) return;
-  const fehler = pruefen();
-  if (fehler) {
-    speicherFehler = fehler.text;
-    speicherleisteZeichnen();
-    toast(fehler.text, true);
-    const feld = $("sw-eingabe-" + fehler.feld);
-    if (feld) { feld.classList.add("ungueltig"); feld.focus(); }
-    return;
-  }
-
+/* Zuerst die Spalte, dann die Zeile: Scheitert das Anlegen der Spalte
+   (fehlende Berechtigung), entsteht kein Programm, das nirgends wirkt.
+   Umgekehrt bliebe eine Software-Zeile ohne Spalte zurück. */
+async function anlegen() {
   const felder = {};
-  if (neuModus) {
-    for (const s of SPALTEN) {
-      const w = fuerGraph(s.i, wert(s.i));
-      if (w !== null && w !== "") felder[s.i] = w;
-    }
-  } else {
-    for (const feld in entwurf) {
-      /* Die Programm-Id ist der Spaltenname und darf sich nie ändern —
-         das Formular bietet sie gar nicht erst zum Ändern an. */
-      if (feld === "Title") continue;
-      felder[feld] = fuerGraph(feld, entwurf[feld]);
-    }
-    if (!Object.keys(felder).length) {
-      entwurf = {};
-      speicherleisteZeichnen();
-      return;
-    }
+  for (const s of SPALTEN_SOFTWARE) {
+    const w = fuerGraph(s.i, entwurf.wert(s.i));
+    if (w !== null && w !== "") felder[s.i] = w;
   }
-
-  speichertGerade = true;
-  speicherFehler = "";
-  speicherleisteZeichnen();
-
-  try {
-    if (neuModus) {
-      /* Zuerst die Spalte, dann die Zeile: Scheitert das Anlegen der Spalte
-         (fehlende Berechtigung), entsteht kein Programm, das nirgends wirkt.
-         Umgekehrt bliebe eine Software-Zeile ohne Spalte zurück. */
-      await Daten.programmSpalteAnlegen(felder.Title, felder.Name || felder.Title);
-      const neueZeile = await Daten.anlegen("software", felder);
-      elementId = String(neueZeile.id);
-      neuModus = false;
-      entwurf = {};
-      history.replaceState(null, "", adresseFuer(elementId));
-      melden("software-neu", elementId);
-      speichertGerade = false;
-      await datenLaden(true);
-      zeileWaehlen();
-      zeigeInhalt();
-      zeichnenAlles();
-      toast("Programm angelegt und Spalte in der Benutzer-Liste erstellt.");
-      return;
-    }
-    await Daten.speichern("software", elementId, felder, zeile ? zeile.__etag : "");
-    const anzahl = Object.keys(felder).length;
-    entwurf = {};
-    melden("software-geaendert", elementId);
-    speichertGerade = false;
-    await datenLaden(true);
-    zeileWaehlen();
-    zeigeInhalt();
-    zeichnenAlles();
-    toast(anzahl === 1 ? "Änderung gespeichert." : anzahl + " Änderungen gespeichert.");
-  } catch (e) {
-    speichertGerade = false;
-    speicherFehler = e && e.message ? e.message : String(e);
-    speicherleisteZeichnen();
-    toast("Speichern fehlgeschlagen. " + speicherFehler, true);
-  }
-}
-
-function adresseFuer(id) {
-  return location.pathname + "?id=" + encodeURIComponent(id)
-    + (mockModus ? "&mock=1" : "") + location.hash;
-}
-
-async function verwerfen() {
-  if (!anzahlAenderungen() || speichertGerade) return;
-  const t = neuModus ? "Alle Eingaben dieses Formulars verwerfen?"
-    : anzahlAenderungen() + " Änderung(en) verwerfen?";
-  if (!await F.bestaetigen("Verwerfen", t, "Verwerfen", true)) return;
-  entwurf = {};
-  speicherFehler = "";
+  await Daten.programmSpalteAnlegen(felder.Title, felder.Name || felder.Title);
+  spalteBestaetigen(felder.Title);
+  const neu = await Daten.anlegen("software", felder);
+  elementId = String(neu.id);
+  neuModus = false;
+  // Lokal übernehmen: scheitert das Nachladen, steht trotzdem das Richtige da (A7).
+  zeile = Object.assign(leereZeile(), felder, neu);
+  entwurf.leeren();
   idVonHand = false;
-  zeichnenAlles();
-  toast("Änderungen verworfen.");
+  aktiverBereich = "stammdaten";
+  // Fehler A2: die Adresse zeigt jetzt auf das angelegte Programm.
+  try { history.replaceState(null, "", UI.adresse.software(elementId, { bereich: "stammdaten" })); } catch (e) { /* file:// */ }
+  F.melden("software-neu", elementId);
+  return { neu: true };
 }
 
+async function aendern() {
+  const aenderungen = entwurf.aenderungen();
+  const felder = {};
+  for (const feld of Object.keys(aenderungen)) {
+    // Die Programm-ID ist der Spaltenname und darf sich nie ändern.
+    if (feld === "Title") continue;
+    felder[feld] = fuerGraph(feld, aenderungen[feld]);
+  }
+  const anzahl = Object.keys(felder).length;
+  if (!anzahl) {
+    entwurf.leeren();
+    return { anzahl: 0 };
+  }
+  const antwort = await Daten.speichern("software", elementId, felder, zeile ? zeile.__etag : "");
+  // Felder UND das neue eTag in die lokale Zeile (sonst 412 beim nächsten Speichern, A7).
+  F.uebernehmen(zeile, felder, antwort);
+  entwurf.leeren();
+  F.melden("software-geaendert", elementId);
+  return { anzahl: anzahl };
+}
 
-/* ---------- Löschen ---------- */
+/* Fehler A5/A7/A8: F.speicherAblauf tut nichts ohne Änderungen, trennt
+   Schreiben und Nachladen und sperrt Leiste und Kopfaktionen. */
+function speichern() {
+  const anlegenJetzt = neuModus;
+  return F.speicherAblauf({
+    anzahl: entwurf.anzahl,
+    immer: anlegenJetzt,
+    pruefen: pruefen,
+    schreiben: anlegenJetzt ? anlegen : aendern,
+    nachladen: nachladenStill,
+    zeichnen: zeichnenAlles,
+    fehlerText: anlegenJetzt ? "Anlegen fehlgeschlagen." : "Speichern fehlgeschlagen.",
+    erfolgText: function (e) {
+      if (e && e.neu) return "Programm angelegt, Spalte in der Benutzer-Liste erstellt.";
+      if (!e || !e.anzahl) return false;
+      return e.anzahl === 1 ? "Änderung gespeichert." : e.anzahl + " Änderungen gespeichert.";
+    }
+  });
+}
 
+function verwerfen() {
+  return F.verwerfen({ anzahl: entwurf.anzahl(), neuModus: neuModus, danach: function () {
+    entwurf.leeren();
+    idVonHand = false;
+    zeichnenAlles();
+  } });
+}
+
+/* Fehler A6: nach dem Löschen der Endzustand mit «Zur Software-Liste»
+   (gemerkte Listenadresse) statt window.close(). */
 function loeschenDialog() {
   const id = programmId();
-  const anzahl = berechtigte(1).length + berechtigte(2).length;
-  const d = dialogOeffnen("Programm löschen");
-  d.inhalt.appendChild(el("p", null,
-    "Die Zeile wird aus der Liste «Software» entfernt und landet im Papierkorb "
-    + "der SharePoint-Site. Von dort lässt sie sich 93 Tage lang zurückholen."));
-  d.inhalt.appendChild(el("p", "t-warnung",
-    "Die Spalte «" + id + "» der Benutzer-Liste bleibt mit allen Werten stehen — "
-    + "sonst wären die Berechtigungen von " + anzahl + " Person(en) unwiederbringlich weg. "
-    + "Der Sync ignoriert sie ab jetzt. Wer sie wirklich loswerden will, löscht sie "
-    + "in den Listeneinstellungen von SharePoint oder mit Entferne-Spalte.ps1."));
-  d.inhalt.appendChild(el("p", null, "Zur Bestätigung bitte die Programm-Id abtippen: " + id));
-
-  const feld = el("input", "feld-eingabe eingabe-schmal");
-  feld.type = "text";
-  feld.autocomplete = "off";
-  feld.setAttribute("aria-label", "Programm-Id zur Bestätigung");
-  d.inhalt.appendChild(feld);
-
-  d.knoepfe.appendChild(knopf("Abbrechen", null, dialogSchliessen));
-  const loeschen = knopf("Endgültig löschen", "knopf-gefahr", async function () {
-    loeschen.disabled = true;
-    loeschen.textContent = "Wird gelöscht …";
-    try {
+  const name = anzeigeName();
+  const n = anzahlBerechtigte();
+  F.loeschenDialog({
+    titel: "Programm löschen?",
+    text: "«" + name + "» verschwindet aus der Liste «Software» und liegt danach 93 Tage im Papierkorb "
+      + "der SharePoint-Site.",
+    warnung: "Die Spalte «" + id + "» der Benutzer-Liste bleibt mit allen Werten stehen"
+      + (n ? " – sonst wären die Berechtigungen von " + (n === 1 ? "einer Person" : n + " Personen") + " weg" : "")
+      + ". Der Abgleich übergeht sie ab jetzt; ganz weg ist sie erst, wenn jemand sie in den "
+      + "Listeneinstellungen von SharePoint oder mit Entferne-Spalte.ps1 löscht.",
+    wort: id,
+    knopfText: "Endgültig löschen",
+    beiLoeschen: async function () {
       await Daten.loeschen("software", zeile.id);
-      melden("software-geloescht", zeile.id);
-      geloescht = true;
-      entwurf = {};
-      dialogSchliessen();
-      zeigeFehler("Programm gelöscht",
-        "«" + id + "» wurde aus der Liste «Software» entfernt und liegt im "
-        + "Papierkorb der SharePoint-Site. Die Spalte in der Benutzer-Liste "
-        + "steht unverändert weiter.",
-        "Dieses Fenster wird nicht mehr gebraucht.",
-        "Fenster schliessen", function () { window.close(); });
-      leeren($("sw-aktionen"));
-      leeren($("sw-status"));
-    } catch (e) {
-      loeschen.disabled = false;
-      loeschen.textContent = "Endgültig löschen";
-      toast("Löschen fehlgeschlagen. " + (e && e.message ? e.message : e), true);
+      F.melden("software-geloescht", zeile.id);
+      entwurf.leeren();
+    },
+    ende: {
+      titel: "Programm gelöscht",
+      text: "«" + name + "» ist aus der Liste «Software» entfernt und liegt im Papierkorb der SharePoint-Site.",
+      hinweis: "Die Spalte «" + id + "» in der Benutzer-Liste steht unverändert weiter.",
+      knopfText: "Zur Software-Liste"
     }
   });
-  loeschen.disabled = true;
-  d.knoepfe.appendChild(loeschen);
-  feld.addEventListener("input", function () {
-    loeschen.disabled = feld.value.trim() !== id;
-  });
-  feld.focus();
 }
 
 
@@ -844,26 +825,32 @@ function loeschenDialog() {
    ================================================================== */
 
 async function start() {
-  hashLesen();
-  logoZeichnen();
-  bandZeichnen();
+  F.logoZeichnen("software");
+  aktiverBereich = F.hashBereich(sichtbareBereiche()) || "stammdaten";
+  navZeichnen();
+  F.bandZeichnen("Vorführmodus: alle Programme, Gruppen und Zahlen sind erfunden. Änderungen bleiben in "
+    + "diesem Browser und gehen nie nach SharePoint.", function () {
+    entwurf.leeren();
+    F.melden("software-geaendert", elementId);
+    neuLaden();
+  });
+  F.zeigeLaden(mockModus ? "Vorführdaten werden aufgebaut …" : "Anmeldung wird geprüft …");
 
   try {
-    if (!mockModus) {
-      zeigeLaden("Anmeldung wird geprüft …", "");
-      await Auth.anmeldungSicherstellen();
-    }
+    if (!mockModus) await Auth.anmeldungSicherstellen();
+    F.kontoZeigen();
     if (!neuModus && !elementId) {
-      zeigeFehler("Kein Programm angegeben",
-        "Dieses Fenster braucht die Listen-ID in der Adresse, zum Beispiel "
-        + "software.html?id=5, oder ?neu=1 für ein neues Programm.",
-        "Normalerweise wird es aus der Software-Ansicht heraus geöffnet.");
+      F.zeigeFehler("Kein Programm angegeben",
+        "Dieses Fenster braucht die Listen-ID in der Adresse, zum Beispiel software.html?id=10, oder "
+        + "?neu=1 für ein neues Programm.",
+        "Normalerweise öffnet es sich aus der Software-Ansicht.", "Zur Software-Liste", F.zurListe);
       return;
     }
-    await datenLaden();
+    F.zeigeLaden(neuModus ? "Formular wird vorbereitet …" : "Programm wird geladen …");
+    await datenLaden(false);
     zeileWaehlen();
-    zeigeInhalt();
     zeichnenAlles();
+    await F.zeigeInhalt();
     if (neuModus) {
       const feld = $("sw-eingabe-Name");
       if (feld) feld.focus();
@@ -876,17 +863,16 @@ async function start() {
 F.ereignisse({
   speichern: speichern,
   verwerfen: verwerfen,
-  anzahlAenderungen: anzahlAenderungen,
-  verlassenFrei: function () { return geloescht; },
+  anzahlAenderungen: entwurf.anzahl,
+  verlassenFrei: F.geloescht,
   beiHash: function (h) {
-    if (h !== aktiverBereich && BEREICHE.some(b => b.k === h)) {
-      aktiverBereich = h;
-      navZeichnen();
-      zeichneBereich(false);
-    }
+    if (h !== aktiverBereich && sichtbareBereiche().some(function (b) { return b.k === h; })) bereichWechseln(h);
   }
 });
-autoStarten();
+
+/* Still nachladen, nie mit Entwurf, beim Anlegen oder nach dem Löschen;
+   F.autoStarten prüft dazu Ebenen, Arbeit, Fokus im Feld, verborgenen Tab. */
+F.autoStarten(function () { return !neuModus && entwurf.anzahl() === 0; }, nachladenStill);
 
 start();
 

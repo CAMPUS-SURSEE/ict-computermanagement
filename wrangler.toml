@@ -32,9 +32,9 @@
 # Eintrag lassen sich Vorschauen nur mit `?mock=1` anschauen.
 #
 # Eigenheit von Cloudflare Pages: Seiten werden ohne die Endung `.html`
-# ausgeliefert. Ein Aufruf von `/geraet.html?id=…` wird auf `/geraet?id=…`
+# ausgeliefert. Ein Aufruf von `/client.html?id=…` wird auf `/client?id=…`
 # umgeleitet (308; die Abfragezeichenfolge bleibt erhalten, das Rautezeichen
-# sowieso). Die Verweise im Frontend dürfen weiterhin `geraet.html` heissen, es
+# sowieso). Die Verweise im Frontend dürfen weiterhin `client.html` usw. heissen, es
 # kommt nur ein Umleitungsschritt dazu. Die Umleitungsadresse der Anmeldung ist
 # davon nicht betroffen: `auth.js` nimmt immer die Wurzel
 # (`location.origin + "/"`), nie einen Dateinamen.

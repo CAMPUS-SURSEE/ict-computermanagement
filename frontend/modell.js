@@ -3,12 +3,13 @@
 
    Enthält:
      1. Geschäftsjahr-Helfer (1. August bis 31. Juli, Schreibweise «2026/2027»)
-     2. Programmspalten aus der Liste «Software»
-     3. Berechtigungsstufen (0 / 1 / 2)
-     4. Clientstatus (Aktiv / Lager / Archiviert)
-     5. Verlauf (Note-Spalte mit JSON-Array in allen Listen)
-     6. Anreicherung und Verknüpfung ADMIN-Clients ↔ Benutzer
-     7. Telefonnummern: Normalisierung, Kurzwahl, Status, Verknüpfung mit Benutzern
+     2. Programmspalten aus der Liste «Software», Berechtigungsstufen
+        (0 / 1 / 2), schreibbare Spalten (istBearbeitbar), Zustand des
+        AD-Kontos (adStatus: eine Regel und ein Text für alle Seiten)
+     3. Gerätestatus (Aktiv / Lager / Archiviert)
+     4. Verlauf (Note-Spalte mit JSON-Array in allen Listen)
+     5. Anreicherung und Verknüpfung ADMIN-Clients ↔ Benutzer
+     6. Telefonnummern: Normalisierung, Kurzwahl, Status, Verknüpfung mit Benutzern
 
    Setzt spalten.js und graph.js (Hilfe) voraus. Keine Abhängigkeit zu einer
    bestimmten Seite: alles sind reine Funktionen über den übergebenen Daten.
@@ -257,6 +258,34 @@ const Modell = (function () {
     const g = (spalte && spalte.adGruppen) || [];
     if (!g.length) return "Berechtigung wird vom Abgleich verwaltet und kann hier nicht geändert werden.";
     return "Berechtigung aus AD-Gruppe «" + g.join("», «") + "» übernommen";
+  }
+
+  /**
+   * Darf das Frontend diese Spalte schreiben? Nur die von Hand geführten
+   * (spalten.js: q = "manuell"); alles andere kommt aus dem Abgleich.
+   * @param {{q:string}} spalte  Eintrag aus spalten.js
+   * @returns {boolean}
+   */
+  function istBearbeitbar(spalte) {
+    return !!spalte && spalte.q === "manuell";
+  }
+
+  /**
+   * Zustand des AD-Kontos einer Person – EINE Regel für alle Seiten: aktiv
+   * nur bei «Ja» (Hilfe.istJa, wie __adAktiv aus anreichern); leer zählt
+   * als nicht aktiv. Der Ton ist überall «gefahr»: ein deaktiviertes Konto
+   * heisst, die Person kann nicht arbeiten (Gerät, Nummer, Rechte prüfen).
+   * Die Seite baut daraus ihren Status: UI.status(s.text, s.ton).
+   * @param {Object} b  Zeile der Benutzer-Liste (angereichert oder roh)
+   * @returns {{aktiv:boolean, text:string, kurz:string, ton:"erfolg"|"gefahr"}}
+   *   text «AD-Konto aktiv» / «AD-Konto deaktiviert», kurz für Tabellen
+   *   «Aktiv» / «Deaktiviert».
+   */
+  function adStatus(b) {
+    const aktiv = !!b && (typeof b.__adAktiv === "boolean" ? b.__adAktiv : Hilfe.istJa(b.ADAktiviert));
+    return aktiv
+      ? { aktiv: true, text: "AD-Konto aktiv", kurz: "Aktiv", ton: "erfolg" }
+      : { aktiv: false, text: "AD-Konto deaktiviert", kurz: "Deaktiviert", ton: "gefahr" };
   }
 
 
@@ -606,7 +635,11 @@ const Modell = (function () {
    *   __clientMehrdeutig true, wenn es mehr als eine ist
    *   __hatGeraet     true/false
    *   __adAktiv       true/false
-   *   __primaerAbweichung  true, wenn SCCMPrimaerGeraet ≠ Computer (beide gesetzt)
+   *   __primaerAbweichung  true, wenn SCCM ein Primärgerät meldet, das ein
+   *                   ADMIN-Client ist, und es ≠ Computer ist (auch bei
+   *                   leerem Computer). Ein EDU-Client oder ein Name, den
+   *                   die Liste nicht kennt, zählt nicht: nur ein ADMIN-
+   *                   Client kann einen Inhaber haben (wie im Benutzerfenster)
    *   __name          Anzeigename, ersatzweise der Login
    *   __such          Volltextindex
    *
@@ -635,7 +668,12 @@ const Modell = (function () {
       b.__hatGeraet = !!pcName;
       b.__name = String(b.Anzeigename || "").trim() || String(b.Title || "").trim();
       b.__adAktiv = Hilfe.istJa(b.ADAktiviert);
-      b.__primaerAbweichung = primaerWeichtAb(b.SCCMPrimaerGeraet, pcName);
+      // Dieselbe Regel wie im Benutzerfenster (primaerGeraet): sonst zählte
+      // die Hauptseite eine Person mit EDU-Primärgerät als Abweichung, das
+      // Fenster zeigte dazu aber nichts zum Übernehmen.
+      const primaer = String(b.SCCMPrimaerGeraet || "").trim();
+      b.__primaerAbweichung = !!primaer && nachName.has(schluessel(primaer))
+        && primaerWeichtAb(primaer, pcName);
       b.__such = suchtext(b, SPALTEN_BENUTZER);
       if (c) c.__inhaberAlle.push(b);
     }
@@ -738,14 +776,6 @@ const Modell = (function () {
     return "Aktiv";
   }
 
-  const TELEFON_STATUS_TON = { Aktiv: "", Inaktiv: "still", Frei: "warnung" };
-
-  /** CSS-Klasse für einen Telefonstatus, oder "" für den Normalfall. */
-  function telefonStatusKlasse(wert) {
-    const ton = TELEFON_STATUS_TON[telefonStatus(wert)];
-    return ton ? "t-" + ton : "";
-  }
-
   /**
    * Verknüpft Telefonnummern mit Benutzern und hängt abgeleitete Felder an.
    * Verändert die übergebenen Objekte in place und gibt sie zurück.
@@ -843,6 +873,9 @@ const Modell = (function () {
     programmIdGueltig: programmIdGueltig,
     adGruppen: adGruppen,
     sperrHinweis: sperrHinweis,
+    istBearbeitbar: istBearbeitbar,
+    // Benutzer
+    adStatus: adStatus,
     // Status
     STATUS_WERTE: STATUS_WERTE,
     status: status,
@@ -874,7 +907,6 @@ const Modell = (function () {
     TELEFON_STATUS_WERTE: TELEFON_STATUS_WERTE,
     TELEFON_TYPEN: TELEFON_TYPEN,
     telefonStatus: telefonStatus,
-    telefonStatusKlasse: telefonStatusKlasse,
     telefoneAnreichern: telefoneAnreichern
   };
 })();

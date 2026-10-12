@@ -24,21 +24,26 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 |---|---|
 | **wissen, ob der Sync läuft** | Log unter `C:\ComputerInventar\Sync-Inventar.log` ansehen; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
 | **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
-| **ein Programm hinzufügen oder ändern** | Frontend → Reiter **«Software»** → **«Neue Software»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
+| **ein Programm hinzufügen oder ändern** | Frontend → Navigation links **«Software»** → **«Neues Programm»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | Softwarefenster → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Clientfenster → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich lässt die Zeile danach vollständig in Ruhe und archiviert sie nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `297 bestanden, 0 fehlgeschlagen` |
-| **eine Telefonnummer freigeben** | Telefonfenster → Knopf **«Nummer freigeben»** oben rechts (nur, wenn die Nummer nicht über das AD zugeordnet ist): Status «Frei», bisheriger Name wandert in den Verlauf |
-| **eine Telefonnummer erfassen oder ändern** | Frontend → Reiter **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; nicht zugewiesene Nummern sind gelb hervorgehoben (Abschnitt 2.7) |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `298 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **eine Telefonnummer freigeben** | Telefonfenster → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», bisheriger Name wandert in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
+| **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Clients ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
 | **wissen, warum ein PC in der EDU-Liste steht** | Der Name entscheidet: alles ab `EDU` gehört in «EDU-Clients», alles Übrige in «ADMIN-Clients» (Abschnitt 2.2) |
-| **archivierte Geräte im Frontend sehen** | in der Client-Liste **Filter → «Archivierte Geräte anzeigen»**; ohne ihn sind sie ausgeblendet – auch in den Kacheln der Übersicht und im Zeitstrahl |
-| **einen Verlaufseintrag erfassen** | Clientfenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann wie gewohnt speichern |
+| **archivierte Geräte im Frontend sehen** | in der Client-Liste **«Filter»** → im Seitenblatt unter «Archiv» **«Archivierte Geräte anzeigen»**; ohne das Häkchen sind sie ausgeblendet – auch in den Zahlen der Übersicht und im Zeitstrahl |
+| **eine Liste filtern oder Spalten wählen** | in der Liste **«Filter»** bzw. **«Spalten»**: Das Seitenblatt rechts wirkt sofort; oben steht beim Filter die Trefferzahl («44 von 47 ADMIN-Clients»), bei den Spalten «9 von 93 Spalten sichtbar» (dazu «Standardspalten», «Nur Name», «Alle Spalten» und «Kompakte Zeilen»); «Fertig» oder Esc schliesst es, «Filter zurücksetzen» leert alle Filter. Aktive Filter stehen als Chips über der Liste (ein Klick entfernt den Filter). Filter, Sortierung und Spalten stehen im Link; Spaltenwahl und «Kompakte Zeilen» merkt sich der Browser |
+| **aus einem Fenster zur Liste zurück** | Link **«‹ ADMIN-Clients»** (bzw. «‹ Benutzer» …) über dem Titel: führt zur Liste so, wie man sie verlassen hat – mit Suche, Filtern und Sortierung. Die Wortmarke «ICT.INVENTAR» oben links führt zur Übersicht |
+| **einen Verlaufseintrag erfassen** | Clientfenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung», Telefonfenster → Bereich «Hinweis & Verlauf»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann in der Speicherleiste unten **«Speichern»** (oder Ctrl+S) |
 | **den Inhaber eines Geräts ändern** | Clientfenster eines ADMIN-Clients → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8). EDU-Clients haben bewusst keinen Inhaber |
-| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Clientfenster → Knöpfe oben rechts (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**): setzt Status, Inhaber und Verlauf in einem Schritt |
+| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Clientfenster → Schnellaktionen rechts im Seitenkopf (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**; bei EDU-Clients statt «Ausgeben an …» **«In Betrieb nehmen»**): setzt Status, Inhaber und Verlauf in einem Schritt. Solange etwas ungespeichert ist, sind sie gesperrt; der Tooltip sagt warum |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
+| **ein Gerät, eine Nummer oder ein Programm löschen** | im Fenster **«Löschen …»** rechts im Seitenkopf; zur Bestätigung den PC-Namen, die Kurzwahl bzw. die Programm-ID eintippen, dann **«Endgültig löschen»**. Danach führt «Zur Liste» (bzw. «Zur Software-Liste») zurück. Benutzer haben keinen Löschknopf: ihre Liste pflegt der Sync aus dem AD |
+| **mich abmelden** | **«Abmelden»** oben rechts in der Kopfzeile – auf jeder Seite, auch in den Fenstern. Daneben stehen Name und E-Mail des Kontos (in schmalen Fenstern nur die Initiale) |
+| **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln, Tokens, Bausteine) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
 | **das abgelaufene Zertifikat erneuern** | neues Zertifikat erzeugen und an der App hinterlegen (Abschnitt 7.1) |
@@ -58,7 +63,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 | Liste **EDU-Clients** | dieselben Spalten wie «ADMIN-Clients» (`schema-client.json`); enthält alle SCCM-Geräte, deren Name mit `EDU` beginnt. Ohne Inhaberschaft | dieselben wie oben |
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, angezeigt als «ADMIN-Client», Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
-| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Reiter «Software») + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
+| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Ansicht «Software») + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
@@ -110,9 +115,9 @@ Phase mit einem Fehler abbrechen. Gesetzt wird sie im Clientfenster unter «Stam
 Steht das Gerät noch in SCCM, setzt der nächste Sync es wieder auf `Aktiv` und schreibt
 «Wieder in SCCM vorhanden, reaktiviert» in den Verlauf. Für eingelagerte Geräte ist `Lager`
 gedacht – das fasst der Sync nie an. Im Frontend sind archivierte Geräte in den Client-Listen,
-in den Kacheln der Übersicht und im Ersatz-Zeitstrahl ausgeblendet; im Filter-Panel der
-Client-Liste blendet «Archivierte Geräte anzeigen» sie wieder ein (wird je Liste im Browser gemerkt und
-steht als `ar=1` im Link).
+in den Zahlen der Übersicht (ausser der Zeile «Archiviert») und im Ersatz-Zeitstrahl ausgeblendet; im
+Filterblatt der Client-Liste (Knopf «Filter») blendet «Archivierte Geräte anzeigen» sie wieder ein (wird je
+Liste im Browser gemerkt und steht als `ar=1` im Link).
 
 **Verlauf** (mehrzeilige Klartextspalte `Verlauf` in beiden Listen) enthält ein JSON-Array:
 
@@ -157,6 +162,7 @@ dass irgendetwas besser würde.
 | `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
+| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Literale in den Seiten-CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
 
 Die Arbeitsplatz-Skripte laden `Inventar-Gemeinsam.ps1` und die Konfiguration aus `server/` – es gibt
@@ -166,6 +172,59 @@ keine zweite Kopie. Auf dem Server liegt alles flach nebeneinander, dort greift 
 `Sync-Inventar.ps1` definiert zuerst seine reinen Funktionen und prüft danach `$InventarNurFunktionen`.
 Wer es mit `$InventarNurFunktionen = $true` dot-sourced, bekommt nur die Funktionen und keinen
 Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
+
+### Dateien im Ordner `frontend`
+
+Stand 12.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
+mit je einem Namensraum und kein einziges Inline-Skript (die Inhaltsrichtlinie in `_headers` verbietet sie).
+Aussehen und Bewegung folgen der Admin-Oberfläche von ChatBob. **Die Regeln stehen in
+[`frontend/STYLEGUIDE.md`](frontend/STYLEGUIDE.md)** (Tokens, Bausteine, Bewegung, Barrierefreiheit, Vorgehen für
+neue Seiten), die lebende Übersicht aller Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
+
+Jede Seite hat denselben Rahmen: oben die Kopfzeile (links die Wortmarke «ICT.INVENTAR» als Weg zur Übersicht,
+rechts der Stand – auf der Hauptseite «Stand 12.10.2026, 05.15» = letzter SCCM-Abgleich, in einem Fenster
+«Geladen 14.05» = wann es die Daten geholt hat; beide laden alle 5 Minuten still nach –, Konto und «Abmelden»), links die Navigation – auf der Hauptseite die Listen, in einem Fenster
+die Bereiche des Datensatzes –, rechts die weisse Tafel mit dem Inhalt. Schmaler als 900 px klappt die Navigation
+hinter einen Menüknopf links in der Kopfzeile. Filter und Spaltenwahl der Listen öffnen sich als Seitenblatt von
+rechts; Schnellaktionen und «Löschen …» eines Datensatzes stehen rechts im Seitenkopf, darüber der Link zurück
+zur Liste; Änderungen speichert die Leiste, die unten erscheint, sobald etwas geändert ist.
+
+| Datei | Zweck |
+|---|---|
+| `design.css` | Design-System: Tokens (Farben, Schrift, Abstände, Bewegung) und alle gemeinsamen Bausteine |
+| `bewegung.css`, `bewegung.js` | alle Animationen (die einzigen `@keyframes`) und ihre JS-Hälfte (`Bewegung`) |
+| `bausteine.js` | ein Bauer je Baustein: Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`) |
+| `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Seitenwechsel) und die Ebenen Dialog, Seitenblatt, Meldung, Tooltip, Speicherleiste (`Rahmen`, ergänzt `UI`) |
+| `fenster.js` | gemeinsames Gerüst der vier Fenster: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
+| `verlauf.js`, `verlauf.css` | Verlauf in Client-, Benutzer- und Telefonfenster (`Verlauf`) |
+| `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software |
+| `client.*`, `benutzer.*`, `telefon.*`, `software.*` | die Fenster eines Datensatzes (die `.css` nur mit Seitenlayout) |
+| `styleguide.html`, `styleguide.js` | lebende Übersicht aller Bausteine in allen Zuständen |
+| `STYLEGUIDE.md` | Regeln des Design-Systems |
+| `konfig.js` | Mandant, Client-ID, Listen-IDs, Takt des Nachladens – keine Geheimnisse (Abschnitt 7.4) |
+| `auth.js` | Anmeldung über MSAL (`Auth`) |
+| `graph.js` | Lesen und Schreiben über Microsoft Graph, erfundene Daten für `?mock=1` (`Daten`, `Mock`) |
+| `modell.js` | Fachlogik: Geschäftsjahr, Status, Programmstufen, Verknüpfungen (`Modell`) |
+| `spalten.js` | **generiert** von `Build-Spalten.ps1`, nie von Hand ändern (Abschnitt 4) |
+| `_headers` | Sicherheitsheader und Inhaltsrichtlinie (Abschnitt 7.4) |
+
+**Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: Stilvorlagen `design.css` → `bewegung.css` →
+`rahmen.css` → die eigene Seitenvorlage (+ `verlauf.css`); Skripte `konfig.js` → `bewegung.js` → `bausteine.js` →
+`rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` → in den Fenstern
+`verlauf.js` und `fenster.js` → das Skript der Seite. Dazu steht im `<head>` jeder Seite die Zeile
+`<style>@view-transition { navigation: auto; }</style>` für die ruhigen Seitenübergänge. Die vollständige Vorlage
+steht in `STYLEGUIDE.md`, Abschnitt 10.
+
+Lokal ansehen: `.\serve.ps1` im Ordner `code`, dann `http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen
+Daten; `&fehler=1` zeigt den Fehlerzustand) oder `http://localhost:8123/styleguide.html`.
+
+**Nach jeder Änderung prüfen:** `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` im Ordner `code`
+(Windows PowerShell 5.1, ohne Browser und ohne Netz). Es prüft statisch, ob jedes Token definiert ist, die Seiten-CSS
+nur Tokens lesen, `@keyframes` nur in `bewegung.css` stehen, kein `innerHTML`, `eval` oder `window.confirm` vorkommt,
+keine Seite ein Inline-Skript trägt (sonst blockiert die Inhaltsrichtlinie es auf Cloudflare), MSAL überall mit
+derselben Prüfsumme geladen wird und keine Altlasten (Google-Blau, alte Klassen) zurückkommen – je Prüfung «OK» oder
+die Fundstellen mit Datei und Zeile, Exit-Code 0/1. Was danach im Browser anzusehen ist, steht in
+`STYLEGUIDE.md`, Abschnitt 9.3.
 
 ---
 
@@ -361,10 +420,15 @@ Schlüssel ist die **Kurzwahl** (Titelspalte, z. B. `373`); die vollständige Nu
 
 Das Frontend ermittelt die Person **live** über das AD-Feld «Telefon» der Benutzer-Liste, unabhängig
 davon, ob die Telefon-Phase des Syncs schon gelaufen ist. Eine Nummer gilt als **nicht zugewiesen**,
-wenn weder eine Person noch ein Name noch ein Login dran hängt oder der Status `Frei` ist – solche
-Zeilen sind in der Liste gelb hervorgehoben, die Übersicht zählt sie in einer eigenen Kachel.
-Weitere Kacheln: «Name weicht vom AD ab» (Liste und AD nennen verschiedene Personen) und «Benutzer
-ohne Nummer» (aktive AD-Konten ohne Telefonnummer).
+wenn weder eine Person noch ein Name noch ein Login dran hängt oder der Status `Frei` ist. Eine **freie**
+Nummer ist das mit Absicht und kein Problem: sie trägt überall (Liste, Telefon- und Benutzerfenster) den
+neutralen Status «Frei» mit Haken, in der Spalte «Zugewiesen» ein schlichtes «Nein», und die Übersicht zählt
+sie nur in der Zeile «Frei». Ist eine Nummer dagegen in Betrieb (`Aktiv` oder `Inaktiv`) und niemandem
+zugewiesen, trägt sie in der Liste den Status «Nicht zugewiesen» als Warnung (Spalte «Zugewiesen»; die Zeile
+selbst wird nicht eingefärbt), und die Übersicht zählt sie in der Karte «Telefonnummern» unter «Nicht
+zugewiesen» und unter «Handlungsbedarf».
+Ebenso: «Name weicht vom AD ab» (Liste und AD nennen verschiedene Personen) und in der Karte «Benutzer»
+«Ohne Telefonnummer» (aktive AD-Konten ohne Telefonnummer).
 
 Die Liste wurde am 04.09.2026 aus der Excel-Datei aufgebaut (307 Nummern, Stand 31.07.2026). Das
 Importskript dafür war einmalig und ist entfernt; wer den Ablauf nachlesen will, findet es in der
@@ -384,10 +448,10 @@ PC-Name. Daraus folgt beides zugleich: eine Person ist Inhaberin von höchstens 
 Gerät hat höchstens eine Inhaberin.
 
 **EDU-Clients haben bewusst keinen Inhaber.** Sie sind Schulungsgeräte und gehören niemandem
-persönlich. Im Clientfenster fehlen dort darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»,
-in der Tabelle die Spalten «Inhaber» und «Inhaber gesetzt». Der interne Spaltenname `Computer` bleibt
-unverändert – SharePoint kann interne Namen nicht mehr ändern, und Sync wie Frontend sprechen die
-Spalte über ihn an.
+persönlich. Im Clientfenster fehlen dort darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»
+(an ihrer Stelle steht «In Betrieb nehmen»), in der Tabelle die Spalten «Inhaber» und «Inhaber gesetzt».
+Der interne Spaltenname `Computer` bleibt unverändert – SharePoint kann interne Namen nicht mehr
+ändern, und Sync wie Frontend sprechen die Spalte über ihn an.
 
 **Nur von Hand.** Der Sync fasst `Computer` **nie** an; `ConvertTo-BenutzerFelder` schreibt die
 Spalte gar nicht erst. Gepflegt wird sie ausschliesslich im Frontend:
@@ -408,7 +472,7 @@ Benutzerfenster auf Klick übernehmen.
 
 | Fall | Was das Frontend tut |
 |---|---|
-| Zwei Personen tragen denselben PC-Namen | Clientfenster meldet «Mehr als ein Inhaber» (rot), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein `+n`-Chip neben dem Namen. |
+| Zwei Personen tragen denselben PC-Namen | Clientfenster meldet «Mehr als ein Inhaber» (als Gefahr, mit Sinnbild), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein Status «+n» neben dem Namen. |
 | Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; beide Fenster sagen das als Warnung. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
 | Der PC-Name existiert gar nicht | Benutzerfenster zeigt «kein Gerät mit diesem Namen in der Liste» |
 | Der Eintrag zeigt auf einen EDU-Client | Er wird nirgends zum Inhaber: EDU-Clients kennen keine Inhaberschaft. Im Benutzerfenster steht «kein Gerät mit diesem Namen» – der Eintrag gehört gelöscht. |
@@ -418,7 +482,7 @@ Benutzerfenster auf Klick übernehmen.
 ## 3. Software pflegen
 
 Die SharePoint-Liste **«Software»** ist die einzige Quelle der Programmliste – für den Sync **und**
-für das Frontend. Gepflegt wird sie im Frontend: Reiter **«Software»**, Knopf **«Neue Software»**
+für das Frontend. Gepflegt wird sie im Frontend: Navigation links **«Software»**, Knopf **«Neues Programm»**
 oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
 `Inventar/programme.json`; die Datei wird nicht mehr gelesen und kann in SharePoint gelöscht werden.
 
@@ -446,9 +510,9 @@ in diesem Lauf übergangen; `Ergaenze-Spalten.ps1 -Listen Benutzer` hilft dann n
 **Reihenfolge beim Anlegen**: erst die Spalte, dann die Zeile. Scheitert die Spalte an der
 Berechtigung, entsteht gar kein Programm – besser als eine Software-Zeile, die nirgends wirkt.
 
-**Ein Programm entfernen**: im Softwarefenster «Programm löschen» (Programm-Id zur Bestätigung
-abtippen). Gelöscht wird nur die Zeile in «Software». **Die Spalte in der Benutzer-Liste bleibt mit
-ihren Werten stehen** – sie mitzulöschen hiesse, die Berechtigungen aller Personen zu vernichten.
+**Ein Programm entfernen**: im Softwarefenster **«Löschen …»** rechts im Seitenkopf (Programm-Id zur
+Bestätigung abtippen, dann «Endgültig löschen»). Gelöscht wird nur die Zeile in «Software». **Die
+Spalte in der Benutzer-Liste bleibt mit ihren Werten stehen** – sie mitzulöschen hiesse, die Berechtigungen aller Personen zu vernichten.
 Der Sync ignoriert sie ab dann. Wer sie wirklich loswerden will, nimmt `Entferne-Spalte.ps1`
 (sichert die Werte vorher) oder löscht sie in den Listeneinstellungen.
 
@@ -523,7 +587,7 @@ Gerätename ↔ Standort, Beschaffungsjahr aus den Kreuzen, Programmstufen, Dubl
 über gekürzten Login und Anzeigename), Anzahl und Form der Schemaeinträge sowie die Syntax aller
 `*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 297 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 298 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -553,12 +617,12 @@ Erwartete Ausgabe: `Ergebnis: 297 bestanden, 0 fehlgeschlagen`.
 | Ein PC steht plötzlich in der anderen Client-Liste | er wurde in SCCM umbenannt und hat dabei die Seite gewechselt (`EDU`-Präfix dazu oder weg) | Das ist so gewollt: die alte Zeile ist archiviert, die neue frisch angelegt. Wer den Verlauf mitnehmen will, verschiebt die Zeile mit `Migriere-Clients.ps1 -Schritte Umzug` |
 | Ein Gerät steht in **beiden** Client-Listen | ein Umzug ist zwischen Anlegen und Löschen abgebrochen | Die überzählige Zeile von Hand löschen; das Log von `Migriere-Clients.ps1` nennt den Namen |
 | `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | `TelefonListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Telefonnummern» eintragen (steht auch in `frontend/konfig.js`) |
-| Frontend: Reiter «Telefonnummern» ist leer und nennt konfig.js | `telefonListId` in `frontend/konfig.js` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
+| Frontend: Ansicht «Telefonnummern» ist leer und nennt konfig.js | `telefonListId` in `frontend/konfig.js` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
 | Ein Client lässt sich nicht speichern: «… gehört in die Liste …» | Der Name passt nicht zur offenen Liste (`EDU`-Präfix) | Namen korrigieren oder den Client in der anderen Liste erfassen. Ohne diese Sperre legte der nächste Sync das Gerät drüben neu an und archivierte die Zeile hier |
 | `Nummer … steht im AD bei 'a' und 'b'` | zwei AD-Konten tragen dieselbe `telephoneNumber` | im AD bereinigen; bis dahin gilt der alphabetisch erste Login |
 | Eine Person steht in der Telefonliste, aber «Person (AD)» ist leer | im AD fehlt bei diesem Konto das Feld «Telefon» (`telephoneNumber`) | Feld im AD setzen; beim nächsten Sync erscheint die Person, `Benutzer` wird geschrieben |
-| Frontend: Reiter «EDU-Clients» oder «Software» ist leer und nennt konfig.js | `eduClientListId` bzw. `softwareListId` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
-| Frontend: «Neue Software» meldet «Keine Schreibberechtigung» beim Anlegen der Spalte | Das Konto darf in SharePoint keine Spalten anlegen | Entweder das Konto berechtigen oder die Spalte mit `Ergaenze-Spalten.ps1 -Listen Benutzer` nachziehen |
+| Frontend: Ansicht «EDU-Clients» oder «Software» ist leer und nennt konfig.js | `eduClientListId` bzw. `softwareListId` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
+| Frontend: «Neues Programm» meldet «Keine Schreibberechtigung» beim Anlegen der Spalte | Das Konto darf in SharePoint keine Spalten anlegen | Entweder das Konto berechtigen oder die Spalte mit `Ergaenze-Spalten.ps1 -Listen Benutzer` nachziehen |
 | Umlaute in der Konsole falsch | OEM-Codepage | nur Anzeige; Log, JSON und SharePoint sind UTF-8 |
 | Ein `.ps1` bricht mit «Zeichenfolge hat kein Abschlusszeichen» ab | Datei wurde ohne UTF-8-BOM gespeichert; PowerShell 5.1 liest sie dann als ANSI und zerlegt die Umlaute | Datei mit BOM speichern (`New-Object Text.UTF8Encoding($true)`). JSON dagegen bleibt **ohne** BOM, sonst kann der Browser es nicht lesen |
 

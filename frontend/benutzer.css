@@ -1,98 +1,43 @@
 /* benutzer.css — Seitenlayout des Benutzerfensters.
 
-   Wird NACH design.css geladen. Das gesamte Gerüst kommt aus design.css.
-   Hier bleiben nur die wenigen Muster, die es nur in diesem Fenster gibt:
-   Hinweiszeilen, Trefferliste der Gerätesuche
-   und die Programmliste. Alle eigenen Klassen beginnen mit «b-». */
+   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Kacheln,
+   Karten, Datenzeilen, Banner, Suchfeld, Listenzeilen, Schalterzeilen,
+   Leerzustände. Raster und Abstände kommen aus .stapel, .karten und
+   .werkzeugleiste (design.css), der Bereich aus .fenster-bereich
+   (rahmen.css). Hier steht nur Raster – keine Farben, Radien, Schatten,
+   Schriften oder Dauern. Klassen dieser Seite beginnen mit «b-».
+
+   Klassen ohne eigene Regel (Haken für benutzer.js und die Prüfskripte):
+   .b-programme (Karten der Berechtigungen), .b-verlauf (Hülle des Verlaufs).
+   Mit eigener Regel: .b-kennzahlen (Kacheln der Übersicht), .b-rechte-leiste
+   (Werkzeugleiste der Berechtigungen). */
 
 
-/* ==================================================================
-   Hinweiszeilen
-   ================================================================== */
-
-/* Gestaltung in design.css (.banner). */
-
-
-/* ==================================================================
-   Gerätesuche
-   ================================================================== */
-
-.b-treffer {
-  display: grid; gap: 0; margin-top: var(--a3);
-  border: 1px solid var(--linie); border-radius: var(--r-klein);
-  overflow: hidden;
-}
-/* Nur ein Hinweis, keine Treffer: dann kein leerer Rahmen. */
-.b-treffer:not(:has(.b-treffer-zeile)) { border: none; }
-.b-treffer > .hinweis { padding: var(--a1) 0; }
-
-.b-treffer-zeile {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--a2) var(--a3);
-  padding: var(--a2) var(--a3);
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.b-treffer-zeile:last-child { border-bottom: none; }
-.b-treffer-zeile:hover { background: var(--flaeche); }
-.b-treffer-name { font-size: var(--t-m); font-weight: 500; overflow-wrap: anywhere; }
-.b-treffer-unter { font-size: var(--t-s); color: var(--text-leise); overflow-wrap: anywhere; }
-.b-treffer-zeile.aktuell { background: var(--primaer-hell); }
-
-
-/* ==================================================================
-   Berechtigungen
-   ================================================================== */
-
-.b-werkzeuge {
-  display: flex; align-items: center; gap: var(--a2); flex-wrap: wrap;
-  margin-bottom: var(--a4);
+/* Die drei Kennzahlen der Übersicht füllen die Zeile, statt drei von vier
+   Spalten zu belegen. Auf dem Handy zwei Spalten wie überall; die dritte
+   Kachel nimmt dann die ganze Breite, statt allein halb zu stehen. */
+.kacheln.b-kennzahlen {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.b-programme { display: grid; gap: 0; }
-.b-programme .schalter-zeile { border-radius: 0; border-bottom: 1px solid var(--linie-leicht); }
-.b-programme .schalter-zeile:last-child { border-bottom: none; }
+@media (max-width: 600px) {
+  .kacheln.b-kennzahlen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-.b-programm-zusatz {
-  display: flex; align-items: center; gap: var(--a1) var(--a2);
-  flex-wrap: wrap;
+  .kacheln.b-kennzahlen > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
-
-/* ==================================================================
-   Abstände
-   ================================================================== */
-
-.b-abstand { margin-top: var(--a5); }
-
-
-
-/* ==================================================================
-   Schmale Fenster
-   ================================================================== */
-
-@media (max-width: 760px) {
-  .b-programme .schalter-zeile {
-    flex-wrap: wrap;
-    padding: var(--a2);
-    min-height: var(--tippziel);
+/* Berechtigungen: auf schmaler Bahn nimmt die Suche eine eigene Zeile,
+   darunter «Nur aktive» und die Zahl – sonst schnitte der Platzhalter
+   «Programm oder AD-Gruppe» ab (wie die Werkzeugleiste der Hauptseite,
+   styles.css). */
+@container bahn (max-width: 600px) {
+  .werkzeugleiste.b-rechte-leiste > .suchfeld {
+    flex-basis: 100%;
+    max-width: none;
   }
-  .b-programme .schalter-zeile .name {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    flex: 1 1 160px;
-  }
-  .b-programme .b-programm-zusatz {
-    flex: 1 0 100%;
-    padding-left: calc(44px + var(--a3));
-  }
-
-  .b-treffer-zeile {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: start;
-  }
-
-  .b-werkzeuge .suchfeld { flex: 1 1 100%; }
 }

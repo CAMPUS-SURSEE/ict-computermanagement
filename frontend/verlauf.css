@@ -1,140 +1,31 @@
-/* verlauf.css — Zeitstrahl der Verlaufseinträge (verlauf.js).
+/* verlauf.css — Layout des Verlaufs (verlauf.js) auf client.html,
+   benutzer.html und telefon.html.
 
-   Wird von geraet.html und benutzer.html NACH design.css geladen und
-   benutzt ausschliesslich dessen Tokens. Alle Klassen beginnen mit «vl-». */
+   Das Aussehen kommt ganz aus design.css: Karte und gefüllter Block
+   (.karte, .karte-gefuellt), Zeitachse (.zeitachse: 2-px-Linie, Punkte in
+   Primärgrün, Abgleich grau, Sync-Sinnbild in der Meta-Zeile), Status-
+   Chips, Felder und Knöpfe. Hier steht nur, wie die Teile im Verlauf
+   zueinander liegen – nur Tokens.
 
-.vl { display: block; }
+   Reine JS-Haken ohne eigene Regel (für die Seiten und die Prüfskripte):
+   .vl-karte (die Karte des Verlaufs), .vl-liste (die Zeitachse). */
 
-
-/* ==================================================================
-   Kopfzeile und Formular
-   ================================================================== */
-
-.vl-werkzeuge {
-  display: flex;
-  align-items: center;
-  gap: var(--a3);
-  flex-wrap: wrap;
-  margin-bottom: var(--a3);
+/* Formular, Zeitachse bzw. Leerzustand untereinander im Kartenrhythmus. */
+.vl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--a4);
+  min-width: 0;
 }
 
-.vl-formular {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--r);
-  padding: var(--a4);
-  margin-bottom: var(--a4);
+/* Der Eintragstext bewahrt Zeilenumbrüche (pre-line); das Formular, das
+   beim Bearbeiten an seiner Stelle steht, fliesst normal. */
+.vl .zeitachse-text:has(> .vl-formular) {
+  white-space: normal;
 }
 
-.vl-formular-zeile {
-  display: flex;
-  align-items: center;
-  gap: var(--a3);
-  flex-wrap: wrap;
-  margin-bottom: var(--a3);
-}
-
-.vl-feldname {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--a2);
-  font-size: var(--t-s);
-  color: var(--text-leise);
-}
-
-/* Die Felder sind .feld-eingabe aus design.css; hier nur Breiten. */
-.vl-datum-feld { width: auto; }
-
-.vl-text-feld { max-width: 560px; min-height: 72px; }
-
-.vl-knoepfe, .vl-aktionen {
-  display: flex;
-  gap: var(--a2);
-  flex-wrap: wrap;
-  margin-top: var(--a3);
-}
-
-
-/* ==================================================================
-   Die Zeitachse
-   ================================================================== */
-
-.vl-liste {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 24px;
-  position: relative;
-}
-
-.vl-liste::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-  background: var(--linie);
-}
-
-.vl-eintrag {
-  position: relative;
-  padding: var(--a3) 0;
-  border-bottom: 1px solid var(--linie-leicht);
-}
-.vl-eintrag:last-child { border-bottom: none; }
-
-.vl-eintrag::before {
-  content: "";
-  position: absolute;
-  left: -24px;
-  top: 19px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--primaer);
-  box-shadow: 0 0 0 3px var(--weiss);
-}
-
-.vl-eintrag.vl-sync::before { background: var(--umriss-leicht); }
-
-.vl-kopf {
-  display: flex;
-  align-items: baseline;
-  gap: var(--a2);
-  flex-wrap: wrap;
-}
-
-.vl-datum {
-  font-size: var(--t-m);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+/* Die Zahl der Einträge steht in der Kopfzeile vor «Neuer Eintrag» und
+   bricht nie um. */
+.vl-anzahl {
   white-space: nowrap;
-}
-
-.vl-quelle {
-  font-size: var(--t-xs);
-  font-weight: 500;
-  color: var(--text-still);
-}
-.vl-eintrag.vl-sync .vl-quelle { color: var(--info); }
-
-.vl-erfasst { font-size: var(--t-xs); color: var(--text-still); }
-
-.vl-text {
-  font-size: var(--t-m);
-  margin-top: 2px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.vl-bearbeitet { padding: var(--a4) 0; }
-.vl-bearbeitet::before { background: var(--primaer); }
-
-
-@media (max-width: 760px) {
-  .vl-text-feld { max-width: none; }
-}
-
-@media print {
-  .vl-werkzeuge, .vl-aktionen, .vl-formular { display: none; }
 }
