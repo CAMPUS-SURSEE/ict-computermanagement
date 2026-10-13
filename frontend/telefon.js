@@ -4,8 +4,8 @@
    zeigt eine Zeile der Liste «Telefonnummern» in zwei Bereichen:
 
      Stammdaten          Kurzwahl, Nummer, Name, Typ, Status, Apparat,
-                         Standort – dazu die Person, die im Active Directory
-                         diese Nummer hinterlegt hat (live aus der
+                         Standort – dazu die Person, bei der diese Nummer
+                         im Active Directory steht (live aus der
                          Benutzer-Liste).
      Hinweis & Verlauf   Hinweis und Verlauf (auch: wer die Nummer hatte).
 
@@ -15,11 +15,11 @@
    nur bei passender Länge (Fehler D3): mit dem Präfix «+41 41 926 2» genau
    drei Ziffern; sonst bleibt sie leer und die Kurzwahl bekommt einen
    Feldhinweis. Eine kaputte Nummer wird nie gebildet und nie gespeichert.
-   Mit ?neu=1&benutzer=<Listen-ID> («Nummer erfassen» im Benutzerfenster)
+   Mit ?neu=1&benutzer=<Listen-ID> («Nummer erfassen» auf der Benutzerseite)
    sind Kurzwahl, Nummer und Name aus dieser Person vorgefüllt.
 
    Bearbeitbar sind die von Hand gepflegten Spalten (q = «manuell» in
-   spalten.js). «Benutzer (AD)» und «Letzter AD-Sync» schreibt der Abgleich.
+   spalten.js). «Benutzer (AD)» und «Letzter AD-Abgleich» schreibt der Abgleich.
 
    Gebaut wird nur über UI.*, Rahmen.*, F.* und Bewegung.*. Beim Tippen
    ändert sich nichts ausser dem, was am getippten Wert hängt (Zwillinge,
@@ -41,7 +41,7 @@ const mockModus = UI.adresse.mock();
 let elementId = ABFRAGE.get("id");
 let neuModus = ABFRAGE.get("neu") === "1";
 
-/* «Nummer erfassen» im Benutzerfenster öffnet ?neu=1&benutzer=<Listen-ID>:
+/* «Nummer erfassen» auf der Benutzerseite öffnet ?neu=1&benutzer=<Listen-ID>:
    Kurzwahl, Nummer und Name kommen dann aus der Zeile dieser Person
    (vorbelegen). Nur die Listen-ID steht in der Adresse, nichts Persönliches. */
 const VORBELEGEN_AUS = neuModus ? ABFRAGE.get("benutzer") : null;
@@ -50,8 +50,6 @@ const SPALTEN = SPALTEN_TELEFON;
 const SPALTE = {};
 for (const s of SPALTEN) SPALTE[s.i] = s;
 
-const LEAD = "Hier pflegst du Kurzwahl, Name und Status dieser Nummer.";
-const LEAD_NEU = "Kurzwahl und Name genügen; alles Übrige ist freiwillig.";
 
 /* Grund für gesperrte Schnellaktionen bei ungespeicherten Änderungen (D4):
    «Freigeben» speicherte sonst alles andere mit, «Löschen» verwürfe es. */
@@ -167,9 +165,8 @@ function kurzwahlRegelText() {
 function kurzwahlHinweis() {
   const n = kurzwahlLaenge();
   return n
-    ? "Genau " + ZAHLWOERTER[n] + " Ziffern aus dem Hausblock " + Modell.telefonPraefix()
-      + " …, der Schlüssel der Liste. Daraus wird die Telefonnummer ergänzt."
-    : "Der Schlüssel der Liste, ein bis vier Ziffern.";
+    ? "Die letzten " + ZAHLWOERTER[n] + " Ziffern der Telefonnummer."
+    : "Ein bis vier Ziffern.";
 }
 
 /* Weicht die gespeicherte Nummer vom Vorschlag der gespeicherten Kurzwahl
@@ -203,7 +200,7 @@ function personZurNummer(nummer, kurz) {
 /* … mit dem Entwurf: wer die Kurzwahl ändert, sieht sofort die passende Person. */
 function personAusAd() { return personZurNummer(textWert("Telefonnummer"), textWert("Title")); }
 
-/* Ersatzweise die Person aus der Spalte «Benutzer» (vom Abgleich geschrieben). */
+/* Ersatzweise die Person aus der Spalte «Benutzer (AD)» (vom Abgleich geschrieben). */
 function personAusSpalte() {
   const login = Modell.schluessel(zeile ? zeile.Benutzer : "");
   if (!login) return null;
@@ -269,10 +266,10 @@ function feldZeigen(feld, wert) {
 
 /* Eine Formularzeile am Entwurf (F.feld, fenster.js): id «tf-eingabe-<Feld>»,
    Wert aus dem Entwurf, jede Eingabe hinein, Punkt «geändert» an Ort und
-   Stelle – beim Anlegen keiner (Option «neu» des Entwurfs; wie im Client-
-   und im Softwarefenster). Beschriftung aus spalten.js, Notizspalten als
-   Textbereich. o: Optionen von F.feld (art, eingabe, hinweis, zusatz,
-   beiEingabe – bei einer Auswahl beim Ändern). */
+   Stelle – beim Anlegen keiner (Option «neu» des Entwurfs; wie auf der
+   Geräteseite und im Softwarefenster). Beschriftung aus spalten.js,
+   Notizspalten als Textbereich. o: Optionen von F.feld (art, eingabe,
+   hinweis, zusatz, beiEingabe – bei einer Auswahl beim Ändern). */
 function feldZeile(feld, o) {
   const s = SPALTE[feld];
   return F.feld(feld, Object.assign({
@@ -295,14 +292,14 @@ function hinweisSetzen(id, schluessel, bauen, ausEingabe) {
 function zwillingeNachfuehren(ausEingabe) {
   const zw = kurzwahlZwillinge();
   hinweisSetzen("tf-zwillinge", zw.map(z => z.id).join(","), function () {
-    const namen = zw.map(z => "«" + (String(z.Name || "").trim() || "ohne Namen") + "» (Listen-ID " + z.id + ")");
+    const namen = zw.map(z => String(z.Name || "").trim() ? "«" + String(z.Name).trim() + "» (Listen-ID " + z.id + ")" : "Listen-ID " + z.id);
     const oeffnen = zw.length === 1
       ? UI.knopf({ text: "Öffnen", variante: "leise", href: UI.adresse.telefon(zw[0].id), fokus: "zwilling-oeffnen" })
       : null;
     return UI.banner({
       ton: "warnung",
       titel: "Diese Kurzwahl gibt es schon:",
-      text: namen.join(", ") + ". Jede Kurzwahl darf nur einmal vorkommen.",
+      text: namen.join(", ") + ".",
       knopf: oeffnen
     });
   }, ausEingabe);
@@ -329,7 +326,7 @@ function nameAdNachfuehren(ausEingabe) {
       ton: "warnung",
       text: name
         ? "In der Liste steht «" + name + "», im AD hat «" + adName + "» diese Nummer."
-        : "Die Nummer hat noch keinen Namen; im AD gehört sie «" + adName + "».",
+        : "Im AD steht die Nummer bei «" + adName + "».",
       knopf: knopf
     });
   }, ausEingabe);
@@ -360,10 +357,8 @@ function statusAdNachfuehren(ausEingabe) {
 }
 
 const STATUS_HINWEISE = {
-  Frei: "Sofort vergebbar; die Liste zeigt sie mit dem Status «Frei». Der Abgleich setzt die Nummer auf "
-    + "«Aktiv», sobald sie im AD bei jemandem steht.",
-  Inaktiv: "Vorhanden, aber nicht in Teams – etwa ein SIP-Apparat oder ein deaktiviertes Konto.",
-  Aktiv: "In Betrieb. Ein leeres Feld gilt ebenfalls als «Aktiv»."
+  Frei: "Steht die Nummer im AD bei jemandem, setzt der Abgleich sie auf «Aktiv».",
+  Inaktiv: "Vorhanden, aber nicht in Teams – etwa ein SIP-Apparat oder ein deaktiviertes Konto."
 };
 
 function statusHinweisNachfuehren() {
@@ -413,11 +408,10 @@ function kurzwahlZeile() {
 function stammdatenKarte() {
   const k = UI.karte({
     titel: "Stammdaten",
-    /* Die Kurzwahl ist Pflicht (Schlüssel der Liste) – auch für eine Zeile
-       mit Mobil- oder Fremdnummer; so sagt es die Karte gleich zu Beginn. */
-    unter: neuModus ? "Die Kurzwahl braucht es immer: sie ist der Schlüssel der Liste. Die Telefonnummer "
-        + "folgt ihr; eine Mobil- oder Fremdnummer trägst du von Hand ein."
-      : "Von Hand gepflegt. Der Abgleich fasst diese Felder nicht an – ausser er füllt einen leeren Namen aus dem AD."
+    /* Der Abgleich (Sync-Inventar.ps1) füllt nur leere Felder aus dem AD:
+       Name, Typ und Telefonnummer. Dass er «Frei» auf «Aktiv» setzt, sagt
+       der Hinweis am Status. */
+    unter: "Der Abgleich ergänzt nur leere Felder aus dem AD."
   });
 
   const statusHinweis = UI.el("span");
@@ -428,7 +422,7 @@ function stammdatenKarte() {
     feldZeile("Telefonnummer", {
       art: "telefon",
       eingabe: { platzhalter: vollAusKurzwahl("3735".slice(0, kurzwahlLaenge() || 3)) || "+41 …" },
-      hinweis: "Vollständige Nummer. Folgt der Kurzwahl; eine Mobil- oder Fremdnummer lässt sich hier eintragen.",
+      hinweis: "Folgt der Kurzwahl. Für eine Mobil- oder Fremdnummer überschreiben.",
       beiEingabe: function (v) {
         // Wer die Nummer leert, lässt sie wieder der Kurzwahl folgen.
         nummerVonHand = !!v.trim() && Modell.telefonFormat(v) !== vollAusKurzwahl(textWert("Title").trim());
@@ -469,7 +463,7 @@ function stammdatenKarte() {
 function personKarte() {
   const k = UI.karte({
     titel: "Person aus dem Active Directory",
-    unter: "Wer diese Nummer im AD-Feld «Telefon» hinterlegt hat. Das pflegt der AD-Abgleich."
+    unter: "Bei wem die Nummer im AD-Feld «Telefon» steht."
   });
   k.id = "tf-personkarte";
   const inhalt = UI.el("div", "stapel");
@@ -479,7 +473,8 @@ function personKarte() {
 }
 
 /* Noch keine Nummer (neues Formular, leere Kurzwahl): dann gibt es auch
-   niemanden zu suchen – der Leerzustand sagt, was zu tun ist. */
+   niemanden zu suchen. Der Leerzustand hat nur einen Titel. Was hier
+   erscheint, sagt schon der Untertitel der Karte. */
 function ohneNummer() {
   return !textWert("Title").trim() && !textWert("Telefonnummer").trim();
 }
@@ -497,8 +492,7 @@ function personInhalt() {
   if (!b && ohneNummer()) {
     teile.push(UI.leerzustand({
       sinnbild: "telefon",
-      titel: "Noch keine Nummer",
-      text: "Sobald du eine Kurzwahl eingibst, steht hier, wer sie im AD-Feld «Telefon» hinterlegt hat."
+      titel: "Noch keine Nummer"
     }));
   } else if (b) {
     const ausAd = !!personAusAd();
@@ -514,25 +508,23 @@ function personInhalt() {
        drückten sie sonst den Namen zusammen. */
     teile.push(UI.chips([
       b.__adAktiv ? UI.status("AD-Konto aktiv", "erfolg") : UI.status("AD-Konto deaktiviert", "gefahr"),
-      UI.status(ausAd ? "Über AD-Telefonnummer" : "Über Spalte «Benutzer»", "neutral", {
+      ausAd ? null : UI.status("Über Spalte «Benutzer (AD)»", "neutral", {
         sinnbild: "verknuepfung",
-        titel: ausAd ? "Die Nummer steht im AD-Feld «Telefon» dieser Person."
-          : "Die Spalte «Benutzer (AD)» nennt diese Person; im AD-Feld «Telefon» steht die Nummer nicht."
+        titel: "Im AD-Feld «Telefon» dieser Person steht die Nummer nicht."
       })
     ]));
-    /* Ohne Schloss: die ganze Karte kommt aus dem AD, das sagt ihr Text
+    /* Ohne Schloss: die ganze Karte kommt aus dem AD, das sagt ihr Titel
        einmal (Schlösser nur, wo gesperrte und änderbare Felder gemischt
-       stehen – wie im Benutzer- und im Clientfenster). */
+       stehen – wie auf der Benutzer- und der Geräteseite). */
     teile.push(UI.datenzeilen([
       UI.feldZeile("Telefon im AD", b.Telefon),
-      UI.feldZeile("Letzter AD-Sync", UI.zeitText(zeile ? zeile.ADLetzterSync : ""))
+      UI.feldZeile("Letzter AD-Abgleich", UI.zeitText(zeile ? zeile.ADLetzterSync : ""))
     ]));
   } else {
     teile.push(UI.leerzustand({
       sinnbild: "benutzer",
       titel: "Im AD hat niemand diese Nummer",
-      text: "Für Dienste, Räume und HelpFons ist das normal. Bei einer Person fehlt im AD das Feld "
-        + "«Telefon» – sobald es gesetzt ist, erscheint sie hier."
+      text: "Für Dienste, Räume und HelpFons ist das normal. Bei einer Person fehlt die Nummer im AD-Feld «Telefon»."
     }));
     const benutzerSpalte = textWert("Benutzer").trim();
     if (benutzerSpalte) {
@@ -593,7 +585,7 @@ function bereichNeu(ziel) {
    ================================================================== */
 
 function hinweisKarte(breit) {
-  const k = UI.karte({ titel: "Hinweis", unter: "Grund oder Bemerkung zu dieser Nummer, Freitext.", breit: !!breit });
+  const k = UI.karte({ titel: "Hinweis", breit: !!breit });
   k.inhalt.appendChild(UI.datenzeilen([
     feldZeile("Hinweis", { eingabe: { zeilen: 4 } })
   ]));
@@ -617,8 +609,7 @@ function verlaufEinbauen() {
     schluessel: "telefon",
     wert: entwurf.wert("Verlauf"),
     beiAenderung: function (json) { entwurf.setzeWert("Verlauf", json); },
-    titel: "Verlauf",
-    beschreibung: "Handwechsel, Freigabe, Apparat – auch, wer die Nummer früher hatte. Der Abgleich hängt eigene Einträge an."
+    titel: "Verlauf"
   });
   return huelle;
 }
@@ -635,9 +626,7 @@ function kopfZeichnen() {
   const unter = [];
   const status = [];
   const aktionen = [];
-  if (neuModus) {
-    unter.push("Noch nicht angelegt");
-  } else {
+  if (!neuModus) {
     unter.push(textWert("Telefonnummer").trim() || vollAusKurzwahl(textWert("Title").trim()));
     unter.push(textWert("Name").trim());
     unter.push(textWert("Typ").trim());
@@ -645,9 +634,9 @@ function kopfZeichnen() {
     /* Der Normalfall (Aktiv, zugewiesen) bekommt keinen Chip – nur was
        auffällt. «Frei» heisst immer auch «nicht zugewiesen»: ein Chip genügt,
        und er ist neutral (Haken im Kreis wie in der Liste): eine freie Nummer
-       ist sofort vergebbar, kein Problem. Warnung bleibt «Nicht zugewiesen»
-       für eine aktive oder inaktive Nummer ohne Person – so zählen sie auch
-       Liste, Übersicht und Handlungsbedarf. */
+       ist kein Problem. Warnung bleibt «Nicht zugewiesen» für eine aktive
+       oder inaktive Nummer ohne Person – so zählen sie auch Liste, Übersicht
+       und Handlungsbedarf. */
     const s = statusWert();
     if (s === "Frei") status.push(UI.status("Frei", "neutral", { sinnbild: "checkKreis" }));
     else {
@@ -659,8 +648,7 @@ function kopfZeichnen() {
 
     if (!F.geloescht()) aktionen.push.apply(aktionen, schnellaktionen());
   }
-  F.seitenkopf({ titel: anzeigeName(), lead: neuModus ? LEAD_NEU : LEAD, unter: unter, status: status,
-    aktionen: aktionen });
+  F.seitenkopf({ titel: anzeigeName(), unter: unter, status: status, aktionen: aktionen });
 }
 
 /* «Nummer freigeben» und «Löschen …». Beide sind bei ungespeicherten
@@ -676,9 +664,9 @@ function schnellaktionen() {
        sofort wieder auf «Aktiv» und trüge den Namen nach. */
     const imAd = personZurNummer(zeile.Telefonnummer, zeile.Title);
     liste.push(UI.knopf({ text: "Nummer freigeben", variante: "leise", sinnbild: "zuruecksetzen",
-      titel: "Status «Frei»; der Name wandert in den Verlauf.", beiKlick: freigeben,
-      gesperrt: offen ? GRUND_ENTWURF : (imAd ? "Im AD steht die Nummer bei «" + (imAd.__name || imAd.Title)
-        + "»: der Abgleich setzte sie gleich wieder auf «Aktiv»." : "") }));
+      beiKlick: freigeben,
+      gesperrt: offen ? GRUND_ENTWURF : (imAd ? "Die Nummer steht im AD bei «" + (imAd.__name || imAd.Title)
+        + "». Der Abgleich würde sie wieder auf «Aktiv» setzen." : "") }));
   }
 
   liste.push(UI.knopf({ text: "Löschen …", variante: "leise", sinnbild: "papierkorb", beiKlick: loeschen,
@@ -694,8 +682,8 @@ async function freigeben() {
   const kurz = textWert("Title").trim();
   const ja = await UI.bestaetigen({
     titel: "Kurzwahl " + kurz + " freigeben?",
-    text: name ? "Der Status wird «Frei», «" + name + "» wandert in den Verlauf und das Namensfeld wird geleert."
-      : "Der Status wird «Frei».",
+    text: name ? "Die Nummer bekommt den Status «Frei», «" + name + "» kommt in den Verlauf und das Feld «Name» wird geleert."
+      : "Die Nummer bekommt den Status «Frei».",
     ja: "Freigeben"
   });
   if (!ja || entwurf.anzahl()) return;
@@ -727,14 +715,11 @@ function loeschen() {
   const frei = Modell.telefonStatus(zeile.Status) === "Frei";
   F.loeschenDialog({
     titel: "Telefonnummer löschen?",
-    text: "Die Zeile verschwindet aus der Liste «Telefonnummern» und landet im Papierkorb der "
-      + "SharePoint-Site. Von dort lässt sie sich 93 Tage lang zurückholen.",
-    warnung: frei
-      ? "Die Nummer ist frei und bleibt so vergebbar. Lösche sie nur, wenn es sie nicht mehr gibt."
-      : "Meist ist «Nummer freigeben» die bessere Wahl: die Nummer bleibt bekannt, und wer sie hatte, "
-        + "steht im Verlauf. Lösche nur, wenn es die Nummer nicht mehr gibt.",
+    text: "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.",
+    warnung: (frei ? "" : "Meist ist «Nummer freigeben» die bessere Wahl. ")
+      + "Nur löschen, wenn es die Nummer nicht mehr gibt.",
     wort: kurz || "löschen",
-    knopfText: "Endgültig löschen",
+    knopfText: "Löschen",
     fehlerText: "Löschen fehlgeschlagen.",
     beiLoeschen: async function () {
       await Daten.loeschen("telefon", id);
@@ -743,8 +728,7 @@ function loeschen() {
     },
     ende: {
       titel: "Telefonnummer gelöscht",
-      text: (kurz ? "Die Kurzwahl " + kurz : "Die Nummer") + " ist aus der Liste entfernt und liegt im "
-        + "Papierkorb der SharePoint-Site.",
+      text: (kurz ? "Die Kurzwahl " + kurz : "Die Nummer") + " liegt jetzt im Papierkorb der SharePoint-Site.",
       knopfText: "Zur Liste"
     }
   });
@@ -792,7 +776,6 @@ async function datenLaden(still) {
      Modell.anreichern liefert sie auch ohne Geräte und Programme. */
   alleBenutzer = Modell.anreichern([], rohBenutzer, null).benutzer;
   alleTelefone = Modell.telefoneAnreichern(rohTelefone, alleBenutzer).telefone;
-  F.stand();
 }
 
 function zeileWaehlen() {
@@ -803,8 +786,7 @@ function zeileWaehlen() {
   }
   const treffer = alleTelefone.filter(z => String(z.id) === String(elementId))[0];
   if (!treffer) {
-    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es keine Zeile in der Liste "
-      + "«Telefonnummern». Vermutlich wurde sie inzwischen gelöscht.");
+    const fehler = new Error("In der Liste «Telefonnummern» gibt es keine Zeile mit der Listen-ID " + elementId + ".");
     fehler.nichtGefunden = true;
     throw fehler;
   }
@@ -874,15 +856,15 @@ function ladefehlerZeigen(fehler) {
 function pruefen() {
   const kurz = textWert("Title").trim();
   const kurzNeu = neuModus || entwurf.istGeaendert("Title");
-  if (kurzNeu && !kurz) return { feld: "Title", text: "Die Kurzwahl fehlt. Sie ist der Schlüssel der Liste, zum Beispiel 373." };
+  if (kurzNeu && !kurz) return { feld: "Title", text: "Bitte eine Kurzwahl eingeben." };
   if (kurzNeu && !kurzwahlGueltig(kurz)) return { feld: "Title", text: kurzwahlRegelText() };
   if (kurzNeu && kurzwahlZwillinge().length) {
-    return { feld: "Title", text: "Die Kurzwahl " + kurz + " gibt es schon. Jede Kurzwahl darf nur einmal vorkommen." };
+    return { feld: "Title", text: "Die Kurzwahl " + kurz + " gibt es schon." };
   }
   if (neuModus || entwurf.istGeaendert("Status")) {
     const st = textWert("Status").trim();
     if (st && Modell.TELEFON_STATUS_WERTE.indexOf(st) === -1) {
-      return { feld: "Status", text: "Der Status ist «" + Modell.TELEFON_STATUS_WERTE.join("», «") + "»." };
+      return { feld: "Status", text: "«Status» muss «" + Modell.TELEFON_STATUS_WERTE.join("», «") + "» oder leer sein." };
     }
   }
   return null;
@@ -1020,12 +1002,11 @@ async function start() {
   // Die Schublade steht sofort, der aktive Bereich ist schon markiert.
   navZeichnen();
   F.logoZeichnen("telefone");
-  F.bandZeichnen("Vorführmodus: alle Nummern und Personen sind erfunden. "
-    + "Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
-      entwurf.leeren();
-      F.melden("telefon-geaendert", elementId);
-      neuLaden();
-    });
+  F.bandZeichnen(undefined, function () {
+    entwurf.leeren();
+    F.melden("telefon-geaendert", elementId);
+    neuLaden();
+  });
 
   try {
     if (!mockModus) {
@@ -1035,9 +1016,8 @@ async function start() {
     F.kontoZeigen();
     if (!neuModus && !elementId) {
       F.zeigeFehler("Keine Telefonnummer angegeben",
-        "Dieses Fenster braucht die Listen-ID in der Adresse, zum Beispiel telefon.html?id=5, "
-        + "oder «?neu=1» für eine neue Nummer.",
-        "Normalerweise öffnest du es aus der Liste der Telefonnummern.", "Zur Liste", function () { F.zurListe(); });
+        "In der Adresse fehlt die Listen-ID, zum Beispiel telefon.html?id=5.",
+        "", "Zur Liste", function () { F.zurListe(); });
       return;
     }
     const ok = await neuLaden();

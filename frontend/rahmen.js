@@ -24,8 +24,8 @@
    Fehlt ein Teil, legt rahmen.js ihn an. Ohne body[data-seite] baut es
    keinen Rahmen (Rahmen.bereit = false); die UI-Ebenen (Dialog, Blatt,
    Meldung, Tooltip) gehen trotzdem. Der Kopf steht vom ersten Bild an:
-   Konto und Datenstand der zuletzt gezeigten Seite belegen ihn vor
-   (sessionStorage), die Wortmarke wartet höchstens 300 ms auf ihre Schrift.
+   das Konto der zuletzt gezeigten Seite belegt ihn vor (sessionStorage),
+   die Wortmarke wartet höchstens 300 ms auf ihre Schrift.
 
    ------------------------------------------------------------------
    API «Rahmen»
@@ -33,20 +33,22 @@
    Rahmen.HAUPTZIELE                 Gruppen der Hauptseite (einzige Quelle),
                                      [{titel?, eintraege:[{schluessel, text, sinnbild, href}]}]
    Rahmen.zielText(schluessel)       «admin» → «ADMIN-Clients» (für Zurück-Links)
-   Rahmen.navigation({gruppen, aktiv, beiWahl(schluessel, ereignis), label, verstecken})
+   Rahmen.navigation({gruppen, aktiv, beiWahl(schluessel, ereignis), label, verstecken, zurueck})
                                      Zeichnet die Schublade. Gleiche Struktur → nur
                                      aktiv/Zähler an Ort und Stelle (die Pille gleitet);
                                      neue Struktur → neu, Pille springt. Echte Links
                                      (href): Mittel-/Ctrl-Klick öffnen einen neuen Tab,
                                      ein schlichter Klick geht an beiWahl (falls da).
                                      verstecken: Seite ohne Schublade (Tafel volle Breite).
+                                     zurueck: {text, href} – Zurück-Eintrag zuoberst
+                                     (Detailseiten: «‹ ADMIN-Clients»), ein schlichter
+                                     Link ohne Pille; null/fehlt = keiner.
    Rahmen.aktiv(schluessel)          aktiver Eintrag, die Pille gleitet
    Rahmen.zahl(schluessel, wert)     Zähler am Eintrag (leer/null = keiner); erscheint
                                      er (leer → Wert), ploppt er einmal
-   Rahmen.konto({name, email})       Konto rechts im Kopf (≤ 720 px Initiale)
-   Rahmen.stand(text, titel?)        Datenstand als Meta-Zeile im Kopf (mit titel ein
-                                     Tabstopp mit Tooltip)
-   Rahmen.abmelden(beiKlick|null)    Text-Knopf «Abmelden»
+   Rahmen.konto({name, email})       Konto rechts im Kopf: Kapsel mit Initiale, Name
+                                     und E-Mail (≤ 720 px nur die Initiale)
+   Rahmen.abmelden(beiKlick|null)    Text-Knopf «Abmelden» in derselben Kapsel
    Rahmen.vorfuehrung({text, beiZuruecksetzen}) | null
                                      Warn-Banner als erster Block der Bahn
    Rahmen.wechseln(neu, {alt, nachOben=true, auftritt=true}) → Promise<boolean>
@@ -137,6 +139,8 @@ const Rahmen = (function () {
 
   /** Muss der Grenze der modalen Schublade in rahmen.css entsprechen. */
   const MODAL_ABFRAGE = "(max-width: 900px)";
+  /** Ab hier zeigt das Konto nur noch die Initiale (rahmen.css §7). */
+  const SCHMAL_ABFRAGE = "(max-width: 720px)";
   /** Abstand eines in die Liste gerollten Eintrags zu ihrem Rand (--a2). */
   const LISTEN_RAND_PX = 8;
   /** Ausblenden beim Wechsel (--dauer-sofort) plus Reserve. */
@@ -159,8 +163,8 @@ const Rahmen = (function () {
   /** So lange gilt eine gemerkte Listenadresse in einem neuen Tab (ein
       Arbeitstag); im selben Tab gilt sie, solange der Tab lebt. */
   const LISTE_DAUER_MS = 12 * 60 * 60 * 1000;
-  /** Zuletzt gezeigtes Konto und Datenstand: der Kopf einer neuen Seite
-      steht damit vom ersten Bild an da (Seitenwechsel, View Transition). */
+  /** Zuletzt gezeigtes Konto: der Kopf einer neuen Seite steht damit vom
+      ersten Bild an da (Seitenwechsel, View Transition). */
   const KOPF_SPEICHER = "ictinventar.kopf";
   /** Längstens so lange bleibt die Wortmarke unsichtbar, bis ihre Schrift
       (Archivo) da ist – danach erscheint sie auch mit der Ersatzschrift. */
@@ -385,12 +389,14 @@ const Rahmen = (function () {
   const seite = body ? body.getAttribute("data-seite") : null;
   const bereit = !!seite;
   const modalAbfrage = window.matchMedia ? window.matchMedia(MODAL_ABFRAGE) : null;
+  const schmalAbfrage = window.matchMedia ? window.matchMedia(SCHMAL_ABFRAGE) : null;
 
   let sprungmarke = null, kopf = null, schublade = null, schubladeListe = null, schleier = null;
+  let schubladeZurueck = null;
   let menueKnopf = null, tafelRahmen = null, tafel = null, ladebalken = null, bahn = null;
   let zustandsBlock = null, vorfuehrBanner = null;
-  let standEl = null, kontoEl = null, kontoInitiale = null, kontoName = null, kontoEmail = null;
-  let abmeldenKnopf = null, abmeldenRueckruf = null;
+  let kapsel = null, kontoEl = null, kontoInitiale = null, kontoName = null, kontoEmail = null;
+  let kapselTrenner = null, abmeldenKnopf = null, abmeldenRueckruf = null;
   let indikator = null;
 
   function sichern(id, tag, klasse) {
@@ -435,7 +441,7 @@ const Rahmen = (function () {
     document.fonts.load(SCHRIFT_MARKE).then(markenZeigen, markenZeigen);
   }
 
-  /* Konto und Datenstand der zuletzt gezeigten Seite (sessionStorage, je
+  /* Konto und «Abmelden» der zuletzt gezeigten Seite (sessionStorage, je
      Modus): kopfBauen belegt den Kopf damit vor, die Seite überschreibt ihn
      nur noch an Ort und Stelle. Sonst stünde der rechte Teil des Kopfs nach
      jedem Seitenwechsel einen Moment leer und spränge dann herein – bei
@@ -519,14 +525,13 @@ const Rahmen = (function () {
     marke.setAttribute("aria-label", "ICT-Inventar, zur Übersicht");
     marke.appendChild(wortmarke());
 
-    const rechts = el("div", "kopf-rechts");
-    standEl = el("p", "kopf-stand");
+    // Rechts EINE Kapsel: Initiale, Name und E-Mail, ein Trenner, «Abmelden».
+    kapsel = el("div", "kopf-konto");
+    kapsel.hidden = true;
 
     kontoEl = el("div", "konto");
     kontoEl.hidden = true;
     kontoInitiale = el("span", "konto-initiale");
-    kontoInitiale.tabIndex = 0;
-    kontoInitiale.setAttribute("role", "img");
     const kontoText = el("div", "konto-text");
     kontoName = el("div", "konto-name");
     kontoEmail = el("div", "konto-email");
@@ -535,20 +540,29 @@ const Rahmen = (function () {
     kontoEl.appendChild(kontoInitiale);
     kontoEl.appendChild(kontoText);
 
+    kapselTrenner = el("span", "kopf-konto-trenner");
+    kapselTrenner.setAttribute("aria-hidden", "true");
+
     abmeldenKnopf = knopf({ text: "Abmelden", variante: "leise", klasse: "kopf-abmelden" });
     abmeldenKnopf.hidden = true;
     abmeldenKnopf.addEventListener("click", function (ev) { if (abmeldenRueckruf) abmeldenRueckruf(ev); });
 
-    rechts.appendChild(standEl);
-    rechts.appendChild(kontoEl);
-    rechts.appendChild(abmeldenKnopf);
+    kapsel.appendChild(kontoEl);
+    kapsel.appendChild(kapselTrenner);
+    kapsel.appendChild(abmeldenKnopf);
 
     UI.leeren(kopf);
     kopf.appendChild(menueKnopf);
     kopf.appendChild(marke);
-    kopf.appendChild(rechts);
+    kopf.appendChild(kapsel);
 
-    // Vorbelegen mit dem Stand der letzten Seite (siehe kopfGemerkt). Ein
+    initialeEinrichten();
+    if (schmalAbfrage) {
+      if (schmalAbfrage.addEventListener) schmalAbfrage.addEventListener("change", initialeEinrichten);
+      else if (schmalAbfrage.addListener) schmalAbfrage.addListener(initialeEinrichten);
+    }
+
+    // Vorbelegen mit dem Konto der letzten Seite (siehe kopfGemerkt). Ein
     // vorbelegtes «Abmelden» bleibt bis zum Aufruf der Seite ohne Wirkung.
     const g = kopfGemerkt();
     if (g.konto) kontoZeigen(g.konto);
@@ -556,8 +570,7 @@ const Rahmen = (function () {
       abmeldenRueckruf = function () { if (typeof Auth !== "undefined" && Auth.abmelden) Auth.abmelden(); };
       abmeldenKnopf.hidden = false;
     }
-    const s = g.stand && g.stand[seite];
-    if (s && s.text) standZeigen(s.text, s.titel);
+    kapselAbgleichen();
   }
 
   function schubladeBauen() {
@@ -569,9 +582,13 @@ const Rahmen = (function () {
     const schubladeKopf = el("div", "schublade-kopf");
     schubladeKopf.setAttribute("aria-hidden", "true");
     schubladeKopf.appendChild(wortmarke());
+    // Der Zurück-Eintrag steht über der Liste und rollt nicht mit ihr.
+    schubladeZurueck = el("div", "schublade-zurueck");
+    schubladeZurueck.hidden = true;
     schubladeListe = el("div", "schublade-liste");
     UI.leeren(schublade);
     schublade.appendChild(schubladeKopf);
+    schublade.appendChild(schubladeZurueck);
     schublade.appendChild(schubladeListe);
 
     schleier = el("div", "schublade-schleier");
@@ -686,6 +703,31 @@ const Rahmen = (function () {
     aktivZeigen();
   }
 
+  /* Zurück-Eintrag der Detailseiten: ein schlichter Link zur Liste (keine
+     Pille, kein beiWahl – er verlässt die Seite). Er steht über den Gruppen
+     und trägt den Namen der Liste; der Pfeil sagt «zurück», das aria-label
+     auch dem Screenreader. Solange er steht (body[data-zurueck]), weicht der
+     Zurück-Link über dem Seitentitel, wenn die Schublade fest daneben steht
+     (rahmen.css §5). */
+  const zurueckStand = { signatur: null };
+
+  function zurueckSetzen(z) {
+    const gueltig = !!(z && z.href && z.text);
+    const signatur = gueltig ? z.text + "\u0000" + z.href : "";
+    if (signatur === zurueckStand.signatur) return;
+    zurueckStand.signatur = signatur;
+    UI.leeren(schubladeZurueck);
+    schubladeZurueck.hidden = !gueltig;
+    body.toggleAttribute("data-zurueck", gueltig);
+    if (!gueltig) return;
+    const a = el("a", "schublade-eintrag schublade-eintrag-zurueck");
+    a.href = z.href;
+    a.setAttribute("aria-label", "Zurück zu " + z.text);
+    a.appendChild(UI.sinnbild("pfeilLinks", 20));
+    a.appendChild(el("span", "schublade-text", z.text));
+    schubladeZurueck.appendChild(a);
+  }
+
   function navigation(optionen) {
     if (!bereit) return;
     const o = optionen || {};
@@ -694,6 +736,7 @@ const Rahmen = (function () {
       body.toggleAttribute("data-ohne-schublade", verstecken);
       if (verstecken) schubladeSetzen(false, { fokusZurueck: false });
     }
+    zurueckSetzen(verstecken ? null : o.zurueck);
     if (o.label) schublade.setAttribute("aria-label", o.label);
     nav.beiWahl = typeof o.beiWahl === "function" ? o.beiWahl : null;
 
@@ -847,33 +890,31 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Kopf: Datenstand, Konto, Abmelden
+     Kopf: Konto und Abmelden in einer Kapsel
      ================================================================== */
 
-  function standZeigen(text, titel) {
-    UI.textSetzen(standEl, text || "");
-    // Mit Details (Tooltip) ein Tabstopp, sonst wären sie nur mit der Maus zu lesen.
-    if (titel) {
-      standEl.setAttribute("data-tipp", String(titel));
-      standEl.tabIndex = 0;
-    } else {
-      standEl.removeAttribute("data-tipp");
-      standEl.removeAttribute("tabindex");
-    }
+  /* Die Kapsel zeigt sich, sobald sie etwas trägt; der Trenner nur
+     zwischen Konto und «Abmelden». */
+  function kapselAbgleichen() {
+    kapsel.hidden = kontoEl.hidden && abmeldenKnopf.hidden;
+    kapselTrenner.hidden = kontoEl.hidden || abmeldenKnopf.hidden;
   }
 
-  /** Hat die Seite den Datenstand selbst gesetzt (oder steht nur der
-      vorbelegte der letzten Seite)? Ein Fehlerzustand räumt den vorbelegten. */
-  let standGesetzt = false;
-
-  function stand(text, titel) {
-    if (!bereit) return;
-    standGesetzt = true;
-    standZeigen(text, titel);
-    kopfMerken(function (k) {
-      k.stand = k.stand && typeof k.stand === "object" ? k.stand : {};
-      k.stand[seite] = text ? { text: String(text), titel: titel ? String(titel) : "" } : null;
-    });
+  /* Breit stehen Name und E-Mail daneben: die Initiale ist dann Schmuck.
+     Schmal (≤ 720 px) steht sie allein und nennt das Konto selbst – als
+     Tabstopp mit Tooltip, auch auf Antippen. */
+  function initialeEinrichten() {
+    const allein = !!(schmalAbfrage && schmalAbfrage.matches);
+    if (allein) {
+      kontoInitiale.tabIndex = 0;
+      kontoInitiale.setAttribute("role", "img");
+      kontoInitiale.removeAttribute("aria-hidden");
+    } else {
+      if (document.activeElement === kontoInitiale) kontoInitiale.blur();
+      kontoInitiale.removeAttribute("tabindex");
+      kontoInitiale.removeAttribute("role");
+      kontoInitiale.setAttribute("aria-hidden", "true");
+    }
   }
 
   function kontoZeigen(k) {
@@ -886,6 +927,7 @@ const Rahmen = (function () {
     kontoInitiale.textContent = erstes.toLocaleUpperCase("de-CH");
     kontoInitiale.setAttribute("aria-label", email ? "Angemeldet als " + [name, email].filter(Boolean).join(", ") : name);
     kontoInitiale.setAttribute("data-tipp", [name, email].filter(Boolean).join("\n"));
+    kapselAbgleichen();
     return { name: name, email: email };
   }
 
@@ -899,6 +941,7 @@ const Rahmen = (function () {
     if (!bereit) return;
     abmeldenRueckruf = typeof beiKlick === "function" ? beiKlick : null;
     abmeldenKnopf.hidden = !abmeldenRueckruf;
+    kapselAbgleichen();
     kopfMerken(function (m) { m.abmelden = !!abmeldenRueckruf; });
   }
 
@@ -916,12 +959,11 @@ const Rahmen = (function () {
       return;
     }
     vorfuehrRueckruf = typeof o.beiZuruecksetzen === "function" ? o.beiZuruecksetzen : null;
-    const k = knopf({ text: "Vorführ-Änderungen zurücksetzen", variante: "leise" });
+    const k = knopf({ text: "Vorführdaten zurücksetzen", variante: "leise" });
     k.addEventListener("click", vorfuehrungZuruecksetzen);
     const neu = UI.banner({
       ton: "warnung",
-      text: o.text || "Vorführmodus: alle Personen, Geräte und Zahlen sind erfunden. "
-        + "Änderungen bleiben im Browser und gehen nie nach SharePoint.",
+      text: o.text || "Vorführmodus mit erfundenen Daten. Änderungen bleiben nur in diesem Browser.",
       knopf: vorfuehrRueckruf ? k : null
     });
     neu.classList.add("bahn-vorfuehrung");
@@ -932,9 +974,8 @@ const Rahmen = (function () {
 
   async function vorfuehrungZuruecksetzen() {
     const ja = await bestaetigen({
-      titel: "Vorführ-Änderungen zurücksetzen?",
-      text: "Alle im Vorführmodus gemachten Änderungen gehen verloren. Die erfundenen Daten "
-        + "stehen danach wieder im Ausgangszustand.",
+      titel: "Vorführdaten zurücksetzen?",
+      text: "Alle Änderungen im Vorführmodus gehen verloren.",
       ja: "Zurücksetzen"
     });
     if (ja && vorfuehrRueckruf) vorfuehrRueckruf();
@@ -1101,8 +1142,6 @@ const Rahmen = (function () {
     const fokusDrin = fokusImInhalt() || (!!a && zustandsBlock.contains(a)) || fokusNochGeparkt();
     fokusGeparkt = false;
     zustandJetzt = art;
-    // Ein vorbelegter Datenstand der letzten Seite gilt hier nicht.
-    if (art === "fehler" && !standGesetzt) standZeigen("");
     bahn.setAttribute("data-zustand", art);
     ladebalken.hidden = true;
 
@@ -1589,7 +1628,7 @@ const Rahmen = (function () {
   }
 
   /* Ja/Nein-Frage statt window.confirm. Der Titel fragt, der Text nennt die
-     Folge, der Hauptknopf benennt sie («Endgültig löschen», nie «OK»). */
+     Folge, der Hauptknopf benennt sie («Eintrag löschen», nie «OK»). */
   function bestaetigen(a, frage, knopfText) {
     const o = a && typeof a === "object" ? a : { titel: a, text: frage, ja: knopfText };
     return new Promise(function (aufloesen) {
@@ -2528,7 +2567,6 @@ const Rahmen = (function () {
     aktiv: aktivSetzen,
     zahl: zahl,
     konto: konto,
-    stand: stand,
     abmelden: abmelden,
     vorfuehrung: vorfuehrung,
     wechseln: wechseln,

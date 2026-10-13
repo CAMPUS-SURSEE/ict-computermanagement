@@ -72,7 +72,7 @@
      UI.knopfUebernehmen(alt, neu) → boolean
        Der stehende Knopf «alt» übernimmt den beiKlick-Handler von «neu»
        (F.seitenkopf); false, wenn «neu» ohne beiKlick gebaut wurde.
-     UI.beschaeftigt(knopf, an, text = 'Speichern …') → Promise
+     UI.beschaeftigt(knopf, an, text = 'Wird gespeichert …') → Promise
        an = true: sofort gesperrt (aria-disabled + aria-busy, Fokus bleibt,
        Klicks werden geschluckt), Spinner erst nach 200 ms in gleicher
        Breite; schliesst Fehlermeldungen (UI.meldungenFehlerSchliessen,
@@ -211,7 +211,8 @@
      UI.schalterZeile({ schalter | an/gesperrt/titel/beiWechsel, name, unter,
                         wort: true | { an, aus, gesperrt }, zusatz: [Knoten], kompakt })
        → div.schalter-zeile (kompakt: .schalter-feld); Name = <label> des
-       Schalters; Zustandswort «Aktiv»/«Inaktiv»/«Aktiv (gesperrt)».
+       Schalters; Zustandswort «Aktiv»/«Inaktiv» (gesperrt ebenfalls «Aktiv»,
+       das Schloss im Schalter zeigt die Sperre).
 
    Tabellen
      UI.tabelle(kopfzeilen, datenzeilen, { beschriftung, klasse }) → div.tabelle-schlicht-rahmen
@@ -702,7 +703,7 @@ const UI = (function () {
         zustand.gezeigtAb = Date.now();
         zustand.inhalt = Array.from(k.childNodes);
         k.style.width = k.offsetWidth + "px";
-        inhaltTauschen(k, [spinner(true), el("span", "nur-sr", beschriftung || "Speichern …")], false);
+        inhaltTauschen(k, [spinner(true), el("span", "nur-sr", beschriftung || "Wird gespeichert …")], false);
       }, Bewegung.LADE_VERZOEGERUNG_MS);
       beschaeftigtZustaende.set(k, zustand);
       return Promise.resolve();
@@ -983,7 +984,7 @@ const UI = (function () {
      Datenzeilen
      ================================================================== */
 
-  const SCHLOSS_TEXT = "Kommt aus dem Abgleich und lässt sich hier nicht ändern.";
+  const SCHLOSS_TEXT = "Vom Abgleich gesetzt.";
 
   /* Schloss mit Tooltip; role=img + aria-label, damit der Grund auch ohne
      Zeiger gelesen wird. */
@@ -1645,7 +1646,7 @@ const UI = (function () {
      Schalter
      ================================================================== */
 
-  const SCHALTER_WOERTER = { an: "Aktiv", aus: "Inaktiv", gesperrt: "Aktiv (gesperrt)" };
+  const SCHALTER_WOERTER = { an: "Aktiv", aus: "Inaktiv", gesperrt: "Aktiv" };
 
   /* button[role=switch]. Ein Klick schaltet an Ort und Stelle um (der
      Übergang spielt), dann kommt beiWechsel(an, schalter). Gibt beiWechsel

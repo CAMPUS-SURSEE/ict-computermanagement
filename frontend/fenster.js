@@ -43,14 +43,12 @@
        gefunden» (fehler.nichtGefunden oder status 404) mit titel/hinweis und «Zur
        Liste», sonst «Die Daten konnten nicht geladen werden» mit «Erneut laden»
      F.fehlerText(fehler) → Text
-     F.stand(zeitpunkt?)   Kopf rechts: mit Zeitpunkt «Stand 12.10.2026, 05.15»
-       (Datenstand des Datensatzes, wie auf der Hauptseite), ohne «Geladen 14.05»
-       (wann diese Seite geladen hat) – «Stand» heisst überall Datenstand
    Kopf und Navigation:
      F.seitenkopf({pfad:{text, href}|listenSchluessel|null, titel, lead, unter:[teile]|text,
                    status:[knoten], aktionen:[knöpfe]})       an Ort und Stelle
      F.logoZeichnen(listenSchluessel)    Standard für den Zurück-Link
      F.navZeichnen(bereiche, aktiv, beiKlick, {verstecken, zusatz(b) → Zahl|Knoten})
+                                         zuoberst der Zurück-Eintrag zur gemerkten Liste
      F.zeichneBereich(bereiche, aktiv) → schluessel   (hält Fokus, Schreibmarke, Rollen:
                                                       Rahmen.stillZeichnen)
      F.bereichWechseln(bereiche, schluessel) → Promise<schluessel>   (replaceState + Fade-through)
@@ -198,24 +196,7 @@ const Fenster = (function () {
           ol.knopfText || "Zur Liste", function () { F.zurListe(); });
       }
       return F.zeigeFehler("Die Daten konnten nicht geladen werden", fehlerText(fehler),
-        mockModus ? "" : "Zum Anschauen ohne Anmeldung die Adresse mit «&mock=1» aufrufen.", "Erneut laden");
-    };
-
-    /* Rechts im Kopf. «Stand …» heisst auf allen Seiten der Datenstand (die
-       Hauptseite: letzter SCCM-Abgleich): mit «zeitpunkt» übergibt die Seite
-       den Stand ihres Datensatzes. Ohne zeigt der Kopf, wann diese Seite die
-       Daten geladen hat – als «Geladen 14.05», nie als «Stand»: sonst wirkten
-       dieselben Daten im Detailfenster neuer als in der Liste. Der Tooltip
-       sagt, dass die Seite still nachlädt (F.autoStarten). */
-    F.stand = function (zeitpunkt) {
-      const takt = "Das Fenster lädt alle " + Math.round(KONFIG.autoTaktMs / 60000)
-        + " Minuten still nach, solange nichts ungespeichert ist.";
-      if (zeitpunkt) {
-        Rahmen.stand("Stand " + UI.zeitText(zeitpunkt), "Stand der Daten. " + takt);
-        return;
-      }
-      const jetzt = UI.zeitText(new Date());
-      Rahmen.stand("Geladen " + (jetzt.split(", ")[1] || jetzt), "Geladen am " + jetzt + ". " + takt);
+        "", "Erneut laden");
     };
 
     /* ==================================================================
@@ -435,6 +416,7 @@ const Fenster = (function () {
       }
       Rahmen.navigation({
         gruppen: gruppen, aktiv: aktiv, label: on.label || "Bereiche", verstecken: !!on.verstecken,
+        zurueck: listenPfad(),
         beiWahl: typeof beiKlick === "function" ? function (k) { beiKlick(k); } : null
       });
     };
@@ -760,8 +742,7 @@ const Fenster = (function () {
         try {
           if (typeof nl === "function") await nl();
         } catch (fehler) {
-          UI.meldung("Der neue Stand konnte nicht geladen werden. Er erscheint beim nächsten "
-            + "automatischen Nachladen.", { ton: "info" });
+          UI.meldung("Der neue Stand erscheint beim nächsten automatischen Nachladen.", { ton: "info" });
         } finally {
           beschaeftigtZahl -= 1;
           sperrenAnwenden();
@@ -867,8 +848,7 @@ const Fenster = (function () {
           try {
             await a.nachladen(ergebnis);
           } catch (fehler) {
-            UI.meldung("Gespeichert. Der neue Stand konnte nicht geladen werden; er erscheint "
-              + "beim nächsten Nachladen.", { ton: "info" });
+            UI.meldung("Der neue Stand erscheint beim nächsten automatischen Nachladen.", { ton: "info" });
             if (typeof a.zeichnen === "function") {
               try { a.zeichnen(); } catch (e) { setTimeout(function () { throw e; }, 0); }
             }
@@ -899,7 +879,7 @@ const Fenster = (function () {
       const n = ov.anzahl || 0;
       if (!n || beschaeftigtZahl > 0 || geloescht) return false;
       const ja = await UI.bestaetigen(ov.neuModus
-        ? { titel: "Formular leeren?", text: "Alle Eingaben dieses Formulars gehen verloren.", ja: "Formular leeren" }
+        ? { titel: "Formular leeren?", text: "Alle Eingaben gehen verloren.", ja: "Formular leeren" }
         : { titel: n === 1 ? "Änderung verwerfen?" : n + " Änderungen verwerfen?",
             text: "Die Felder zeigen danach wieder den gespeicherten Stand.", ja: "Verwerfen" });
       if (!ja) return false;
@@ -907,7 +887,7 @@ const Fenster = (function () {
       // Verworfenen (vor danach(): die Seite zeichnet dort neu).
       verlaufZuruecksetzen();
       ov.danach();
-      UI.meldung(ov.neuModus ? "Formular geleert." : "Änderungen verworfen.", { ton: "info" });
+      UI.meldung(ov.neuModus ? "Formular geleert." : (n === 1 ? "Änderung verworfen." : "Änderungen verworfen."), { ton: "info" });
       return true;
     };
 
@@ -954,10 +934,10 @@ const Fenster = (function () {
       const feld = UI.eingabe({ art: "text", id: UI.id(p + "loeschen") });
       feld.autocomplete = "off";
       feld.spellcheck = false;
-      d.inhalt.appendChild(UI.feld("Zur Bestätigung «" + wort + "» abtippen", feld, { klasse: "dialog-bestaetigung" }));
+      d.inhalt.appendChild(UI.feld("Zur Bestätigung «" + wort + "» eingeben", feld, { klasse: "dialog-bestaetigung" }));
 
       const abbrechen = UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
-      const loeschen = UI.knopf({ text: ol.knopfText || "Endgültig löschen", variante: "primaer" });
+      const loeschen = UI.knopf({ text: ol.knopfText || "Löschen", variante: "primaer" });
       loeschen.disabled = true;
       d.knoepfe.appendChild(abbrechen);
       d.knoepfe.appendChild(loeschen);
@@ -1065,8 +1045,7 @@ const Fenster = (function () {
           if (fehler && (fehler.nichtGefunden || fehler.status === 404) && !geloescht) {
             geloeschtZeigen({
               titel: "Inzwischen gelöscht",
-              text: "Diesen Datensatz gibt es nicht mehr: Er wurde in einem anderen Fenster oder "
-                + "von einer anderen Person gelöscht."
+              text: "Die Zeile wurde in einem anderen Tab oder von einer anderen Person gelöscht."
             }, false);
           }
         }).then(function () {

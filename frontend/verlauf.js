@@ -20,8 +20,9 @@
        wert:         entwurf.wert("Verlauf"),// Rohwert der Spalte
        gesperrt:     false,                 // nur lesen (kein Neu/Bearbeiten/Löschen)
        beiAenderung: function (json) { entwurf.setzeWert("Verlauf", json); },
-       titel:        "Verlauf",             // Kartentitel (freiwillig)
-       beschreibung: ""                     // Satz unter dem Kartentitel (freiwillig)
+       titel:        "Verlauf",             // Kartentitel (optional)
+       beschreibung: ""                     // Satz unter dem Kartentitel (optional;
+                                            // zurzeit übergibt keine Seite einen)
      }) → ziel
        Leert ziel und baut darin genau eine UI.karte ({ titel, unter:
        beschreibung, aktionen: [Zahl, «Neuer Eintrag»] }) mit Formular und
@@ -246,25 +247,24 @@ const Verlauf = (function () {
   }
 
   /* Allgemein gehalten: der Verlauf steht beim Gerät, bei der Person und
-     bei der Nummer. Was dort typisch ist und dass der Abgleich eigene
-     Einträge anhängt, sagt die Beschreibung der Karte – nicht ein zweites
-     Mal darunter. */
+     bei der Nummer. Titel und Sinnbild genügen – wie man einen Eintrag
+     anlegt, zeigt der Knopf «Neuer Eintrag» im Kartenkopf schon. */
   function leer(ausgabe) {
     if (ausgabe.gesperrt) return UI.hinweis("Noch kein Verlauf erfasst.");
     return UI.leerzustand({
       sinnbild: "verlauf",
-      titel: "Noch kein Verlauf",
-      text: "Mit «Neuer Eintrag» ein Ereignis mit Datum festhalten."
+      titel: "Noch kein Verlauf"
     });
   }
 
   /* Ein Eintrag für UI.zeitachse: Datum (500, tabellarisch), wann erfasst
-     (Meta), Quelle als neutraler Status-Chip; Abgleich-Einträge mit grauem
-     Punkt und Sync-Sinnbild in der Meta-Zeile (ChatBob 7.2 #13). Im
-     Bearbeiten steht das Formular statt des Texts. */
+     (Meta). Abgleich-Einträge mit neutralem Status-Chip «Abgleich», grauem
+     Punkt und Sync-Sinnbild in der Meta-Zeile (ChatBob 7.2 #13); von Hand
+     erfasste sind der Normalfall und tragen keinen Chip (UI.anhaengen
+     überspringt null). Im Bearbeiten steht das Formular statt des Texts. */
   function eintragDaten(ausgabe, e) {
     const sync = e.quelle === "sync";
-    const quelle = UI.status(sync ? "Abgleich" : "Von Hand", "neutral", { sinnbild: sync ? "server" : "bearbeiten" });
+    const quelle = sync ? UI.status("Abgleich", "neutral", { sinnbild: "server" }) : null;
     const d = {
       titel: datumText(e),
       // Abgleich: Sync-Sinnbild vor der Meta-Zeile (UI.zeitachse zeitSinnbild).
@@ -279,12 +279,12 @@ const Verlauf = (function () {
       d.text = formular(ausgabe, e);
       return d;
     }
-    const wann = datumText(e);
+    const wann = e.datum ? "Eintrag vom " + datumText(e) : "Eintrag ohne Datum";
     const bearbeiten = UI.knopf({ text: "Bearbeiten", variante: "leise", klein: true,
-      label: "Eintrag vom " + wann + " bearbeiten",
+      label: wann + " bearbeiten",
       beiKlick: function () { bearbeitenOeffnen(ausgabe, e); }, fokus: ausgabe.id + "-bearbeiten-" + e.id });
     const loeschen = UI.knopf({ text: "Löschen", variante: "leise", klein: true,
-      label: "Eintrag vom " + wann + " löschen",
+      label: wann + " löschen",
       beiKlick: function () { loeschenFragen(ausgabe, e); }, fokus: ausgabe.id + "-loeschen-" + e.id });
     d.aktionen = [bearbeiten, loeschen];
     return d;
@@ -309,7 +309,7 @@ const Verlauf = (function () {
       beiEingabe: function (w) { if (neu) z.datum = w; else z.bDatum = w; }, fokus: p + "datum" });
     const text = UI.eingabe({ art: "textbereich", zeilen: 3,
       wert: neu ? z.text : z.bText,
-      platzhalter: neu ? "Was ist passiert? Zum Beispiel: Akku ersetzt, an Muster Max ausgegeben." : "",
+      platzhalter: neu ? "Was ist passiert?" : "",
       beiEingabe: function (w) { if (neu) z.text = w; else z.bText = w; }, fokus: p + "text" });
     text.spellcheck = true;
 
@@ -321,7 +321,7 @@ const Verlauf = (function () {
     UI.anhaengen(block.inhalt, [
       UI.feld("Datum", datum),
       UI.feld("Text", text),
-      UI.anhaengen(el("div", "aktionszeile"), [ok, ab, UI.meta("Gesichert wird mit «Speichern».")])
+      UI.anhaengen(el("div", "aktionszeile"), [ok, ab, UI.meta("Gespeichert wird erst mit «Speichern».")])
     ]);
     block.addEventListener("keydown", function (ev) { tasten(aktuell(ausgabe), neu, ev); });
     return block;
@@ -457,7 +457,7 @@ const Verlauf = (function () {
     if (fragen && hatEingabe(ausgabe, neu)) {
       const ja = await UI.bestaetigen({
         titel: neu ? "Neuen Eintrag verwerfen?" : "Bearbeitung verwerfen?",
-        text: neu ? "Der eingetippte Text geht verloren." : "Die Änderungen an diesem Eintrag gehen verloren.",
+        text: neu ? "Der eingegebene Text geht verloren." : "Die Änderungen an diesem Eintrag gehen verloren.",
         ja: "Verwerfen"
       });
       if (!ja) {
@@ -484,8 +484,8 @@ const Verlauf = (function () {
     const was = auszug(eintrag.text, 60);
     const ja = await UI.bestaetigen({
       titel: "Eintrag löschen?",
-      text: "Der Eintrag vom " + datumText(eintrag) + (was ? " («" + was + "»)" : "")
-        + " verschwindet aus dem Verlauf. Wirksam wird das mit «Speichern».",
+      text: (eintrag.datum ? "Der Eintrag vom " + datumText(eintrag) : "Der Eintrag ohne Datum")
+        + (was ? " («" + was + "»)" : "") + " verschwindet aus dem Verlauf. Gespeichert wird erst mit «Speichern».",
       ja: "Eintrag löschen"
     });
     if (!ja) return;

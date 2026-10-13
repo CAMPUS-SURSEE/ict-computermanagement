@@ -66,7 +66,7 @@
   const MODELLE = ["Latitude 7440", "Latitude 5430", "OptiPlex 7010", "EliteBook 840 G9", "ThinkPad T14", "Surface Pro 9"];
   const ORTE = ["Haus A / EG", "Haus A / 1. OG", "Haus B / EG", "Haus B / 2. OG", "Haus C / UG", "Aula"];
   const PERSONEN = ["Muster Max", "Beispiel Anna", "Keller Laura", "Meier Jonas", "Huber Sara", "Graf Luca", "Frei Nina", ""];
-  const STATUS = [["Aktiv", "erfolg", "check"], ["Lager", "neutral", "lager"], ["Archiviert", "neutral", "archiv"], ["Ersatz fällig", "warnung", "achtung"]];
+  const STATUS = [["Aktiv", "erfolg", "check"], ["Lager", "neutral", "lager"], ["Archiviert", "neutral", "archiv"], ["Ersatz überfällig", "gefahr", "achtung"]];
 
   function geraete(anzahl) {
     const liste = [];
@@ -114,7 +114,7 @@
       }
       if (i) farben.push(el("h3", "karte-untertitel", gruppe[0]));
       else farben.push(el("p", "hinweis", "Das Pastell ist die einzige Tönung. Es gibt kein Blau, auch kein blaues «Info»: "
-        + "neutrale Hinweise sind #f9f9f7 mit grünem Icon. #84b819 nur als Dekoration (Punkt der Wortmarke)."));
+        + "Neutrale Hinweise sind #f9f9f7 mit grünem Icon. #84b819 nur als Dekoration (Punkt der Wortmarke)."));
       if (!i) farben.push(el("h3", "karte-untertitel", gruppe[0]));
       farben.push(feld);
     });
@@ -218,10 +218,10 @@
     // Gesperrt MIT Grund: fokussierbar, der Tooltip nennt den Grund; UI.knopfSperren
     // setzt und hebt die Sperre an Ort und Stelle (bei jedem Tastendruck erlaubt).
     const mitGrund = knopf({ text: "Ins Lager legen", sinnbild: "lager", variante: "leise",
-      titel: "Gerät ins Lager legen", gesperrt: "Zuerst die Änderungen speichern oder verwerfen." });
+      titel: "Gerät ins Lager legen", gesperrt: "Zuerst speichern oder verwerfen." });
     const sperreUmschalten = knopf({ text: "Sperre aufheben", variante: "leise", klein: true, beiKlick: function () {
       const gesperrt = mitGrund.getAttribute("aria-disabled") === "true";
-      UI.knopfSperren(mitGrund, gesperrt ? "" : "Zuerst die Änderungen speichern oder verwerfen.");
+      UI.knopfSperren(mitGrund, gesperrt ? "" : "Zuerst speichern oder verwerfen.");
       UI.knopfText(sperreUmschalten, gesperrt ? "Sperren" : "Sperre aufheben");
     } });
 
@@ -234,7 +234,7 @@
     });
     const testen = knopf({ text: "Verbindung testen" });
     testen.addEventListener("click", async function () {
-      UI.beschaeftigt(testen, true, "Teste …");
+      UI.beschaeftigt(testen, true, "Wird getestet …");
       await warten(900);
       await UI.beschaeftigt(testen, false);
       info("Verbindung in Ordnung.");
@@ -372,7 +372,7 @@
         karte({ titel: "Status-Chips" }, [
           reihe([
             UI.status("In SCCM", "erfolg"),
-            UI.status("Ersatz fällig", "warnung"),
+            UI.status("Ersatz überfällig", "gefahr"),
             UI.status("Abgleich fehlgeschlagen", "gefahr"),
             UI.status("Archiviert", "neutral", { sinnbild: "archiv" }),
             UI.status("Wird abgeglichen", "laeuft"),
@@ -407,18 +407,18 @@
     const gefuellt = UI.karte({ titel: "Testergebnis", gefuellt: true, ebene: 3 });
     anhaengen(gefuellt.inhalt, [
       reihe([UI.status("Graph erreichbar", "erfolg"), el("span", "hinweis", "120 ms")]),
-      reihe([UI.status("Liste «Clients» lesbar", "erfolg"), el("span", "hinweis", "50 Zeilen")])
+      reihe([UI.status("Liste «ADMIN-Clients» lesbar", "erfolg"), el("span", "hinweis", "50 Zeilen")])
     ]);
 
     const unterabschnitt = anhaengen(el("div", "unterabschnitt"), [
-      el("h3", "karte-untertitel", "Deep Research"),
+      el("h3", "karte-untertitel", "Netzwerk"),
       el("p", "hinweis", "Ein Teil einer Karte mit eigenem kleinem Titel: Haarlinie und 20 px Luft darüber.")
     ]);
 
     const kacheln = UI.kacheln([
       UI.kachel({ text: "ADMIN-Clients", wert: "50", zahl: 50, unter: "47 im Einsatz" }),
       UI.kachel({ text: "EDU-Clients", wert: "18", zahl: 18, unter: "16 im Einsatz" }),
-      UI.kachel({ text: "Ersatz fällig", wert: "6", zahl: 6, ton: "warnung", unter: "bis Ende GJ 2026/27" }),
+      UI.kachel({ text: "Ersatz überfällig", wert: "6", zahl: 6, ton: "gefahr", unter: "geplant vor 2026/2027" }),
       UI.kachel({ text: "Freier Speicher", wert: "41 %", zahl: 41, unter: "Durchschnitt aller Geräte" })
     ]);
     const kachelnKlick = UI.kacheln([
@@ -481,7 +481,7 @@
             UI.datenzeilen([
               UI.feldZeile("PC-Name", "CAMPUS-907"),
               UI.feldZeile("Gebäude / Stock", "Haus C / UG", { neben: "seit 2024" }),
-              UI.feldGesperrt("Seriennummer", "5CG1234XYZ", "Kommt aus SCCM und lässt sich hier nicht ändern."),
+              UI.feldGesperrt("Seriennummer", "5CG1234XYZ"),
               UI.feldZeile("Inhaber", inhaber),
               UI.feldZeile("Status", UI.status("Aktiv", "erfolg")),
               UI.feldZeile("Bemerkung", "")
@@ -497,7 +497,7 @@
               UI.kennwerte([
                 { name: "Im Lager", wert: 2, href: "#daten" },
                 { name: "Nicht in SCCM", wert: 3, ton: "gefahr", href: "#daten", titel: "Nicht in SCCM – Abgleich findet kein Gerät" },
-                { name: "Ersatz in diesem GJ", wert: 4, ton: "warnung", href: "#daten" },
+                { name: "Ersatz in diesem Geschäftsjahr", wert: 4, ton: "warnung", href: "#daten" },
                 { name: "Ohne Inhaber", wert: 0, href: "#daten" }
               ]),
               beschriftung("Bestandskarte (Mapping 7.2 #15): UI.karte({ sinnbild }), die Hauptzahl als Kachel, darunter "
@@ -506,7 +506,7 @@
             karte({ titel: "Fakten" }, [
               UI.fakten([
                 ["Zuletzt gesehen", UI.zeitText("2026-10-12T12:05:00Z")],
-                ["Im Index", UI.teile(["1’284 Geräte", "56 Benutzer", "80 Nummern"])],
+                ["Im Bestand", UI.teile(["1’284 Geräte", "56 Benutzer", "80 Nummern"])],
                 ["Nächster Abgleich", "12.10.2026, 20.00 (in 6 Std.)"],
                 ["Quelle", ""]
               ])
@@ -526,7 +526,7 @@
     const ort = UI.formZeile("Gebäude / Stock", UI.eingabe({ wert: "Haus C / UG",
       vorschlaege: ORTE, beiEingabe: function () { ort.classList.add("geaendert"); } }));
     const inventar = UI.eingabe({ wert: "CAMPUS-912" });
-    const inventarZeile = UI.formZeile("PC-Name", inventar, { hinweis: "Gross geschrieben, ohne Leerzeichen." });
+    const inventarZeile = UI.formZeile("PC-Name", inventar, { hinweis: "In Grossbuchstaben, ohne Leerzeichen." });
     UI.feldFehler(inventar, "Diesen Namen gibt es schon (ADMIN-Client 12).");
 
     // Hinweis, der am Getippten hängt (UI.hinweisPlatz): erscheint aufgedeckt,
@@ -543,16 +543,16 @@
     const idHinweis = el("div", "datenzeile-hinweis");
     const programmId = UI.eingabe({ platzhalter: "AdobeAcrobatPro", beiEingabe: function (w) {
       const id = w.trim();
-      if (!id) UI.feldHinweis(idHinweis, "Buchstaben und Ziffern, zuerst ein Buchstabe.");
+      if (!id) UI.feldHinweis(idHinweis, "Nur A–Z, a–z und 0–9, beginnend mit einem Buchstaben.");
       else if (/^[A-Za-z][A-Za-z0-9]*$/.test(id)) UI.feldHinweis(idHinweis, "Wird als Spalte «" + id + "» angelegt.", { sinnbild: "checkKreis", ton: "erfolg" });
       else UI.feldHinweis(idHinweis, "");
-      UI.feldFehler(programmId, id && !/^[A-Za-z][A-Za-z0-9]*$/.test(id) ? "Nur Buchstaben und Ziffern." : "");
+      UI.feldFehler(programmId, id && !/^[A-Za-z][A-Za-z0-9]*$/.test(id) ? "Nur A–Z, a–z und 0–9, beginnend mit einem Buchstaben." : "");
     } });
-    UI.feldHinweis(idHinweis, "Buchstaben und Ziffern, zuerst ein Buchstabe.");
+    UI.feldHinweis(idHinweis, "Nur A–Z, a–z und 0–9, beginnend mit einem Buchstaben.");
 
     const vorschlag = anhaengen(el("div", "datenzeile-zeile"), [
-      knopf({ text: "Vorschlag übernehmen: 2027/28", variante: "leise", klein: true }),
-      el("span", "meta", "aus Beschaffungsjahr + 5")
+      knopf({ text: "Vorschlag 2027/28 übernehmen", variante: "leise", klein: true }),
+      el("span", "meta", "Beschaffung + 5 Jahre")
     ]);
 
     const bearbeiten = UI.datenzeilen([
@@ -563,8 +563,8 @@
         { hinweis: "Geschäftsjahr beginnt am 1. August.", zusatz: vorschlag }),
       UI.formZeile("Ersatz geplant", UI.eingabe({ art: "datum", wert: "2027-08-01", schmal: true })),
       bemerkung,
-      UI.formZeile("Seriennummer", UI.eingabe({ wert: "5CG1234XYZ", nurLesen: true }), { hinweis: "Nur lesbar: kommt aus SCCM." }),
-      UI.formZeile("Neuer PC-Name", pcName, { hinweis: "«CAMPUS-907» tippen: der Hinweis erscheint (UI.hinweisPlatz).",
+      UI.formZeile("Seriennummer", UI.eingabe({ wert: "5CG1234XYZ", nurLesen: true }), { hinweis: "Kommt aus SCCM." }),
+      UI.formZeile("Neuer PC-Name", pcName, { hinweis: "Bei «CAMPUS-907» erscheint der Hinweis (UI.hinweisPlatz).",
         zusatz: namenWarnung }),
       UI.formZeile("Programm-ID", programmId, { zusatz: idHinweis })
     ]);
@@ -612,14 +612,14 @@
       UI.schalterZeile({ name: "Microsoft 365", unter: "Lizenzgruppe M365-A3", wort: true, an: true,
         zusatz: [UI.status("3 Geräte", "neutral", { sinnbild: "laptop" })] }),
       UI.schalterZeile({ name: "KeePass", wort: true, an: false }),
-      UI.schalterZeile({ name: "Adobe Acrobat Pro", unter: "aus der AD-Gruppe «SW-Adobe»", wort: true, gesperrt: true,
-        titel: "Kommt aus der AD-Gruppe «SW-Adobe» und lässt sich hier nicht ausschalten." }),
+      UI.schalterZeile({ name: "Adobe Acrobat Pro", unter: "AD-Gruppe «SW-Adobe»", wort: true, gesperrt: true,
+        titel: "Aus der AD-Gruppe «SW-Adobe»." }),
       UI.schalterZeile({ name: "Teams-Telefonie", wort: true,
         schalter: UI.schalter({ an: false, deaktiviert: true, titel: "Nur für Mitarbeitende mit Telefonnummer." }) }),
-      UI.schalterZeile({ name: "Langsam", unter: "beiWechsel liefert ein Promise, das nach 1 s erfüllt", wort: true,
+      UI.schalterZeile({ name: "Langsam", unter: "beiWechsel liefert ein Promise, das nach 1 s erfüllt wird", wort: true,
         beiWechsel: function () { return warten(1000).then(function () { return true; }); } }),
-      UI.schalterZeile({ name: "Schlägt fehl", unter: "beiWechsel liefert false: der Schalter springt zurück", wort: true,
-        beiWechsel: function () { UI.meldung("Konnte nicht umgeschaltet werden.", { ton: "fehler" }); return false; } })
+      UI.schalterZeile({ name: "Schlägt fehl", unter: "beiWechsel liefert false: Der Schalter springt zurück", wort: true,
+        beiWechsel: function () { UI.meldung("Umschalten fehlgeschlagen.", { ton: "fehler" }); return false; } })
     ]);
 
     return abschnitt("formulare", "Formulare",
@@ -634,7 +634,7 @@
             karte({ titel: "Gefüllte Felder (Werkzeugleisten)" }, [gefuellt]),
             karte({ titel: "Feldreihe mit Knopf" }, [
               anhaengen(el("div", "feld-reihe"), [UI.feld("Ticketnummer", ticket), pruefen]),
-              beschriftung("Leer «Prüfen» zeigt den Feldfehler; die erste Eingabe löscht ihn.")
+              beschriftung("«Prüfen» bei leerem Feld zeigt den Feldfehler; die erste Eingabe löscht ihn.")
             ])
           ])
         ]),
@@ -681,7 +681,7 @@
       { schluessel: "ort", text: "Gebäude / Stock" },
       { schluessel: "modell", text: "Modell" },
       { schluessel: "system", text: "Betriebssystem" },
-      { schluessel: "speicher", text: "Freier Speicher", zahl: true, titel: "Freier Platz auf Laufwerk C: laut SCCM." },
+      { schluessel: "speicher", text: "Freier Speicher", zahl: true, titel: "Freier Speicher auf Laufwerk C laut SCCM." },
       { schluessel: "jahr", text: "Beschafft", zahl: true },
       { schluessel: "gesehen", text: "Zuletzt gesehen", sortierbar: false, titel: "Letzter Kontakt mit SCCM." }
     ];
@@ -780,8 +780,8 @@
         karte({ titel: "Banner" }, [
           UI.banner({ ton: "info", titel: "Neutraler Hinweis.", text: "Die Werte kommen aus dem nächtlichen SCCM-Abgleich." }),
           UI.banner({ ton: "erfolg", titel: "Alles abgeglichen.", text: "SCCM und AD stehen auf dem Stand von heute, 05.15." }),
-          UI.banner({ ton: "warnung", titel: "Vorführmodus.", text: "Alle Daten sind erfunden; Änderungen bleiben im Browser.",
-            knopf: knopf({ text: "Zurücksetzen", variante: "leise" }) }),
+          UI.banner({ ton: "warnung", text: "Vorführmodus mit erfundenen Daten. Änderungen bleiben nur in diesem Browser.",
+            knopf: knopf({ text: "Vorführdaten zurücksetzen", variante: "leise" }) }),
           UI.banner({ ton: "gefahr", rolle: "alert", text: "Die Daten konnten nicht geladen werden. Netzwerkfehler.",
             knopf: knopf({ text: "Erneut versuchen", variante: "leise" }) }),
           UI.banner({ ton: "info", sinnbild: "schloss", text: "Nur Mitglieder der Gruppe «ICT-Admins» sehen diese Seite." })
@@ -829,7 +829,7 @@
       UI.listenZeile({ titel: "CAMPUS-907", unter: ["Haus C / UG", "Latitude 7440", "Muster Max"], href: "#listen",
         sinnbild: "laptop", status: UI.status("Online", "erfolg", { sinnbild: "online" }) }),
       UI.listenZeile({ titel: "EDU-AULA-03", unter: ["Aula", "OptiPlex 7010"], sinnbild: "edu",
-        beiKlick: function () { info("Würde EDU-AULA-03 öffnen."); } }),
+        beiKlick: function () { info("Würde «EDU-AULA-03» öffnen."); } }),
       UI.listenZeile({ titel: "Muster Max", unter: "max.muster@campus-sursee.ch", sinnbild: "benutzer", aktuell: true,
         status: UI.status("Inhaber", "neutral", { sinnbild: "benutzer" }) }),
       UI.listenZeile({ titel: "+41 41 926 22 01", unter: ["Kurzwahl 201", "Empfang"], sinnbild: "telefon", href: "#listen",
@@ -840,13 +840,12 @@
     const aufgaben = UI.zeilenliste([
       UI.listenZeile({ titel: "Nicht in SCCM", unter: ["ADMIN-Clients", "Abgleich findet kein Gerät"], href: "#listen",
         marke: UI.zahlmarke(3, "gefahr"), status: UI.status("Dringend", "gefahr") }),
-      UI.listenZeile({ titel: "Ersatz in diesem GJ", unter: ["EDU-Clients", "geplant 2026/27"], href: "#listen",
+      UI.listenZeile({ titel: "Ersatz in diesem Geschäftsjahr", unter: ["EDU-Clients", "geplant 2026/27"], href: "#listen",
         marke: UI.zahlmarke(4, "warnung") })
     ]);
 
     const verlauf = UI.zeitachse([
       { titel: "12.10.2026", zeit: "14.05 · Muster Max", text: "Inhaber gewechselt: Beispiel Anna → Muster Max",
-        zusatz: [UI.status("Von Hand", "neutral", { sinnbild: "bearbeiten" })],
         aktionen: [knopf({ text: "Bearbeiten", variante: "leise", klein: true }), knopf({ text: "Löschen", variante: "leise", klein: true })] },
       { titel: "03.09.2026", zeit: "erfasst um 05.15", zeitSinnbild: "sync",
         text: "Aus SCCM: Betriebssystem auf Windows 11 Pro 24H2 aktualisiert.", still: true,
@@ -876,7 +875,7 @@
           karte({ titel: "Verteilung (klickbar)" }, [hersteller]),
           karte({ titel: "Verteilung" }, [abteilungen,
             UI.saeulen([3, 5, 8, 12, 9, 6, 4, 2].map(function (w, i) {
-              return { wert: w, titel: "GJ " + (2019 + i) + "/" + String(20 + i).slice(-2) + ": " + w + " beschafft" };
+              return { wert: w, titel: "Geschäftsjahr " + (2019 + i) + "/" + String(20 + i).slice(-2) + ": " + w + " beschafft" };
             }), { hervorheben: 3, label: "Beschaffungen pro Geschäftsjahr, 2019/20 bis 2026/27" }),
             beschriftung("Säulen: Beschaffungen pro Geschäftsjahr, das aktuelle hervorgehoben.")
           ])
@@ -896,7 +895,7 @@
       ebene: 3,
       pfad: { text: "ADMIN-Clients", href: "#seitenkopf" },
       titel: "CAMPUS-907",
-      unter: ["Haus C / UG", "Latitude 7440", "Inventar 7", "Muster Max"],
+      unter: ["Haus C / UG", "Latitude 7440", "SN 5CG1234XYZ", "Muster Max"],
       status: [UI.status("In SCCM", "erfolg"), UI.status("Online", "erfolg", { sinnbild: "online" }),
         UI.status("Ersatz 2027/28", "neutral", { sinnbild: "kalender" })],
       aktionen: [
@@ -907,12 +906,11 @@
     });
     const liste = UI.seitenkopf({
       ebene: 3,
-      titel: "ADMIN-Clients",
-      lead: "Alle Verwaltungsgeräte aus SCCM und der Inventarliste. Ein Klick auf eine Zeile öffnet das Gerät."
+      titel: "ADMIN-Clients"
     });
     return abschnitt("seitenkopf", "Seitenkopf",
-      "UI.seitenkopf: Titel 24/32 und Lead 14/20 (höchstens 76 Zeichen) für jede Ansicht; auf Detailseiten darüber der "
-      + "Zurück-Link zur gemerkten Liste, darunter Teile und Status, rechts die Schnellaktionen.",
+      "UI.seitenkopf: Titel 24/32 für jede Ansicht, ein Lead 14/20 (höchstens 76 Zeichen) nur, wo er Nicht-Offensichtliches "
+      + "sagt; auf Detailseiten darüber der Zurück-Link zur gemerkten Liste, darunter Teile und Status, rechts die Schnellaktionen.",
       [
         anhaengen(el("div", "sg-probe"), [detail]),
         anhaengen(el("div", "sg-probe"), [liste]),
@@ -929,7 +927,7 @@
     const bestaetigen = knopf({ text: "Bestätigen", beiKlick: async function () {
       const ja = await UI.bestaetigen({
         titel: "Gerät archivieren?",
-        text: "CAMPUS-907 verschwindet aus der Liste der aktiven Geräte. Du kannst es jederzeit reaktivieren.",
+        text: "«CAMPUS-907» wird in der Liste ausgeblendet und lässt sich jederzeit reaktivieren.",
         ja: "Archivieren"
       });
       info(ja ? "Antwort: Archivieren." : "Antwort: Abgebrochen.");
@@ -952,26 +950,26 @@
       // Resthöhe; Titel, Suchfeld und Knöpfe bleiben stehen (rahmen.css).
       const d = UI.dialog({
         titel: "Inhaber festlegen", breit: true,
-        inhalt: [el("p", null, "Wem gehört CAMPUS-907? Die Person bekommt das Gerät im Verlauf zugeschrieben."),
+        inhalt: [
           UI.suchfeld({ platzhalter: "Name oder E-Mail", label: "Person suchen" }),
           UI.anhaengen(el("div", "dialog-liste"), UI.zeilenliste(zeilen))],
         knoepfe: [knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } }), uebernehmen]
       });
       uebernehmen.addEventListener("click", function () {
         d.schliessen("ja");
-        UI.meldung("Inhaber: " + gewaehlt + ".");
+        UI.meldung("«" + gewaehlt + "» ist jetzt Inhaber.");
       });
     } });
 
-    const loeschen = knopf({ text: "Löschen mit Eintippen", beiKlick: function () {
+    const loeschen = knopf({ text: "Löschen mit Namenseingabe", beiKlick: function () {
       const wort = "CAMPUS-907";
       const feld = UI.eingabe({ art: "text" });
-      const endgueltig = knopf({ text: "Endgültig löschen", variante: "primaer", deaktiviert: true });
+      const endgueltig = knopf({ text: "Löschen", variante: "primaer", deaktiviert: true });
       const d = UI.dialog({
-        titel: "CAMPUS-907 löschen?", breit: true,
-        inhalt: [el("p", null, "Die Zeile verschwindet aus der Inventarliste. Der Verlauf geht mit."),
-          UI.banner({ ton: "warnung", text: "Das lässt sich nicht rückgängig machen." }),
-          UI.feld("Zur Bestätigung «" + wort + "» abtippen", feld, { klasse: "dialog-bestaetigung" })],
+        titel: "Gerät löschen?", breit: true,
+        inhalt: [el("p", null, "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen."),
+          UI.banner({ ton: "warnung", text: "Bei «Muster Max» bleibt der PC-Name im Feld «Computer» stehen und zeigt danach ins Leere." }),
+          UI.feld("Zur Bestätigung «" + wort + "» eingeben", feld, { klasse: "dialog-bestaetigung" })],
         knoepfe: [knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } }), endgueltig],
         fokus: feld
       });
@@ -981,7 +979,7 @@
         await warten(900);
         await UI.beschaeftigtAbwarten(endgueltig);
         d.schliessen("geloescht");
-        UI.meldung("CAMPUS-907 gelöscht (nur im Styleguide).");
+        UI.meldung("«CAMPUS-907» gelöscht (nur im Styleguide).");
       });
     } });
 
@@ -1044,7 +1042,7 @@
           naechsterFehler = false;
           leiste.setzen({ beschaeftigt: false, text: aenderungen + (aenderungen === 1 ? " Änderung" : " Änderungen"),
             speichernText: "Nochmals speichern" });
-          UI.meldung("Speichern fehlgeschlagen. Die Zeile wurde zwischenzeitlich geändert.", { ton: "fehler" });
+          UI.meldung("Speichern fehlgeschlagen. Die Zeile wurde inzwischen anderswo geändert.", { ton: "fehler" });
           return;
         }
         aenderungen = 0;
@@ -1053,7 +1051,7 @@
       },
       beiVerwerfen: async function () {
         const ja = await UI.bestaetigen({ titel: "Änderungen verwerfen?",
-          text: "Die ungespeicherten Änderungen gehen verloren.", ja: "Verwerfen" });
+          text: "Die Felder zeigen danach wieder den gespeicherten Stand.", ja: "Verwerfen" });
         if (!ja) return;
         aenderungen = 0;
         leiste.setzen({ sichtbar: false });
@@ -1069,7 +1067,7 @@
       info("Das nächste Speichern scheitert.");
     } });
 
-    const tippGesperrt = knopf({ text: "Nummer freigeben", variante: "leise", titel: "Zuerst die Änderungen speichern." });
+    const tippGesperrt = knopf({ text: "Nummer freigeben", variante: "leise", titel: "Zuerst speichern oder verwerfen." });
     tippGesperrt.setAttribute("aria-disabled", "true");
 
     return abschnitt("ueberlagerungen", "Dialoge, Blatt, Meldungen",
@@ -1089,7 +1087,7 @@
             + "Fehler bleiben mit × stehen. Höchstens drei gleichzeitig." }, [meldungen]),
           karte({ titel: "Tooltips", unter: "Nach 500 ms Zeigen, mit der Tastatur sofort; der Zeiger darf auf den Tooltip wechseln." }, [
             reihe([
-              knopf({ variante: "sinnbild", sinnbild: "kopieren", titel: "In die Zwischenablage" }),
+              knopf({ variante: "sinnbild", sinnbild: "kopieren", titel: "Kopieren" }),
               knopf({ variante: "sinnbild", sinnbild: "verknuepfung", titel: "Link kopieren" }),
               tippGesperrt,
               UI.status("Ersatz 2027/28", "neutral", { sinnbild: "kalender", titel: "Beschaffungsjahr 2022/23 + 5 Jahre" })
@@ -1104,7 +1102,7 @@
   }
 
   /* ==================================================================
-     Rahmen: Zustände der Tafel, Vorführ-Hinweis, Schublade
+     Rahmen: Zustände der Tafel, Vorführhinweis, Schublade
      ================================================================== */
 
   function bauenRahmen() {
@@ -1116,7 +1114,7 @@
     const fehler = knopf({ text: "Fehlerzustand", beiKlick: function () {
       Rahmen.zustand("fehler", {
         titel: "Die Daten konnten nicht geladen werden",
-        text: "Vorführ-Fehler: so sieht es aus, wenn Microsoft Graph nicht antwortet.",
+        text: "Vorführfehler. So sieht es aus, wenn Microsoft Graph nicht antwortet.",
         knopfText: "Zurück zum Styleguide",
         beiKlick: function () {
           Rahmen.zustand("inhalt").then(function () {
@@ -1128,11 +1126,11 @@
       });
     } });
     let vorfuehrung = false;
-    const vorfuehren = knopf({ text: "Vorführ-Hinweis", gedrueckt: false, variante: "still", sinnbild: "flagge",
+    const vorfuehren = knopf({ text: "Vorführhinweis", gedrueckt: false, variante: "still", sinnbild: "flagge",
       beiKlick: function () {
         vorfuehrung = !vorfuehrung;
         vorfuehren.setAttribute("aria-pressed", String(vorfuehrung));
-        Rahmen.vorfuehrung(vorfuehrung ? { beiZuruecksetzen: function () { UI.meldung("Vorführ-Änderungen zurückgesetzt."); } } : null);
+        Rahmen.vorfuehrung(vorfuehrung ? { beiZuruecksetzen: function () { UI.meldung("Vorführdaten zurückgesetzt."); } } : null);
       } });
     const schublade = knopf({ text: "Schublade öffnen", sinnbild: "menue", beiKlick: function () {
       if (window.matchMedia("(max-width: 900px)").matches) Rahmen.schublade.oeffnen();
@@ -1144,7 +1142,7 @@
       + "einzige Roller. ≤ 900 px wird die Schublade modal, ≤ 720 px zeigt der Kopf die Initiale, ≤ 600 px ist die Tafel randlos.",
       [
         karte({ titel: "Zustände der Tafel", unter: "Laden: nach 200 ms Skelett und 4-px-Ladebalken, der Fortschritt als "
-          + "Meta-Zeile. Fehler: Fehlerkasten mit Titel und «Erneut laden». Der Vorführ-Hinweis steht als erster Block." }, [
+          + "Meta-Zeile. Fehler: Fehlerkasten mit Titel und «Erneut laden». Der Vorführhinweis steht als erster Block." }, [
           reihe([laden, fehler, vorfuehren, schublade])
         ])
       ]);
@@ -1342,7 +1340,6 @@
 
   function starten() {
     Rahmen.dokumentTitel("Styleguide");
-    Rahmen.stand("Stand 12.10.2026, 14.05", "Erfundene Daten des Vorführmodus");
     Rahmen.konto({ name: "Muster Max", email: "max.muster@campus-sursee.ch" });
     Rahmen.abmelden(function () { info("Im Styleguide meldet «Abmelden» nur das hier."); });
 

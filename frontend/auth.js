@@ -55,10 +55,9 @@ const Auth = (function () {
           + "Bitte die Internetverbindung prüfen und die Seite neu laden.");
       }
       if (!KONFIG.clientId || KONFIG.clientId.indexOf("HIER-") === 0) {
-        throw new Error("In konfig.js ist keine Client-ID eingetragen. "
-          + "Bitte die App-Registrierung «Computer Inventar Frontend» in Entra ID anlegen "
-          + "und die Anwendungs-ID dort eintragen. Zum Anschauen ohne Anmeldung "
-          + "die Seite mit ?mock=1 aufrufen.");
+        throw new Error("In konfig.js fehlt die Client-ID. Sie steht in Entra ID bei der "
+          + "App-Registrierung «Computer Inventar Frontend». Bis dahin lässt sich die Seite "
+          + "mit ?mock=1 im Vorführmodus anschauen.");
       }
       const app = new msal.PublicClientApplication({
         auth: {

@@ -1,4 +1,4 @@
-/* client.js – Clientfenster des ICT-Inventars.
+/* client.js – Geräteseite des ICT-Inventars.
 
    Wird von der Hauptseite als client.html?liste=admin|edu&id=… im selben Tab
    geöffnet und zeigt einen einzelnen Client: Übersicht, Stammdaten,
@@ -373,14 +373,13 @@ function hinweise() {
   const betrieb = geraeteStatus();
   if ((betrieb === "Lager" || betrieb === "Archiviert") && inhaber()) {
     warnung("Status «" + betrieb + "», aber ein Inhaber ist eingetragen",
-      "«" + personName(inhaber()) + "» trägt das Gerät noch im Feld «Computer». Ein Gerät im "
-      + "Lager oder Archiv hat keinen Inhaber: im Bereich «Inhaber» entfernen oder das Gerät "
-      + "über «Ausgeben an …» wieder in Betrieb nehmen.");
+      "Ein Gerät im Lager oder Archiv hat keinen Inhaber. «" + personName(inhaber()) + "» im Bereich «Inhaber» entfernen"
+      + (betrieb === "Lager" ? " oder das Gerät über «Ausgeben an …» wieder in Betrieb nehmen." : "."));
   }
   if (betrieb === "Archiviert") {
     // Der Name des Filters genau wie im Filterblatt der Liste (app.js).
-    info("Gerät ist archiviert", "Es steht nicht mehr im Einsatz und ist in der Liste «"
-      + LISTEN_TITEL + "» standardmässig ausgeblendet; der Filter «Archivierte Geräte anzeigen» zeigt es.");
+    info("Gerät ist archiviert", "In der Liste «" + LISTEN_TITEL
+      + "» nur mit dem Filter «Archivierte Geräte anzeigen» sichtbar.");
   } else if (betrieb === "Lager") {
     info("Gerät liegt im Lager", "Es ist einsatzbereit, aber niemandem zugeteilt.");
   }
@@ -390,26 +389,26 @@ function hinweise() {
     const aktive = zwillinge.filter(z => !z.__archiviert).length;
     warnung(zwillinge.length === 1 ? "Noch ein Gerät heisst gleich"
       : zwillinge.length + " weitere Geräte heissen gleich",
-      "Der PC-Name «" + textWert("Title").trim() + "» steht " + (zwillinge.length + 1)
-      + " Mal in der Liste" + (aktive ? "" : ", die übrigen sind archiviert")
-      + ". Die Inhaberschaft läuft über den Namen und ist damit mehrdeutig; das nicht "
-      + "archivierte Gerät bekommt den Vorzug. Sauberer ist es, das alte Gerät umzubenennen.");
+      "Der PC-Name «" + textWert("Title").trim() + "» kommt " + (zwillinge.length + 1)
+      + " Mal in der Liste vor" + (aktive ? "" : (zwillinge.length === 1 ? ", das andere Gerät ist archiviert"
+        : ", die übrigen Geräte sind archiviert")) + "."
+      + (mitInhaber ? " Die Inhaberschaft ist damit mehrdeutig, Vorrang hat das nicht archivierte Gerät." : "")
+      + " Am besten das alte Gerät umbenennen.");
   }
 
   const beschaffung = textWert("Beschaffungsjahr").trim();
   if (!beschaffung) {
-    warnung("Kein Beschaffungsjahr", "Ohne Beschaffungsjahr fehlt das Gerät in der "
-      + "Ersatzplanung und in der Auswertung der Übersicht.");
+    warnung("Kein Beschaffungsjahr", "Ohne Beschaffungsjahr fehlt das Gerät in der Ersatzplanung.");
   }
   const status = ersatzStatus();
   const geplant = textWert("ErsatzGeplant").trim();
   const jahr = geplant || Modell.ersatzVorschlag(beschaffung);
   if (status === "ueberfaellig") {
-    gefahr("Ersatz überfällig", "Der Ersatz war für " + jahr + " vorgesehen, laufendes "
-      + "Geschäftsjahr ist " + Modell.gjAktuell() + (geplant ? "." : " (Vorschlag aus Beschaffungsjahr + 5)."));
+    gefahr("Ersatz überfällig", "Der Ersatz war für " + jahr
+      + (geplant ? " geplant." : " vorgeschlagen (Beschaffung + 5 Jahre)."));
   } else if (status === "bald") {
-    warnung("Ersatz in diesem Geschäftsjahr", "Der Ersatz ist für " + jahr + " geplant"
-      + (geplant ? "." : " (Vorschlag aus Beschaffungsjahr + 5)."));
+    warnung("Ersatz in diesem Geschäftsjahr", "Der Ersatz ist für " + jahr
+      + (geplant ? " geplant." : " vorgeschlagen (Beschaffung + 5 Jahre)."));
   }
 
   if (!inSccm()) {
@@ -423,11 +422,11 @@ function hinweise() {
 
   const tageAktiv = Hilfe.tageHer(zeile.SCCM_LastActive);
   if (tageAktiv !== null && tageAktiv > 90) {
-    gefahr("Seit " + tageAktiv + " Tagen still", "Letzte Aktivität in SCCM am "
+    gefahr("Seit " + tageAktiv + " Tagen keine Aktivität", "Letzte Aktivität in SCCM am "
       + Hilfe.datumText(zeile.SCCM_LastActive) + ". Nach drei Monaten ohne Lebenszeichen ist "
       + "das Gerät vermutlich ausser Betrieb.");
   } else if (tageAktiv !== null && tageAktiv > 30) {
-    warnung("Seit " + tageAktiv + " Tagen still", "Letzte Aktivität in SCCM am "
+    warnung("Seit " + tageAktiv + " Tagen keine Aktivität", "Letzte Aktivität in SCCM am "
       + Hilfe.datumText(zeile.SCCM_LastActive) + ". Bitte prüfen, ob das Gerät noch im Einsatz ist.");
   }
 
@@ -446,14 +445,13 @@ function hinweise() {
       + " Tage alt. Normal ist höchstens ein Tag.");
   }
   if (zeile.SCCM_EPEnabled && !Hilfe.istJa(zeile.SCCM_EPEnabled)) {
-    gefahr("Defender nicht aktiv", "Der Virenschutz meldet sich als deaktiviert.");
+    gefahr("Defender nicht aktiv", "");
   }
   if (zeile.SCCM_EPInfectionStatus && !/sauber|clean|kein/i.test(String(zeile.SCCM_EPInfectionStatus))) {
     gefahr("Defender meldet einen Fund", "Infektionsstatus: " + zeile.SCCM_EPInfectionStatus + ".");
   }
   if (Hilfe.istJa(zeile.SCCM_EPPendingReboot)) {
-    warnung("Neustart ausstehend", "Der Virenschutz verlangt einen Neustart, bevor der Schutz "
-      + "wieder vollständig greift.");
+    warnung("Neustart ausstehend", "Der Virenschutz greift erst nach einem Neustart wieder vollständig.");
   }
 
   if (zeile.SCCM_ClientCheckPass && !Hilfe.istJa(zeile.SCCM_ClientCheckPass)) {
@@ -461,7 +459,7 @@ function hinweise() {
       + "fehlgeschlagen. Ohne funktionierenden Client kommen weder Updates noch Software auf das Gerät.");
   }
   if (zeile.SCCM_ClientActive && !Hilfe.istJa(zeile.SCCM_ClientActive)) {
-    warnung("SCCM-Client inaktiv", "SCCM stuft den Client als inaktiv ein.");
+    warnung("SCCM-Client inaktiv", "");
   }
 
   if (bitlockerAus()) {
@@ -469,14 +467,14 @@ function hinweise() {
       + "». Bei Verlust des Geräts sind die Daten lesbar.");
   }
   if (zeile.SCCM_TPMEnabled && !Hilfe.istJa(zeile.SCCM_TPMEnabled)) {
-    warnung("TPM nicht aktiviert", "Ohne TPM lässt sich BitLocker nicht ohne Kennworteingabe betreiben.");
+    warnung("TPM nicht aktiviert", "Ohne TPM verlangt BitLocker beim Start ein Kennwort.");
   }
 
   const meinBuild = buildZahl(zeile.SCCM_OSVersion);
   const flottenBuild = haeufigster("SCCM_OSVersion");
   const zielBuild = buildZahl(flottenBuild.wert);
   if (meinBuild !== null && zielBuild !== null && meinBuild < zielBuild) {
-    warnung("OS-Build veraltet", "Dieses Gerät läuft auf " + zeile.SCCM_OSVersion + ", der häufigste "
+    warnung("Windows-Build veraltet", "Dieses Gerät läuft auf " + zeile.SCCM_OSVersion + ", der häufigste "
       + "Build der Flotte ist " + flottenBuild.wert + " (" + flottenBuild.anzahl + " Geräte).");
   }
 
@@ -488,10 +486,8 @@ function hinweise() {
 
   const ueberzaehlig = weitereInhaber();
   if (ueberzaehlig.length) {
-    gefahr("Mehr als ein Inhaber", "Ein Gerät hat genau einen Inhaber, hier zeigen aber "
-      + (ueberzaehlig.length + 1) + " Personen mit ihrem Feld «Computer» darauf: "
-      + inhaberAlle().map(personName).join(", ") + ". Im Bereich «Inhaber» die überzähligen "
-      + "Einträge entfernen.");
+    gefahr("Mehr als ein Inhaber", "Bei " + namenText(inhaberAlle()) + " steht dieses Gerät im Feld «Computer». "
+      + "Im Bereich «Inhaber» die überzähligen Einträge entfernen.");
   }
   for (const a of inhaberAbweichungen()) info(a.titel, a.text);
 
@@ -517,12 +513,12 @@ function inhaberAbweichungen() {
     treffer.push({
       titel: bezeichnung + " ist nicht der Inhaber",
       text: "SCCM meldet «" + konto + "»"
-        + (logins.length ? ", Inhaber ist «" + logins[0] + "»." : ", dieses Gerät hat aber keinen Inhaber.")
-        + " Bei einem Handwechsel gehört der Inhaber nachgeführt."
+        + (logins.length ? ", Inhaber ist «" + logins[0] + "». Wurde das Gerät weitergegeben, den Inhaber wechseln."
+          : ", das Gerät hat aber keinen Inhaber.")
     });
   };
   pruefe("SCCM_PrimaryUser", "Primärer Benutzer (SCCM)");
-  pruefe("SCCM_LastLogonUser", "Letzter angemeldeter Benutzer");
+  pruefe("SCCM_LastLogonUser", "Zuletzt angemeldeter Benutzer");
   return treffer;
 }
 
@@ -560,14 +556,13 @@ function titelZeile(hinweisText) {
     const vergeben = zwillinge.length
       ? (zwillinge.length === 1 ? "Ein weiteres Gerät heisst bereits so (" : zwillinge.length
         + " weitere Geräte heissen bereits so (")
-        + zwillinge.map(z => (z.__archiviert ? "archiviert" : Modell.status(z.Status)) + ", Listen-ID " + z.id).join("; ")
-        + "). Erlaubt, aber die Inhaberschaft läuft über den Namen und wird damit mehrdeutig."
+        + zwillinge.map(z => Modell.status(z.Status) + ", Listen-ID " + z.id).join("; ")
+        + ")." + (mitInhaber ? " Das ist erlaubt, macht die Inhaberschaft aber mehrdeutig." : "")
       : "";
     const mit = !personen.length ? ""
       : (personen.length === 1
-        ? namenText(personen) + " ist Inhaber. Beim Speichern bekommt das Feld «Computer» dieser Person den neuen "
-          + "Namen; die Inhaberschaft bleibt bestehen."
-        : namenText(personen) + " tragen dieses Gerät. Beim Speichern bekommt ihr Feld «Computer» den neuen Namen.");
+        ? namenText(personen) + " bleibt Inhaber. Beim Speichern bekommt das Feld «Computer» der Person den neuen Namen."
+        : "Bei " + namenText(personen) + " steht dieses Gerät im Feld «Computer». Beim Speichern wird es dort umbenannt.");
     const text = [vergeben, mit].filter(Boolean).join(" ");
     ort.setzen(text ? (vergeben ? "w|" : "i|") + text : "", function () {
       return vergeben
@@ -591,29 +586,42 @@ function bemerkungZeile() {
   return F.feld("Bemerkung", { beschriftung: "Bemerkung", art: "textbereich", eingabe: { zeilen: 4 } });
 }
 
-/* Status als Auswahl. Der Hinweis erklärt den gewählten Wert; wer
-   «Archiviert» wählt, solange das Gerät in SCCM steht, sieht die Warnung,
-   dass der nächste Abgleich es zurücksetzt. */
+/* Von Hand zu archivieren ist bei einem Gerät in SCCM meist der falsche
+   Weg: der Abgleich setzte es wieder auf «Aktiv». Richtig ist, das Gerät
+   aus SCCM zu löschen – dann archiviert es der nächste Abgleich selbst.
+   Derselbe Hinweis steht beim Feld «Status» und im Dialog «Archivieren?»;
+   «lagerWahl» nennt dort die passende Alternative. */
+function archivHinweis(lagerWahl) {
+  return UI.banner({ ton: "warnung", titel: "Von Hand archivieren ist meist nicht nötig.",
+    text: "Wird das Gerät aus SCCM gelöscht, setzt der nächste Abgleich es automatisch auf «Archiviert». "
+      + "Solange es in SCCM steht, setzt er es wieder auf «Aktiv». " + lagerWahl });
+}
+
+/* Status als Auswahl. Der Hinweis erklärt «Lager» und «Archiviert» (der
+   Normalfall «Aktiv» bleibt ohne); wer «Archiviert» wählt, solange das
+   Gerät in SCCM steht, sieht archivHinweis. */
 function statusZeile() {
   const hinweis = el("span");
   const warnOrt = UI.hinweisPlatz({ id: "g-statuswarnung" });
   const setzen = function (mitBewegung) {
     const s = geraeteStatus();
     UI.textSetzen(hinweis, s === "Archiviert"
-      ? "Ausser Betrieb; in der Liste und den Kennzahlen standardmässig ausgeblendet."
-      : (s === "Lager" ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Liste."
-        : "Im Einsatz. Ein leeres Feld gilt ebenfalls als «Aktiv»."));
+      ? "Ausser Betrieb. In der Liste und den Kennzahlen standardmässig ausgeblendet."
+      : (s === "Lager" ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Liste." : ""));
+    // Ohne Text (Normalfall «Aktiv») fällt auch die Hülle .datenzeile-hinweis
+    // weg: ihr :empty greift nicht, solange der leere span darin steht.
+    if (hinweis.parentNode) hinweis.parentNode.hidden = !hinweis.textContent;
     warnOrt.setzen(s === "Archiviert" && inSccm() ? "archiviert-in-sccm" : "", function () {
-      return UI.banner({ ton: "warnung", text: "Solange das Gerät in SCCM steht, setzt der nächste "
-        + "Abgleich es wieder auf «Aktiv». Für ein eingelagertes Gerät «Lager» wählen." });
+      return archivHinweis("Für ein eingelagertes Gerät «Lager» wählen.");
     }, { aufdecken: mitBewegung });
   };
-  setzen(false);
-  nachfuehren(function (feld) { if (feld === "Status") setzen(true); });
   // Die Auswahl zeigt den Status so, wie er gilt (leer → «Aktiv»); der
   // Entwurf vergleicht ebenso (leer: { Status: "Aktiv" }).
-  return F.feld("Status", { beschriftung: "Status", art: "auswahl", hinweis: hinweis, zusatz: warnOrt,
+  const z = F.feld("Status", { beschriftung: "Status", art: "auswahl", hinweis: hinweis, zusatz: warnOrt,
     eingabe: { werte: Modell.STATUS_WERTE, wert: geraeteStatus(), schmal: true } });
+  setzen(false);
+  nachfuehren(function (feld) { if (feld === "Status") setzen(true); });
+  return z;
 }
 
 /* «In Domäne» als Kästchen am Entwurf (F.feld, art 'ankreuzen': id
@@ -627,10 +635,8 @@ function domaeneZeile() {
     eingabe: { text: "Gerät ist in der Domäne" } });
   const setzen = function () {
     UI.textSetzen(hinweis, inDomaene()
-      ? "Der SCCM-Abgleich pflegt diese Zeile: er füllt die SCCM-Felder und archiviert das Gerät, "
-        + "sobald es nicht mehr in SCCM steht."
-      : "Der SCCM-Abgleich lässt diese Zeile in Ruhe: keine SCCM-Felder, keine Archivierung. Für "
-        + "Geräte ohne Domäne (Gäste- und Prüfungsnotebooks).");
+      ? "Der Abgleich füllt die SCCM-Felder und archiviert das Gerät, sobald es nicht mehr in SCCM steht."
+      : "Der Abgleich füllt keine SCCM-Felder und archiviert das Gerät nie.");
   };
   setzen();
   nachfuehren(function (feld) { if (feld === "InDomaene") setzen(); });
@@ -640,8 +646,8 @@ function domaeneZeile() {
 /* Beschaffungsjahr und Ersatz: Vorschlag (Beschaffung + 5) und Hinweise
    folgen dem Tippen an Ort und Stelle; Tab führt ungestört zum nächsten
    Feld (Fehler C2: früher baute «change» den Bereich unter dem Fokus neu). */
-function beschaffungsjahrZeile(hinweisText) {
-  return F.feld("Beschaffungsjahr", { beschriftung: "Beschaffungsjahr", hinweis: hinweisText,
+function beschaffungsjahrZeile() {
+  return F.feld("Beschaffungsjahr", { beschriftung: "Beschaffungsjahr", hinweis: "Geschäftsjahr (1. August bis 31. Juli).",
     eingabe: { vorschlaege: Modell.gjAuswahl(), schmal: true, platzhalter: "z. B. 2023/2024" } });
 }
 
@@ -667,7 +673,7 @@ function ersatzZeile() {
     const geplant = textWert("ErsatzGeplant").trim();
     UI.textSetzen(hinweis, !vorschlag ? "Ohne Beschaffungsjahr gibt es keinen Vorschlag."
       : (geplant === vorschlag ? "Entspricht dem Vorschlag (Beschaffung + 5 Jahre)."
-        : (!geplant ? "Leer heisst: Ersatz " + vorschlag + " (Beschaffung + 5 Jahre)."
+        : (!geplant ? "Bleibt das Feld leer, gilt " + vorschlag + " (Beschaffung + 5 Jahre)."
           : "Vorschlag: " + vorschlag + " (Beschaffung + 5 Jahre).")));
     zusatz.hidden = !vorschlag || geplant === vorschlag;
     if (vorschlag) UI.knopfText(vorschlagKnopf, "Vorschlag " + vorschlag + " übernehmen");
@@ -722,8 +728,8 @@ function lebenszyklusKarte(mitFuss) {
       const verstrichen = Math.min(Math.max(heute - von, 0), spanne);
       inhalt.appendChild(UI.balken(verstrichen / spanne,
         status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : undefined)));
-      inhalt.appendChild(UI.meta(verstrichen + " von " + spanne + " Geschäftsjahren verstrichen · laufendes GJ "
-        + Modell.gjAktuell()));
+      inhalt.appendChild(UI.meta(verstrichen + " von " + spanne + " Geschäftsjahren verstrichen · laufendes "
+        + "Geschäftsjahr " + Modell.gjAktuell()));
     } else if (!beschaffung) {
       inhalt.appendChild(UI.hinweis("Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen."));
     }
@@ -742,7 +748,7 @@ function personUnter(b) {
   return unter;
 }
 
-/* Eine Person als Listenzeile; der Name führt ins Benutzerfenster (ein
+/* Eine Person als Listenzeile; der Name führt auf die Benutzerseite (ein
    echter Link: Ctrl- und Mittelklick öffnen einen neuen Tab). */
 function personZeile(b, aktionen) {
   /* Dieselbe Regel, derselbe Text und derselbe Ton wie auf allen Seiten
@@ -771,8 +777,7 @@ function sccmLeer() {
       beiKlick: function () { bereichWechseln("stammdaten", "g-eingabe-Title"); }, fokus: "pc-name-pruefen" })
   } : {
     sinnbild: "sync", titel: "Ausserhalb der Domäne",
-    text: "«" + name + "» ist nicht in der Domäne. Der Abgleich lässt das Gerät in Ruhe; aus SCCM "
-      + "kommt darum nichts."
+    text: "Für Geräte ausserhalb der Domäne holt der Abgleich keine Daten aus SCCM."
   }));
   return k;
 }
@@ -788,11 +793,9 @@ function bereichUebersicht(ziel) {
   const s = stapel(ziel);
   const liste = hinweise();
   if (!liste.length) {
-    s.appendChild(UI.banner({ ton: "erfolg", titel: "Nichts zu beanstanden.", text: "Alle geprüften Regeln sind erfüllt." }));
+    s.appendChild(UI.banner({ ton: "erfolg", titel: "Nichts zu beanstanden." }));
   } else {
-    const k = UI.karte({ titel: "Hinweise", unter: liste.length === 1
-      ? "Ein Punkt, aus den aktuellen Werten abgeleitet."
-      : liste.length + " Punkte, aus den aktuellen Werten abgeleitet; die wichtigsten zuerst." });
+    const k = UI.karte({ titel: "Hinweise" });
     k.inhalt.appendChild(UI.hinweise(liste.map(h => UI.hinweisZeile(h))));
     s.appendChild(k);
   }
@@ -807,8 +810,8 @@ function zustandKarte() {
     unter: inSccm() && zeile.SCCM_LastSync ? "Stand des letzten Abgleichs: " + UI.zeitText(zeile.SCCM_LastSync) + "." : null });
   if (!inSccm()) {
     k.inhalt.appendChild(UI.hinweis(inDomaene()
-      ? "Das Gerät steht nicht in SCCM; es gibt keine Kennzahlen."
-      : "Das Gerät ist ausserhalb der Domäne; aus SCCM kommen keine Kennzahlen."));
+      ? "Das Gerät steht nicht in SCCM."
+      : "Für Geräte ausserhalb der Domäne holt der Abgleich keine Daten aus SCCM."));
     return k;
   }
   const tageAktiv = Hilfe.tageHer(zeile.SCCM_LastActive);
@@ -832,7 +835,7 @@ function zustandKarte() {
   k.inhalt.appendChild(UI.kacheln([
     tage("Tage seit letzter Aktivität", tageAktiv, UI.zeitText(zeile.SCCM_LastActive),
       tageAktiv === null ? null : (tageAktiv > 90 ? "gefahr" : (tageAktiv > 30 ? "warnung" : null))),
-    tage("Tage seit dem Neustart", tageBoot, UI.zeitText(zeile.SCCM_LastBoot),
+    tage("Tage seit letztem Neustart", tageBoot, UI.zeitText(zeile.SCCM_LastBoot),
       tageBoot !== null && tageBoot > 30 ? "warnung" : null),
     UI.kachel({ text: "Freier Speicher C:", wert: frei === null ? "" : UI.zahlText(Math.round(frei)) + " GB",
       zahl: frei === null ? undefined : Math.round(frei), unter: gesamt ? "von " + UI.zahlText(gesamt) + " GB" : "",
@@ -845,8 +848,8 @@ function zustandKarte() {
       unter: String(zeile.SCCM_OS || "").replace(/^Microsoft\s+/i, ""),
       ton: build !== null && zielBuild !== null && build < zielBuild ? "warnung" : null,
       titel: zeile.SCCM_OSVersion ? "Version " + zeile.SCCM_OSVersion
-        + (zielBuild !== null ? "; häufigster Build der Flotte: " + flottenBuild.wert : "") : undefined }),
-    tage("Tage seit der Virensignatur", signatur, zeile.SCCM_EPSignatureVersion ? "Version " + zeile.SCCM_EPSignatureVersion : "",
+        + (zielBuild !== null ? " · häufigster Build der Flotte: " + flottenBuild.wert : "") : undefined }),
+    tage("Alter der Virensignatur in Tagen", signatur, zeile.SCCM_EPSignatureVersion ? "Version " + zeile.SCCM_EPSignatureVersion : "",
       signatur === null ? null : (signatur > 7 ? "gefahr" : (signatur > 2 ? "warnung" : null))),
     UI.kachel({ text: "Laufwerk verschlüsselt", wert: bitlocker ? (bitlockerAus() ? "Nein" : "Ja") : "",
       unter: bitlocker ? "BitLocker: " + bitlocker : "", ton: bitlocker && bitlockerAus() ? "gefahr" : null }),
@@ -862,7 +865,7 @@ function inhaberKurzKarte() {
   const k = UI.karte({ titel: "Inhaber", fuss: [UI.knopf({ text: wem ? "Inhaber verwalten" : "Inhaber festlegen",
     variante: "leise", weiter: true, beiKlick: function () { bereichWechseln("inhaber"); }, fokus: "inhaber-oeffnen" })] });
   if (wem) k.inhalt.appendChild(UI.zeilenliste([personZeile(wem)]));
-  else k.inhalt.appendChild(UI.hinweis("Dieses Gerät hat zurzeit keinen Inhaber."));
+  else k.inhalt.appendChild(UI.hinweis("Kein Inhaber eingetragen."));
   const zuviele = weitereInhaber().length;
   if (zuviele) k.inhalt.appendChild(UI.hinweis("Dazu " + (zuviele === 1 ? "ein überzähliger Eintrag" : zuviele + " überzählige Einträge") + "."));
   return k;
@@ -876,8 +879,7 @@ function geraetKurzKarte() {
   const k = UI.karte({ titel: "Gerät", fuss: [UI.knopf({ text: sccm ? "Hardware ansehen" : "Stammdaten ansehen",
     variante: "leise", weiter: true, beiKlick: function () { bereichWechseln(ziel); }, fokus: ziel + "-oeffnen" })] });
   if (!sccm) {
-    k.inhalt.appendChild(UI.hinweis("Hersteller, Modell und Seriennummer liefert der SCCM-Abgleich. "
-      + "Ohne Treffer in SCCM bleiben sie leer."));
+    k.inhalt.appendChild(UI.hinweis("Hersteller, Modell und Seriennummer kommen aus SCCM."));
     return k;
   }
   k.inhalt.appendChild(UI.kennwerte([
@@ -896,13 +898,13 @@ function bereichStammdaten(ziel) {
   // «Duplizieren» legt ein neues Gerät aus den von Hand gepflegten Angaben
   // an (ohne Name, Status, Verlauf) und steht darum bei ihnen; es ist keine
   // Schnellaktion an DIESEM Gerät. «Löschen …» betrifft das ganze Gerät und
-  // steht darum wie im Telefon- und Softwarefenster im Seitenkopf.
+  // steht darum im Seitenkopf, wie auf den Seiten für Telefonnummern und
+  // Programme.
   const duplizieren = UI.knopf({ text: "Duplizieren", variante: "leise", sinnbild: "kopieren",
     href: UI.adresse.client(listenName, null, { neu: true, vorlage: zeile.id }), fokus: "duplizieren" });
-  const k = UI.karte({ titel: "Stammdaten", unter: "Von Hand gepflegt; der SCCM-Abgleich fasst diese Felder nie an.",
-    fuss: [duplizieren] });
+  const k = UI.karte({ titel: "Stammdaten", fuss: [duplizieren] });
   k.inhalt.appendChild(UI.datenzeilen([
-    titelZeile("Schlüssel für den SCCM-Abgleich und den Inhaber: muss genau dem Gerätenamen in SCCM entsprechen."),
+    titelZeile("Muss genau dem Gerätenamen in SCCM entsprechen."),
     ortZeile(), statusZeile(), domaeneZeile(), bemerkungZeile()
   ]));
   sperrenNachfuehren([duplizieren]);
@@ -912,8 +914,9 @@ function bereichStammdaten(ziel) {
 /* Der Verlauf wird über denselben Entwurf gespeichert wie alle anderen
    Felder: verlauf.js meldet die fertige Zeichenkette, die Speicherleiste
    schreibt sie. Die Karte (Titel, Zahl, «Neuer Eintrag») baut verlauf.js
-   selbst, wie im Benutzer- und Telefonfenster: es gibt nur noch diese eine
-   Einbauart, keine fremde Karte mehr, in die verlauf.js einhängen müsste. */
+   selbst, wie auf der Benutzerseite und bei Telefonnummern: es gibt nur
+   noch diese eine Einbauart, keine fremde Karte mehr, in die verlauf.js
+   einhängen müsste. */
 function verlaufEinbauen() {
   const huelle = el("div", "g-verlauf");
   huelle.setAttribute("data-rolle", "verlauf");
@@ -921,9 +924,7 @@ function verlaufEinbauen() {
     schluessel: "geraet",
     wert: wert("Verlauf"),
     beiAenderung: function (json) { entwurf.setzeWert("Verlauf", json); },
-    titel: "Verlauf",
-    beschreibung: "Was mit diesem Gerät passiert ist: Handwechsel, Reparatur, Umzug. "
-      + "Der Abgleich hängt eigene Einträge an."
+    titel: "Verlauf"
   });
   return huelle;
 }
@@ -932,16 +933,21 @@ function verlaufEinbauen() {
 
 function bereichNeu(ziel) {
   const s = stapel(ziel);
+  // Geräte in SCCM legt der Abgleich selbst an (Name ab «EDU» in den
+  // EDU-Clients, alle übrigen in den ADMIN-Clients). Von Hand nur, was
+  // nicht in SCCM steht.
+  s.appendChild(UI.banner({ ton: "warnung", titel: LISTEN_TITEL + " müssen in der Regel nicht von Hand angelegt werden.",
+    text: "Sobald ein Gerät in SCCM erfasst ist, übernimmt es der SCCM-Abgleich automatisch. "
+      + "Von Hand nur Geräte anlegen, die nicht in SCCM stehen." }));
   if (vorlageName) {
     s.appendChild(UI.banner({ ton: "info", sinnbild: "kopieren", titel: "Vorlage übernommen.",
-      text: "Die Angaben stammen von «" + vorlageName + "». PC-Name, Status und Verlauf bleiben leer." }));
+      text: "Die Angaben stammen von «" + vorlageName + "». Nur der PC-Name fehlt noch." }));
   }
-  const k = UI.karte({ titel: "Angaben zum Gerät",
-    unter: "Status, Inhaber und Verlauf folgen nach dem Anlegen; die SCCM-Felder füllt der Abgleich." });
+  const k = UI.karte({ titel: "Angaben zum Gerät" });
   k.inhalt.appendChild(UI.datenzeilen([
-    titelZeile("Muss genau dem Gerätenamen in SCCM entsprechen; darüber laufen Abgleich und Inhaberschaft."),
+    titelZeile("Muss genau dem Gerätenamen in SCCM entsprechen."),
     ortZeile(), domaeneZeile(),
-    beschaffungsjahrZeile("Geschäftsjahr in der Form «2023/2024» (1. August bis 31. Juli)."),
+    beschaffungsjahrZeile(),
     ersatzZeile(), bemerkungZeile()
   ]));
   s.appendChild(k);
@@ -951,10 +957,9 @@ function bereichNeu(ziel) {
 
 function bereichBeschaffung(ziel) {
   const s = stapel(ziel);
-  const k = UI.karte({ titel: "Beschaffung und Ersatz", unter: "Beide Angaben sind Geschäftsjahre in der Form "
-    + "«2023/2024»; ein Geschäftsjahr läuft vom 1. August bis 31. Juli." });
+  const k = UI.karte({ titel: "Beschaffung und Ersatz" });
   k.inhalt.appendChild(UI.datenzeilen([
-    beschaffungsjahrZeile("Auswahl 2015/2016 bis 2035/2036, freie Eingabe erlaubt."),
+    beschaffungsjahrZeile(),
     ersatzZeile()
   ]));
   s.appendChild(raster([k, lebenszyklusKarte(false)]));
@@ -966,7 +971,6 @@ function bereichInhaber(ziel) {
   const s = stapel(ziel);
   const wem = inhaber();
   const zuviele = weitereInhaber();
-  const pcName = textWert("Title").trim();
   const sperrbar = [];
 
   // Fehler A3: nie den Handler direkt übergeben – sonst käme das
@@ -979,18 +983,16 @@ function bereichInhaber(ziel) {
     sinnbild: wem ? "sync" : "ausgeben", beiKlick: function () { inhaberWaehlenDialog(false); }, fokus: "inhaber-waehlen" });
   sperrbar.push(waehlen);
 
-  const k = UI.karte({ titel: "Inhaber", aktionen: wem ? [waehlen] : [],
-    unter: "Die Person, der «" + pcName + "» gehört, genau eine je Gerät. "
-      + "Gepflegt nur hier; kein Abgleich überschreibt sie." });
+  const k = UI.karte({ titel: "Inhaber", aktionen: wem ? [waehlen] : [] });
   if (namensZwillinge().length) {
     k.inhalt.appendChild(UI.banner({ ton: "warnung", titel: "PC-Name ist nicht eindeutig.",
-      text: "Er kommt in der Liste «" + LISTEN_TITEL + "» " + (namensZwillinge().length + 1) + " Mal vor. Weil die "
-        + "Benutzerliste nur den Namen speichert, zählt der Eintrag zum nicht archivierten Gerät." }));
+      text: "Er kommt in der Liste «" + LISTEN_TITEL + "» " + (namensZwillinge().length + 1) + " Mal vor. "
+        + "Die Inhaberschaft gilt für das nicht archivierte Gerät." }));
   }
   if (zuviele.length) {
     k.inhalt.appendChild(UI.banner({ ton: "gefahr", titel: "Mehr als ein Inhaber.",
-      text: (zuviele.length + 1) + " Personen tragen dieses Gerät im Feld «Computer». Als Inhaber gilt der "
-        + "erste Name; die übrigen stehen unten und gehören entfernt." }));
+      text: "Bei " + (zuviele.length + 1) + " Personen steht dieses Gerät im Feld «Computer». Als Inhaber gilt "
+        + "die erste Person. Die übrigen unten entfernen." }));
   }
 
   if (wem) {
@@ -1000,14 +1002,13 @@ function bereichInhaber(ziel) {
     k.inhalt.appendChild(UI.zeilenliste([personZeile(wem, [entfernen])]));
   } else {
     k.inhalt.appendChild(UI.leerzustand({ sinnbild: "benutzer", titel: "Noch kein Inhaber",
-      text: "Festlegen, wem «" + pcName + "» gehört. Die Person bekommt das Gerät in ihr Feld «Computer».",
+      text: "Das Gerät wird im Feld «Computer» der Person eingetragen.",
       aktion: waehlen }));
   }
   s.appendChild(k);
 
   if (zuviele.length) {
-    const kZuviel = UI.karte({ titel: "Überzählige Einträge", unter: "Diese Personen tragen dasselbe Gerät, "
-      + "sind aber nicht sein Inhaber. Entfernen leert ihr Feld «Computer»." });
+    const kZuviel = UI.karte({ titel: "Überzählige Einträge" });
     kZuviel.inhalt.appendChild(UI.zeilenliste(zuviele.map(function (b) {
       const weg = UI.knopf({ text: "Eintrag entfernen", variante: "leise", klein: true,
         beiKlick: function () { inhaberEntfernenDialog(b); }, fokus: "entfernen-" + b.id });
@@ -1022,10 +1023,9 @@ function bereichInhaber(ziel) {
 
 /* Was SCCM über die Benutzer weiss. Reine Beobachtung. */
 function sccmBenutzerKarte() {
-  const k = UI.karte({ titel: "Benutzer laut SCCM", unter: "Nur ein Hinweis: SCCM sieht, wer an diesem Gerät "
-    + "arbeitet, nicht, wem es gehört." });
+  const k = UI.karte({ titel: "Benutzer laut SCCM", unter: "SCCM sieht, wer am Gerät arbeitet, nicht, wem es gehört." });
   if (!inSccm()) {
-    k.inhalt.appendChild(UI.hinweis("Das Gerät steht nicht in SCCM; es gibt keine Anmeldedaten."));
+    k.inhalt.appendChild(UI.hinweis("Das Gerät steht nicht in SCCM."));
     return k;
   }
   const abweichungen = inhaberAbweichungen();
@@ -1034,7 +1034,7 @@ function sccmBenutzerKarte() {
   }
   k.inhalt.appendChild(UI.datenzeilen([
     datenZeile("Primärer Benutzer", zeile.SCCM_PrimaryUser),
-    datenZeile("Letzter angemeldeter Benutzer", zeile.SCCM_LastLogonUser),
+    datenZeile("Zuletzt angemeldeter Benutzer", zeile.SCCM_LastLogonUser),
     datenZeile("Aktuell angemeldet", zeile.SCCM_CurrentLogonUser),
     datenZeile("Hauptbenutzer (Konsole)", zeile.SCCM_TopConsoleUser),
     datumZeile("Letzte Anmeldung", zeile.SCCM_LastConsoleUse)
@@ -1062,8 +1062,8 @@ function bereichSoftware(ziel) {
   if (!inSccm()) { s.appendChild(sccmLeer()); return; }
 
   const deployments = Hilfe.zeilen(zeile.SCCM_DeployedApps).map(Hilfe.felder);
-  const kDeploy = UI.karte({ titel: "Zugewiesene Applikationen", unter: "Deployments aus SCCM: "
-    + UI.zahlText(Number(zeile.SCCM_AppsInstalled) || 0) + " installiert, "
+  const kDeploy = UI.karte({ titel: "Zugewiesene Applikationen", unter:
+    UI.zahlText(Number(zeile.SCCM_AppsInstalled) || 0) + " installiert, "
     + UI.zahlText(Number(zeile.SCCM_AppsRequired) || 0) + " erforderlich." });
   if (!deployments.length) {
     kDeploy.inhalt.appendChild(UI.hinweis("Keine Zuweisungen erfasst."));
@@ -1078,9 +1078,9 @@ function bereichSoftware(ziel) {
   }
   s.appendChild(kDeploy);
 
-  const kInst = UI.karte({ titel: "Installierte Software", unter: "Aus dem Software-Inventar von SCCM. Gezählt sind "
+  const kInst = UI.karte({ titel: "Installierte Software", unter: "SCCM meldet "
     + UI.zahlText(Number(zeile.SCCM_InstalledSoftwareCount) || Hilfe.zeilen(zeile.SCCM_InstalledSoftware).length)
-    + " Einträge, aufgeführt die vom Abgleich übernommenen." });
+    + " Einträge. Aufgeführt sind die vom Abgleich übernommenen." });
   const anzahl = el("p", "anzahl");
   anzahl.id = "g-installiert-anzahl";
   anzahl.setAttribute("aria-live", "polite");
@@ -1102,8 +1102,7 @@ function bereichSoftware(ziel) {
     : UI.hinweis("Kein Office-Produkt erfasst."));
 
   const sammlungen = Hilfe.zeilen(zeile.SCCM_Collections);
-  const kSamml = UI.karte({ titel: "Sammlungen", unter: "Mitgliedschaften in SCCM; sie steuern, welche Software "
-    + "und welche Einstellungen das Gerät erhält." });
+  const kSamml = UI.karte({ titel: "Sammlungen" });
   kSamml.inhalt.appendChild(sammlungen.length
     ? UI.anhaengen(el("div", "chips"), sammlungen.map(n => UI.status(n, "neutral", { sinnbild: "ordner" })))
     : UI.hinweis("Keine Sammlungen erfasst."));
@@ -1120,7 +1119,8 @@ function installiertFuellen() {
   const alle = Hilfe.zeilen(zeile.SCCM_InstalledSoftware).map(Hilfe.felder);
   const such = swSuche.trim().toLowerCase();
   const treffer = alle.filter(f => !such || String(f[0] || "").toLowerCase().indexOf(such) > -1);
-  UI.textSetzen($("g-installiert-anzahl"), such ? treffer.length + " von " + alle.length : alle.length + " Einträge");
+  UI.textSetzen($("g-installiert-anzahl"), such ? treffer.length + " von " + alle.length
+    : alle.length + (alle.length === 1 ? " Eintrag" : " Einträge"));
   UI.leeren(ort);
   if (!alle.length) {
     ort.appendChild(UI.hinweis("Keine Software erfasst."));
@@ -1146,7 +1146,6 @@ function bereichHardware(ziel) {
   if (!inSccm()) { s.appendChild(sccmLeer()); return; }
   const frei = zahlOderNull(zeile.SCCM_DiskCFreeGB);
   const gesamt = zahlOderNull(zeile.SCCM_DiskCGB);
-  const biosAlter = Hilfe.tageHer(zeile.SCCM_BIOSDate);
   const akku = akkuProzent();
 
   const kGeraet = UI.karte({ titel: "Gerät" });
@@ -1155,7 +1154,7 @@ function bereichHardware(ziel) {
     datenZeile("Modell", zeile.SCCM_Model),
     datenZeile("Gehäusetyp", zeile.SCCM_ChassisType),
     datenZeile("Seriennummer", zeile.SCCM_SerialNumber),
-    datenZeile("SMBIOS GUID", zeile.SCCM_SMBIOSGUID),
+    datenZeile("SMBIOS-GUID", zeile.SCCM_SMBIOSGUID),
     datenZeile("Virtuelle Maschine", zeile.SCCM_IsVirtual)
   ]));
 
@@ -1178,7 +1177,7 @@ function bereichHardware(ziel) {
   kBios.inhalt.appendChild(UI.datenzeilen([
     datenZeile("BIOS-Version", zeile.SCCM_BIOSVersion),
     datenZeile("BIOS-Datum", Hilfe.datumText(zeile.SCCM_BIOSDate),
-      biosAlter === null ? null : "vor " + Math.round(biosAlter / 30) + " Monaten"),
+      Hilfe.relativText(zeile.SCCM_BIOSDate) || null),
     datenZeile("Akku", akku !== null && akku < 50
       ? [document.createTextNode(String(zeile.SCCM_Battery) + " "), UI.status("Ersatz prüfen", "warnung")]
       : zeile.SCCM_Battery)
@@ -1232,7 +1231,7 @@ function bereichSystem(ziel) {
     datenZeile("AD-Standort", zeile.SCCM_ADSite),
     datumZeile("Computerkonto erstellt", zeile.SCCM_ADCreated),
     datumZeile("Letzte AD-Anmeldung", zeile.SCCM_ADLastLogon),
-    datenZeile("Entra Device ID", zeile.SCCM_AADDeviceID),
+    datenZeile("Entra-Geräte-ID", zeile.SCCM_AADDeviceID),
     datenZeile("Co-Managed (Intune)", jaNeinStatus(zeile.SCCM_CoManaged, "Ja", "Nein", "neutral"))
   ]));
 
@@ -1260,7 +1259,7 @@ function bereichSicherheit(ziel) {
       ? UI.status(infektion, /sauber|clean|kein/i.test(infektion) ? "erfolg" : "gefahr") : ""),
     datenZeile("Letzte Bedrohung", zeile.SCCM_EPLastThreat),
     datenZeile("Neustart ausstehend", Hilfe.istJa(zeile.SCCM_EPPendingReboot)
-      ? UI.status("Ja, Neustart nötig", "warnung") : (zeile.SCCM_EPPendingReboot || ""))
+      ? UI.status("Ja", "warnung") : (zeile.SCCM_EPPendingReboot || ""))
   ]));
 
   const bitlocker = String(zeile.SCCM_BitLocker || "").trim();
@@ -1283,15 +1282,15 @@ const ZEITSTEMPEL = [
   ["SCCM_LastBoot", "Letzter Neustart"],
   ["SCCM_LastDDR", "Letzter Heartbeat (DDR)"],
   ["SCCM_LastPolicyRequest", "Letzte Richtlinienanfrage"],
-  ["SCCM_LastHardwareScan", "Letzter Hardware-Inventar"],
-  ["SCCM_LastSoftwareScan", "Letzter Software-Inventar"],
+  ["SCCM_LastHardwareScan", "Letztes Hardware-Inventar"],
+  ["SCCM_LastSoftwareScan", "Letztes Software-Inventar"],
   ["SCCM_LastClientCheck", "Letzte Client-Prüfung"],
   ["SCCM_LastConsoleUse", "Letzte Benutzeranmeldung"],
   ["SCCM_ADLastLogon", "Letzte AD-Anmeldung"],
   ["SCCM_EPSignatureDate", "Defender-Signatur"],
   ["SCCM_EPLastQuickScan", "Defender-Schnellscan"],
   ["SCCM_EPLastFullScan", "Defender-Vollscan"],
-  ["SCCM_LastSync", "Abgleich mit SharePoint"],
+  ["SCCM_LastSync", "Letzter SCCM-Abgleich"],
   ["SCCM_OSInstallDate", "Betriebssystem installiert"],
   ["SCCM_ADCreated", "Computerkonto erstellt"],
   ["SCCM_BIOSDate", "BIOS-Datum"]
@@ -1310,8 +1309,8 @@ function bereichAktivitaet(ziel) {
     datenZeile("Client-Version", zeile.SCCM_ClientVersion),
     datenZeile("ResourceID", zeile.SCCM_ResourceID),
     datenZeile("SMSID", zeile.SCCM_SMSID),
-    datenZeile("Sync-Status", zeile.SCCM_SyncStatus),
-    datumZeile("Letzte Synchronisation", zeile.SCCM_LastSync)
+    datenZeile("Abgleichstatus", zeile.SCCM_SyncStatus),
+    datumZeile("Letzter SCCM-Abgleich", zeile.SCCM_LastSync)
   ]));
 
   /* Alle Zeitstempel, jüngster zuerst; was älter als 30 Tage ist, steht
@@ -1322,8 +1321,7 @@ function bereichAktivitaet(ziel) {
     if (d) punkte.push({ name: name, datum: d, roh: zeile[feld] });
   }
   punkte.sort((a, b) => b.datum - a.datum);
-  const kAchse = UI.karte({ titel: "Zeitachse", unter: "Alle Zeitstempel dieses Geräts, jüngster zuerst; ältere als "
-    + "30 Tage sind grau." });
+  const kAchse = UI.karte({ titel: "Zeitachse", unter: "Was älter als 30 Tage ist, erscheint grau." });
   kAchse.inhalt.appendChild(punkte.length ? UI.zeitachse(punkte.map(function (p) {
     const tage = Hilfe.tageHer(p.roh);
     return { titel: p.name, zeit: UI.zeitText(p.roh) + " · " + Hilfe.relativText(p.roh), still: tage !== null && tage > 30 };
@@ -1344,8 +1342,8 @@ function vergleichsZeile(name, meinWert, werte, einheit, hoeherIstBesser, nachko
   const mittel = median(werte);
   const teile = [el("span", "t-stark", meinWert === null ? "–" : zahl(meinWert))];
   teile.push(UI.meta(p === null || mittel === null ? "Kein Vergleich möglich."
-    : "Median der Flotte " + zahl(mittel) + " · " + p + " % der Geräte liegen gleich hoch oder tiefer"
-      + (hoeherIstBesser === false ? "; weniger ist besser" : "")));
+    : "Median " + zahl(mittel) + " · " + p + " % der Geräte liegen bei diesem Wert oder darunter"
+      + (hoeherIstBesser === false ? " · weniger ist besser" : "")));
   if (werte.length > 3 && meinWert !== null) {
     const min = Math.min.apply(null, werte);
     const max = Math.max.apply(null, werte);
@@ -1358,7 +1356,7 @@ function vergleichsZeile(name, meinWert, werte, einheit, hoeherIstBesser, nachko
       const bis = min + spanne * (i + 1) / KLASSEN;
       return { wert: n, titel: (n === 1 ? "1 Gerät" : n + " Geräte") + ": " + zahl(von) + " bis " + zahl(bis) };
     }), { hervorheben: meine, klasse: "g-vergleich-saeulen",
-      label: "Verteilung «" + name + "» in der Flotte; dieses Gerät liegt in Klasse " + (meine + 1) + " von " + KLASSEN + "." });
+      label: "Verteilung «" + name + "» in der Flotte. Dieses Gerät liegt in Klasse " + (meine + 1) + " von " + KLASSEN + "." });
     teile.push(saeulen);
   }
   return UI.feldZeile(name, teile);
@@ -1376,19 +1374,19 @@ function bereichAnalyse(ziel) {
     return w;
   };
 
-  const kVergleich = UI.karte({ titel: "Dieses Gerät gegenüber der Flotte", unter: "Verglichen wird mit "
-    + UI.zahlText(geraete.length) + " Geräten, die in SCCM stehen. Die dunkle Säule ist die Klasse dieses Geräts." });
+  const kVergleich = UI.karte({ titel: "Dieses Gerät gegenüber der Flotte", unter: "Verglichen mit "
+    + UI.zahlText(geraete.length) + " Geräten in SCCM. Die dunkle Säule zeigt dieses Gerät." });
   if (!inSccm()) {
     kVergleich.inhalt.appendChild(UI.hinweis("Ohne Daten aus SCCM gibt es nichts zu vergleichen."));
   } else {
     kVergleich.inhalt.appendChild(UI.datenzeilen([
-      vergleichsZeile("Freier Speicher auf C:", zahlOderNull(zeile.SCCM_DiskCFreeGB),
+      vergleichsZeile("Freier Speicher auf Laufwerk C", zahlOderNull(zeile.SCCM_DiskCFreeGB),
         werteVon(z => zahlOderNull(z.SCCM_DiskCFreeGB)), "GB", true, 1),
       vergleichsZeile("Arbeitsspeicher", zahlOderNull(zeile.SCCM_RAMGB), werteVon(z => zahlOderNull(z.SCCM_RAMGB)), "GB", true, 0),
       vergleichsZeile("CPU-Kerne", zahlOderNull(zeile.SCCM_CPUCores), werteVon(z => zahlOderNull(z.SCCM_CPUCores)), "", true, 0),
       vergleichsZeile("Tage seit letzter Aktivität", Hilfe.tageHer(zeile.SCCM_LastActive),
         werteVon(z => Hilfe.tageHer(z.SCCM_LastActive)), "Tage", false, 0),
-      vergleichsZeile("Alter seit OS-Installation", Hilfe.tageHer(zeile.SCCM_OSInstallDate),
+      vergleichsZeile("Alter der OS-Installation", Hilfe.tageHer(zeile.SCCM_OSInstallDate),
         werteVon(z => Hilfe.tageHer(z.SCCM_OSInstallDate)), "Tage", false, 0),
       vergleichsZeile("Alter des AD-Computerkontos", Hilfe.tageHer(zeile.SCCM_ADCreated),
         werteVon(z => Hilfe.tageHer(z.SCCM_ADCreated)), "Tage", false, 0),
@@ -1409,9 +1407,8 @@ function bereichAnalyse(ziel) {
     return [titel, w, UI.zahlText(gleiche.length), UI.zahlText(online),
       freie.length ? Hilfe.zahlText(median(freie), 1) + " GB" : ""];
   };
-  const kAehnlich = UI.karte({ titel: "Ähnliche Geräte", unter: "Wie viele Geräte in SCCM dieselbe Eigenschaft "
-    + "teilen und wie es ihnen geht." });
-  kAehnlich.inhalt.appendChild(UI.tabelle(["Gemeinsam", "Wert", { text: "Geräte", zahl: true },
+  const kAehnlich = UI.karte({ titel: "Ähnliche Geräte" });
+  kAehnlich.inhalt.appendChild(UI.tabelle(["Merkmal", "Wert", { text: "Geräte", zahl: true },
     { text: "Davon online", zahl: true }, { text: "Median frei C:", zahl: true }], [
     gruppe("Modell", "SCCM_Model", zeile.SCCM_Model),
     gruppe("Beschaffungsjahr", "Beschaffungsjahr", textWert("Beschaffungsjahr")),
@@ -1424,8 +1421,7 @@ function bereichAnalyse(ziel) {
 
 function bereichFelder(ziel) {
   const s = stapel(ziel);
-  const k = UI.karte({ titel: "Alle Felder", unter: "Der vollständige Datensatz, gruppiert wie in der "
-    + "SharePoint-Liste. Jeder Wert lässt sich einzeln kopieren.", id: "g-felder-karte" });
+  const k = UI.karte({ titel: "Alle Felder", id: "g-felder-karte" });
   const anzahl = el("p", "anzahl");
   anzahl.id = "g-felder-anzahl";
   anzahl.setAttribute("aria-live", "polite");
@@ -1511,13 +1507,13 @@ function felderFuellen() {
    7. Kopf, Navigation, Neuzeichnen
    ================================================================== */
 
-/* Je Bereich ein Lead, der sagt, was man hier tut (höchstens 76 Zeichen). */
-function bereich(k, d, gruppe, sinnbild, lead, bauen) {
+/* Ein Bereich: Schlüssel, Name in der Schublade, Gruppe, Sinnbild und
+   Bauer. Kein Lead: Name und Inhalt sagen genug. */
+function bereich(k, d, gruppe, sinnbild, bauen) {
   return {
     k: k, d: d, gruppe: gruppe, sinnbild: sinnbild,
     f: function (ziel) {
       nachfuehrer = [];
-      F.seitenkopf({ lead: lead });
       bauen(ziel);
     }
   };
@@ -1526,32 +1522,20 @@ function bereich(k, d, gruppe, sinnbild, lead, bauen) {
 /* Drei Gruppen: was man pflegt («Gerät»), was SCCM liefert und was
    ausgewertet wird. */
 const BEREICHE = [
-  bereich("uebersicht", "Übersicht", "Gerät", "uebersicht",
-    "Zustand, Hinweise und Lebenszyklus dieses Geräts auf einen Blick.", bereichUebersicht),
-  bereich("stammdaten", "Stammdaten", "Gerät", "bearbeiten",
-    "Name, Standort, Status, Bemerkung und Verlauf, von Hand gepflegt.", bereichStammdaten),
-  bereich("beschaffung", "Beschaffung", "Gerät", "kalender",
-    "Beschaffungsjahr und geplanter Ersatz steuern die Ersatzplanung.", bereichBeschaffung),
-  bereich("inhaber", "Inhaber", "Gerät", "benutzer",
-    "Wem das Gerät gehört: festlegen, wechseln oder entfernen.", bereichInhaber),
-  bereich("software", "Software", "Aus SCCM", "software",
-    "Was SCCM diesem Gerät zuweist und was darauf installiert ist.", bereichSoftware),
-  bereich("hardware", "Hardware", "Aus SCCM", "prozessor",
-    "Gerät, Prozessor, Speicher, Datenträger und Monitore laut SCCM.", bereichHardware),
-  bereich("system", "System und Netzwerk", "Aus SCCM", "server",
-    "Betriebssystem, Netzwerk und Verzeichnisdienste laut SCCM.", bereichSystem),
-  bereich("sicherheit", "Sicherheit", "Aus SCCM", "schild",
-    "Virenschutz, Verschlüsselung und TPM laut SCCM.", bereichSicherheit),
-  bereich("aktivitaet", "Client und Aktivität", "Aus SCCM", "aktivitaet",
-    "Der SCCM-Client und alle Zeitstempel dieses Geräts.", bereichAktivitaet),
-  bereich("analyse", "Flottenvergleich", "Auswertung", "diagramm",
-    "Wie dieses Gerät im Vergleich zur übrigen Flotte dasteht.", bereichAnalyse),
-  bereich("felder", "Alle Felder", "Auswertung", "liste",
-    "Der vollständige Datensatz, so wie er in SharePoint steht.", bereichFelder)
+  bereich("uebersicht", "Übersicht", "Gerät", "uebersicht", bereichUebersicht),
+  bereich("stammdaten", "Stammdaten", "Gerät", "bearbeiten", bereichStammdaten),
+  bereich("beschaffung", "Beschaffung", "Gerät", "kalender", bereichBeschaffung),
+  bereich("inhaber", "Inhaber", "Gerät", "benutzer", bereichInhaber),
+  bereich("software", "Software", "Aus SCCM", "software", bereichSoftware),
+  bereich("hardware", "Hardware", "Aus SCCM", "prozessor", bereichHardware),
+  bereich("system", "System und Netzwerk", "Aus SCCM", "server", bereichSystem),
+  bereich("sicherheit", "Sicherheit", "Aus SCCM", "schild", bereichSicherheit),
+  bereich("aktivitaet", "Client und Aktivität", "Aus SCCM", "aktivitaet", bereichAktivitaet),
+  bereich("analyse", "Flottenvergleich", "Auswertung", "diagramm", bereichAnalyse),
+  bereich("felder", "Alle Felder", "Auswertung", "liste", bereichFelder)
 ];
 
-const BEREICH_NEU = bereich("neu", "Neuer " + CLIENT_WORT, "", "plus",
-  "Nur, was beim Anlegen bekannt ist; alles Weitere folgt danach.", bereichNeu);
+const BEREICH_NEU = bereich("neu", "Neuer " + CLIENT_WORT, "", "plus", bereichNeu);
 
 const BEREICHE_LISTE = mitInhaber ? BEREICHE : BEREICHE.filter(b => b.k !== "inhaber");
 
@@ -1586,20 +1570,20 @@ function statusChips() {
   if (inSccm()) {
     chips.push(onlineStatus(zeile.SCCM_Online));
     chips.push(UI.status("In SCCM", "erfolg"));
-    chips.push(Hilfe.istJa(zeile.SCCM_ClientActive) ? UI.status("Client aktiv", "erfolg") : UI.status("Client inaktiv", "warnung"));
+    chips.push(Hilfe.istJa(zeile.SCCM_ClientActive) ? UI.status("SCCM-Client aktiv", "erfolg") : UI.status("SCCM-Client inaktiv", "warnung"));
     if (Hilfe.istJa(zeile.SCCM_CoManaged)) chips.push(UI.status("Co-Managed", "neutral", { sinnbild: "verknuepfung" }));
     if (Hilfe.istJa(zeile.SCCM_IsVirtual)) chips.push(UI.status("Virtuell", "neutral", { sinnbild: "server" }));
   } else if (inDomaene()) {
     chips.push(UI.status("Nicht in SCCM", "warnung", { titel: "Der Abgleich findet zu diesem PC-Namen kein Gerät in SCCM." }));
   } else {
     chips.push(UI.status("Nicht in SCCM", "neutral", { sinnbild: "aus",
-      titel: "Ausserhalb der Domäne: der Abgleich lässt dieses Gerät in Ruhe." }));
+      titel: "Ausserhalb der Domäne – der Abgleich holt keine Daten aus SCCM." }));
   }
 
   const es = ersatzStatus();
   const geplant = textWert("ErsatzGeplant").trim() || Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
   if (es === "ueberfaellig") {
-    chips.push(UI.status("Ersatz überfällig", "gefahr", { titel: "Geplant war " + geplant + "; laufendes GJ " + Modell.gjAktuell() + "." }));
+    chips.push(UI.status("Ersatz überfällig", "gefahr", { titel: "Geplant war " + geplant + "." }));
   } else if (es === "bald") {
     chips.push(UI.status("Ersatz in diesem GJ", "warnung", { titel: "Geplant für " + geplant + "." }));
   }
@@ -1607,8 +1591,9 @@ function statusChips() {
 }
 
 /* Schnellaktionen: der ganze Lagerablauf mit je einem Dialog, zuletzt
-   «Löschen …» – wie im Telefon- und Softwarefenster rechts im Seitenkopf,
-   in jedem Bereich erreichbar (Vertrag §1, Inventar §8 Nr. 8). Welche
+   «Löschen …» – wie auf den Seiten für Telefonnummern und Programme
+   rechts im Seitenkopf, in jedem Bereich erreichbar (Vertrag §1,
+   Inventar §8 Nr. 8). Welche
    Lageraktionen erscheinen, hängt vom Status ab. Gesperrt mit Grund,
    solange etwas ungespeichert ist; während geschrieben wird, sperrt
    F.beschaeftigt (Fehler A8). Nur mit beiKlick bauen: F.seitenkopf lässt
@@ -1739,7 +1724,6 @@ async function datenLaden(still) {
     alleBenutzer = Modell.anreichern([], geladen[1], null).benutzer;
     alleClients = Modell.clientsAnreichern(geladen[0]).clients;
   }
-  F.stand();
 }
 
 function zeileWaehlen() {
@@ -1761,8 +1745,8 @@ function zeileWaehlen() {
   }
   const treffer = alleClients.filter(z => String(z.id) === String(elementId))[0];
   if (!treffer) {
-    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es in der Liste «" + LISTEN_TITEL
-      + "» keine Zeile. Vermutlich wurde sie inzwischen gelöscht, oder der Client steht in der anderen Client-Liste.");
+    const fehler = new Error("In der Liste «" + LISTEN_TITEL + "» gibt es keine Zeile mit der Listen-ID " + elementId
+      + ". Vielleicht steht das Gerät in der anderen Client-Liste.");
     fehler.status = 404;
     throw fehler;
   }
@@ -1790,7 +1774,7 @@ async function neuLaden() {
 }
 
 function ladeFehlerZeigen(fehler) {
-  F.ladefehler(fehler, { titel: "Client nicht gefunden",
+  F.ladefehler(fehler, { titel: "Gerät nicht gefunden",
     hinweis: "Gelöschte Zeilen liegen 93 Tage im Papierkorb der SharePoint-Site und lassen sich dort zurückholen." });
 }
 
@@ -1798,7 +1782,7 @@ function ladeFehlerZeigen(fehler) {
 
 function pruefen() {
   const name = textWert("Title").trim();
-  if (!name) return { feld: "Title", text: "Der PC-Name darf nicht leer sein." };
+  if (!name) return { feld: "Title", text: "Bitte einen PC-Namen eingeben." };
 
   /* Der Name entscheidet die Liste: alles ab «EDU» gehört zu den
      EDU-Clients. Ein Name der anderen Liste wäre kein Tippfehler mit kleinen
@@ -1812,8 +1796,7 @@ function pruefen() {
   for (const feld of ["Beschaffungsjahr", "ErsatzGeplant"]) {
     const w = textWert(feld).trim();
     if (w && !Modell.gjGueltig(w)) {
-      return { feld: feld, text: "«" + SPALTE[feld].d + "» muss ein Geschäftsjahr in der Form «2023/2024» sein "
-        + "(zwei aufeinanderfolgende Jahre)." };
+      return { feld: feld, text: "«" + SPALTE[feld].d + "» muss ein Geschäftsjahr wie «2023/2024» sein." };
     }
   }
   /* Nur einen geänderten Status prüfen: ein gespeicherter Altwert («aktiv»,
@@ -1858,12 +1841,13 @@ function speichern() {
       nachSpeichernZeigen();
     },
     zeichnen: nachSpeichernZeigen,
+    fehlerText: neuModus ? "Anlegen fehlgeschlagen." : "Speichern fehlgeschlagen.",
     erfolgText: function (erg) {
       const dubletten = erg && erg.dubletten
         ? " Achtung: «" + erg.name + "» steht jetzt " + (erg.dubletten + 1) + " Mal in der Liste." : "";
       if (erg && erg.neu) return "Gerät angelegt." + dubletten;
       const mit = erg && erg.nachgefuehrt && erg.nachgefuehrt.length
-        ? " " + namenText(erg.nachgefuehrt) + (erg.nachgefuehrt.length === 1 ? " bleibt Inhaber." : " tragen den neuen Namen.")
+        ? " " + namenText(erg.nachgefuehrt) + (erg.nachgefuehrt.length === 1 ? " bleibt Inhaber." : " bleiben eingetragen.")
         : "";
       return (erg && erg.anzahl === 1 ? "Änderung gespeichert." : (erg ? erg.anzahl : 0) + " Änderungen gespeichert.")
         + mit + dubletten;
@@ -2036,13 +2020,14 @@ function verlaufTextMit(basis, notiz) {
 }
 
 /* Dialog einer Schnellaktion: Frage als Titel, Text nennt die Folge, eine
-   freiwillige Notiz für den Verlauf, «Abbrechen» und die Hauptaktion. */
+   optionale Notiz für den Verlauf, «Abbrechen» und die Hauptaktion.
+   warnung: Text oder fertiger Banner. */
 function aktionsDialog(o) {
   if (F.istBeschaeftigt()) return;
   const inhalt = [el("p", "dialog-text", o.text)];
-  if (o.warnung) inhalt.push(UI.banner({ ton: "warnung", text: o.warnung }));
+  if (o.warnung) inhalt.push(o.warnung.nodeType ? o.warnung : UI.banner({ ton: "warnung", text: o.warnung }));
   const notiz = UI.eingabe({ art: "textbereich", id: "g-aktion-notiz", zeilen: 2, platzhalter: "z. B. den Grund" });
-  inhalt.push(UI.feld("Notiz für den Verlauf (freiwillig)", notiz));
+  inhalt.push(UI.feld("Notiz für den Verlauf (optional)", notiz));
   const abbrechen = UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
   const ja = UI.knopf({ text: o.ja, variante: "primaer", beiKlick: async function () {
     if (await imDialogAusfuehren(d, ja, abbrechen, function () { return o.ausfuehren(notiz.value); })) {
@@ -2064,7 +2049,7 @@ function inhaberSatz() {
 function insLagerDialog() {
   const wem = inhaber();
   aktionsDialog({
-    titel: "Ins Lager legen?", ja: "Ins Lager legen", erfolg: "Gerät liegt im Lager.",
+    titel: "Ins Lager legen?", ja: "Ins Lager legen", erfolg: "Gerät ins Lager gelegt.",
     text: "«" + anzeigeName() + "» bekommt den Status «Lager» und bleibt in der Liste." + inhaberSatz(),
     ausfuehren: function (notiz) {
       return inhaberSchreiben(abgabeSchritte(), { Status: "Lager", Verlauf: F.verlaufAnhaengen(wert("Verlauf"),
@@ -2077,10 +2062,9 @@ function archivierenDialog() {
   const wem = inhaber();
   aktionsDialog({
     titel: "Archivieren?", ja: "Archivieren", erfolg: "Gerät archiviert.",
-    text: "«" + anzeigeName() + "» bekommt den Status «Archiviert» und ist in der Liste und den Kennzahlen "
+    text: "«" + anzeigeName() + "» bekommt den Status «Archiviert» und wird in der Liste und den Kennzahlen "
       + "ausgeblendet." + inhaberSatz(),
-    warnung: inSccm() ? "Das Gerät steht noch in SCCM. Solange das so ist, setzt der nächste Abgleich es wieder "
-      + "auf «Aktiv». Für ein eingelagertes Gerät ist «Ins Lager legen» die richtige Wahl." : "",
+    warnung: inSccm() ? archivHinweis("Für ein eingelagertes Gerät ist «Ins Lager legen» die richtige Wahl.") : null,
     ausfuehren: function (notiz) {
       return inhaberSchreiben(abgabeSchritte(), { Status: "Archiviert", Verlauf: F.verlaufAnhaengen(wert("Verlauf"),
         verlaufTextMit("Archiviert" + (wem ? " (vorher: " + personName(wem) + ")" : ""), notiz)) });
@@ -2090,9 +2074,8 @@ function archivierenDialog() {
 
 function reaktivierenDialog() {
   aktionsDialog({
-    titel: "Reaktivieren?", ja: "Reaktivieren", erfolg: "Gerät reaktiviert; es liegt im Lager.",
-    text: "«" + anzeigeName() + "» kommt zurück ins Lager (Status «Lager») und erscheint wieder in der Liste. "
-      + (mitInhaber ? "Von dort lässt es sich ausgeben." : "Von dort lässt es sich wieder in Betrieb nehmen."),
+    titel: "Reaktivieren?", ja: "Reaktivieren", erfolg: "Gerät reaktiviert und ins Lager gelegt.",
+    text: "«" + anzeigeName() + "» bekommt den Status «Lager» und erscheint wieder in der Liste.",
     ausfuehren: function (notiz) {
       return inhaberSchreiben([], { Status: "Lager", Verlauf: F.verlaufAnhaengen(wert("Verlauf"),
         verlaufTextMit("Reaktiviert, ins Lager gelegt", notiz)) });
@@ -2104,7 +2087,7 @@ function reaktivierenDialog() {
    in den Betrieb. */
 function inBetriebDialog() {
   aktionsDialog({
-    titel: "In Betrieb nehmen?", ja: "In Betrieb nehmen", erfolg: "Gerät ist wieder in Betrieb.",
+    titel: "In Betrieb nehmen?", ja: "In Betrieb nehmen", erfolg: "Gerät in Betrieb genommen.",
     text: "«" + anzeigeName() + "» bekommt wieder den Status «Aktiv».",
     ausfuehren: function (notiz) {
       return inhaberSchreiben([], { Status: "Aktiv", Verlauf: F.verlaufAnhaengen(wert("Verlauf"),
@@ -2127,8 +2110,7 @@ function inhaberEntfernenDialog(b) {
       if (ok) UI.meldung("«" + personName(b) + "» ist nicht mehr eingetragen.");
     } });
   const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], inhalt: [el("p", "dialog-text",
-    "«" + personName(b) + "» " + (istInhaber ? "ist Inhaber dieses Geräts. " : "trägt dieses Gerät. ")
-    + "Das Feld «Computer» dieser Person wird geleert; das Gerät selbst bleibt, wie es ist.")] });
+    "Das Feld «Computer» von «" + personName(b) + "» wird geleert. Das Gerät selbst bleibt unverändert.")] });
 }
 
 /* Inhaber wählen in zwei Schritten: suchen und wählen, dann bestätigen.
@@ -2140,7 +2122,7 @@ function inhaberWaehlenDialog(ausgabe) {
   if (F.istBeschaeftigt()) return;
   const pcName = textWert("Title").trim();
   if (!pcName) {
-    UI.meldung("Ohne PC-Name lässt sich kein Inhaber festlegen.", { ton: "fehler" });
+    UI.meldung("Ohne PC-Namen lässt sich kein Inhaber festlegen.", { ton: "fehler" });
     return;
   }
   const bisheriger = inhaber();
@@ -2153,9 +2135,6 @@ function inhaberWaehlenDialog(ausgabe) {
     d.titel(titel);
     UI.leeren(d.inhalt);
     UI.leeren(d.knoepfe);
-    d.inhalt.appendChild(el("p", "dialog-text", "Die gewählte Person wird Inhaberin von «" + pcName + "»."
-      + (ausLager ? " Das Gerät verlässt das Lager und wird «Aktiv»." : "")
-      + (bisheriger ? " «" + personName(bisheriger) + "» gibt es dabei ab: ein Gerät hat genau einen Inhaber." : "")));
     // .dialog-liste (rahmen.css): rollt selbst und nimmt die Resthöhe des
     // Dialogs; Suchfeld, Titel und Knöpfe bleiben stehen.
     const liste = el("div", "dialog-liste");
@@ -2192,7 +2171,7 @@ function inhaberWaehlenDialog(ausgabe) {
     UI.leeren(liste);
     if (!passend.length) {
       liste.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
-        text: t ? "Niemand passt zu «" + suchText.trim() + "»." : "Es gibt keine Personen ohne dieses Gerät." }));
+        text: t ? "Niemand passt zu «" + suchText.trim() + "»." : "Keine Personen zur Auswahl." }));
       UI.textSetzen(zahl, "");
       return;
     }
@@ -2203,7 +2182,7 @@ function inhaberWaehlenDialog(ausgabe) {
         beiKlick: function () { schritt2(b); } });
     })));
     UI.textSetzen(zahl, passend.length > 40
-      ? "40 von " + UI.zahlText(passend.length) + " Personen; die Suche grenzt weiter ein."
+      ? "40 von " + UI.zahlText(passend.length) + " Personen"
       : (passend.length === 1 ? "1 Person" : UI.zahlText(passend.length) + " Personen"));
   }
 
@@ -2213,20 +2192,16 @@ function inhaberWaehlenDialog(ausgabe) {
     d.titel(ausLager ? "Ausgeben an «" + personName(b) + "»?" : "«" + personName(b) + "» als Inhaber?");
     UI.leeren(d.inhalt);
     UI.leeren(d.knoepfe);
-    d.inhalt.appendChild(el("p", "dialog-text", "«" + personName(b) + "» (" + (String(b.Title || "").trim() || "ohne Login") + ")"
+    d.inhalt.appendChild(el("p", "dialog-text", "«" + pcName + "» geht an «" + personName(b) + "» (" + (String(b.Title || "").trim() || "ohne Login")
       + (String(b.Abteilung || "").trim() ? ", " + String(b.Abteilung).trim() : "")
-      + " wird Inhaberin von «" + pcName + "»." + (ausLager ? " Das Gerät wird «Aktiv»." : "")));
+      + ")." + (ausLager ? " Das Gerät bekommt den Status «Aktiv»." : "")));
     if (abgebende.length) {
-      d.inhalt.appendChild(UI.banner({ ton: "warnung", text: abgebende.length === 1
-        ? "«" + personName(abgebende[0]) + "» gibt das Gerät ab; das Feld «Computer» dieser Person wird geleert."
-        : "Diese " + abgebende.length + " Personen geben das Gerät ab; ihr Feld «Computer» wird geleert: "
-          + abgebende.map(personName).join(", ") + "." }));
+      d.inhalt.appendChild(UI.banner({ ton: "warnung", text: namenText(abgebende)
+        + (abgebende.length === 1 ? " gibt" : " geben") + " das Gerät ab." }));
     }
     if (bisher) {
       d.inhalt.appendChild(UI.banner({ ton: "warnung", text: "«" + personName(b) + "» hat zurzeit «" + bisher
         + "». Dieser Eintrag wird ersetzt." }));
-    } else {
-      d.inhalt.appendChild(UI.hinweis("Dieser Person ist zurzeit kein Gerät zugeordnet."));
     }
     const zurueck = UI.knopf({ text: "Zurück", variante: "leise", beiKlick: function () { schritt1(); } });
     const ja = UI.knopf({ text: ausLager ? "Ausgeben" : (bisheriger ? "Wechseln" : "Festlegen"), variante: "primaer",
@@ -2262,14 +2237,13 @@ function loeschenDialog() {
   const personen = inhaberAlle();
   F.loeschenDialog({
     titel: "Gerät löschen?",
-    text: "Die Zeile wird aus der Liste «" + LISTEN_TITEL + "» entfernt und landet im Papierkorb der SharePoint-Site. "
-      + "Von dort lässt sie sich 93 Tage lang zurückholen.",
+    text: "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.",
     warnung: personen.length === 1
-      ? "«" + personName(personen[0]) + "» ist Inhaber dieses Geräts. Der Eintrag bleibt bestehen und zeigt danach ins Leere."
-      : (personen.length > 1 ? personen.length + " Personen tragen dieses Gerät. Die Einträge bleiben bestehen und "
-        + "zeigen danach ins Leere." : ""),
+      ? "Bei «" + personName(personen[0]) + "» bleibt der PC-Name im Feld «Computer» stehen und zeigt danach ins Leere."
+      : (personen.length > 1 ? "Bei " + personen.length + " Personen bleibt der PC-Name im Feld «Computer» stehen und "
+        + "zeigt danach ins Leere." : ""),
     wort: textWert("Title").trim() || String(zeile.id),
-    knopfText: "Endgültig löschen",
+    knopfText: "Löschen",
     beiLoeschen: async function () {
       await Daten.loeschen(listenName, zeile.id);
       F.melden("zeile-geloescht", zeile.id);
@@ -2277,7 +2251,7 @@ function loeschenDialog() {
     },
     ende: {
       titel: "Gerät gelöscht",
-      text: "«" + name + "» wurde aus der Liste «" + LISTEN_TITEL + "» entfernt und liegt im Papierkorb der SharePoint-Site.",
+      text: "«" + name + "» liegt jetzt im Papierkorb der SharePoint-Site.",
       knopfText: "Zur Liste"
     }
   });
@@ -2329,8 +2303,8 @@ async function start() {
     }
     F.kontoZeigen();
     if (!neuModus && !elementId) {
-      F.zeigeFehler("Kein Client angegeben", "Dieses Fenster braucht Liste und Listen-ID in der Adresse, zum Beispiel "
-        + "client.html?liste=admin&id=5.", "Normalerweise wird es aus einer der Client-Listen heraus geöffnet.",
+      F.zeigeFehler("Kein Gerät angegeben", "In der Adresse fehlt die Listen-ID, zum Beispiel "
+        + "client.html?liste=admin&id=5.", "",
         "Zur Liste", function () { F.zurListe(); });
       return;
     }

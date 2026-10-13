@@ -55,7 +55,7 @@
     },
     {
         "internal":  "ADLetzterSync",
-        "display":  "Letzter AD-Sync",
+        "display":  "Letzter AD-Abgleich",
         "type":  "DateTime",
         "group":  "AD",
         "source":  "ad",

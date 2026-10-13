@@ -38,7 +38,7 @@
                               Tonklassen für Text und Icons (.t-info = neutral).
      .zahl                    Tabellarische Ziffern (in Tabellen rechtsbündig).
      .hinweis                 Leiser Fliesstext 14/20 (#444746).
-     .meta                    Meta-Zeile 12/16 («Stand 12.10.2026, 14.05»).
+     .meta                    Meta-Zeile 12/16 («Zuletzt gespeichert 12.10.2026, 14.05»).
      .teile > .teile-liste > span   Teile mit «·», die nur zwischen Teilen umbrechen.
      .ohne-umbruch            Hält «1 Min. 35 s» zusammen.
      .kuerzel                 Tastenkürzel (<kbd>), auf Touch verborgen.
@@ -312,6 +312,7 @@
   /* --- Masse --- */
   --kopf-hoch:       64px;
   --schublade-breit: 256px;
+  --konto-breit:     240px;    /* Name und E-Mail im Kopf, danach «…» */
   --bahn-max:        1280px;
   --mass:            76ch;     /* Zeilenlänge von Fliesstext */
   --meldung-platz:   64px;     /* Platz am Seitenende für eine zweizeilige Meldung */
@@ -492,7 +493,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primaer); }
 
 p.hinweis { max-width: var(--mass); text-wrap: pretty; }
 
-/* Meta-Zeile: Stand, «Zuletzt gespeichert …», Herkunft. */
+/* Meta-Zeile: «Zuletzt gespeichert …», Herkunft, Zeitstempel. */
 .meta {
   margin: 0;
   color: var(--text-leise);

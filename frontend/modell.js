@@ -256,8 +256,8 @@ const Modell = (function () {
    */
   function sperrHinweis(spalte) {
     const g = (spalte && spalte.adGruppen) || [];
-    if (!g.length) return "Berechtigung wird vom Abgleich verwaltet und kann hier nicht geändert werden.";
-    return "Berechtigung aus AD-Gruppe «" + g.join("», «") + "» übernommen";
+    if (!g.length) return "Vom Abgleich gesetzt.";
+    return (g.length === 1 ? "Aus der AD-Gruppe «" + g[0] : "Aus einer der AD-Gruppen «" + g.join("», «")) + "».";
   }
 
   /**

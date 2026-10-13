@@ -25,24 +25,26 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **wissen, ob der Sync läuft** | Log unter `C:\ComputerInventar\Sync-Inventar.log` ansehen; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
 | **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
 | **ein Programm hinzufügen oder ändern** | Frontend → Navigation links **«Software»** → **«Neues Programm»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
-| **eine AD-Gruppe an ein Programm hängen** | Softwarefenster → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
-| **ein Gerät ohne Domäne erfassen** | Clientfenster → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich lässt die Zeile danach vollständig in Ruhe und archiviert sie nie (Abschnitt 2.2) |
+| **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
+| **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
 | **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `298 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
-| **eine Telefonnummer freigeben** | Telefonfenster → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», bisheriger Name wandert in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
+| **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
 | **wissen, warum ein PC «Archiviert» ist** | Spalte `Verlauf` des Clients ansehen; der Sync trägt Umbenennung, Archivierung und Reaktivierung dort ein (Abschnitt 2.2) |
 | **wissen, warum ein PC in der EDU-Liste steht** | Der Name entscheidet: alles ab `EDU` gehört in «EDU-Clients», alles Übrige in «ADMIN-Clients» (Abschnitt 2.2) |
 | **archivierte Geräte im Frontend sehen** | in der Client-Liste **«Filter»** → im Seitenblatt unter «Archiv» **«Archivierte Geräte anzeigen»**; ohne das Häkchen sind sie ausgeblendet – auch in den Zahlen der Übersicht und im Zeitstrahl |
 | **eine Liste filtern oder Spalten wählen** | in der Liste **«Filter»** bzw. **«Spalten»**: Das Seitenblatt rechts wirkt sofort; oben steht beim Filter die Trefferzahl («44 von 47 ADMIN-Clients»), bei den Spalten «9 von 93 Spalten sichtbar» (dazu «Standardspalten», «Nur Name», «Alle Spalten» und «Kompakte Zeilen»); «Fertig» oder Esc schliesst es, «Filter zurücksetzen» leert alle Filter. Aktive Filter stehen als Chips über der Liste (ein Klick entfernt den Filter). Filter, Sortierung und Spalten stehen im Link; Spaltenwahl und «Kompakte Zeilen» merkt sich der Browser |
-| **aus einem Fenster zur Liste zurück** | Link **«‹ ADMIN-Clients»** (bzw. «‹ Benutzer» …) über dem Titel: führt zur Liste so, wie man sie verlassen hat – mit Suche, Filtern und Sortierung. Die Wortmarke «ICT.INVENTAR» oben links führt zur Übersicht |
-| **einen Verlaufseintrag erfassen** | Clientfenster → Bereich «Stammdaten», Benutzerfenster → Bereich «Bemerkung», Telefonfenster → Bereich «Hinweis & Verlauf»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann in der Speicherleiste unten **«Speichern»** (oder Ctrl+S) |
-| **den Inhaber eines Geräts ändern** | Clientfenster eines ADMIN-Clients → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8). EDU-Clients haben bewusst keinen Inhaber |
-| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Clientfenster → Schnellaktionen rechts im Seitenkopf (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**; bei EDU-Clients statt «Ausgeben an …» **«In Betrieb nehmen»**): setzt Status, Inhaber und Verlauf in einem Schritt. Solange etwas ungespeichert ist, sind sie gesperrt; der Tooltip sagt warum |
+| **von einer Detailseite zur Liste zurück** | Eintrag **«← ADMIN-Clients»** (bzw. «← Benutzer» …) zuoberst in der Navigation links; in schmalen Fenstern und in den Neu-Formularen steht derselbe Link **«‹ ADMIN-Clients»** über dem Titel. Er führt zur Liste so, wie man sie verlassen hat – mit Suche, Filtern und Sortierung. Die Wortmarke «ICT.INVENTAR» oben links führt zur Übersicht |
+| **einen Verlaufseintrag erfassen** | Geräteseite → Bereich «Stammdaten», Benutzerseite → Bereich «Bemerkung», Telefonseite → Bereich «Hinweis & Verlauf»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann in der Speicherleiste unten **«Speichern»** (oder Ctrl+S) |
+| **den Inhaber eines Geräts ändern** | Geräteseite eines ADMIN-Clients → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8). EDU-Clients haben bewusst keinen Inhaber |
+| **ein Gerät ins Lager legen, ausgeben oder archivieren** | Geräteseite → Schnellaktionen rechts im Seitenkopf (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**; bei EDU-Clients statt «Ausgeben an …» **«In Betrieb nehmen»**): setzt Status, Inhaber und Verlauf in einem Schritt. Solange etwas ungespeichert ist, sind sie gesperrt; der Tooltip sagt warum |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
-| **ein Gerät, eine Nummer oder ein Programm löschen** | im Fenster **«Löschen …»** rechts im Seitenkopf; zur Bestätigung den PC-Namen, die Kurzwahl bzw. die Programm-ID eintippen, dann **«Endgültig löschen»**. Danach führt «Zur Liste» (bzw. «Zur Software-Liste») zurück. Benutzer haben keinen Löschknopf: ihre Liste pflegt der Sync aus dem AD |
-| **mich abmelden** | **«Abmelden»** oben rechts in der Kopfzeile – auf jeder Seite, auch in den Fenstern. Daneben stehen Name und E-Mail des Kontos (in schmalen Fenstern nur die Initiale) |
+| **ein Gerät ausser Betrieb nehmen** | das Gerät **aus SCCM löschen** – der nächste Sync setzt die Zeile dann selbst auf `Archiviert`. Von Hand archivieren ist nur für Geräte nötig, die nicht in SCCM stehen («In Domäne» = Nein); das Frontend weist beim Status «Archiviert» und im Dialog «Archivieren?» darauf hin |
+| **einen Client von Hand anlegen** | meist **nicht nötig**: Geräte in SCCM legt der Sync selbst an. «Neuer ADMIN-Client» (bzw. «Neuer EDU-Client») nur für Geräte, die nicht in SCCM stehen; das Formular sagt das zuoberst |
+| **ein Gerät, eine Nummer oder ein Programm löschen** | auf der Detailseite **«Löschen …»** rechts im Seitenkopf; zur Bestätigung den PC-Namen, die Kurzwahl bzw. die Programm-ID eingeben, dann **«Löschen»**. Die Zeile kommt in den Papierkorb der SharePoint-Site und lässt sich dort 93 Tage lang zurückholen. Danach führt «Zur Liste» (bzw. «Zur Software-Liste») zurück. Benutzer haben keinen Löschknopf: ihre Liste pflegt der Sync aus dem AD |
+| **mich abmelden** | **«Abmelden»** oben rechts in der Kopfzeile – auf jeder Seite, auch auf den Detailseiten. Es steht mit Initiale, Name und E-Mail des Kontos in einer umrandeten Kapsel (in schmalen Fenstern nur die Initiale) |
 | **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln, Tokens, Bausteine) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
@@ -63,7 +65,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 | Liste **EDU-Clients** | dieselben Spalten wie «ADMIN-Clients» (`schema-client.json`); enthält alle SCCM-Geräte, deren Name mit `EDU` beginnt. Ohne Inhaberschaft | dieselben wie oben |
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, angezeigt als «ADMIN-Client», Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
-| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Ansicht «Software») + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
+| Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Software-Liste) + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
@@ -109,7 +111,7 @@ Berechtigung von Hand vergeben hat, verliert sie nicht, wenn später eine AD-Gru
 
 Ohne diese Spalte müsste ein Gerät ohne Domäne bei jedem Lauf archiviert werden – und weil das bei
 94 von 119 EDU-Zeilen der Fall wäre, würde der Archivschutz (Abschnitt 2.3) greifen und die ganze
-Phase mit einem Fehler abbrechen. Gesetzt wird sie im Clientfenster unter «Stammdaten».
+Phase mit einem Fehler abbrechen. Gesetzt wird sie auf der Geräteseite unter «Stammdaten».
 
 `Archiviert` von Hand zu setzen lohnt sich nur für Geräte, die auch in SCCM verschwunden sind:
 Steht das Gerät noch in SCCM, setzt der nächste Sync es wieder auf `Aktiv` und schreibt
@@ -182,12 +184,12 @@ Aussehen und Bewegung folgen der Admin-Oberfläche von ChatBob. **Die Regeln ste
 neue Seiten), die lebende Übersicht aller Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
 
 Jede Seite hat denselben Rahmen: oben die Kopfzeile (links die Wortmarke «ICT.INVENTAR» als Weg zur Übersicht,
-rechts der Stand – auf der Hauptseite «Stand 12.10.2026, 05.15» = letzter SCCM-Abgleich, in einem Fenster
-«Geladen 14.05» = wann es die Daten geholt hat; beide laden alle 5 Minuten still nach –, Konto und «Abmelden»), links die Navigation – auf der Hauptseite die Listen, in einem Fenster
-die Bereiche des Datensatzes –, rechts die weisse Tafel mit dem Inhalt. Schmaler als 900 px klappt die Navigation
-hinter einen Menüknopf links in der Kopfzeile. Filter und Spaltenwahl der Listen öffnen sich als Seitenblatt von
-rechts; Schnellaktionen und «Löschen …» eines Datensatzes stehen rechts im Seitenkopf, darüber der Link zurück
-zur Liste; Änderungen speichert die Leiste, die unten erscheint, sobald etwas geändert ist.
+rechts eine umrandete Kapsel mit Konto und «Abmelden»; alle Seiten laden alle 5 Minuten still nach), links die
+Navigation – auf der Hauptseite die Listen, auf einer Detailseite zuoberst «← Liste» und darunter die Bereiche des
+Datensatzes –, rechts die weisse Tafel mit dem Inhalt. Schmaler als 900 px klappt die Navigation hinter einen
+Menüknopf links in der Kopfzeile; dann steht der Link zurück zur Liste über dem Titel. Filter und Spaltenwahl der
+Listen öffnen sich als Seitenblatt von rechts; Schnellaktionen und «Löschen …» eines Datensatzes stehen rechts im
+Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas geändert ist.
 
 | Datei | Zweck |
 |---|---|
@@ -195,10 +197,10 @@ zur Liste; Änderungen speichert die Leiste, die unten erscheint, sobald etwas g
 | `bewegung.css`, `bewegung.js` | alle Animationen (die einzigen `@keyframes`) und ihre JS-Hälfte (`Bewegung`) |
 | `bausteine.js` | ein Bauer je Baustein: Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`) |
 | `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Seitenwechsel) und die Ebenen Dialog, Seitenblatt, Meldung, Tooltip, Speicherleiste (`Rahmen`, ergänzt `UI`) |
-| `fenster.js` | gemeinsames Gerüst der vier Fenster: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
-| `verlauf.js`, `verlauf.css` | Verlauf in Client-, Benutzer- und Telefonfenster (`Verlauf`) |
+| `fenster.js` | gemeinsames Gerüst der vier Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
+| `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer- und Telefonseite (`Verlauf`) |
 | `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software |
-| `client.*`, `benutzer.*`, `telefon.*`, `software.*` | die Fenster eines Datensatzes (die `.css` nur mit Seitenlayout) |
+| `client.*`, `benutzer.*`, `telefon.*`, `software.*` | die Detailseiten eines Datensatzes (die `.css` nur mit Seitenlayout) |
 | `styleguide.html`, `styleguide.js` | lebende Übersicht aller Bausteine in allen Zuständen |
 | `STYLEGUIDE.md` | Regeln des Design-Systems |
 | `konfig.js` | Mandant, Client-ID, Listen-IDs, Takt des Nachladens – keine Geheimnisse (Abschnitt 7.4) |
@@ -210,7 +212,7 @@ zur Liste; Änderungen speichert die Leiste, die unten erscheint, sobald etwas g
 
 **Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: Stilvorlagen `design.css` → `bewegung.css` →
 `rahmen.css` → die eigene Seitenvorlage (+ `verlauf.css`); Skripte `konfig.js` → `bewegung.js` → `bausteine.js` →
-`rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` → in den Fenstern
+`rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` → auf den Detailseiten
 `verlauf.js` und `fenster.js` → das Skript der Seite. Dazu steht im `<head>` jeder Seite die Zeile
 `<style>@view-transition { navigation: auto; }</style>` für die ruhigen Seitenübergänge. Die vollständige Vorlage
 steht in `STYLEGUIDE.md`, Abschnitt 10.
@@ -413,7 +415,7 @@ Schlüssel ist die **Kurzwahl** (Titelspalte, z. B. `373`); die vollständige Nu
 
 | Spalte | Bedeutung |
 |---|---|
-| `Status` | `Aktiv` (in Betrieb, leer gilt als Aktiv), `Inaktiv` (vorhanden, aber nicht in Teams – SIP-Apparat, deaktiviertes Konto), `Frei` (sofort vergebbar) |
+| `Status` | `Aktiv` (in Betrieb, leer gilt als Aktiv), `Inaktiv` (vorhanden, aber nicht in Teams – SIP-Apparat, deaktiviertes Konto), `Frei` (zu vergeben) |
 | `Typ` | `Person`, `Dienst`, `Raum`, `Notruf` |
 | `Benutzer` | Login des AD-Benutzers mit dieser `telephoneNumber` – schreibt der Sync |
 | `Name` | Bezeichnung von Hand; bei leerem Namen übernimmt der Sync den AD-Anzeigenamen |
@@ -421,7 +423,7 @@ Schlüssel ist die **Kurzwahl** (Titelspalte, z. B. `373`); die vollständige Nu
 Das Frontend ermittelt die Person **live** über das AD-Feld «Telefon» der Benutzer-Liste, unabhängig
 davon, ob die Telefon-Phase des Syncs schon gelaufen ist. Eine Nummer gilt als **nicht zugewiesen**,
 wenn weder eine Person noch ein Name noch ein Login dran hängt oder der Status `Frei` ist. Eine **freie**
-Nummer ist das mit Absicht und kein Problem: sie trägt überall (Liste, Telefon- und Benutzerfenster) den
+Nummer ist das mit Absicht und kein Problem: sie trägt überall (Liste, Telefon- und Benutzerseite) den
 neutralen Status «Frei» mit Haken, in der Spalte «Zugewiesen» ein schlichtes «Nein», und die Übersicht zählt
 sie nur in der Zeile «Frei». Ist eine Nummer dagegen in Betrieb (`Aktiv` oder `Inaktiv`) und niemandem
 zugewiesen, trägt sie in der Liste den Status «Nicht zugewiesen» als Warnung (Spalte «Zugewiesen»; die Zeile
@@ -444,11 +446,11 @@ die Spalte und löscht sie. Zuerst mit `-WhatIf`, dann ohne; braucht nur die Dev
 
 Jeder **ADMIN-Client** hat **genau einen Inhaber**: die Person, der er formal gehört. Gespeichert
 wird das in der Spalte `Computer` der Benutzer-Liste (Anzeigename «ADMIN-Client») – dort steht der
-PC-Name. Daraus folgt beides zugleich: eine Person ist Inhaberin von höchstens einem Gerät, und ein
-Gerät hat höchstens eine Inhaberin.
+PC-Name. Daraus folgt beides zugleich: eine Person ist Inhaber von höchstens einem Gerät, und ein
+Gerät hat höchstens einen Inhaber.
 
 **EDU-Clients haben bewusst keinen Inhaber.** Sie sind Schulungsgeräte und gehören niemandem
-persönlich. Im Clientfenster fehlen dort darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»
+persönlich. Auf ihrer Geräteseite fehlen darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»
 (an ihrer Stelle steht «In Betrieb nehmen»), in der Tabelle die Spalten «Inhaber» und «Inhaber gesetzt».
 Der interne Spaltenname `Computer` bleibt unverändert – SharePoint kann interne Namen nicht mehr
 ändern, und Sync wie Frontend sprechen die Spalte über ihn an.
@@ -458,24 +460,24 @@ Spalte gar nicht erst. Gepflegt wird sie ausschliesslich im Frontend:
 
 | Wo | Was |
 |---|---|
-| Clientfenster → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
-| Benutzerfenster → Bereich **«Gerät»** | «Inhaber werden» für einen gesuchten ADMIN-Client, «Inhaberschaft aufheben» |
-| Liste «ADMIN-Clients», Spalte **«Inhaber»** | Anzeige mit Verweis ins Benutzerfenster; Facette «Inhaber gesetzt» |
+| Geräteseite → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
+| Benutzerseite → Bereich **«Gerät»** | «Zuweisen» für einen gesuchten ADMIN-Client, «Inhaberschaft aufheben» |
+| Liste «ADMIN-Clients», Spalte **«Inhaber»** | Anzeige mit Verweis auf die Benutzerseite; Facette «Inhaber gesetzt» |
 
 **SCCM ist nur Hinweisgeber.** `SCCM_PrimaryUser`, `SCCM_LastLogonUser`, `SCCM_CurrentLogonUser`,
 `SCCM_TopConsoleUser` und `SCCMPrimaerGeraet` sagen, wer an einem Gerät *arbeitet* – nicht, wem es
-*gehört*. Weichen sie vom Inhaber ab, zeigt das Clientfenster einen Hinweis («Primärer Benutzer
-(SCCM) ist nicht der Inhaber»); geändert wird nichts. Das SCCM-Primärgerät lässt sich im
-Benutzerfenster auf Klick übernehmen.
+*gehört*. Weichen sie vom Inhaber ab, zeigt die Geräteseite einen Hinweis («Primärer Benutzer
+(SCCM) ist nicht der Inhaber»); geändert wird nichts. Das SCCM-Primärgerät lässt sich auf der
+Benutzerseite auf Klick übernehmen.
 
 **Altlasten.** Weil die Spalte nur den *Namen* speichert, kann sie mehrdeutig werden:
 
 | Fall | Was das Frontend tut |
 |---|---|
-| Zwei Personen tragen denselben PC-Namen | Clientfenster meldet «Mehr als ein Inhaber» (als Gefahr, mit Sinnbild), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein Status «+n» neben dem Namen. |
-| Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; beide Fenster sagen das als Warnung. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
-| Der PC-Name existiert gar nicht | Benutzerfenster zeigt «kein Gerät mit diesem Namen in der Liste» |
-| Der Eintrag zeigt auf einen EDU-Client | Er wird nirgends zum Inhaber: EDU-Clients kennen keine Inhaberschaft. Im Benutzerfenster steht «kein Gerät mit diesem Namen» – der Eintrag gehört gelöscht. |
+| Bei zwei Personen steht derselbe PC-Name im Feld «Computer» | Die Geräteseite meldet «Mehr als ein Inhaber» (als Gefahr, mit Sinnbild), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein Status «+n» neben dem Namen. |
+| Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; Geräte- und Benutzerseite warnen davor. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
+| Der PC-Name existiert gar nicht | Die Benutzerseite meldet «Kein ADMIN-Client heisst «…».» |
+| Im Feld «Computer» steht ein EDU-Client | Er wird nirgends zum Inhaber: EDU-Clients kennen keine Inhaberschaft. Auf der Benutzerseite steht «Kein ADMIN-Client heisst «…».» – der Eintrag gehört gelöscht. |
 
 ---
 
@@ -490,7 +492,7 @@ oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
 |---|---|
 | `Title` («Programm-ID») | der **interne Spaltenname** in der Benutzer-Liste: Buchstaben und Ziffern, Beginn mit einem Buchstaben, max. 30 Zeichen. **Nach dem Anlegen unveränderlich** – SharePoint kann interne Namen nicht ändern, und eine neue Id ergäbe eine zweite Spalte, während die bisherigen Berechtigungen in der ersten liegen blieben |
 | `Name` | Anzeigename, z. B. «Adobe Creative Suite». Wird auch der Anzeigename der Spalte |
-| `Kategorie` | Gruppe in der Software-Ansicht und in der Spaltenwahl. Eine neue Kategorie entsteht, indem man sie hinschreibt |
+| `Kategorie` | Gruppe in der Software-Liste und in der Spaltenwahl. Eine neue Kategorie entsteht, indem man sie eingibt |
 | `AdGruppen` | sAMAccountNames von AD-Gruppen, **eine je Zeile**. Mehrere sind erlaubt, der Sync bildet die Vereinigung. Leer ist erlaubt: dann gibt es das Programm nur auf Stufe 0/1 von Hand |
 | `Reihenfolge` | Sortiernummer. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende. Die Migration hat in Zehnerschritten vergeben, damit dazwischen Platz bleibt |
 | — | Seit dem Excel-Abgleich (Abschnitt 10) stehen **94 Programme** in sieben Kategorien; neu dazu kam **«Protel-Abteilungen»** mit den 15 Abteilungen, die in der Excel als eigene Spalten neben Protel standen |
@@ -498,7 +500,7 @@ oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
 
 **Ein Programm ist zwei Dinge zugleich**: eine Zeile in «Software» *und* eine Textspalte in der
 Benutzer-Liste, deren interner Name die Programm-Id ist. Dort steht je Person die Stufe (0/1/2).
-Ohne diese Spalte wäre das Programm wirkungslos – **darum legt das Softwarefenster sie beim Anlegen
+Ohne diese Spalte wäre das Programm wirkungslos – **darum legt die Programmseite sie beim Anlegen
 gleich mit an**, mit den Rechten der angemeldeten Person (delegiert `Sites.ReadWrite.All`).
 
 **Eine Zeile in «Software» genügt.** Wer ein Programm nicht im Frontend, sondern direkt in
@@ -510,8 +512,9 @@ in diesem Lauf übergangen; `Ergaenze-Spalten.ps1 -Listen Benutzer` hilft dann n
 **Reihenfolge beim Anlegen**: erst die Spalte, dann die Zeile. Scheitert die Spalte an der
 Berechtigung, entsteht gar kein Programm – besser als eine Software-Zeile, die nirgends wirkt.
 
-**Ein Programm entfernen**: im Softwarefenster **«Löschen …»** rechts im Seitenkopf (Programm-Id zur
-Bestätigung abtippen, dann «Endgültig löschen»). Gelöscht wird nur die Zeile in «Software». **Die
+**Ein Programm entfernen**: auf der Programmseite **«Löschen …»** rechts im Seitenkopf (Programm-Id zur
+Bestätigung eingeben, dann «Löschen»). Gelöscht wird nur die Zeile in «Software»; sie liegt danach 93 Tage
+im Papierkorb der SharePoint-Site. **Die
 Spalte in der Benutzer-Liste bleibt mit ihren Werten stehen** – sie mitzulöschen hiesse, die Berechtigungen aller Personen zu vernichten.
 Der Sync ignoriert sie ab dann. Wer sie wirklich loswerden will, nimmt `Entferne-Spalte.ps1`
 (sichert die Werte vorher) oder löscht sie in den Listeneinstellungen.
@@ -603,11 +606,11 @@ Erwartete Ausgabe: `Ergebnis: 298 bestanden, 0 fehlgeschlagen`.
 | `field … is not recognized` | Spalte fehlt oder wurde umbenannt | Spalte wiederherstellen oder Eintrag im Skript entfernen |
 | `Löschschutz greift: …` | AD lieferte nichts oder zu viele Löschungen | OU-DNs und AD-Verbindung prüfen; bei einer echten Massenmutation `LoeschSchutzProzent` bewusst erhöhen |
 | `AD-Fehler in OU '<…>'` | Platzhalter statt echtem DN in `AdUserOUs` | echten Distinguished Name eintragen |
-| `LDAP-Abfrage für Gruppe '…' fehlgeschlagen` | Gruppe existiert nicht (mehr) oder Name falsch | Name im Softwarefenster unter «AD-Gruppen» korrigieren; der Lauf bricht deswegen nicht ab |
+| `LDAP-Abfrage für Gruppe '…' fehlgeschlagen` | Gruppe existiert nicht (mehr) oder Name falsch | Name auf der Programmseite unter «AD-Gruppen» korrigieren; der Lauf bricht deswegen nicht ab |
 | `SoftwareListId fehlt in der Konfiguration` | `SoftwareListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Software» eintragen (steht auch in `frontend/konfig.js`). Bis dahin bleiben die Programmstufen unangetastet |
 | `Liste «Software» konnte nicht gelesen werden` | Liste fehlt oder keine Berechtigung | Liste in SharePoint prüfen; `Migriere-Clients.ps1 -Schritte Software` legt sie an |
 | `Software-Liste: «…» taugt nicht als Spaltenname` | die Programm-Id enthält Sonderzeichen, beginnt mit einer Ziffer oder ist zu lang | Zeile in der Liste «Software» korrigieren. Achtung: eine schon angelegte Spalte behält ihren Namen – dann die Zeile löschen und neu erfassen |
-| Ein neues Programm wirkt nicht | die Spalte in der Benutzer-Liste fehlt | Softwarefenster → Karte «Spalte in der Benutzer-Liste» → «Spalte anlegen», oder `Ergaenze-Spalten.ps1 -Listen Benutzer` |
+| Ein neues Programm wirkt nicht | die Spalte in der Benutzer-Liste fehlt | Programmseite → Banner «Spalte nicht gefunden.» → «Spalte anlegen», oder `Ergaenze-Spalten.ps1 -Listen Benutzer` |
 | `Get-WmiObject … Zugriff verweigert` | Konto ohne SCCM-Rechte oder DCOM blockiert | Konto als «Read-only Analyst» eintragen, Firewall prüfen |
 | `Archivschutz greift: …` | SCCM lieferte nichts oder zu viele Zeilen würden archiviert | SCCM-Provider und WMI-Rechte prüfen; bei einer echten Massenausmusterung `LoeschSchutzProzent` bewusst erhöhen |
 | Viele Zeilen plötzlich «Archiviert» | die Seriennummern stimmen nicht überein (z. B. Mainboardtausch, Platzhalter im BIOS) | `SCCM_SerialNumber` der betroffenen Zeilen mit SCCM vergleichen; den Status wieder auf `Aktiv` setzen, der nächste Lauf ordnet über den Namen neu zu |

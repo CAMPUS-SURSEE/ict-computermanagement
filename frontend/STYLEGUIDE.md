@@ -241,7 +241,7 @@ Keine Kurve verlässt [0, 1]: nichts schwingt über, nichts federt.
 ### 3.1 Rahmen (alle Seiten gleich)
 
 ```
-┌ Kopf 64 px: [≡ ≤900] ICT.INVENTAR ··················· Stand · Name / E-Mail · Abmelden ┐
+┌ Kopf 64 px: [≡ ≤900] ICT.INVENTAR ·············· ( (A) Name / E-Mail │ Abmelden ) ┐
 │ Schublade 256 px │ ╭──── Tafel (weiss, Radius 20 oben, EINZIGER Roller) ───────────────╮ │
 │ Gruppen in       │ │ ▔▔ Ladebalken 4 px (klebt)                                         │ │
 │ Satzschreibung,  │ │  .bahn  max 1280, Polster 24 / 32 / 96, Raster-Abstand 20          │ │
@@ -254,8 +254,8 @@ Keine Kurve verlässt [0, 1]: nichts schwingt über, nichts federt.
 | Teil | Klasse / Bau | Regeln |
 |---|---|---|
 | Seite | `body.app[data-seite]` | Raster aus Kopf, Schublade, Tafel; `100dvh` (nicht `100vh`); rollt nie. `rahmen.js` baut Kopf und Schublade **sofort beim Laden** aus dem Gerüst (§9.1). |
-| Kopf | `.kopf` (rahmen.js) | Ohne Linie, ohne Schatten. Links [Menüknopf ≤ 900 px] und die Wortmarke (Link zur Übersicht). Rechts **auf allen Seiten**: der Stand (`.kopf-stand`, Meta 12/16, mit Tooltip ein Tabstopp) – auf der Hauptseite der Datenstand «Stand 12.10.2026, 05.15» (letzter SCCM-Abgleich, `Rahmen.stand`), in den Fenstern «Geladen 14.05» (wann das Fenster die Daten geholt hat, `F.stand()`; mit Zeitpunkt `F.stand(z)` hiesse es «Stand …»); der Tooltip sagt, dass still nachgeladen wird –, Konto (Name 14/20 500, E-Mail 12/16, rechtsbündig), «Abmelden» (Text-Knopf). Konto und Stand der vorigen Seite belegen den Kopf vom ersten Bild an vor; die Wortmarke wartet höchstens 300 ms auf Archivo. Vorführmodus: Konto «Vorführmodus», kein «Abmelden». |
-| Schublade | `.schublade` über `Rahmen.navigation` bzw. `F.navZeichnen` | Gruppentitel in Satzschreibung (`--t-beschriftung`, `--text-leise`), nie Versalien. Einträge: 48-px-Pillen, Sinnbild 20 + Text 14/20 (`--text-leise`), Zähler als Beschriftung 12/16 500 rechts. Aktiv: gleitende Pastell-Pille + 500 + `aria-current="page"`. Einträge sind echte Links (Mittel-/Ctrl-Klick = neuer Tab). Hauptseite: Übersicht · «Geräte»: ADMIN-Clients, EDU-Clients · «Verzeichnis»: Benutzer, Telefonnummern, Software (`Rahmen.HAUPTZIELE`, einzige Quelle). Detailseiten: die Bereiche des Datensatzes in Gruppen (Client: «Gerät», «Aus SCCM», «Auswertung»). |
+| Kopf | `.kopf` (rahmen.js) | Ohne Linie, ohne Schatten. Links [Menüknopf ≤ 900 px] und die Wortmarke (Link zur Übersicht). Rechts **auf allen Seiten** EINE Kapsel `.kopf-konto` (48 px, Pille, weiss, 1 px `--linie`): Initiale 32 px (Pastell), Name 14/20 500 und E-Mail 12/16 (höchstens `--konto-breit`, dann «…»), ein Trenner, «Abmelden» (Text-Knopf). Kein Datenstand im Kopf. Das Konto der vorigen Seite belegt den Kopf vom ersten Bild an vor; die Wortmarke wartet höchstens 300 ms auf Archivo. Vorführmodus: Konto «Vorführmodus», kein «Abmelden» (die Kapsel endet nach dem Text). |
+| Schublade | `.schublade` über `Rahmen.navigation` bzw. `F.navZeichnen` | Gruppentitel in Satzschreibung (`--t-beschriftung`, `--text-leise`), nie Versalien. Einträge: 48-px-Pillen, Sinnbild 20 + Text 14/20 (`--text-leise`), Zähler als Beschriftung 12/16 500 rechts. Aktiv: gleitende Pastell-Pille + 500 + `aria-current="page"`. Einträge sind echte Links (Mittel-/Ctrl-Klick = neuer Tab). Hauptseite: Übersicht · «Geräte»: ADMIN-Clients, EDU-Clients · «Verzeichnis»: Benutzer, Telefonnummern, Software (`Rahmen.HAUPTZIELE`, einzige Quelle). Detailseiten: zuoberst der Zurück-Eintrag «← ADMIN-Clients» (`.schublade-zurueck`, Link zur gemerkten Liste, rollt nicht mit, Haarlinie darunter; `Rahmen.navigation({ zurueck })`, von `F.navZeichnen` gesetzt), darunter die Bereiche des Datensatzes in Gruppen (Client: «Gerät», «Aus SCCM», «Auswertung»). |
 | Ohne Schublade | `navigation({ verstecken: true })` → `.app[data-ohne-schublade]` | Neu-Formulare, Fehler- und Endzustand der Detailseiten: Tafel volle Breite, die Wortmarke bleibt an ihrer Stelle. |
 | Tafel | `.tafel-rahmen > main.tafel#tafel` | Weiss, Radius 20 oben, 16 px Abstand rechts, unten bis an den Fensterrand. Einziger Roller. Kante: Haarlinie oben nur, solange etwas darunter gerollt ist (`data-gerollt`). |
 | Ladebalken | `.ladebalken#ladebalken` | 4 px, klebt oben, Pastell-Spur mit laufendem Primärsegment; erst nach 200 ms. |
@@ -266,7 +266,7 @@ Keine Kurve verlässt [0, 1]: nichts schwingt über, nichts federt.
 - Sechs Ansichten `section.ansicht.stapel#ansicht-<n>` (`uebersicht`, `admin`, `edu`, `benutzer`, `telefone`, `software`),
   genau eine sichtbar. Der Hash trägt Ansicht und Zustand (`#admin?q=…`): Ansichtswechsel mit `pushState`, Filter,
   Sortierung und Spalten mit `replaceState`.
-- Jede Ansicht beginnt mit einem Seitenkopf (h1 24/32 + Lead).
+- Jede Ansicht beginnt mit einem Seitenkopf (h1 24/32, ohne Lead).
 - **Tabellenansichten:** Werkzeugleiste (Suche · «Filter» · «Spalten» mit Zahl der sichtbaren Spalten · «CSV» · rechts Trefferzahl und «Neuer …» – bei «Benutzer» keiner, die Liste pflegt der Abgleich aus dem AD), darunter
   die Chips aktiver Filter, darunter der Tabellenrahmen. `Rahmen.fest(true)`: ab 601 × 720 px rollt die Tafel nicht, die
   Liste füllt den Rest und rollt selbst (Kopf und erste Spalte kleben). Darunter rollt die Tafel wie jede Seite, die Liste
@@ -283,7 +283,7 @@ In der Bahn stehen nur `header.seitenkopf#<p>-kopf` und `div.fenster-bereich#<p>
 
 | Teil | Regeln |
 |---|---|
-| Seitenkopf (`F.seitenkopf`) | Zurück-Link «‹ ADMIN-Clients» (`.knopf.knopf-leise.knopf-klein.seitenkopf-pfad` mit `chevronLinks`; Text = Name der Liste) zur **gemerkten Listenadresse samt Suche, Filtern und Sortierung**; Titel h1; Lead (ein Satz je Bereich) und Teile-Zeile («Haus A / 1. OG · Latitude 5540 · …»); Status-Chips nur für Abweichungen; **Schnellaktionen rechts** als Text-Knöpfe mit Sinnbild («Ins Lager legen», «Ausgeben an …» bzw. bei EDU-Clients «In Betrieb nehmen», «Archivieren», «Reaktivieren», «Nummer freigeben»), **«Löschen …» zuletzt** (Client, Telefon, Software; Benutzer haben keinen Löschknopf, ihre Liste pflegt der Abgleich). Gesperrt mit Grund, solange etwas ungespeichert ist («Nummer freigeben» auch, solange das AD die Nummer bei jemandem führt); die Knöpfe bleiben dabei stehen, nur die Sperre wechselt (§4.15). |
+| Seitenkopf (`F.seitenkopf`) | Zurück-Link «‹ ADMIN-Clients» (`.knopf.knopf-leise.knopf-klein.seitenkopf-pfad` mit `chevronLinks`; Text = Name der Liste) zur **gemerkten Listenadresse samt Suche, Filtern und Sortierung** – nur, wo die Schublade ihn nicht trägt (Neu-Modus, Fehler- und Endzustand, Fenster ≤ 900 px); Titel h1; Teile-Zeile («Haus A / 1. OG · Latitude 5540 · …»), kein Lead; Status-Chips nur für Abweichungen; **Schnellaktionen rechts** als Text-Knöpfe mit Sinnbild («Ins Lager legen», «Ausgeben an …» bzw. bei EDU-Clients «In Betrieb nehmen», «Archivieren», «Reaktivieren», «Nummer freigeben»), **«Löschen …» zuletzt** (Client, Telefon, Software; Benutzer haben keinen Löschknopf, ihre Liste pflegt der Abgleich). Gesperrt mit Grund, solange etwas ungespeichert ist («Nummer freigeben» auch, solange das AD die Nummer bei jemandem führt); die Knöpfe bleiben dabei stehen, nur die Sperre wechselt (§4.15). |
 | Bereich (`F.zeichneBereich`) | Karten im 20-px-Rhythmus (`.fenster-bereich`, `.stapel`, `.karten`, `.raster-2`). Neu zeichnen bewahrt Fokus, Schreibmarke und Rollpositionen. |
 | Bereichswechsel (`F.bereichWechseln`) | Adresse per `replaceState` (`#stammdaten`), Pille gleitet, Inhalt blendet durch. |
 | Zustände | `F.zeigeLaden`, `F.ladefehler`/`F.zeigeFehler` (mit Zurück-Link, ohne Schublade), Endzustand nach dem Löschen mit «Zur Liste» (Software: «Zur Software-Liste»); im Neu-Modus ohne Schublade, mit Zurück-Link. |
@@ -297,11 +297,11 @@ In der Bahn stehen nur `header.seitenkopf#<p>-kopf` und `div.fenster-bereich#<p>
 | Bahn ≤ 1040 / ≤ 520 px | genau vier Fakten: 2 × 2 / untereinander (sonst 4 in einer Reihe) |
 | Fenster ≤ 900 px | **Schublade modal**: Menüknopf links im Kopf, Schleier, gleitet von links, Fokusfalle, Esc, schliesst bei Wahl. `.raster-2` einspaltig. |
 | Bahn ≤ 760 px (Dialog, Blatt: Fenster ≤ 760 px) | Formularraster einspaltig – neben der festen Schublade schon bei rund 1024-px-Fenstern |
-| Fenster ≤ 720 px | Konto als Initiale (Tooltip mit Name und E-Mail), Datenstand weicht; Bahn-Polster 20 oben, 16 seitlich; Chip-Trenner weg |
+| Fenster ≤ 720 px | Konto als Initiale in der Kapsel (Tooltip mit Name und E-Mail, dann ein Tabstopp); Bahn-Polster 20 oben, 16 seitlich; Chip-Trenner weg |
 | Bahn ≤ 600 px | Seitenkopf-Aktionen links unter dem Titel |
 | Fenster ≤ 600 px | Tafel randlos (Oberkante bleibt rund); Wortmarke 16/24; Kartenpolster 16; Kacheln 8 px Abstand; Blatt volle Breite ohne Radius; Meldung über die ganze Breite; Speicherleiste 16 px vom Rand; Aktionen von Listenzeilen und Chips von Schalterzeilen rutschen unter den Text; Tabellenkopf darf umbrechen |
 | unter 601 × 720 px | Tabellenansichten rollen mit der Tafel (siehe §3.2) |
-| Fenster ≤ 359 px (320 px, 400 % Zoom) | ohne Initiale (Konto nur für Screenreader), Tabellenpolster 8 px |
+| Fenster ≤ 359 px (320 px, 400 % Zoom) | Kapsel nur mit «Abmelden» (Konto nur für Screenreader; im Vorführmodus keine Kapsel), Tabellenpolster 8 px |
 
 Verglichen mit ChatBob bei 1440, 900 und 390 px; geprüft zusätzlich 320 px, 200 % Zoom und niedrige Fenster (fester Modus).
 
@@ -345,7 +345,7 @@ nehmen Optionen als Objekt (die alten Positionsparameter gehen weiter), schreibe
 | Gesperrt mit Grund | `gesperrt: 'Zuerst speichern oder verwerfen.'` bzw. `UI.knopfSperren(k, grund)`: `aria-disabled`, bleibt fokussierbar, Tooltip nennt den Grund, Klicks werden geschluckt. **Immer so für Schnellaktionen.** `UI.knopfSperre(k)` liest Grund und freien Tooltip, ohne etwas zu ändern. |
 | Deaktiviert | `deaktiviert: true` → `disabled`, nur ohne erklärbaren Grund. Aussehen neutral: Fläche 12 %, Schrift 38 % |
 
-Regeln: **Keine roten Knöpfe** (`.knopf-gefahr` gibt es nicht): die Hauptaktion nennt die Folge («Endgültig löschen»,
+Regeln: **Keine roten Knöpfe** (`.knopf-gefahr` gibt es nicht): die Hauptaktion nennt die Folge («Eintrag löschen»,
 «Archivieren»). «…» am Ende heisst: es folgt eine Rückfrage oder Auswahl («Löschen …», «Ausgeben an …»). Im Dialog
 zuerst «Abbrechen» (Text), dann rechts die Hauptaktion. Ein führendes Sinnbild rückt den Text auf 12 px Polster. Einen
 Zähler im Knopf baut `UI.zaehler` (auf tonaler Fläche dunkel).
@@ -363,8 +363,8 @@ Zähler im Knopf baut `UI.zaehler` (auf tonaler Fläche dunkel).
 | `wartet` / `aus` | uhr / Verbot | neutral |
 
 24 px hoch, Radius 12, 12/16 500, Sinnbild 16 + Text. Regeln: Der **Normalfall bekommt keinen Chip** («Aktiv», «In
-SCCM»); Chips zeigen Abweichungen («Archiviert», «Im Lager», «Ersatz fällig», «Nicht in SCCM», «Nicht zugewiesen»).
-Ein Ton sagt, ob etwas zu tun ist: «Frei» (Telefonnummer, sofort vergebbar) ist darum **neutral** mit `checkKreis`,
+SCCM»); Chips zeigen Abweichungen («Archiviert», «Im Lager», «Ersatz überfällig», «Nicht in SCCM», «Nicht zugewiesen»).
+Ein Ton sagt, ob etwas zu tun ist: «Frei» (Telefonnummer) ist darum **neutral** mit `checkKreis`,
 kein Problem – auf allen Seiten gleich (§7.1).
 `sinnbild: false` nur, wo der Text allein eindeutig ist. Mit `titel` wird der Chip ein Tabstopp (Tooltip auch per
 Tastatur) – darum `titel` nur, wo er etwas sagt. In Tabellen bricht ein Chip nie um; Zeilen werden nie getönt. Der
@@ -381,7 +381,7 @@ Zustand eines AD-Kontos kommt immer aus `Modell.adStatus(b)`.
 `.karte` · `UI.karte({ titel, unter, aktionen, fuss, sinnbild, breit, gefuellt, ebene = 2, klasse, id })` → `.inhalt`, `.kopf`, `.aktionen`, `.fuss`
 - Weiss, Haarlinie, Radius 12, Polster 24 (Handy 16), **kein Schatten**. Zwischen allen Kindern 16 px.
 - Kopf: Titel 16/24 500 (h2; `ebene` ändert die Stufe) links, `aktionen` rechts. Knöpfe ragen über die 24-px-Titelzeile hinaus, damit jeder Kartentitel auf derselben Höhe beginnt; schmal brechen sie links unter den Titel. `sinnbild`: 20 px vor dem Titel.
-- `unter`: Beschreibungssatz 14/20 leise, 16 px unter dem Titel (höchstens 76 Zeichen).
+- `unter`: Beschreibungssatz 14/20 leise, 16 px unter dem Titel (höchstens 76 Zeichen) – nur, wo er Nicht-Offensichtliches sagt, nie als Wiederholung des Titels.
 - Zwischentitel `.karte-untertitel` (h3, 24 px Luft darüber, 8 darunter); Teil mit Haarlinie `.unterabschnitt`.
 - `fuss`: Fusszeile (`.karte-aktionen`) unter einer Haarlinie, immer zuunterst; im Raster liegen die Fusszeilen nebeneinander stehender Karten auf einer Linie.
 - `gefuellt` (`.karte-gefuellt`): `--flaeche-tief` ohne Rahmen, Polster 20 – ein ruhiger Block **in** einer Karte (Formular, Testergebnis).
@@ -397,7 +397,7 @@ Zustand eines AD-Kontos kommt immer aus `Modell.adStatus(b)`.
 
 | Baustein | Bauer | Regeln |
 |---|---|---|
-| Lesen `.datenzeilen > .datenzeile` | `UI.datenzeilen`, `UI.feldZeile(name, wert, { neben, gesperrt, hinweis })`, `UI.feldGesperrt`, `UI.feldFrei` | Name links (36 %, leise), Wert links in der zweiten Spalte, Haarlinien, 12 px senkrecht. Leer «–» in `--text-still`. `.datenzeile-neben` (Meta daneben), `.datenzeile-hinweis` (darunter), `.datenzeile-zeile` (Knopfzeile darunter). Schloss 16 px mit Tooltip «Kommt aus dem Abgleich …». Ist eine ganze Karte schreibgeschützt, sagt es der Kartentext **einmal** statt eines Schlosses je Zeile. |
+| Lesen `.datenzeilen > .datenzeile` | `UI.datenzeilen`, `UI.feldZeile(name, wert, { neben, gesperrt, hinweis })`, `UI.feldGesperrt`, `UI.feldFrei` | Name links (36 %, leise), Wert links in der zweiten Spalte, Haarlinien, 12 px senkrecht. Leer «–» in `--text-still`. `.datenzeile-neben` (Meta daneben), `.datenzeile-hinweis` (darunter), `.datenzeile-zeile` (Knopfzeile darunter). Schloss 16 px mit Tooltip «Vom Abgleich gesetzt.»; ein eigener `hinweis` ersetzt ihn («Auf der Geräteseite änderbar.»). Ist eine ganze Karte schreibgeschützt, sagt es der Kartentext **einmal** statt eines Schlosses je Zeile. |
 | Bearbeiten `.datenzeile-form` | `UI.formZeile(beschriftung, feld, { geaendert, hinweis, zusatz })`; in Detailseiten **`F.feld(feld, { … })`**, auch als Kästchen (`art: 'ankreuzen'`) | Beschriftung 12/16 500 oben (`<label for>`), Feld volle Breite (höchstens 560 px). Geändert: 6-px-Punkt in Primär hinter der Beschriftung + «(geändert)» für Screenreader; im Neu-Modus nie. |
 | Kennwerte `.kennwerte` | `UI.kennwerte([[name, wert], …])` | Kurze Zahlenlisten: Name links leise, Wert rechts 500 tabellarisch. |
 | Klickbare Kennwerte | `UI.kennwerte([{ name, wert, href, beiKlick, ton, titel, fokus }])` | Zeilen als Link/Knopf mit 6-%-Ebene (Sprung in die gefilterte Liste); Null leise; `ton` als Sinnbild vor dem Namen + «(zu prüfen)»/«(dringend)» für Screenreader. |
@@ -424,7 +424,7 @@ Namen (`UI.feld`), Kästchengruppen sind `fieldset` + `legend`. Felder einer Det
 `<p>-eingabe-<Feld>`, Wert aus dem Entwurf, Punkt «geändert», Feldfehler aus dem Speicherablauf) – Kästchen eingeschlossen
 («In Domäne»). Eine ganze Zahl, die der Browser umdeuten könnte (Komma als Tausendertrenner: «1,5» → 15), ist
 ein Textfeld mit `inputMode = 'numeric'`; `pruefen()` hält alles andere als Ziffern mit einem Feldfehler auf
-(Softwarefenster, «Reihenfolge»).
+(Programmseite, «Reihenfolge»).
 
 ### 4.9 Suche
 `.suchfeld > .icon + input.suche + kbd.kuerzel` · `UI.suchfeld({ id, platzhalter, label, wert, kuerzel: '/', verzoegerung = 150, beiEingabe })` → `.eingabe`, `.wert()`, `.setzen()`, `.sofort()`
@@ -439,7 +439,7 @@ ein Textfeld mit `inputMode = 'numeric'`; `pruefen()` hält alles andere als Zif
 |---|---|
 | aus | 52 × 32, Spur `--flaeche-hoechst`, Rahmen `--umriss`, Griff klein und grau links |
 | an | Spur Primär, Griff 24 px weiss rechts |
-| an und gesperrt (`.gesperrt`) | wie an + Schloss im Griff, `aria-disabled`, fokussierbar; Tooltip nennt die AD-Gruppe («Aktiv (gesperrt)») |
+| an und gesperrt (`.gesperrt`) | wie an + Schloss im Griff, `aria-disabled`, fokussierbar; Tooltip nennt die AD-Gruppe («Aus der AD-Gruppe «SW-Adobe».»); das Zustandswort bleibt «Aktiv», die Sperre zeigt das Schloss |
 
 Schalterzeile: Schalter · Name (das `<label>`) mit Unterzeile · Zusatz-Chips · Zustandswort in einer festen,
 rechtsbündigen Spalte ganz rechts (die Wörter aller Zeilen fluchten; Chips stehen links davon, am Handy unter dem
@@ -468,9 +468,9 @@ in Tabellen animieren nie. Leere Liste: Rahmen `hidden`, Leerzustand zeigen.
 |---|---|---|
 | Banner `.banner` | `UI.banner({ titel, text, ton, knopf, rolle, sinnbild })` | Radius 12, Polster 12/16, Sinnbild 20. `info` neutral (`--flaeche-tief` + grünes `info`, **nie blau**), `erfolg` (Container, checkKreis), `warnung` (`--warnung-flaeche`, Text `--text`, Dreieck), `gefahr` (Container, achtungKreis). Knopf rechts (32 px); er rutscht unter den Text, wenn dieser sonst schmaler als 8em würde. |
 | Hinweisliste `.hinweise > .hinweis-zeile` | `UI.hinweisZeile({ ton, titel, text })`, `UI.hinweise([…])` | Sinnbild 20 in der Tonfarbe + Titel 500 + Text leise, Haarlinien. Der Ton färbt nur das Sinnbild. |
-| Leerzustand `.leerzustand` | `UI.leerzustand({ sinnbild, titel, text, aktion })` | Zentriert, höchstens 400 px: Pastell-Scheibe 48 px mit Sinnbild 24, Titel 16/24 500, **ein** Satz, höchstens **eine** Aktion (tonal). |
+| Leerzustand `.leerzustand` | `UI.leerzustand({ sinnbild, titel, text, aktion })` | Zentriert, höchstens 400 px: Pastell-Scheibe 48 px mit Sinnbild 24, Titel 16/24 500, höchstens **ein** Satz (keiner, wo Titel und Aktion genügen), höchstens **eine** Aktion (tonal). |
 | Hinweistext `.hinweis` | `UI.hinweis(…)` | 14/20 leise, höchstens 76 Zeichen breit |
-| Meta `.meta` | `UI.meta(…)` | 12/16 leise («Stand 12.10.2026, 14.05») |
+| Meta `.meta` | `UI.meta(…)` | 12/16 leise («Zuletzt gespeichert 12.10.2026, 14.05») |
 | Teile `.teile` | `UI.teile([…])` | Teile mit «·», die nur zwischen den Teilen umbrechen; leere fallen weg |
 | Weitere | – | `.kuerzel` (Tastenkürzel), `.code-block` (Rohdaten), `.anzahl` (Ergebniszahl), `.nur-sr` (nur Screenreader), `.ohne-umbruch`, Tonklassen `.t-erfolg/-warnung/-gefahr/-leise/-still/-stark` (nur zusammen mit Sinnbild oder Wort) |
 
@@ -500,12 +500,13 @@ Eigene Diagramme (Zeitstrahl der Hauptseite) benutzen `.saeule-fuell` mit `--ant
 
 ### 4.15 Seitenkopf
 `UI.seitenkopf({ titel, lead, unter, status, aktionen, pfad, ebene = 1, id, titelId, element })` → `.setzen({ … })`; auf Detailseiten **`F.seitenkopf`**
-- Zurück-Link (`pfad`) · Titel 24/32 (h1, `tabindex=-1` als Fokusziel, bricht beliebig um) · Lead bzw. Teile-Zeile 14/20 leise (≤ 76 Zeichen) · Status-Chips 8 px darunter · Aktionen rechts (Bahn ≤ 600 px: darunter). Ein Text-Knopf hängt sein Polster in den Rand und fluchtet mit Titel und Karten.
+- Zurück-Link (`pfad`; weicht, solange die feste Schublade den Zurück-Eintrag trägt) · Titel 24/32 (h1, `tabindex=-1` als Fokusziel, bricht beliebig um) · Teile-Zeile 14/20 leise (`lead` gibt es noch, die Seiten nutzen ihn nicht) · Status-Chips 8 px darunter · Aktionen rechts (Bahn ≤ 600 px: darunter). Ein Text-Knopf hängt sein Polster in den Rand und fluchtet mit Titel und Karten.
 - `F.seitenkopf` gleicht an Ort und Stelle ab und darf bei jedem Tastendruck laufen: Knöpfe bleiben stehen, solange sie gleich aussehen – die **Sperre zählt nicht dazu**: Wechselt nur sie (der erste Tastendruck in einem Feld, Speichern, Verwerfen, `F.beschaeftigt`), schaltet der stehende Knopf sie an Ort und Stelle um (`UI.knopfSperren`, Tooltip wechselt mit), und ein Fokus darauf bleibt. Kopfaktionen darum **nur mit `beiKlick`** bauen (kein eigenes `addEventListener`) und keine Referenz auf einen Kopfknopf über Aufrufe hinweg halten; gesperrt wird über `gesperrt:` bzw. `F.beschaeftigt`.
 
 ### 4.16 Verlauf (`verlauf.js`)
 `Verlauf.zeichnen(ziel, { schluessel, wert, gesperrt, beiAenderung(json), titel, beschreibung })` · `Verlauf.offeneEingabe()` · `Verlauf.zuruecksetzen()`
 - Genau **eine** Karte «Verlauf» (Zahl der Einträge, «Neuer Eintrag» tonal) mit der Zeitachse. Das Formular erscheint inline als gefüllte Karte; ein neuer Eintrag deckt sich auf. Löschen fragt über `UI.bestaetigen`.
+- Unter dem Titel steht kein Satz (die Option `beschreibung` gibt es noch, keine Seite übergibt eine). Der Leerzustand heisst nur «Noch kein Verlauf», denn «Neuer Eintrag» steht schon im Kartenkopf. Einträge des Abgleichs tragen den Chip «Abgleich» (grauer Punkt, `sync` vor der Meta-Zeile); von Hand erfasste sind der Normalfall und tragen keinen Chip.
 - Gespeichert wird nicht hier, sondern über den Entwurf der Seite und die Speicherleiste – es gibt genau einen Speicherweg. Ein halb getippter Eintrag hält beim Verlassen auf; «Verwerfen» schliesst auch das Formular.
 
 ---
@@ -637,17 +638,17 @@ Doppelklicks). Zustand und Fokus wechseln sofort, nur die Darstellung blendet no
 `UI.dialog({ titel, inhalt, knoepfe, breit, rolle, fokus, beiSchliessen, klasse })` → `{ element, flaeche, inhalt, knoepfe, titel(), schliessen(), offen(), fokussieren(), sperren() }` · `UI.bestaetigen({ titel, text, ja, nein = 'Abbrechen', breit })` → `Promise<boolean>`
 - 400 px für Fragen, `breit` 560 px für Listen und Formulare; Polster 24, Radius 16, Ebene 3. Titel 22/28, Text 14/20 leise (nennt die Folge), Knöpfe rechts unten.
 - **Eine Rollfläche:** Ist der Dialog höher als das Fenster, bleiben Titel und Knopfzeile stehen, und nur der Inhalt dazwischen rollt (der Fokusring eines Felds am Rand bleibt ganz). Eine Trefferliste im Dialog trägt `.dialog-liste`: sie rollt selbst und nimmt die Resthöhe – wird es knapp, schrumpft sie, statt «Abbrechen» aus dem Bild zu schieben; sonst höchstens 420 px. Reicht die Resthöhe nicht für gut eine Zeile, rollt der ganze Inhalt mit der Liste in voller Länge, und das Suchfeld darüber klebt oben (`data-knapp`, setzt `rahmen.js`). Nie eine eigene Höchsthöhe in der Seiten-CSS.
-- Knöpfe: zuerst «Abbrechen» (`variante: 'leise'`), dann die Hauptaktion (`'primaer'`), die die Folge nennt («Archivieren», «Endgültig löschen»). Kein roter Knopf.
+- Knöpfe: zuerst «Abbrechen» (`variante: 'leise'`), dann die Hauptaktion (`'primaer'`), die die Folge nennt («Archivieren», «Löschen»). Kein roter Knopf.
 - Fokus startet im ersten Feld, sonst auf dem ersten Knopf (bei Fragen «Abbrechen»).
 - `UI.bestaetigen` löst bei Esc, Schleier und «Abbrechen» mit `false` auf. Nie `window.confirm` oder `alert`.
 - `sperren(true)` während einer Arbeit (Löschen): Esc und Schleier schliessen dann nicht.
-- Löschen mit Eintippen: `F.loeschenDialog({ titel, text, warnung, wort, knopfText = 'Endgültig löschen', beiLoeschen, ende })` – Gross/Klein egal, Enter löst aus; danach Endzustand mit «Zur Liste».
+- Löschen mit Namenseingabe: `F.loeschenDialog({ titel, text, warnung, wort, knopfText = 'Löschen', beiLoeschen, ende })` – Feld «Zur Bestätigung «…» eingeben», Gross/Klein egal, Enter löst aus; danach Endzustand mit «Zur Liste». Der Text lautet auf allen Seiten «Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.» – darum heisst der Knopf «Löschen», nicht «Endgültig löschen».
 
 ### 6.2 Seitenblatt
 `UI.blatt({ titel, unter, inhalt, fuss, breite: 560|720, beiSchliessen, klasse })` → `{ element, koerper, fuss, titel(), unter(), schliessen(), offen(), fokusSchliessen(), sperren() }`
 - Von rechts, volle Höhe, 560 px (`720` breit), Radius 16 an der vorderen Kante, Ebene 3; Handy volle Breite ohne Radius.
 - Kopf 64 px: Titel 22/28 (einzeilig), optional Unterzeile 12/16 – live, z. B. «47 von 163» –, × rechts. Der Fokus startet auf ×. Haarlinie unter dem Kopf nur, wenn der Körper gerollt ist. Der Kopf ist ein `div`, kein zweites `<header>`.
-- Körper rollt (eigener Tabstopp); Fusszeile unter einer Haarlinie bleibt stehen (rechtsbündig: «Filter zurücksetzen» tonal – ohne gesetzten Filter gesperrt mit dem Grund «Es ist kein Filter gesetzt.» –, «Fertig» primär).
+- Körper rollt (eigener Tabstopp); Fusszeile unter einer Haarlinie bleibt stehen (rechtsbündig: «Filter zurücksetzen» tonal – ohne gesetzten Filter gesperrt mit dem Grund «Kein Filter aktiv.» –, «Fertig» primär).
 - **Filter und Spalten der Listen** stehen in einem Blatt (nie mehr als schwebendes Panel): Änderungen wirken sofort. **Filter:** die Trefferzahl steht live in der Unterzeile («44 von 47 ADMIN-Clients»); oben Archiv (Client-Listen), Zeiträume und Auswahlen, darunter die Kästchengruppen; jeder gesetzte Filter steht danach als entfernbarer Chip über der Liste. **Spalten:** Unterzeile «9 von 93 Spalten sichtbar», Vorlagen «Standardspalten», «Nur Name», «Alle Spalten», «Kompakte Zeilen (gilt für alle Listen)», dann die Spalten nach Gruppen; im Fuss nur «Fertig». Ein offenes Blatt wird beim Nachladen nie neu gebaut – nur `zahlenSetzen` und `blatt.unter()`. Auswahlen über `UI.feld`, Kästchengruppen über `UI.mehrfach`. Der öffnende Knopf trägt `aria-expanded` und ist, solange das Blatt offen ist, tonal.
 
 ### 6.3 Meldung (Snackbar)
@@ -663,7 +664,7 @@ Doppelklicks). Zustand und Fokus wechseln sofort, nur die Darstellung blendet no
 - `--invers`, 12/16, Radius 4, Polster 4/8, höchstens 320 px, unter dem Element.
 - Nach 500 ms Zeigen, mit der Tastatur sofort, **nie auf Touch**. Der Zeiger darf auf den Tooltip wechseln (100 ms Gnadenfrist).
 - Kein Tooltip, wenn das Element denselben Text sichtbar zeigt – ausser er ist mit «…» abgeschnitten.
-- Ein Element, das **nur** einen Tooltip trägt (kein Bedienelement), braucht `tabindex="0"`; die Bauer tun das für `UI.status({ titel })`, `UI.kachel({ titel })` ohne Klick, Spaltenerklärungen und `Rahmen.stand(text, titel)`.
+- Ein Element, das **nur** einen Tooltip trägt (kein Bedienelement), braucht `tabindex="0"`; die Bauer tun das für `UI.status({ titel })`, `UI.kachel({ titel })` ohne Klick und Spaltenerklärungen.
 
 ### 6.5 Speicherleiste
 `F.speicherleisteZeichnen({ neuModus, geloescht, speichertGerade, speicherFehler, anzahl, neuText, meta })` (darf bei jedem Tastendruck laufen) · darunter `UI.speicherleiste({ beiSpeichern, beiVerwerfen, fokusZiel })`
@@ -685,7 +686,7 @@ Doppelklicks). Zustand und Fokus wechseln sofort, nur die Darstellung blendet no
 | Hinweis mit Ton | Sinnbild in der Tonfarbe + Titel; der Text bleibt ruhig |
 | Geändertes Feld | Punkt + «(geändert)» für Screenreader + Zahl in der Speicherleiste |
 | Telefonnummer in Betrieb ohne Zuweisung | Status «Nicht zugewiesen» (Warnung) in der Spalte «Zugewiesen» – **keine getönte Zeile**; zählt unter «Handlungsbedarf» |
-| Freie Telefonnummer | Status «Frei» **neutral** mit `checkKreis` (sofort vergebbar) – in Liste, Telefon- und Benutzerfenster gleich; in «Zugewiesen» ein schlichtes «Nein»; kein Handlungsbedarf |
+| Freie Telefonnummer | Status «Frei» **neutral** mit `checkKreis`, ohne Tooltip – in Liste, Telefon- und Benutzerseite gleich; in «Zugewiesen» ein schlichtes «Nein»; kein Handlungsbedarf |
 | Dringlichkeit in der Übersicht | Zahlmarke tonal + Status «Dringend» |
 | Leerer Wert | «–» (Halbgeviertstrich), nie ein leeres Feld |
 
@@ -700,7 +701,7 @@ Zwei Arten, beide mit `UI.leerzustand`:
 | Art | Sinnbild | Titel | Text | Aktion |
 |---|---|---|---|---|
 | noch nichts da | das der Liste | «Noch keine Telefonnummern» | der nächste Schritt («Die erste Nummer lässt sich über «Neue Telefonnummer» erfassen.») | höchstens eine |
-| nichts für diese Filter | `suche` | «Keine Treffer» | «Für diese Filter gibt es keine ADMIN-Clients.» | «Filter zurücksetzen» bzw. «Suche zurücksetzen» |
+| nichts für diese Filter | `suche` | «Keine Treffer» | keiner, Titel und Aktion genügen | «Filter zurücksetzen» bzw. «Suche zurücksetzen» |
 
 In Karten genügt oft ein Satz (`UI.hinweis`). Nie ein leerer Bereich. Bei leerer Liste: Tabellenrahmen `hidden`.
 
@@ -729,10 +730,12 @@ In Karten genügt oft ein Satz (`UI.hinweis`). Nie ein leerer Bereich. Bei leere
 | Zahlen de-CH (`UI.zahlText`) | «1’284», «7.5» |
 | Auslassung mit Leerschlag | «Wird geladen …», «Löschen …» |
 | Satzschreibung, keine Versalien-Titel | «Ersatz überfällig», nicht «ERSATZ ÜBERFÄLLIG» |
-| Knöpfe nennen die Handlung bzw. Folge | «Ins Lager legen», «Endgültig löschen», nicht «OK» |
+| Knöpfe nennen die Handlung bzw. Folge | «Ins Lager legen», «Eintrag löschen», nicht «OK» |
 | Meldungen: was geschah, in einem Satz mit Punkt | «3 Änderungen gespeichert.» |
-| Dialogtext: was passiert, ohne Drohung | «CAMPUS-907 verschwindet aus der Liste der aktiven Geräte.» |
-| Lead: ein Satz, höchstens 76 Zeichen | «Was offen ist und wie der Bestand steht.» |
+| Dialogtext: was passiert, ohne Drohung | «Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.» |
+| Lead und Kartenuntertitel nur, wo sie Nicht-Offensichtliches sagen: ein Satz, höchstens 76 Zeichen | «SCCM sieht, wer am Gerät arbeitet, nicht, wem es gehört.» |
+| Felder, die man nicht ausfüllen muss, tragen «(optional)», nie «(freiwillig)» | «Notiz für den Verlauf (optional)» |
+| Fehlt ein Pflichtfeld: «Bitte … eingeben.» (eingeben, nicht eintippen) | «Bitte einen PC-Namen eingeben.» |
 
 ### 7.6 Typische Inhalte
 
@@ -748,7 +751,7 @@ In Karten genügt oft ein Satz (`UI.hinweis`). Nie ein leerer Bereich. Bei leere
 | Vergleich mit der Flotte | Kennwert mit Erklärung, darunter Säulen (Mini-Verteilung) |
 | Verteilung | `UI.verteilung`, höchstens 8 Zeilen + «und n weitere …» |
 | Lange Texte | Titel und Werte brechen um (`overflow-wrap: anywhere`); Tabellenzellen, Chips und Blatttitel enden mit «…», der Tooltip zeigt den ganzen Text |
-| Vorführmodus (`?mock=1`) | `Rahmen.vorfuehrung` / `F.bandZeichnen`: Warnbanner als erster Block mit «Vorführ-Änderungen zurücksetzen» (Rückfrage) |
+| Vorführmodus (`?mock=1`) | `Rahmen.vorfuehrung` / `F.bandZeichnen`: Warnbanner als erster Block mit «Vorführdaten zurücksetzen» (Rückfrage). Der Text ist auf allen Seiten derselbe und kommt als Vorgabe aus `rahmen.js` («Vorführmodus mit erfundenen Daten. Änderungen bleiben nur in diesem Browser.»); Seiten übergeben keinen eigenen (`F.bandZeichnen(undefined, …)`) |
 
 ---
 
@@ -769,7 +772,7 @@ Bewusst **nicht**: Pfeiltasten-Bedienung der Listen.
 
 ### 8.2 Fokus
 - Ring sofort, nie animiert: `2px solid --primaer` mit 2 px Abstand (`:focus-visible`), folgt dem Radius. Felder und die Suche zeigen stattdessen den inneren 2-px-Ring; in beschnittenen Listen (Zeilenliste, Mehrfachauswahl) liegt der Ring innen.
-- **Fokus geht nie verloren:** Werte an Ort und Stelle ändern statt neu bauen (`UI.textSetzen`, `.setzen()`, `sortierungSetzen`, `zahlenSetzen`, `blatt.unter()`, `Rahmen.zahl`, `Rahmen.stand`); neu zeichnen über `F.zeichneBereich` bzw. `Rahmen.stillZeichnen` – sie finden Fokus, Schreibmarke und Rollpositionen über `data-fokus` (Vorrang) oder `id` wieder.
+- **Fokus geht nie verloren:** Werte an Ort und Stelle ändern statt neu bauen (`UI.textSetzen`, `.setzen()`, `sortierungSetzen`, `zahlenSetzen`, `blatt.unter()`, `Rahmen.zahl`); neu zeichnen über `F.zeichneBereich` bzw. `Rahmen.stillZeichnen` – sie finden Fokus, Schreibmarke und Rollpositionen über `data-fokus` (Vorrang) oder `id` wieder.
 - Verschwindet etwas unter dem Fokus, geht er vorher an das Gleichwertige (Nachbarzeile, h1 der Ansicht, × des Blatts). Programmatische Ziele (Tafel, h1 mit `tabindex=-1`) zeigen keinen Ring.
 - Auto-Nachladen läuft nie, solange ein Eingabefeld den Fokus hat, eine Ebene offen ist oder gearbeitet wird.
 
@@ -788,7 +791,7 @@ Bewusst **nicht**: Pfeiltasten-Bedienung der Listen.
 | Tabellen | `caption` (nur Screenreader), `aria-sort` an allen sortierbaren Spalten |
 | Meldungen | eine Live-Region `#ansage` (`role=status`, `polite`); Trefferzahl `aria-live="polite"` |
 | Schloss | `role="img"` + `aria-label` mit dem Grund |
-| Konto-Initiale | `role="img"` mit Name und E-Mail, Tabstopp mit Tooltip |
+| Konto-Initiale | breit `aria-hidden` (Name und E-Mail stehen daneben); ≤ 720 px `role="img"` mit Name und E-Mail, Tabstopp mit Tooltip |
 | Sinnbilder | immer `aria-hidden`; den Namen trägt das Bedienelement (Icon-Knöpfe: `titel` → `aria-label`) |
 | Geändert, Dringlichkeit | `.nur-sr`-Texte «(geändert)», «(zu prüfen)», «(dringend)» |
 
@@ -812,8 +815,8 @@ Bewusst **nicht**: Pfeiltasten-Bedienung der Listen.
 2. **Kopf:** Google Fonts, `design.css`, `bewegung.css`, `rahmen.css`, die Zeile `<style>@view-transition { navigation: auto; }</style>` (inline, alle Seiten gleich), dann die eigene Seiten-CSS. **Skripte** in der Reihenfolge aus §10, klassisch, ohne `defer`, keine Inline-Skripte (CSP).
 3. **Seiten-CSS** mit eigenem Präfix (`g-`, `b-`, `tf-`, `sw-`, `vl-`; die Hauptseite benennt nach Ansichten) – nur Raster, Breiten, Reihenfolge, Positionen, alle Werte als Tokens. Keine Farben, Radien, Schatten, Schriftgrössen oder -gewichte, Dauern, Kurven, keine `@keyframes`; `:hover` nur in `@media (hover: hover)`.
 4. **Bauen nur über** `UI.*`, `Rahmen.*`, `Bewegung.*` und – auf Detailseiten – `F.*` (`const F = Fenster.erstellen(p, { liste, neuLaden, nachladen })`). Keine eigenen Kopien von `el`, `knopf`, `sinnbild`, `karte`, `dialog`, `meldung`; kein `innerHTML` mit Daten; kein `title` (→ `titel`, `UI.tipp`); kein `window.confirm`/`alert` (→ `UI.bestaetigen`, `UI.meldung`); Adressen nur über `UI.adresse.*` (hängt `mock=1` selbst an).
-5. **Ablauf:** `Rahmen.zustand('laden', { text, fortschritt })` → Daten holen → zeichnen → `await Rahmen.zustand('inhalt')`; Fehler über `Rahmen.zustand('fehler', …)` bzw. `F.ladefehler`. Kopf: `Rahmen.konto`, `Rahmen.abmelden`, `Rahmen.stand` (Detailseiten `F.kontoZeigen`, `F.stand`); Vorführmodus `Rahmen.vorfuehrung` bzw. `F.bandZeichnen`.
-6. **Jede Ansicht** bekommt Seitenkopf (h1 + Lead), Karten, Leerzustand und Fehlerzustand; **genau eine** gefüllte Hauptaktion je Bereich.
+5. **Ablauf:** `Rahmen.zustand('laden', { text, fortschritt })` → Daten holen → zeichnen → `await Rahmen.zustand('inhalt')`; Fehler über `Rahmen.zustand('fehler', …)` bzw. `F.ladefehler`. Kopf: `Rahmen.konto`, `Rahmen.abmelden` (Detailseiten `F.kontoZeigen`); Vorführmodus `Rahmen.vorfuehrung` bzw. `F.bandZeichnen`.
+6. **Jede Ansicht** bekommt Seitenkopf (h1, ohne Lead), Karten, Leerzustand und Fehlerzustand; **genau eine** gefüllte Hauptaktion je Bereich.
 7. **Bewegung** nur über die Anlässe aus §5.5. Zeichenfunktionen sind still; Auto-Nachladen über `F.autoStarten` bzw. `Rahmen.stillZeichnen`.
 8. **Fokus:** jedes Bedienelement ohne `id` bekommt `fokus: '…'` (stabil und eindeutig); innere Roller `id` oder `data-rolle`.
 9. **Detailseite zusätzlich:** Entwurf `F.entwurf`, Felder `F.feld`, nach dem Schreiben `F.uebernehmen(zeile, felder, antwort)`, Speichern `F.speicherAblauf`, Schnellaktionen in `F.beschaeftigt` und mit `gesperrt: grund`, Löschen `F.loeschenDialog`, Tastatur und Verlassen-Schutz `F.ereignisse`. Fachliche Regeln aus `modell.js` (`Modell.istBearbeitbar`, `Modell.adStatus`).

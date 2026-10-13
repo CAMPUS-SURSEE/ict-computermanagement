@@ -1,4 +1,4 @@
-/* benutzer.js — Benutzerfenster des ICT-Inventars.
+/* benutzer.js — Benutzerseite des ICT-Inventars.
 
    Wird von der Hauptseite als benutzer.html?id=… im selben Tab geöffnet und
    zeigt eine Zeile der Benutzer-Liste in vier Bereichen:
@@ -55,9 +55,6 @@ const AD_SPALTEN = SPALTEN_BENUTZER.filter(s => s.q === "ad");
 /* Höchstens so viele Treffer der Gerätesuche; mehr hilft niemandem. */
 const TREFFER_HOECHSTENS = 40;
 
-/* Was man hier tut – der Lead unter dem Namen. */
-const LEAD = "Hier legst du das Gerät dieser Person fest und schaltest Programme frei.";
-
 
 /* ==================================================================
    2. Gerüst und Zustand
@@ -75,7 +72,7 @@ let pSpalten = [];          // Programmspalten aus der Liste «Software»
 let pSpalte = {};           // id -> Spalte
 let kategorien = [];        // Reihenfolge der Kategorien
 
-let zeile = null;           // die Zeile dieses Fensters (angereichert)
+let zeile = null;           // die Zeile dieser Seite (angereichert)
 
 /* Der Entwurf: geänderte, noch nicht gespeicherte Felder (fenster.js). */
 const entwurf = F.entwurf(function () { return zeile; }, { beiAenderung: nachAenderung });
@@ -188,7 +185,7 @@ function primaerName() {
 }
 
 /* Das SCCM-Primärgerät als Zeile der Liste «ADMIN-Clients», oder null.
-   Nur ein ADMIN-Client kann eine Inhaberin oder einen Inhaber haben:
+   Nur ein ADMIN-Client kann einen Inhaber haben:
    meldet SCCM einen EDU-Client oder einen Namen, den die Liste nicht
    kennt, gibt es nichts zu übernehmen. Bei gleichnamigen Geräten gewinnt
    das nicht archivierte, wie in inhaberGeraet(). */
@@ -247,15 +244,13 @@ function geraetGruende() {
 
 /* Status eines Geräts als Chip – nur, wenn es auffällt: «Aktiv» ist der
    Normalfall und braucht keine Auszeichnung. */
-function geraetStatus(c, mitTipp) {
+function geraetStatus(c) {
   const s = Modell.status(c && c.Status);
   if (s === "Archiviert") {
-    return UI.status("Archiviert", "neutral", { sinnbild: "archiv",
-      titel: mitTipp ? "Archiviert und in der Liste der aktiven Geräte ausgeblendet." : undefined });
+    return UI.status("Archiviert", "neutral", { sinnbild: "archiv" });
   }
   if (s === "Lager") {
-    return UI.status("Im Lager", "neutral", { sinnbild: "lager",
-      titel: mitTipp ? "Liegt im Lager und hat darum keinen Einsatzort." : undefined });
+    return UI.status("Im Lager", "neutral", { sinnbild: "lager" });
   }
   return null;
 }
@@ -267,7 +262,7 @@ function geraetVerweis(c, fokus) {
   a.href = UI.adresse.client("admin", c.id);
   a.setAttribute("data-fokus", fokus);
   UI.tipp(a, "Listen-ID " + c.id + " – ADMIN-Client öffnen");
-  return UI.anhaengen(UI.el("span", "chips"), [a, geraetStatus(c, true)]);
+  return UI.anhaengen(UI.el("span", "chips"), [a, geraetStatus(c)]);
 }
 
 /* ==================================================================
@@ -288,9 +283,9 @@ function bereichUebersicht(ziel) {
     kachel({ text: "Berechtigungen aktiv", wert: UI.zahlText(zahlen.aktiv), zahl: zahlen.aktiv,
       unter: "von " + UI.zahlText(zahlen.gesamt) + " Programmen" }, "kachel-aktiv"),
     kachel({ text: "Von Hand gesetzt", wert: UI.zahlText(zahlen.manuell), zahl: zahlen.manuell,
-      unter: "Hier umschaltbar" }, "kachel-manuell"),
+      unter: "umschaltbar" }, "kachel-manuell"),
     kachel({ text: "Aus AD-Gruppen", wert: UI.zahlText(zahlen.ausAd), zahl: zahlen.ausAd,
-      unter: "Vom AD vorgegeben, gesperrt" }, "kachel-ad")
+      unter: "gesperrt" }, "kachel-ad")
   ]);
   kennzahlen.classList.add("b-kennzahlen");
   stapel.appendChild(kennzahlen);
@@ -312,9 +307,9 @@ function bereichUebersicht(ziel) {
   /* AD-Felder, alle schreibgeschützt. Das sagt die Karte einmal in ihrem
      Text; ein Schloss an jeder Zeile wäre nur Rauschen. Schlösser stehen
      nur dort, wo gesperrte und änderbare Angaben gemischt sind (Karte
-     «Gerät»), wie im Clientfenster. */
+     «Gerät»), wie auf der Geräteseite. */
   const kAd = UI.karte({ titel: "Angaben aus dem Active Directory",
-    unter: "Schreibgeschützt: der Abgleich überschreibt diese Felder bei jedem Lauf." });
+    unter: "Vom Abgleich gesetzt und hier nicht änderbar." });
   kAd.inhalt.appendChild(UI.datenzeilen(AD_SPALTEN.map(function (s) {
     const roh = zeile[s.i];
     const angezeigt = s.t === "DateTime" ? UI.zeitText(roh) : UI.text(roh);
@@ -329,8 +324,7 @@ function bereichUebersicht(ziel) {
 function geraetKarteKurz() {
   const zumGeraet = UI.knopf({ text: "Ändern", variante: "leise", sinnbild: "bearbeiten",
     beiKlick: function () { bereichWechseln("geraet"); }, fokus: "uebersicht-geraet-aendern" });
-  const k = UI.karte({ titel: "Gerät", aktionen: [zumGeraet],
-    unter: "Der ADMIN-Client, dessen Inhaberin oder Inhaber diese Person ist." });
+  const k = UI.karte({ titel: "Gerät", aktionen: [zumGeraet] });
 
   const geraet = inhaberGeraet();
   const name = textWert("Computer").trim();
@@ -350,31 +344,30 @@ function geraetKarteKurz() {
    Abweichung kein Fehler, sondern erklärt sich. */
 function primaerZeile() {
   const zusatz = primaerAusserhalb()
-    ? (primaerIstEdu() ? "EDU-Client, ohne Inhaber" : "nicht in der Liste «ADMIN-Clients»")
+    ? (primaerIstEdu() ? "EDU-Client" : "nicht in der Liste «ADMIN-Clients»")
     : "";
   return UI.feldZeile("Primärgerät (SCCM)", primaerName(), { gesperrt: true, neben: zusatz });
 }
 
 /* Die Telefonnummern dieser Person aus der Liste «Telefonnummern» – live
-   über das AD-Feld «Telefon» zugeordnet (Modell.telefoneAnreichern). */
+   über das AD-Feld «Telefon» oder die Spalte «Benutzer» (Login) der
+   Telefonliste zugeordnet (Modell.telefoneAnreichern). */
 function telefonKarte() {
-  const k = UI.karte({ titel: "Telefon",
-    unter: "Nummern aus der Telefonliste, die im AD bei dieser Person stehen." });
+  const k = UI.karte({ titel: "Telefon" });
   const nummern = zeile.__telefone || [];
   if (!nummern.length) {
     const imAd = UI.text(zeile.Telefon).trim();
     /* Eine Zeile der Telefonliste braucht immer eine Kurzwahl (ihr
        Schlüssel). «Nummer erfassen» gibt es darum nur für eine Nummer aus
-       dem Hausblock; das Telefonfenster (?neu=1&benutzer=<Listen-ID>)
+       dem Hausblock; die Telefonseite (?neu=1&benutzer=<Listen-ID>)
        füllt Kurzwahl, Nummer und Name aus dieser Person vor – in der
        Adresse steht nur die ID. Eine Mobil- oder Fremdnummer hat keine
        Kurzwahl – dort wäre der Knopf eine Sackgasse. */
     const imHausblock = !!imAd && !!Modell.telefonKurzwahl(imAd);
-    let text = "Im AD ist kein Telefon hinterlegt. Das pflegt das Active Directory, nicht dieses Inventar.";
+    let text = "Im AD ist keine Nummer hinterlegt.";
     if (imHausblock) text = "Im AD steht «" + imAd + "», in der Telefonliste fehlt dazu eine Zeile.";
     else if (imAd) {
-      text = "Im AD steht «" + imAd + "». Die Nummer liegt ausserhalb des Hausblocks; "
-        + "die Telefonliste führt nur Nummern mit Kurzwahl.";
+      text = "Im AD steht «" + imAd + "». Die Telefonliste führt nur Nummern mit Kurzwahl.";
     }
     k.inhalt.appendChild(UI.leerzustand({
       sinnbild: "telefon",
@@ -438,8 +431,6 @@ function geraetKarte() {
   }
   const k = UI.karte({
     titel: "Gerät dieser Person",
-    unter: "Der ADMIN-Client, dessen Inhaber diese Person ist: höchstens einer je Person und "
-      + "eine Person je Gerät. EDU-Clients haben keinen Inhaber.",
     aktionen: aktionen
   });
 
@@ -451,7 +442,6 @@ function geraetKarte() {
     ergebnis.appendChild(UI.leerzustand({
       sinnbild: "laptop",
       titel: "Kein Gerät",
-      text: "Suche unten ein Gerät und wähle «Inhaber werden».",
       aktion: { text: "Gerät suchen", sinnbild: "suche", fokus: "geraet-suchen",
         beiKlick: function () { fokusAuf("#b-suche-geraet"); } }
     }));
@@ -459,31 +449,29 @@ function geraetKarte() {
     const zeilen = [
       UI.feldZeile("Inhaber von", geraetVerweis(geraet, "geraet-aktuell")),
       UI.feldGesperrt("Modell", geraet.SCCM_Model),
-      UI.feldGesperrt("Gebäude / Stock", geraet.GebaeudeStock)
+      UI.feldGesperrt("Gebäude / Stock", geraet.GebaeudeStock, "Auf der Geräteseite änderbar.")
     ];
     const andere = andereBenutzerVon(geraet);
     if (andere.length) {
       zeilen.push(UI.feldZeile("Ebenfalls eingetragen bei",
-        UI.status(andere.join(", "), "gefahr", { titel: "Ein Gerät hat genau eine Inhaberin oder einen Inhaber. "
-          + "Bereinige das im Clientfenster." })));
+        UI.status(andere.join(", "), "gefahr", { titel: "Ein Gerät hat genau einen Inhaber. Auf der Geräteseite bereinigen." })));
     }
     ergebnis.appendChild(UI.datenzeilen(zeilen));
   } else {
     ergebnis.appendChild(UI.banner({
       ton: "warnung",
       titel: "Kein ADMIN-Client heisst «" + name + "».",
-      text: "Prüfe den Namen oder wähle unten ein Gerät."
+      text: "Namen prüfen oder unten ein Gerät wählen."
     }));
   }
 
-  /* Gleichnamige Geräte: die Inhaberschaft speichert nur den Namen. */
+  /* Gleichnamige Geräte: die Inhaberschaft hängt nur am Namen. */
   const treffer = geraeteMitDiesemNamen();
   if (treffer.length > 1) {
     ergebnis.appendChild(UI.banner({
       ton: "warnung",
       titel: treffer.length + " Geräte heissen «" + name + "».",
-      text: "Die Inhaberschaft speichert nur den Namen und ist damit nicht eindeutig; "
-        + "angezeigt wird das nicht archivierte Gerät."
+      text: "Die Inhaberschaft hängt nur am Namen und ist darum nicht eindeutig."
     }));
     ergebnis.appendChild(UI.zeilenliste(treffer.map(function (c) {
       const z = UI.listenZeile({
@@ -493,7 +481,7 @@ function geraetKarte() {
         sinnbild: "laptop",
         aktuell: c === geraet,
         status: [c === geraet ? UI.status("Wird angezeigt", "neutral", { sinnbild: "check" }) : null,
-          geraetStatus(c, false)],
+          geraetStatus(c)],
         fokus: "gleichnamig-" + c.id
       });
       return z;
@@ -510,16 +498,13 @@ function geraetKarte() {
       beiKlick: function () { inhaberschaftSetzen(primaer, "[data-fokus=\"geraet-aktuell\"]"); }, fokus: "sccm-uebernehmen" });
     ergebnis.appendChild(UI.banner({
       ton: "info",
-      titel: "Vorschlag aus SCCM:",
-      text: "«" + primaer + "» ist das Primärgerät dieser Person.",
+      text: "SCCM meldet «" + primaer + "» als Primärgerät.",
       knopf: uebernehmen
     }));
   } else if (primaerAusserhalb()) {
     ergebnis.appendChild(UI.hinweis(primaerIstEdu()
-      ? "SCCM meldet «" + primaerName() + "» als Primärgerät, einen EDU-Client. "
-        + "EDU-Clients haben keinen Inhaber; an der Inhaberschaft ändert das nichts."
-      : "SCCM meldet «" + primaerName() + "» als Primärgerät; in der Liste «ADMIN-Clients» "
-        + "gibt es kein Gerät mit diesem Namen."));
+      ? "SCCM meldet den EDU-Client «" + primaerName() + "» als Primärgerät. EDU-Clients haben keinen Inhaber."
+      : "SCCM meldet «" + primaerName() + "» als Primärgerät. Dieses Gerät fehlt in der Liste «ADMIN-Clients»."));
   }
 
   k.inhalt.appendChild(ergebnis);
@@ -529,8 +514,7 @@ function geraetKarte() {
 function sucheKarte() {
   const k = UI.karte({
     titel: "Gerät suchen",
-    unter: "Über PC-Name, Modell, Seriennummer und Gebäude. Ein Gerät mit anderem Inhaber "
-      + "wechselst du besser im Clientfenster."
+    unter: "Ist ein Gerät schon vergeben, den Inhaber auf der Geräteseite wechseln."
   });
   const suche = UI.suchfeld({
     id: "b-suche-geraet",
@@ -555,11 +539,7 @@ function trefferZeichnen(behaelter) {
   UI.leeren(ziel);
   const begriff = geraeteSuche.trim().toLowerCase();
 
-  if (!begriff) {
-    ziel.appendChild(UI.hinweis("Gib mindestens ein Zeichen ein. Die Liste umfasst "
-      + UI.zahlText(alleClients.length) + " ADMIN-Clients."));
-    return;
-  }
+  if (!begriff) return;
 
   /* Archivierte zuletzt: auffindbar, aber selten gemeint. */
   const treffer = alleClients.filter(c => String(c.__such || "").indexOf(begriff) > -1)
@@ -587,17 +567,17 @@ function trefferZeichnen(behaelter) {
     /* «Inhaber» steht nur an dem Gerät, das der Eintrag wirklich meint –
        bei gleichnamigen Geräten sonst an allen. */
     const istAktuell = !!gewaehlt && String(gewaehlt.id) === String(c.id);
-    /* Ein gleichnamiges zweites Gerät: die Inhaberschaft speichert nur den
-       Namen, sie gilt hier also schon. «Inhaber werden» änderte nichts und
+    /* Ein gleichnamiges zweites Gerät: die Inhaberschaft hängt nur am
+       Namen, sie gilt hier also schon. «Zuweisen» änderte nichts und
        sähe kaputt aus – stattdessen sagt ein Chip, warum es fehlt. */
     const gleicherName = !istAktuell && !!eingetragen && Modell.schluessel(c.Title) === eingetragen;
     const ohneAktion = istAktuell || gleicherName;
     const andere = andereBenutzerVon(c);
     const teile = [UI.text(c.SCCM_Model), UI.text(c.GebaeudeStock)];
     if (andere.length) teile.push("Inhaber: " + andere.join(", "));
-    const aktionen = ohneAktion ? [] : [UI.knopf({ text: "Inhaber werden", variante: "leise", klein: true,
+    const aktionen = ohneAktion ? [] : [UI.knopf({ text: "Zuweisen", variante: "leise", klein: true,
       titel: andere.length
-        ? "Gehört schon «" + andere.join(", ") + "». Danach stehen zwei Personen auf dem Gerät."
+        ? "Gehört schon «" + andere.join("», «") + "». Danach hat das Gerät mehr als einen Inhaber."
         : undefined,
       beiKlick: function () { inhaberWerden(c); }, fokus: "inhaber-" + c.id })];
     // Der Name allein ist nicht eindeutig: die Listen-ID steht im Tooltip.
@@ -611,8 +591,8 @@ function trefferZeichnen(behaelter) {
       status: [
         istAktuell ? UI.status("Inhaber", "erfolg") : null,
         gleicherName ? UI.status("Gleicher Name", "neutral",
-          { titel: "Die Inhaberschaft speichert nur den Namen; sie gilt für dieses Gerät schon." }) : null,
-        geraetStatus(c, false)
+          { titel: "Die Inhaberschaft hängt am Namen und gilt darum schon für dieses Gerät." }) : null,
+        geraetStatus(c)
       ],
       aktionen: aktionen,
       titelTipp: ohneAktion ? tipp : undefined,
@@ -627,7 +607,7 @@ function trefferZeichnen(behaelter) {
   })));
   if (treffer.length > TREFFER_HOECHSTENS) {
     ziel.appendChild(UI.hinweis("und " + UI.zahlText(treffer.length - TREFFER_HOECHSTENS)
-      + " weitere Treffer – verfeinere die Suche."));
+      + " weitere Treffer – Suche verfeinern."));
   }
 }
 
@@ -649,7 +629,7 @@ function bereichBerechtigungen(ziel) {
     ziel.appendChild(UI.leerzustand({
       sinnbild: "software",
       titel: "Noch keine Programme",
-      text: "Programme kommen aus der Liste «Software». Lege dort ein Programm an, dann erscheint es hier als Schalter.",
+      text: "Programme kommen aus der Liste «Software».",
       aktion: UI.knopf({ text: "Zur Software-Liste", variante: "tonal", href: UI.adresse.liste("software") })
     }));
     return;
@@ -811,7 +791,7 @@ function rechteZuruecksetzen() {
 function bereichBemerkung(ziel) {
   const stapel = UI.el("div", "stapel");
 
-  const k = UI.karte({ titel: "Bemerkung", unter: "Freier Text zu dieser Person. Der Abgleich überschreibt ihn nie." });
+  const k = UI.karte({ titel: "Bemerkung" });
   /* Feld am Entwurf (F.feld): id «b-eingabe-Bemerkung», jede Eingabe in den
      Entwurf, Punkt «geändert» an Ort und Stelle – kein Neuzeichnen, sonst
      risse das Tippen ab. */
@@ -835,8 +815,7 @@ function verlaufEinbauen() {
     schluessel: "benutzer",
     wert: entwurf.wert("Verlauf"),
     beiAenderung: function (json) { entwurf.setzeWert("Verlauf", json); },
-    titel: "Verlauf",
-    beschreibung: "Gerätewechsel, Eintritt, Austritt. Der Abgleich hängt eigene Einträge an."
+    titel: "Verlauf"
   });
   return huelle;
 }
@@ -852,10 +831,8 @@ function kopfZeichnen() {
     titel: zeile.__name || zeile.Title || "Benutzer",
     unter: [UI.text(zeile.Title), UI.text(zeile.Abteilung), UI.text(zeile.Funktion)],
     /* Chips nur für das, was auffällt: ein aktives AD-Konto ist der Normalfall. */
-    status: zeile.__adAktiv ? [] : [UI.status("AD-Konto deaktiviert", "gefahr",
-      { titel: "Das Konto ist im Active Directory deaktiviert." })],
-    aktionen: [],
-    lead: LEAD
+    status: zeile.__adAktiv ? [] : [UI.status("AD-Konto deaktiviert", "gefahr")],
+    aktionen: []
   });
 }
 
@@ -881,7 +858,7 @@ async function datenLaden(still) {
   if (!still) F.zeigeLaden(mockModus ? "Vorführdaten werden aufgebaut …" : "Daten werden aus SharePoint geladen …");
 
   /* Alles gleichzeitig. Telefon- und Software-Liste sind Beigabe: fehlt
-     eine, bleibt die jeweilige Karte leer, statt das Fenster scheitern zu
+     eine, bleibt die jeweilige Karte leer, statt die Seite scheitern zu
      lassen. Nur ADMIN-Clients: die Inhaberschaft zeigt nie auf EDU. */
   const [rohBenutzer, rohClients, rohSoftware, rohTelefone] = await Promise.all([
     Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); }),
@@ -902,14 +879,12 @@ async function datenLaden(still) {
   pSpalte = {};
   for (const s of pSpalten) pSpalte[s.i] = s;
   kategorien = Modell.programmKategorien(pSpalten);
-  F.stand();
 }
 
 function zeileWaehlen() {
   const treffer = alleBenutzer.filter(z => String(z.id) === String(elementId))[0];
   if (!treffer) {
-    const fehler = new Error("Zur Listen-ID " + elementId + " gibt es keine Zeile in der Benutzer-Liste. "
-      + "Vermutlich hat der AD-Abgleich sie entfernt, weil das Konto im Active Directory nicht mehr vorkommt.");
+    const fehler = new Error("In der Liste «Benutzer» gibt es keine Zeile mit der Listen-ID " + elementId + ".");
     fehler.nichtGefunden = true;
     throw fehler;
   }
@@ -936,7 +911,7 @@ async function neuLaden() {
 
 function ladefehlerZeigen(fehler) {
   F.ladefehler(fehler, { titel: "Benutzer nicht gefunden",
-    hinweis: "Die Benutzer-Liste pflegt der AD-Abgleich; dieses Fenster legt keine Benutzer an." });
+    hinweis: "Der AD-Abgleich entfernt Benutzer, die nicht mehr im Active Directory sind." });
 }
 
 
@@ -945,8 +920,8 @@ function ladefehlerZeigen(fehler) {
    ================================================================== */
 
 /* Werte so, wie Graph sie erwartet. Programmwerte sind immer «0» oder
-   «1»; «2» schreibt dieses Fenster nie. Eine aufgehobene Inhaberschaft
-   geht als null: Graph leert das Feld damit wirklich (wie im Clientfenster). */
+   «1»; «2» schreibt diese Seite nie. Eine aufgehobene Inhaberschaft
+   geht als null: Graph leert das Feld damit wirklich (wie auf der Geräteseite). */
 function fuerGraph(feld, roh) {
   if (pSpalte[feld]) return Modell.stufe(roh) === 1 ? "1" : "0";
   const t = (roh === null || roh === undefined) ? "" : String(roh);
@@ -1025,12 +1000,11 @@ async function start() {
   // Die Schublade steht sofort, der aktive Bereich ist schon markiert.
   navZeichnen();
   F.logoZeichnen("benutzer");
-  F.bandZeichnen("Vorführmodus: alle Personen, Geräte und Berechtigungen sind erfunden. "
-    + "Änderungen bleiben im Browser und gehen nie nach SharePoint.", function () {
-      entwurf.leeren();
-      F.melden("benutzer-geaendert", elementId);
-      neuLaden();
-    });
+  F.bandZeichnen(undefined, function () {
+    entwurf.leeren();
+    F.melden("benutzer-geaendert", elementId);
+    neuLaden();
+  });
 
   try {
     if (!mockModus) {
@@ -1040,8 +1014,8 @@ async function start() {
     F.kontoZeigen();
     if (!elementId) {
       F.zeigeFehler("Kein Benutzer angegeben",
-        "Dieses Fenster braucht die Listen-ID in der Adresse, zum Beispiel benutzer.html?id=5.",
-        "Normalerweise öffnest du es aus der Benutzer-Liste.", "Zur Liste", function () { F.zurListe(); });
+        "In der Adresse fehlt die Listen-ID, zum Beispiel benutzer.html?id=5.",
+        "", "Zur Liste", function () { F.zurListe(); });
       return;
     }
     await neuLaden();

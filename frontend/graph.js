@@ -156,10 +156,9 @@ const Daten = (function () {
   function listenPfad(liste) {
     if (!KONFIG.listeBereit(liste)) {
       const fehler = new Error(
-        "In konfig.js fehlt die Listen-ID für die Liste «" + (LISTEN_TITEL[liste] || liste)
-        + "». Sie steht in den Listeneinstellungen in SharePoint und gehört in konfig.js. "
-        + "Bis dahin lässt sich die Seite mit "
-        + "?mock=1 im Vorführmodus anschauen.");
+        "In konfig.js fehlt die Listen-ID der Liste «" + (LISTEN_TITEL[liste] || liste)
+        + "». Sie steht in SharePoint in den Listeneinstellungen. "
+        + "Bis dahin lässt sich die Seite mit ?mock=1 im Vorführmodus anschauen.");
       fehler.status = 0;
       fehler.konfiguration = true;
       throw fehler;
@@ -212,24 +211,23 @@ const Daten = (function () {
     const meldung = daten && daten.error && (daten.error.message || daten.error.code);
     const schreibend = methode && methode !== "GET";
     const ziel = was || "die Liste";
-    if (status === 400) return "Microsoft Graph hat die Änderung abgelehnt: "
-      + (meldung || "ungültiger Wert") + ". Bitte die Eingaben prüfen.";
+    if (status === 400) return "Microsoft Graph hat die Änderung abgelehnt ("
+      + (meldung || "ungültiger Wert") + "). Bitte die Eingaben prüfen.";
     if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
     if (status === 403 && schreibend) return "Keine Schreibberechtigung für " + ziel
-      + ". Entweder fehlt der App-Registrierung «Computer Inventar Frontend» die delegierte "
-      + "Berechtigung Sites.ReadWrite.All samt Administratorzustimmung (README Abschnitt 7.2) "
-      + "— oder das Konto darf in SharePoint nur lesen.";
+      + ". Entweder darf das Konto in SharePoint nur lesen, oder der App-Registrierung "
+      + "«Computer Inventar Frontend» fehlt die Berechtigung Sites.ReadWrite.All.";
     if (status === 403) return "Keine Berechtigung für " + ziel + ". Bitte prüfen, ob das "
       + "Konto Zugriff auf die SharePoint-Site «mgmts-ict-s» hat.";
-    if (status === 409 || status === 412) return "Die Zeile wurde zwischenzeitlich von "
-      + "jemand anderem geändert. Bitte neu laden und die Änderung wiederholen.";
-    if (status === 404) return "Nicht gefunden: " + ziel + ". Entweder wurde die Zeile "
-      + "gelöscht, oder die IDs in konfig.js stimmen nicht mehr.";
+    if (status === 409 || status === 412) return "Die Zeile wurde inzwischen anderswo "
+      + "geändert. Bitte neu laden und nochmals speichern.";
+    if (status === 404) return "Die Zeile wurde inzwischen gelöscht, oder eine ID "
+      + "in konfig.js stimmt nicht (betrifft " + ziel + ").";
     if (status === 429) return "Zu viele Anfragen an Microsoft Graph. "
       + "Bitte eine Minute warten und dann neu laden.";
     if (status >= 500) return "Microsoft Graph antwortet gerade nicht (HTTP " + status + "). "
       + "Bitte später noch einmal versuchen.";
-    return meldung || ("Fehler von Microsoft Graph (HTTP " + status + ")");
+    return meldung || ("Fehler von Microsoft Graph (HTTP " + status + ").");
   }
 
   /* Graph verschachtelt die Listenspalten unter «fields». Flach ist bequemer.
@@ -434,7 +432,7 @@ const Mock = (function () {
 
   function fehlerPruefen() {
     if (!fehlerModus) return;
-    const f = new Error("Vorführ-Fehler (?fehler=1): so sieht die Seite aus, "
+    const f = new Error("Vorführfehler (?fehler=1). So sieht die Seite aus, "
       + "wenn Microsoft Graph nicht antwortet.");
     f.status = 503;
     throw f;
@@ -585,7 +583,7 @@ const Mock = (function () {
         z.AdGruppen = (AD_GRUPPEN[id] || []).join("\n");
         z.Reihenfolge = nr;
         z.Bemerkung = (VORSCHLAEGE[id] || []).length
-          ? "Mögliche AD-Gruppe: " + VORSCHLAEGE[id].join(", ")
+          ? (VORSCHLAEGE[id].length > 1 ? "Mögliche AD-Gruppen: " : "Mögliche AD-Gruppe: ") + VORSCHLAEGE[id].join(", ")
           : "";
         liste.push(z);
       }
@@ -710,8 +708,8 @@ const Mock = (function () {
   const VERLAUF_SYNC = [
     "Umbenannt von CAMPUS-812 zu CAMPUS-905 (SCCM)",
     "In SCCM nicht mehr vorhanden, archiviert",
-    "Neu in SCCM gefunden und mit der Liste verbunden",
-    "Modell laut SCCM gewechselt: Latitude 5540 statt OptiPlex 7010"
+    "Aus SCCM neu angelegt",
+    "Wieder in SCCM vorhanden, reaktiviert"
   ];
   const VERLAUF_MANUELL = [
     "Gerät an neue Mitarbeiterin übergeben.",

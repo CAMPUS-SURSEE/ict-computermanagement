@@ -74,7 +74,7 @@
     },
     {
         "internal":  "SCCM_Name",
-        "display":  "SCCM Gerätename",
+        "display":  "Gerätename in SCCM",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -92,7 +92,7 @@
     },
     {
         "internal":  "SCCM_ResourceID",
-        "display":  "SCCM ResourceID",
+        "display":  "SCCM-ResourceID",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -101,7 +101,7 @@
     },
     {
         "internal":  "SCCM_SMSID",
-        "display":  "SCCM SMSID",
+        "display":  "SCCM-SMSID",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -119,7 +119,7 @@
     },
     {
         "internal":  "SCCM_OU",
-        "display":  "AD Distinguished Name",
+        "display":  "Distinguished Name (AD)",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -128,7 +128,7 @@
     },
     {
         "internal":  "SCCM_ADSite",
-        "display":  "AD Standort",
+        "display":  "AD-Standort",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -137,7 +137,7 @@
     },
     {
         "internal":  "SCCM_ADCreated",
-        "display":  "AD Computerkonto erstellt",
+        "display":  "AD-Computerkonto erstellt",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -146,7 +146,7 @@
     },
     {
         "internal":  "SCCM_ADLastLogon",
-        "display":  "AD letzte Anmeldung (Computerkonto)",
+        "display":  "Letzte AD-Anmeldung",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -155,7 +155,7 @@
     },
     {
         "internal":  "SCCM_LastLogonUser",
-        "display":  "Letzter angemeldeter Benutzer",
+        "display":  "Zuletzt angemeldeter Benutzer",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -182,7 +182,7 @@
     },
     {
         "internal":  "SCCM_TopConsoleUser",
-        "display":  "Hauptbenutzer (Konsolennutzung)",
+        "display":  "Hauptbenutzer (Konsole)",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -200,7 +200,7 @@
     },
     {
         "internal":  "SCCM_ConsoleUsers",
-        "display":  "Konsolenbenutzer (Anmeldungen / Minuten / zuletzt)",
+        "display":  "Konsolenbenutzer",
         "type":  "Note",
         "group":  "SCCM",
         "source":  "sccm",
@@ -209,7 +209,7 @@
     },
     {
         "internal":  "SCCM_ClientVersion",
-        "display":  "SCCM Client-Version",
+        "display":  "SCCM-Client-Version",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -218,7 +218,7 @@
     },
     {
         "internal":  "SCCM_ClientActive",
-        "display":  "SCCM Client aktiv",
+        "display":  "SCCM-Client aktiv",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -263,7 +263,7 @@
     },
     {
         "internal":  "SCCM_LastHardwareScan",
-        "display":  "Letzter Hardware-Inventar",
+        "display":  "Letztes Hardware-Inventar",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -272,7 +272,7 @@
     },
     {
         "internal":  "SCCM_LastSoftwareScan",
-        "display":  "Letzter Software-Inventar",
+        "display":  "Letztes Software-Inventar",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -344,7 +344,7 @@
     },
     {
         "internal":  "SCCM_AADDeviceID",
-        "display":  "Entra Device ID",
+        "display":  "Entra-Geräte-ID",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -380,7 +380,7 @@
     },
     {
         "internal":  "SCCM_SMBIOSGUID",
-        "display":  "SMBIOS GUID",
+        "display":  "SMBIOS-GUID",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -416,7 +416,7 @@
     },
     {
         "internal":  "SCCM_CPUCores",
-        "display":  "CPU Kerne",
+        "display":  "CPU-Kerne",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -425,7 +425,7 @@
     },
     {
         "internal":  "SCCM_CPULogical",
-        "display":  "CPU logische Prozessoren",
+        "display":  "Logische Prozessoren",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -443,7 +443,7 @@
     },
     {
         "internal":  "SCCM_DiskCGB",
-        "display":  "Laufwerk C: Grösse (GB)",
+        "display":  "Grösse Laufwerk C (GB)",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -452,7 +452,7 @@
     },
     {
         "internal":  "SCCM_DiskCFreeGB",
-        "display":  "Laufwerk C: frei (GB)",
+        "display":  "Freier Speicher auf Laufwerk C (GB)",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -596,7 +596,7 @@
     },
     {
         "internal":  "SCCM_IPAddresses",
-        "display":  "IP-Adressen (alle)",
+        "display":  "Alle IP-Adressen",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -632,7 +632,7 @@
     },
     {
         "internal":  "SCCM_EPClientVersion",
-        "display":  "Defender Client-Version",
+        "display":  "Defender-Client-Version",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -641,7 +641,7 @@
     },
     {
         "internal":  "SCCM_EPSignatureVersion",
-        "display":  "Defender Signaturversion",
+        "display":  "Defender-Signaturversion",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -650,7 +650,7 @@
     },
     {
         "internal":  "SCCM_EPSignatureDate",
-        "display":  "Defender Signaturdatum",
+        "display":  "Defender-Signaturdatum",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -659,7 +659,7 @@
     },
     {
         "internal":  "SCCM_EPLastQuickScan",
-        "display":  "Defender letzter Schnellscan",
+        "display":  "Letzter Defender-Schnellscan",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -668,7 +668,7 @@
     },
     {
         "internal":  "SCCM_EPLastFullScan",
-        "display":  "Defender letzter Vollscan",
+        "display":  "Letzter Defender-Vollscan",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -677,7 +677,7 @@
     },
     {
         "internal":  "SCCM_EPInfectionStatus",
-        "display":  "Defender Infektionsstatus",
+        "display":  "Defender-Infektionsstatus",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -686,7 +686,7 @@
     },
     {
         "internal":  "SCCM_EPLastThreat",
-        "display":  "Defender letzte Bedrohung",
+        "display":  "Letzte Bedrohung (Defender)",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -695,7 +695,7 @@
     },
     {
         "internal":  "SCCM_EPPendingReboot",
-        "display":  "Defender Neustart ausstehend",
+        "display":  "Neustart ausstehend (Defender)",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",
@@ -722,7 +722,7 @@
     },
     {
         "internal":  "SCCM_AppsRequired",
-        "display":  "Anzahl erforderliche Apps",
+        "display":  "Erforderliche Applikationen (Anzahl)",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -731,7 +731,7 @@
     },
     {
         "internal":  "SCCM_AppsInstalled",
-        "display":  "Anzahl installierte Apps (Deployments)",
+        "display":  "Installierte Applikationen (Anzahl)",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -749,7 +749,7 @@
     },
     {
         "internal":  "SCCM_InstalledSoftwareCount",
-        "display":  "Anzahl installierte Software",
+        "display":  "Installierte Software (Anzahl)",
         "type":  "Number",
         "group":  "SCCM",
         "source":  "sccm",
@@ -767,7 +767,7 @@
     },
     {
         "internal":  "SCCM_LastSync",
-        "display":  "Letzte Synchronisation mit SCCM",
+        "display":  "Letzter SCCM-Abgleich",
         "type":  "DateTime",
         "group":  "SCCM",
         "source":  "sccm",
@@ -776,7 +776,7 @@
     },
     {
         "internal":  "SCCM_SyncStatus",
-        "display":  "Sync-Status",
+        "display":  "Abgleichstatus",
         "type":  "Text",
         "group":  "SCCM",
         "source":  "sccm",

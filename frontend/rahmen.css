@@ -6,7 +6,7 @@
    rechts EINE weisse Tafel mit 20 px Radius oben, die als einziges Element
    der Seite rollt. html und body rollen nie.
 
-     ┌ Kopf: [≡ ≤900] ICT.INVENTAR ··········· Stand · Name/E-Mail · Abmelden ┐
+     ┌ Kopf: [≡ ≤900] ICT.INVENTAR ········ ( (A) Name/E-Mail │ Abmelden ) ┐
      │ Schublade │ ╭──── Tafel (.tafel-rahmen > main.tafel) ─────────────╮ │
      │ Gruppen,  │ │  .bahn (Polster 24/32/96, max 1280, Raster-Abstand 20) │ │
      │ 48-px-    │ │   Seitenkopf · Karten · Kacheln · Tabellen …           │ │
@@ -16,7 +16,7 @@
 
    Inhalt:
      1. Seitengerüst (Raster, Sprungmarke)
-     2. Kopf (Menüknopf, Wortmarke, Datenstand, Konto, Abmelden)
+     2. Kopf (Menüknopf, Wortmarke, Kapsel aus Konto und Abmelden)
      3. Schublade (Gruppen, Einträge, gleitende Pastell-Pille, Zähler)
      4. Tafel, Bahn, Kante, Ladebalken, Zustände der Tafel, Seitenwechsel
      5. Seitenkopf (Zurück-Link, Titel, Teile-Zeile, Status, Aktionen)
@@ -198,29 +198,32 @@
   vertical-align: baseline;
 }
 
-/* Rechts: Datenstand · Konto · Abmelden. */
-.kopf-rechts {
+/* Rechts EINE Kapsel aus Konto und «Abmelden»: weiss auf dem getönten
+   Grund wie die Tafel darunter, 1 px Haarlinie, Pillenform. Links die
+   Initiale (32 px, Pastell) mit Name und E-Mail, nach einem Trenner der
+   Text-Knopf; Initiale und Knopf stehen fast rundum gleich weit von der
+   Kante (48 px hoch, Polster 8 links, 4 rechts). */
+.kopf-konto {
   display: flex;
   align-items: center;
-  gap: var(--a3);
+  flex-shrink: 1;
   min-width: 0;
+  min-height: var(--a12);
   margin-left: auto;
+  padding: 0 var(--a1) 0 var(--a2);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-aktion);
+  background: var(--flaeche);
 }
 
-.kopf-stand {
-  margin: 0 var(--a3) 0 0;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-leise);
-  font: var(--t-meta);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kopf-stand:empty {
+.kopf-konto[hidden],
+.kopf-konto-trenner[hidden] {
   display: none;
+}
+
+/* Ohne «Abmelden» (Vorführmodus) endet die Kapsel nach dem Text. */
+.kopf-konto:has(> .kopf-abmelden[hidden]) {
+  padding-right: var(--a4);
 }
 
 .konto {
@@ -236,7 +239,7 @@
 
 .konto-text {
   min-width: 0;
-  text-align: right;
+  max-width: var(--konto-breit);
 }
 
 .konto-name,
@@ -260,10 +263,11 @@
   display: none;
 }
 
-/* Schmale Fenster zeigen die Initiale statt Name und E-Mail; sie nennt
-   beides selbst (aria-label) und zeigt es im Tooltip, auch auf Antippen. */
+/* Die Initiale steht immer in der Kapsel; schmal (≤ 720 px) allein, dann
+   nennt sie Name und E-Mail selbst (aria-label, Tooltip auch auf
+   Antippen; rahmen.js macht sie dafür zum Tabstopp). */
 .konto-initiale {
-  display: none;
+  display: grid;
   flex-shrink: 0;
   width: var(--a8);
   height: var(--a8);
@@ -273,6 +277,14 @@
   color: var(--auf-akzent);
   font: var(--t-beschriftung);
   user-select: none;
+}
+
+.kopf-konto-trenner {
+  flex-shrink: 0;
+  width: 1px;
+  height: var(--a6);
+  margin: 0 var(--a1) 0 var(--a4);
+  background: var(--linie);
 }
 
 .kopf-abmelden {
@@ -326,6 +338,33 @@
 .schublade-liste:focus-within,
 .schublade-liste[data-ueberlauf] {
   scrollbar-color: var(--linie-stark) transparent;
+}
+
+/* Zurück-Eintrag der Detailseiten (Rahmen.navigation zurueck): steht über
+   der Liste und rollt nicht mit ihr. Er sieht aus wie ein Eintrag, nur in
+   voller Textfarbe, und eine Haarlinie auf der Textkante trennt ihn von den
+   Bereichen des Datensatzes. */
+.schublade-zurueck {
+  flex-shrink: 0;
+  padding: var(--a1) var(--a3) 0;
+}
+
+.schublade-zurueck[hidden] {
+  display: none;
+}
+
+.schublade-zurueck::after {
+  content: '';
+  display: block;
+  height: 1px;
+  margin: var(--a2) var(--a4) var(--a1);
+  background: var(--linie);
+}
+
+.schublade-eintrag-zurueck,
+.schublade-eintrag-zurueck .icon,
+.schublade-eintrag-zurueck svg {
+  color: var(--text);
 }
 
 @media (hover: hover) {
@@ -755,6 +794,15 @@
   display: none;
 }
 
+/* Steht die Schublade fest daneben und trägt sie den Zurück-Eintrag, wäre
+   der Link hier doppelt. Ohne Schublade (Neu-Formular, Fehler) und bei der
+   modalen (≤ 900 px) bleibt er der Weg zurück. */
+@media (width > 900px) {
+  .app[data-zurueck] .seitenkopf-pfad {
+    display: none;
+  }
+}
+
 .seitenkopf-zeile {
   display: flex;
   flex-wrap: wrap;
@@ -957,15 +1005,18 @@
   }
 }
 
-/* Konto als Initiale; der Datenstand weicht. */
+/* Konto als Initiale: Name und E-Mail weichen, die Kapsel bleibt. */
 @media (max-width: 720px) {
-  .konto-text,
-  .kopf-stand {
+  .konto-text {
     display: none;
   }
 
-  .konto-initiale {
-    display: grid;
+  .kopf-konto-trenner {
+    margin-left: var(--a2);
+  }
+
+  .kopf-konto:has(> .kopf-abmelden[hidden]) {
+    padding-right: var(--a2);
   }
 
   .bahn {
@@ -1001,9 +1052,20 @@
 }
 
 /* 320 px (400 % Zoom): kein Platz für Wortmarke, Initiale und «Abmelden».
-   Ohne Initiale bleiben Name und E-Mail für Screenreader, unsichtbar. */
+   Ohne Initiale (und Trenner) bleiben Name und E-Mail für Screenreader,
+   unsichtbar; die Kapsel trägt dann nur «Abmelden». */
 @media (max-width: 359px) {
-  .konto-initiale {
+  .konto-initiale,
+  .kopf-konto-trenner {
+    display: none;
+  }
+
+  .kopf-konto {
+    padding-left: var(--a1);
+  }
+
+  /* Ohne «Abmelden» (Vorführmodus) bliebe eine leere Kapsel. */
+  .kopf-konto:has(> .kopf-abmelden[hidden]) {
     display: none;
   }
 

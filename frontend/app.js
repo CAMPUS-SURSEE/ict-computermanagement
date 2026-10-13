@@ -87,7 +87,9 @@ const INHABER_SPALTEN = ["__inhaberName", "__hatInhaber"];
 const BENUTZER_ZUSATZ = [
   { i: "__hatGeraetText",  d: "Gerät zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__hatTelefonText", d: "Telefonnummer zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
-  { i: "__adAktivText",    d: "AD-Konto aktiviert", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
+  /* Ersetzt die rohe Spalte «AD-Konto aktiv» (ERSETZTE_SPALTEN): ein leeres
+     Feld erscheint überall als «Nein». */
+  { i: "__adAktivText",    d: "AD-Konto aktiv", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__primaerText",    d: "Primärgerät weicht ab", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
 ];
 
@@ -103,12 +105,12 @@ const TELEFON_ZUSATZ = [
 ];
 
 const TELEFON_QUELLE_TEXT = {
-  telefon: "über AD-Telefonnummer", login: "über Spalte Benutzer", "": "keine Person"
+  telefon: "Über AD-Telefonnummer", login: "Über Spalte «Benutzer (AD)»", "": "Keine Person"
 };
 
 const ERSATZ_TEXT = {
-  ok: "im Plan", bald: "dieses Geschäftsjahr",
-  ueberfaellig: "überfällig", unbekannt: "unbekannt"
+  ok: "Im Plan", bald: "In diesem Geschäftsjahr",
+  ueberfaellig: "Überfällig", unbekannt: "Nicht erfasst"
 };
 
 const ZEITRAEUME = [
@@ -117,19 +119,19 @@ const ZEITRAEUME = [
   { w: "90",   d: "in den letzten 90 Tagen" },
   { w: "ae30", d: "älter als 30 Tage" },
   { w: "ae90", d: "älter als 90 Tage" },
-  { w: "leer", d: "kein Wert" }
+  { w: "leer", d: "(leer)" }
 ];
 
 const SPEICHERSTUFEN = [
   { w: "u20",  d: "unter 20 GB" },
   { w: "u50",  d: "unter 50 GB" },
   { w: "ab50", d: "50 GB und mehr" },
-  { w: "leer", d: "kein Wert" }
+  { w: "leer", d: "(leer)" }
 ];
 
 const PROGRAMM_STUFEN = [
-  { w: "",  d: "beliebig aktiv (1 oder 2)" },
-  { w: "1", d: "nur manuell (1)" },
+  { w: "",  d: "beliebig (1 oder 2)" },
+  { w: "1", d: "nur von Hand (1)" },
   { w: "2", d: "nur aus AD-Gruppe (2)" }
 ];
 
@@ -151,7 +153,7 @@ function clientTab(schluessel, mitInhaber, csvName) {
     { k: "__domaeneText",     d: "In Domäne" },
     { k: "__inSccmText",      d: "In SCCM" },
     { k: "__onlineText",      d: "Online" },
-    { k: "SCCM_ClientActive", d: "Client aktiv" },
+    { k: "SCCM_ClientActive", d: "SCCM-Client aktiv" },
     { k: "SCCM_Manufacturer", d: "Hersteller" },
     { k: "SCCM_Model",        d: "Modell" },
     { k: "SCCM_ChassisType",  d: "Gehäusetyp" },
@@ -181,7 +183,7 @@ const TAB = {
   edu: clientTab("edu", false, "EDU-Clients"),
   benutzer: {
     namensSpalte: "Anzeigename",
-    standard: ["Anzeigename", "Title", "Abteilung", "Funktion", "Computer", "ADAktiviert"],
+    standard: ["Anzeigename", "Title", "Abteilung", "Funktion", "Computer", "__adAktivText"],
     sortSpalte: "Anzeigename",
     facetten: [
       { k: "Abteilung",        d: "Abteilung" },
@@ -189,10 +191,10 @@ const TAB = {
       { k: "Funktion",         d: "Funktion" },
       { k: "__hatGeraetText",  d: "Gerät zugeordnet" },
       { k: "__hatTelefonText", d: "Telefonnummer zugeordnet" },
-      { k: "__adAktivText",    d: "AD-Konto aktiviert" },
+      { k: "__adAktivText",    d: "AD-Konto aktiv" },
       { k: "__primaerText",    d: "Primärgerät weicht ab" }
     ],
-    zeitspalten: [{ k: "ADLetzterSync", d: "Letzter AD-Sync" }],
+    zeitspalten: [{ k: "ADLetzterSync", d: "Letzter AD-Abgleich" }],
     hatSpeicher: false,
     hatProgramme: true,
     csvName: "Benutzer"
@@ -212,7 +214,7 @@ const TAB = {
       { k: "Apparat",              d: "Apparat" },
       { k: "Standort",             d: "Standort" }
     ],
-    zeitspalten: [{ k: "ADLetzterSync", d: "Letzter AD-Sync" }],
+    zeitspalten: [{ k: "ADLetzterSync", d: "Letzter AD-Abgleich" }],
     hatSpeicher: false,
     hatProgramme: false,
     csvName: "Telefonnummern"
@@ -229,20 +231,15 @@ const CLIENT_TABELLEN = ["admin", "edu"];
 
 function istClientTab(tab) { return CLIENT_TABELLEN.indexOf(tab) > -1; }
 
-/* Texte je Ansicht: Lead unter dem Titel, Einheit für Zahlen, Sinnbild. */
-const LEAD = {
-  uebersicht: "Was offen ist und wie der Bestand steht. Jede Zahl öffnet die passende Liste, schon gefiltert.",
-  admin: "Verwaltungsgeräte aus SCCM und der Inventarliste. Ein Klick auf eine Zeile öffnet das Gerät.",
-  edu: "Schulungsgeräte ohne persönlichen Inhaber. Ein Klick auf eine Zeile öffnet das Gerät.",
-  benutzer: "Personen aus dem Active Directory mit Gerät, Nummer und Berechtigungen. Ein Klick öffnet die Person.",
-  telefone: "Alle Nummern mit Status und Person aus dem AD. Ein Klick auf eine Zeile öffnet die Nummer.",
-  software: "Programme und wer sie nutzen darf. Der Name öffnet das Programm, die Zahlen die Berechtigten."
-};
+/* Texte je Ansicht: Einheit für Zahlen, Sinnbild. Einen Lead unter dem
+   Titel gibt es nicht: Titel und Inhalt sagen genug.
 
+   EINHEIT: Einzahl, Mehrzahl und – nur wo er abweicht – der Dativ der
+   Mehrzahl (einheitDativ). */
 const EINHEIT = {
   admin: ["ADMIN-Client", "ADMIN-Clients"], edu: ["EDU-Client", "EDU-Clients"],
-  benutzer: ["Benutzer", "Benutzer"], telefone: ["Telefonnummer", "Telefonnummern"],
-  software: ["Programm", "Programme"]
+  benutzer: ["Benutzer", "Benutzer", "Benutzern"], telefone: ["Telefonnummer", "Telefonnummern"],
+  software: ["Programm", "Programme", "Programmen"]
 };
 
 const SINNBILD = { admin: "laptop", edu: "edu", benutzer: "benutzer", telefone: "telefon", software: "software" };
@@ -252,20 +249,25 @@ const SUCH_PLATZHALTER = {
   edu: "PC-Name, Modell, Ort …",
   benutzer: "Name, Login, Abteilung, Gerät …",
   telefone: "Kurzwahl, Nummer, Name, Abteilung …",
-  software: "Programm, interner Name, AD-Gruppe …"
+  software: "Programm, Programm-ID, AD-Gruppe …"
 };
 
 function einheit(tab, n) { return EINHEIT[tab][n === 1 ? 0 : 1]; }
 
+/* Nach «von» und «mit» steht der Dativ: «12 von 80 Benutzern». */
+function einheitDativ(tab, n) { return n === 1 ? EINHEIT[tab][0] : (EINHEIT[tab][2] || EINHEIT[tab][1]); }
+
 function anzahlText(tab, n) { return UI.zahlText(n) + " " + einheit(tab, n); }
 
 /* Rohe SharePoint-Spalten, die eine abgeleitete vollständig ersetzt. Die
-   abgeleitete zeigt dasselbe Feld, nur mit dem Normalfall ausgeschrieben
-   (leerer Status = «Aktiv», leeres «In Domäne» = «Ja»). Stünden beide im
-   Spaltenblatt, gäbe es zwei Spalten «Status» ohne erkennbaren
-   Unterschied; darum nimmt die abgeleitete den Platz der rohen ein. */
+   abgeleitete zeigt dasselbe Feld, nur steht für ein leeres Feld ein Wert
+   (leerer Status = «Aktiv», leeres «In Domäne» = «Ja», leeres «AD-Konto
+   aktiv» = «Nein»). Stünden beide im Spaltenblatt, gäbe es zwei Spalten
+   «Status» ohne erkennbaren Unterschied; darum nimmt die abgeleitete den
+   Platz der rohen ein. */
 const ERSETZTE_SPALTEN = {
   client: { Status: "__statusText", InDomaene: "__domaeneText" },
+  benutzer: { ADAktiviert: "__adAktivText" },
   telefone: { Status: "__statusText" }
 };
 
@@ -300,7 +302,7 @@ function spaltenUebernehmen(tab, liste) {
 /* Spaltenliste einer Ansicht. Bei den Benutzern kommen die Programmspalten
    aus der Liste «Software» dazu, die erst zur Laufzeit bekannt sind. */
 function spaltenListe(tab) {
-  if (tab === "benutzer") return SPALTEN_BENUTZER.concat(BENUTZER_ZUSATZ, programmSpalten);
+  if (tab === "benutzer") return mitErsatz(tab, SPALTEN_BENUTZER, BENUTZER_ZUSATZ).concat(programmSpalten);
   if (tab === "telefone") return mitErsatz(tab, SPALTEN_TELEFON, TELEFON_ZUSATZ);
   const alle = mitErsatz(tab, SPALTEN_CLIENT, CLIENT_ZUSATZ);
   return TAB[tab].mitInhaber ? alle : alle.filter(s => INHABER_SPALTEN.indexOf(s.i) === -1);
@@ -594,7 +596,7 @@ function fortschrittText() {
    lesbarer Text). modell.js liefert die eigentliche Verknüpfung. */
 function nachbereiten() {
   for (const c of adminClients.concat(eduClients)) {
-    c.__ersatzText = ERSATZ_TEXT[c.__ersatzStatus] || "unbekannt";
+    c.__ersatzText = ERSATZ_TEXT[c.__ersatzStatus] || ERSATZ_TEXT.unbekannt;
     c.__hatInhaber = c.__inhaber ? "Ja" : "Nein";
     c.__domaeneText = c.InDomaene === false ? "Nein" : "Ja";
     c.__statusText = c.__status;
@@ -642,9 +644,8 @@ const letzterStand = { edu: [], telefon: [], software: [] };
 async function listeLaden(liste, fortschrittRuf, still) {
   const k = LISTEN_KONFIG[liste];
   if (!Daten.mockModus && !KONFIG.listeBereit(liste)) {
-    listenHinweis[liste] = "In konfig.js fehlt die Listen-ID der Liste «" + k.titel + "». "
-      + "Die ID steht in den Listeneinstellungen in SharePoint und gehört als "
-      + k.schluessel + " in konfig.js.";
+    listenHinweis[liste] = "In konfig.js fehlt die Listen-ID (" + k.schluessel + "). "
+      + "Sie steht in SharePoint in den Listeneinstellungen.";
     return [];
   }
   try {
@@ -1103,7 +1104,7 @@ function leistenEnde(anzahl, neu) {
 function tabellenGeruest(tab) {
   const ansicht = $("ansicht-" + tab);
   const titel = Rahmen.zielText(tab);
-  const kopf = UI.seitenkopf({ titel: titel, lead: LEAD[tab], titelId: tab + "-titel" });
+  const kopf = UI.seitenkopf({ titel: titel, titelId: tab + "-titel" });
 
   const suchfeld = UI.suchfeld({
     id: tab + "-suche", platzhalter: SUCH_PLATZHALTER[tab], label: titel + " durchsuchen", kuerzel: "/",
@@ -1118,7 +1119,7 @@ function tabellenGeruest(tab) {
   const spaltenZaehler = UI.zaehler(String(sichtbareSpalten(tab).length), true);
   spaltenKnopf.appendChild(spaltenZaehler);
   const csvKnopf = UI.knopf({ text: "CSV", sinnbild: "herunterladen", variante: "still", id: tab + "-knopf-csv",
-    titel: "Sichtbare Zeilen und Spalten als CSV-Datei für Excel herunterladen",
+    titel: "Sichtbare Zeilen und Spalten als CSV herunterladen",
     beiKlick: function () { csvExport(tab); } });
   const anzahl = el("p", "anzahl");
   anzahl.id = tab + "-anzahl";
@@ -1263,16 +1264,16 @@ function zelle(tab, zeile, schluessel) {
   if (s && s.q === "programm") return stufenZelle(td, wert, s);
 
   if (tab === "telefone") {
-    /* «Frei» ist kein Problem, sondern ein Angebot (sofort vergebbar):
-       neutral mit Haken im Kreis, auf allen Seiten gleich (Telefon- und
-       Benutzerfenster). «Aktiv» ist der Normalfall und bleibt Text. */
+    /* «Frei» ist kein Problem, sondern ein Angebot: neutral mit Haken im
+       Kreis, auf allen Seiten gleich (Telefon- und Benutzerseite). «Aktiv»
+       ist der Normalfall und bleibt Text. Einen Tooltip braucht nur
+       «Inaktiv». */
     if (schluessel === "__statusText") {
       const st = zeile.__status;
       if (st === "Frei") td.appendChild(UI.status("Frei", "neutral", { sinnbild: "checkKreis" }));
       else if (st === "Inaktiv") td.appendChild(UI.status("Inaktiv", "aus"));
       else td.textContent = st;
-      UI.tipp(td, st === "Frei" ? "Frei – sofort vergebbar"
-        : (st === "Inaktiv" ? "Inaktiv – vorhanden, aber nicht in Teams" : "In Betrieb"));
+      UI.tipp(td, st === "Inaktiv" ? "Vorhanden, aber nicht in Teams" : null);
       return td;
     }
     /* «Zugewiesen» ist der Normalfall und bleibt Text; nur die nicht
@@ -1315,8 +1316,8 @@ function zelle(tab, zeile, schluessel) {
     return td;
   }
 
-  /* Der Inhaber ist genau eine Person; zeigen mehrere Personen auf denselben
-     Client, ist das ein zu bereinigender Datenfehler. */
+  /* Der Inhaber ist genau eine Person; mehr als ein Inhaber ist ein zu
+     bereinigender Datenfehler. */
   if (istClientTab(tab) && schluessel === "__inhaberName") {
     if (!zeile.__inhaber) return leerZelle(td);
     td.className = "ohne-umbruch";
@@ -1324,7 +1325,7 @@ function zelle(tab, zeile, schluessel) {
     if (zeile.__mehrfachInhaber) {
       td.appendChild(document.createTextNode(" "));
       td.appendChild(UI.status("+" + (zeile.__inhaberAlle.length - 1), "warnung", {
-        titel: "Mehrere Personen zeigen auf diesen Client: " + zeile.__inhaberAlle.map(p => p.__name).join(", ")
+        titel: "Mehr als ein Inhaber: " + zeile.__inhaberAlle.map(p => p.__name).join(", ")
       }));
     }
     return td;
@@ -1338,7 +1339,7 @@ function zelle(tab, zeile, schluessel) {
     const juengster = liste[0];
     td.textContent = Modell.datumSchweiz(juengster.datum) + "  " + juengster.text
       + (liste.length > 1 ? "  (+" + (liste.length - 1) + ")" : "");
-    UI.tipp(td, "Verlauf: " + liste.map(e => Modell.datumSchweiz(e.datum) + "  " + e.text).join("\n"));
+    UI.tipp(td, liste.map(e => Modell.datumSchweiz(e.datum) + "  " + e.text).join("\n"));
     return td;
   }
 
@@ -1346,7 +1347,7 @@ function zelle(tab, zeile, schluessel) {
      deaktiviert»): Status mit Sinnbild statt farbigem Text. Regel und Ton
      wie auf allen Seiten (Modell.adStatus); in der Spalte genügt das kurze
      Wort, ihr Kopf sagt schon «AD-Konto». */
-  if (tab === "benutzer" && (schluessel === "ADAktiviert" || schluessel === "__adAktivText")) {
+  if (tab === "benutzer" && schluessel === "__adAktivText") {
     const ad = Modell.adStatus(zeile);
     if (ad.aktiv) td.textContent = "Ja";
     else td.appendChild(UI.status(ad.kurz, ad.ton));
@@ -1381,7 +1382,7 @@ function zelle(tab, zeile, schluessel) {
     const z = Hilfe.zeilen(wert);
     if (!z.length) return leerZelle(td);
     td.textContent = z[0] + (z.length > 1 ? "  (+" + (z.length - 1) + ")" : "");
-    if (z.length > 1 || z[0].length > 32) UI.tipp(td, s.d + ": " + z.join("\n"));
+    if (z.length > 1 || z[0].length > 32) UI.tipp(td, z.join("\n"));
     return td;
   }
   return textZelle(td, wert === null || wert === undefined ? "" : String(wert).trim());
@@ -1444,7 +1445,7 @@ function trefferText(tab, mitEinheit) {
   const gezeigt = sichtbar[tab].length;
   const alle = grundmenge(tab).length;
   if (gezeigt === alle) return anzahlText(tab, alle);
-  return UI.zahlText(gezeigt) + " von " + UI.zahlText(alle) + (mitEinheit ? " " + einheit(tab, alle) : "");
+  return UI.zahlText(gezeigt) + " von " + UI.zahlText(alle) + (mitEinheit ? " " + einheitDativ(tab, alle) : "");
 }
 
 /* ---------- Leerzustand ---------- */
@@ -1472,13 +1473,12 @@ function leerzustandBauen(tab, art) {
   const titel = Rahmen.zielText(tab);
   let l;
   if (art === "konfig") {
-    l = UI.leerzustand({ sinnbild: SINNBILD[tab], titel: "Die Liste «" + titel + "» fehlt",
+    l = UI.leerzustand({ sinnbild: SINNBILD[tab], titel: "Liste «" + titel + "» nicht verfügbar",
       text: tab === "edu" ? listenHinweis.edu : listenHinweis.telefon });
   } else if (art === "leer") {
     l = UI.leerzustand({ sinnbild: SINNBILD[tab], titel: "Noch keine " + titel, text: LEER_TEXT[tab] });
   } else if (art === "archiv") {
-    l = UI.leerzustand({ sinnbild: "archiv", titel: "Nur archivierte Geräte",
-      text: "Alle " + titel + " sind archiviert und darum ausgeblendet.",
+    l = UI.leerzustand({ sinnbild: "archiv", titel: "Alle " + titel + " sind archiviert",
       aktion: { text: "Archivierte anzeigen", fokus: tab + "-leer-aktion", beiKlick: function () {
         zustand[tab].archiv = true;
         einstellungenMerken(tab);
@@ -1487,7 +1487,6 @@ function leerzustandBauen(tab, art) {
       } } });
   } else {
     l = UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
-      text: "Für diese Suche und Filter gibt es keine " + titel + ".",
       aktion: { text: "Filter zurücksetzen", fokus: tab + "-leer-aktion", beiKlick: function () {
         filterZuruecksetzen(tab, true);
         suchfeldAngleichen(tab);
@@ -1578,7 +1577,7 @@ function zeichneChips(tab) {
     filterChips++;
     // Eine Stufe aus einem von Hand gebauten Link kann unbekannt sein.
     const stufe = PROGRAMM_STUFEN.find(s => s.w === z.programmStufe);
-    // «nur manuell (1)» heisst im Chip nur «nur manuell» (keine Doppelklammer).
+    // «nur von Hand (1)» heisst im Chip nur «nur von Hand» (keine Doppelklammer).
     chip("programm", "Berechtigung: " + beschriftung(tab, z.programm)
       + (z.programmStufe ? " · " + (stufe ? stufe.d.replace(/\s*\(\d\)$/, "") : z.programmStufe) : ""),
       function () { z.programm = ""; z.programmStufe = ""; });
@@ -1747,7 +1746,7 @@ function filterOeffnen(tab) {
     stufenWahl.disabled = !z.programm;
     auswahlen.push(programmWahl, stufenWahl);
     felder.appendChild(UI.feld("Berechtigung für Programm", programmWahl));
-    felder.appendChild(UI.feld("Stufe der Berechtigung", stufenWahl, { hinweis: "Wirkt, sobald ein Programm gewählt ist." }));
+    felder.appendChild(UI.feld("Berechtigungsstufe", stufenWahl));
   }
   if (felder.childNodes.length) inhalt.push(felder);
 
@@ -1805,7 +1804,7 @@ function filterOeffnen(tab) {
       stufenWahl.disabled = !z.programm;
     }
     for (const a of auswahlen) if (document.activeElement !== a && a.value !== a.lesen()) a.value = a.lesen();
-    UI.knopfSperren(zuruecksetzen, aktiveFilter(tab) ? "" : "Es ist kein Filter gesetzt.");
+    UI.knopfSperren(zuruecksetzen, aktiveFilter(tab) ? "" : "Kein Filter aktiv.");
     blatt.unter(trefferText(tab, true));
   }
   nachfuehren();
@@ -1959,7 +1958,7 @@ function csvExport(tab) {
   a.click();
   a.remove();
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  UI.meldung(name + " mit " + anzahlText(tab, sichtbar[tab].length) + " heruntergeladen.");
+  UI.meldung(name + " heruntergeladen (" + anzahlText(tab, sichtbar[tab].length) + ").");
 }
 
 
@@ -1985,8 +1984,7 @@ function clientKennzahlen(tab) {
   const imEinsatz = aktiveClients(tab);
   const archiviert = alle.length - imEinsatz.length;
   const liste = [
-    { t: "Im Einsatz", w: imEinsatz.length, setzen: nichts,
-      unter: archiviert ? "ohne " + UI.zahlText(archiviert) + " archivierte" : "keine archivierten" },
+    { t: "Im Einsatz", w: imEinsatz.length, setzen: nichts },
     { t: "Gerade online", w: zaehle(imEinsatz, z => z.__online),
       setzen: z => facetteSetzen(z, "__onlineText", "Ja") },
     { t: "Nicht in SCCM", w: zaehle(imEinsatz, z => !z.__inSccm), ton: "warnung",
@@ -2017,7 +2015,7 @@ function benutzerKennzahlen() {
     { t: "AD-Konto deaktiviert", w: benutzer.length - aktiv, ton: "gefahr",
       setzen: z => facetteSetzen(z, "__adAktivText", "Nein") },
     { t: "Primärgerät weicht ab", w: zaehle(benutzer, b => b.__primaerAbweichung), ton: "warnung",
-      unter: "SCCM-Primärgerät ≠ ADMIN-Client", setzen: z => facetteSetzen(z, "__primaerText", "Ja") }
+      unter: "SCCM meldet ein anderes Gerät", setzen: z => facetteSetzen(z, "__primaerText", "Ja") }
   ];
 }
 
@@ -2030,13 +2028,12 @@ function telefonKennzahlen() {
   const frei = zaehle(telefone, t => t.__status === "Frei");
   const offen = zaehle(telefone, t => !t.__zugewiesen && t.__status !== "Frei");
   return [
-    { t: "Telefonnummern", w: telefone.length, setzen: nichts,
-      unter: UI.zahlText(zugewiesen) + " zugewiesen, " + UI.zahlText(frei) + " frei" },
+    { t: "Telefonnummern", w: telefone.length, setzen: nichts },
     { t: "Zugewiesen", w: zugewiesen, setzen: z => facetteSetzen(z, "__zugewiesenText", "Ja") },
-    { t: "Frei", w: frei, unter: "sofort vergebbar", setzen: z => facetteSetzen(z, "__statusText", "Frei") },
+    { t: "Frei", w: frei, setzen: z => facetteSetzen(z, "__statusText", "Frei") },
     { t: "Inaktiv", w: zaehle(telefone, t => t.__status === "Inaktiv"), unter: "nicht in Teams",
       setzen: z => facetteSetzen(z, "__statusText", "Inaktiv") },
-    { t: "Nicht zugewiesen", w: offen, ton: "warnung", unter: "ohne freie Nummern",
+    { t: "Nicht zugewiesen", w: offen, ton: "warnung", unter: "ohne Status «Frei»",
       setzen: function (z) { facetteSetzen(z, "__zugewiesenText", "Nein"); z.facetten.__statusText = ["Aktiv", "Inaktiv"]; } },
     { t: "Name weicht vom AD ab", w: zaehle(telefone, t => t.__nameAbweichung), ton: "warnung",
       unter: "Liste und AD nennen verschiedene Personen",
@@ -2063,8 +2060,7 @@ function handlungsbedarf(punkte) {
   punkte.sort((a, b) => (TON_RANG[a.ton] ?? 9) - (TON_RANG[b.ton] ?? 9));
   if (!punkte.length) {
     return abschnitt("uebersicht-handlungsbedarf", "Handlungsbedarf", null, [
-      UI.banner({ ton: "erfolg", titel: "Kein Handlungsbedarf.",
-        text: "Alle geprüften Regeln sind in allen Listen erfüllt." })
+      UI.banner({ ton: "erfolg", text: "Keine offenen Punkte." })
     ]);
   }
   const zeilen = punkte.map(function (p) {
@@ -2102,7 +2098,7 @@ function kennwertListe(tab, liste) {
    darunter die weiteren Kennzahlen als klickbare Zeilen. */
 function bestandKarte(tab, kennzahlen, hinweis, offen) {
   const titel = Rahmen.zielText(tab);
-  const oeffnen = UI.knopf({ text: "Liste öffnen", variante: "leise", weiter: true, label: "Liste öffnen: " + titel,
+  const oeffnen = UI.knopf({ text: "Liste öffnen", variante: "leise", weiter: true, label: "Liste «" + titel + "» öffnen",
     href: sprungAdresse(tab, nichts), beiKlick: sprungKlick(tab, nichts), fokus: "bestand-" + tab + "-liste" });
   const karte = UI.karte({ titel: titel, sinnbild: SINNBILD[tab], ebene: 3, aktionen: [oeffnen], klasse: "bestand-karte" });
 
@@ -2186,10 +2182,10 @@ function zeitstrahl(tab) {
     const ersatzArt = v < 0 ? "ueberfaellig" : (v === 0 ? "faellig" : "ersatz");
     anhaengen(saeulen, [
       zeitstrahlSaeule(tab, jahr, nB, hoechste, "beschafft", "Beschaffungsjahr",
-        geraeteText(nB) + " beschafft im Geschäftsjahr " + jahr),
+        geraeteText(nB) + " im Geschäftsjahr " + jahr + " beschafft"),
       zeitstrahlSaeule(tab, jahr, nE, hoechste, ersatzArt, "ErsatzGeplant",
-        geraeteText(nE) + " zum Ersatz geplant im Geschäftsjahr " + jahr
-          + (v < 0 ? " – überfällig" : (v === 0 ? " – im laufenden Geschäftsjahr" : "")))
+        "Ersatz für " + geraeteText(nE) + " im " + (v === 0 ? "laufenden " : "") + "Geschäftsjahr " + jahr + " geplant"
+          + (v < 0 ? " – überfällig" : ""))
     ]);
     const label = el("span", "zeitstrahl-label", gjKurz(jahr));
     if (v === 0) label.appendChild(el("span", "nur-sr", " (laufendes Geschäftsjahr)"));
@@ -2208,7 +2204,7 @@ function zeitstrahl(tab) {
 function zeitstrahlLegende() {
   const ul = el("ul", "zeitstrahl-legende");
   for (const [art, text] of [["beschafft", "Beschafft"], ["ersatz", "Ersatz geplant"],
-    ["faellig", "Ersatz im laufenden Geschäftsjahr"], ["ueberfaellig", "Ersatz überfällig"]]) {
+    ["faellig", "Ersatz in diesem Geschäftsjahr"], ["ueberfaellig", "Ersatz überfällig"]]) {
     const li = el("li");
     const marke = el("span", "legende-marke " + art);
     marke.setAttribute("aria-hidden", "true");
@@ -2268,8 +2264,8 @@ function verteilungsKarte(tab, schluessel, titel) {
   if (eintraege.length > VERTEILUNG_ZEILEN) {
     const rest = eintraege.slice(VERTEILUNG_ZEILEN);
     const summe = rest.reduce((s, e) => s + e[1], 0);
-    karte.inhalt.appendChild(UI.hinweis("und " + rest.length + " weitere Werte mit zusammen "
-      + anzahlText(tab === "benutzer" ? "benutzer" : tab, summe)));
+    karte.inhalt.appendChild(UI.hinweis("und " + (rest.length === 1 ? "1 weiterer Wert" : rest.length + " weitere Werte")
+      + " (zusammen " + anzahlText(tab, summe) + ")"));
   }
   return karte;
 }
@@ -2313,7 +2309,7 @@ function zeichneUebersicht() {
 
 function uebersichtGeruest() {
   const ansicht = $("ansicht-uebersicht");
-  const kopf = UI.seitenkopf({ titel: "Übersicht", lead: LEAD.uebersicht, titelId: "uebersicht-titel" });
+  const kopf = UI.seitenkopf({ titel: "Übersicht", titelId: "uebersicht-titel" });
   ansicht.appendChild(kopf);
   knoten.uebersicht = { ansicht: ansicht, kopf: kopf };
 }
@@ -2325,7 +2321,7 @@ function uebersichtGeruest() {
 
 function softwareGeruest() {
   const ansicht = $("ansicht-software");
-  const kopf = UI.seitenkopf({ titel: "Software", lead: LEAD.software, titelId: "software-titel" });
+  const kopf = UI.seitenkopf({ titel: "Software", titelId: "software-titel" });
   const suchfeld = UI.suchfeld({
     id: "software-suche", platzhalter: SUCH_PLATZHALTER.software, label: "Software durchsuchen", kuerzel: "/",
     beiEingabe: function (wert) {
@@ -2344,7 +2340,7 @@ function softwareGeruest() {
   knoten.software = { ansicht: ansicht, kopf: kopf, suchfeld: suchfeld, anzahl: anzahl, liste: liste };
 }
 
-/* «3 manuell», «5 aus AD»: ein Text-Link in die Benutzerliste, gefiltert
+/* «3 von Hand», «5 aus AD»: ein Text-Link in die Benutzerliste, gefiltert
    auf genau diese Stufe — die Zahl stimmt so mit der Liste überein. */
 function berechtigtLink(p, anzahl, stufe, wort) {
   const text = UI.zahlText(anzahl) + " " + wort;
@@ -2354,8 +2350,8 @@ function berechtigtLink(p, anzahl, stufe, wort) {
   a.href = sprungAdresse("benutzer", setzen);
   a.addEventListener("click", sprungKlick("benutzer", setzen));
   a.setAttribute("data-fokus", "sw-" + p.i + "-" + stufe);
-  UI.tipp(a, stufe === "1" ? "Benutzer mit manueller Berechtigung zeigen"
-    : "Benutzer mit Berechtigung aus der AD-Gruppe zeigen");
+  UI.tipp(a, stufe === "1" ? "Von Hand berechtigte Benutzer zeigen"
+    : "Über AD-Gruppen berechtigte Benutzer zeigen");
   return a;
 }
 
@@ -2370,11 +2366,11 @@ function softwareKarte(p, e) {
     UI.adresse.listeMerken();
     if (!modifiziert(ev)) stelleMerken(null);
   });
-  UI.tipp(name, "Spalte in der Benutzer-Liste: " + p.i);
+  UI.tipp(name, "Programm-ID: " + p.i);
   h.appendChild(name);
 
   const zahlen = el("p", "hinweis");
-  zahlen.appendChild(UI.teile([berechtigtLink(p, e.eins, "1", "manuell"), berechtigtLink(p, e.zwei, "2", "aus AD")]));
+  zahlen.appendChild(UI.teile([berechtigtLink(p, e.eins, "1", "von Hand"), berechtigtLink(p, e.zwei, "2", "aus AD")]));
   /* Ohne AD-Gruppe nur eine leise Meta-Zeile (dieselben Worte wie im
      Softwarefenster): bei vielen Programmen sonst ein Wald gleicher Sätze. */
   const gruppen = p.adGruppen.length
@@ -2392,7 +2388,7 @@ function zeichneSoftware() {
 
   /* Fehlt die Liste «Software», sagt die Ansicht, was zu tun ist. */
   if (listenHinweis.software && !software.length) {
-    ziel.appendChild(UI.leerzustand({ sinnbild: "software", titel: "Die Liste «Software» fehlt",
+    ziel.appendChild(UI.leerzustand({ sinnbild: "software", titel: "Liste «Software» nicht verfügbar",
       text: listenHinweis.software }));
     UI.textSetzen(k.anzahl, "");
     return;
@@ -2428,7 +2424,6 @@ function zeichneSoftware() {
   if (!gezeigt) {
     const leer = programmSpalten.length
       ? UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
-          text: "Kein Programm passt zu «" + zustand.software.suche.trim() + "».",
           aktion: { text: "Suche zurücksetzen", fokus: "software-leer-aktion", beiKlick: function () {
             zustand.software.suche = "";
             suchfeldAngleichen("software");
@@ -2437,7 +2432,7 @@ function zeichneSoftware() {
             k.suchfeld.eingabe.focus();
           } } })
       : UI.leerzustand({ sinnbild: "software", titel: "Noch keine Programme",
-          text: "Mit «Neues Programm» lässt sich das erste Programm erfassen." });
+          text: "Das erste Programm lässt sich über «Neues Programm» erfassen." });
     ziel.appendChild(leer);
   }
 
@@ -2499,17 +2494,6 @@ function ansichtWechseln(name, ausVerlauf) {
   });
 }
 
-function standAnzeigen() {
-  const letzterSync = adminClients.concat(eduClients).reduce(function (max, z) {
-    const d = Hilfe.datum(z.SCCM_LastSync);
-    return d && (!max || d > max) ? d : max;
-  }, null);
-  const takt = Math.round(KONFIG.autoTaktMs / 60000);
-  Rahmen.stand(letzterSync ? "Stand " + UI.zeitText(letzterSync) : "Stand unbekannt",
-    (letzterSync ? "Letzter SCCM-Abgleich " + Hilfe.relativText(letzterSync) + ". " : "")
-      + "Die Seite lädt sich alle " + takt + " Minuten selbst nach.");
-}
-
 /* Still nachladen, ohne Filter, Sortierung, Rollposition, Fokus oder ein
    offenes Blatt zu verlieren, und ohne jede Bewegung.
 
@@ -2532,21 +2516,21 @@ async function stillNeuLaden(leise) {
   const k = knoten[zustand.ansicht];
   try {
     const fehlgeschlagen = await datenLaden(true);
-    standAnzeigen();
     alleNeuBerechnen();
     Rahmen.stillZeichnen(k ? k.ansicht : null, zeichneAnsicht);
     if (offenesBlatt) offenesBlatt.nachfuehren();
     if (!leise) {
       if (fehlgeschlagen.length) {
-        UI.meldung("Nicht alles aktualisiert: «" + fehlgeschlagen.join("», «")
-          + "» konnte nicht geladen werden. Dort gilt der vorige Stand.", { ton: "fehler" });
+        const eine = fehlgeschlagen.length === 1;
+        UI.meldung((eine ? "Die Liste «" : "Die Listen «") + fehlgeschlagen.join("», «")
+          + (eine ? "» konnte" : "» konnten") + " nicht aktualisiert werden. Es bleibt beim vorigen Stand.", { ton: "fehler" });
       } else {
-        UI.meldung("Liste aktualisiert.", { ton: "info" });
+        UI.meldung("Daten aktualisiert.", { ton: "info" });
       }
     }
   } catch (fehler) {
     /* Der bisherige Stand bleibt stehen; der nächste Takt versucht es wieder. */
-    if (!leise) UI.meldung("Die Liste konnte nicht aktualisiert werden. "
+    if (!leise) UI.meldung("Die Daten konnten nicht aktualisiert werden. "
       + (fehler && fehler.message ? fehler.message : ""), { ton: "fehler" });
   } finally {
     ladeLaeuft = false;
@@ -2632,7 +2616,6 @@ async function laden() {
       Rahmen.abmelden(function () { Auth.abmelden(); });
     }
     await datenLaden(false);
-    standAnzeigen();
     alleNeuBerechnen();
     ansichtZeigen(zustand.ansicht);
     zeichneAnsicht();
@@ -2649,7 +2632,6 @@ async function laden() {
     const meldung = fehler && fehler.message ? fehler.message : String(fehler);
     Rahmen.zustand("fehler", {
       titel: "Die Daten konnten nicht geladen werden", text: meldung,
-      hinweis: mockModus ? "" : "Zum Anschauen ohne Anmeldung die Seite mit ?mock=1 aufrufen.",
       beiKlick: function () { laden(); }
     });
   }
@@ -2672,8 +2654,6 @@ function start() {
   if (mockModus) {
     Rahmen.konto({ name: "Vorführmodus" });
     Rahmen.vorfuehrung({
-      text: "Vorführmodus: alle Personen, Geräte, Programme und Zahlen sind erfunden. "
-        + "Änderungen bleiben in diesem Browser und gehen nie nach SharePoint.",
       beiZuruecksetzen: function () { Mock.zuruecksetzen(); location.reload(); }
     });
   }
