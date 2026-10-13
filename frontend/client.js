@@ -933,12 +933,13 @@ function verlaufEinbauen() {
 
 function bereichNeu(ziel) {
   const s = stapel(ziel);
-  // Geräte in SCCM legt der Abgleich selbst an (Name ab «EDU» in den
-  // EDU-Clients, alle übrigen in den ADMIN-Clients). Von Hand nur, was
-  // nicht in SCCM steht.
-  s.appendChild(UI.banner({ ton: "warnung", titel: LISTEN_TITEL + " müssen in der Regel nicht von Hand angelegt werden.",
-    text: "Sobald ein Gerät in SCCM erfasst ist, übernimmt es der SCCM-Abgleich automatisch. "
-      + "Von Hand nur Geräte anlegen, die nicht in SCCM stehen." }));
+  // ADMIN-Clients in SCCM legt der Abgleich selbst an; von Hand nur, was
+  // nicht in SCCM steht. Der Hinweis steht bewusst nur bei den ADMIN-Clients.
+  if (listenName === "admin") {
+    s.appendChild(UI.banner({ ton: "warnung", titel: "ADMIN-Clients müssen in der Regel nicht von Hand angelegt werden.",
+      text: "Sobald ein Gerät in SCCM erfasst ist, übernimmt es der SCCM-Abgleich automatisch. "
+        + "Von Hand nur Geräte anlegen, die nicht in SCCM stehen." }));
+  }
   if (vorlageName) {
     s.appendChild(UI.banner({ ton: "info", sinnbild: "kopieren", titel: "Vorlage übernommen.",
       text: "Die Angaben stammen von «" + vorlageName + "». Nur der PC-Name fehlt noch." }));
