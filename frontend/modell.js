@@ -498,23 +498,32 @@ const Modell = (function () {
   }
 
   /**
-   * Weicht das SCCM-Primärgerät von der Inhaberschaft ab?
-   *
-   * Nur ein gesetztes Primärgerät kann abweichen: ohne Angabe aus SCCM gibt
-   * es nichts zu vergleichen. Ist dagegen ein Primärgerät gemeldet und die
-   * Person Inhaberin keines Geräts, ist das sehr wohl eine Abweichung.
-   *
-   * SCCM ist dabei nur Hinweisgeber: die Inhaberschaft wird ausschliesslich
-   * von Hand gepflegt, kein Abgleich schreibt sie.
-   *
-   * @param {string} primaer   Wert von SCCMPrimaerGeraet
-   * @param {string} computer  Wert von Computer (das Gerät der Person)
-   * @returns {boolean}
+   * Listen-ID aus der Spalte «AdminClientId» der Benutzer-Liste als Text
+   * («17»), leer, wenn keine brauchbare ID drinsteht. Graph liefert die
+   * Zahlenspalte als Zahl, Entwurf und Vorführmodus auch als Text.
+   * @param {*} wert
+   * @returns {string}
    */
-  function primaerWeichtAb(primaer, computer) {
-    const p = String(primaer === null || primaer === undefined ? "" : primaer).trim();
-    if (!p) return false;
-    return schluessel(p) !== schluessel(computer);
+  function geraetId(wert) {
+    if (wert === null || wert === undefined) return "";
+    const t = String(wert).trim();
+    if (!/^\d+(\.0+)?$/.test(t)) return "";
+    const n = parseInt(t, 10);
+    return n > 0 ? String(n) : "";
+  }
+
+  /**
+   * Welches von mehreren gleichnamigen Geräten ein PC-Name meint, wie ihn
+   * SCCM meldet (Primärgerät): das nicht archivierte, darunter zuerst das,
+   * das in SCCM steht. Nur für Hinweise – die Inhaberschaft selbst hängt an
+   * der Listen-ID, nie am Namen.
+   * @param {Array} gleichnamige  Clientzeilen mit demselben PC-Namen
+   * @returns {Object|null}
+   */
+  function bevorzugtesGeraet(gleichnamige) {
+    const liste = gleichnamige || [];
+    const imEinsatz = liste.filter(c => !istArchiviert(c));
+    return imEinsatz.filter(c => Hilfe.istJa(c.SCCM_Found))[0] || imEinsatz[0] || liste[0] || null;
   }
 
   /**
@@ -585,7 +594,7 @@ const Modell = (function () {
   /**
    * Abgeleitete Felder für eine Client-Liste ohne Inhaberschaft — die
    * EDU-Clients. Sie sind Schulungsgeräte und gehören niemandem persönlich;
-   * die Spalte «Computer» der Benutzer-Liste zeigt bewusst nie auf sie.
+   * die Spalte «AdminClientId» der Benutzer-Liste zeigt bewusst nie auf sie.
    *
    * Die Inhaber-Felder werden trotzdem gesetzt (leer), damit Tabelle,
    * Fenster und CSV-Ausgabe für beide Listen derselbe Code sein können.
@@ -614,8 +623,9 @@ const Modell = (function () {
    *   __inhaber       Benutzerzeile des Inhabers, sonst null
    *   __inhaberName   Anzeigename des Inhabers, sonst "" (Tabellenspalte
    *                   «Inhaber»)
-   *   __inhaberAlle   alle Benutzerzeilen, deren Feld «Computer» auf diesen
-   *                   Client zeigt — im Normalfall keine oder genau eine
+   *   __inhaberAlle   alle Benutzerzeilen, deren «AdminClientId» die
+   *                   Listen-ID dieses Clients trägt — im Normalfall keine
+   *                   oder genau eine
    *   __mehrfachInhaber true, wenn mehr als eine Person darauf zeigt; das
    *                   ist ein zu bereinigender Datenfehler, kein Zustand
    *   __status        "Aktiv" | "Lager" | "Archiviert" (leer gilt als Aktiv)
@@ -628,20 +638,26 @@ const Modell = (function () {
    *   __such          Volltextindex (klein geschrieben)
    *
    * Benutzer bekommen:
-   *   __client        Clientzeile oder null (bevorzugt ein nicht
-   *                   archiviertes Gerät, wenn mehrere gleich heissen);
-   *                   der ADMIN-Client, dessen Inhaber die Person ist
-   *   __clientAlle    alle Clientzeilen mit diesem Namen
-   *   __clientMehrdeutig true, wenn es mehr als eine ist
-   *   __hatGeraet     true/false
+   *   __clientId      Listen-ID aus «AdminClientId» als Text, sonst ""
+   *   __client        der ADMIN-Client mit dieser Listen-ID, sonst null.
+   *                   Die Inhaberschaft hängt an der Zeile, also an der
+   *                   Hardware – nie am PC-Namen: ein umbenanntes Gerät
+   *                   behält seinen Inhaber, ein neues Gerät mit dem Namen
+   *                   eines alten erbt ihn nicht.
+   *   __hatGeraet     true, wenn eine Listen-ID eingetragen ist
+   *   __geraetFehlt   true, wenn die Listen-ID auf keine Zeile zeigt
+   *                   (Gerät gelöscht)
+   *   __computerName  PC-Name des Geräts (Tabellenspalte «ADMIN-Client»)
    *   __adAktiv       true/false
    *   __primaerAbweichung  true, wenn SCCM ein Primärgerät meldet, das ein
-   *                   ADMIN-Client ist, und es ≠ Computer ist (auch bei
-   *                   leerem Computer). Ein EDU-Client oder ein Name, den
-   *                   die Liste nicht kennt, zählt nicht: nur ein ADMIN-
-   *                   Client kann einen Inhaber haben (wie im Benutzerfenster)
+   *                   ADMIN-Client ist, und es nicht das Gerät der Person
+   *                   ist (auch ohne Gerät). Bei gleichnamigen Geräten zählt
+   *                   das bevorzugte (bevorzugtesGeraet). Ein EDU-Client
+   *                   oder ein Name, den die Liste nicht kennt, zählt nicht:
+   *                   nur ein ADMIN-Client kann einen Inhaber haben (wie
+   *                   auf der Benutzerseite)
    *   __name          Anzeigename, ersatzweise der Login
-   *   __such          Volltextindex
+   *   __such          Volltextindex, samt PC-Name des Geräts
    *
    * @param {Array} clients    Zeilen der Liste «ADMIN-Clients»
    * @param {Array} benutzer   Zeilen der Benutzer-Liste
@@ -655,26 +671,28 @@ const Modell = (function () {
 
     for (const c of geraete) c.__inhaberAlle = [];
     const nachName = clientGrundfelder(geraete);
+    const nachId = new Map();
+    for (const c of geraete) nachId.set(String(c.id), c);
+    // Die Listen-ID gehört nicht in den Volltext: «17» träfe sonst Personen.
+    const suchSpalten = SPALTEN_BENUTZER.filter(s => s.i !== "AdminClientId");
 
     for (const b of leute) {
-      const pcName = String(b.Computer || "").trim();
-      const treffer = pcName ? (nachName.get(schluessel(pcName)) || []) : [];
-      /* Bei mehreren gleichnamigen Geräten gewinnt das nicht archivierte:
-         die Zuordnung meint fast immer das Gerät, das im Einsatz steht. */
-      const c = treffer.filter(z => !z.__archiviert)[0] || treffer[0] || null;
+      const id = geraetId(b.AdminClientId);
+      const c = id ? (nachId.get(id) || null) : null;
+      b.__clientId = id;
       b.__client = c;
-      b.__clientAlle = treffer.slice();
-      b.__clientMehrdeutig = treffer.length > 1;
-      b.__hatGeraet = !!pcName;
+      b.__hatGeraet = !!id;
+      b.__geraetFehlt = !!id && !c;
+      b.__computerName = c ? String(c.Title || "").trim() : (id ? "Gerät fehlt (Listen-ID " + id + ")" : "");
       b.__name = String(b.Anzeigename || "").trim() || String(b.Title || "").trim();
       b.__adAktiv = Hilfe.istJa(b.ADAktiviert);
-      // Dieselbe Regel wie im Benutzerfenster (primaerGeraet): sonst zählte
-      // die Hauptseite eine Person mit EDU-Primärgerät als Abweichung, das
-      // Fenster zeigte dazu aber nichts zum Übernehmen.
-      const primaer = String(b.SCCMPrimaerGeraet || "").trim();
-      b.__primaerAbweichung = !!primaer && nachName.has(schluessel(primaer))
-        && primaerWeichtAb(primaer, pcName);
-      b.__such = suchtext(b, SPALTEN_BENUTZER);
+      // Dieselbe Regel wie auf der Benutzerseite (primaerGeraet): sonst zählte
+      // die Hauptseite eine Person mit EDU-Primärgerät als Abweichung, die
+      // Seite zeigte dazu aber nichts zum Übernehmen.
+      const primaerName = schluessel(b.SCCMPrimaerGeraet);
+      const primaer = primaerName ? bevorzugtesGeraet(nachName.get(primaerName)) : null;
+      b.__primaerAbweichung = !!primaer && String(primaer.id) !== id;
+      b.__such = (suchtext(b, suchSpalten) + "  " + (c ? String(c.Title || "") : "")).toLowerCase();
       if (c) c.__inhaberAlle.push(b);
     }
 
@@ -864,7 +882,8 @@ const Modell = (function () {
     gjAuswahl: gjAuswahl,
     ersatzVorschlag: ersatzVorschlag,
     ersatzStatus: ersatzStatus,
-    primaerWeichtAb: primaerWeichtAb,
+    geraetId: geraetId,
+    bevorzugtesGeraet: bevorzugtesGeraet,
     // Programme (Liste «Software»)
     stufe: stufe,
     programmSpalte: programmSpalte,

@@ -11,13 +11,15 @@
                       (aus · an · an und gesperrt)
      Bemerkung        freier Text und Verlauf
 
-   Das Feld «Computer» (angezeigt als «ADMIN-Client») hält den Client, dessen
-   Inhaber diese Person ist. Höchstens einer je Person, höchstens eine Person
-   je Client, und ausschliesslich von Hand gepflegt: SCCM meldet zwar ein
-   Primärgerät, der Abgleich schreibt «Computer» aber nie. Es zeigt immer
+   Das Feld «AdminClientId» hält die Listen-ID des Clients, dessen Inhaber
+   diese Person ist – die Zeile, also die Hardware, nie den PC-Namen: ein
+   umbenanntes Gerät behält seinen Inhaber, ein neues Gerät mit dem Namen
+   eines alten erbt ihn nicht. Höchstens einer je Person, höchstens eine
+   Person je Client, und ausschliesslich von Hand gepflegt: SCCM meldet zwar
+   ein Primärgerät, der Abgleich schreibt das Feld aber nie. Es zeigt immer
    auf die Liste «ADMIN-Clients»; EDU-Clients haben bewusst keinen Inhaber.
 
-   Bearbeitbar sind genau «Computer», «Bemerkung», «Verlauf» und die
+   Bearbeitbar sind genau «AdminClientId», «Bemerkung», «Verlauf» und die
    Programmspalten mit Stufe 0 oder 1. Alles aus dem Active Directory oder
    aus SCCM ist schreibgeschützt. Programme der Stufe 2 stammen aus einer
    AD-Gruppe; geschrieben werden nur «0» und «1», nie «2». Benutzer werden
@@ -159,26 +161,20 @@ function rechteZaehlen() {
   return { manuell: manuell, ausAd: ausAd, aktiv: manuell + ausAd, gesamt: pSpalten.length };
 }
 
-/* Alle Geräte, die den eingetragenen Namen tragen. Die Inhaberschaft ist
-   ein Freitext-Name, keine Verknüpfung auf die Listen-ID: heissen zwei
-   Geräte gleich (etwa ein ersetztes, das archiviert liegen bleibt), passen
-   beide. */
-function geraeteMitDiesemNamen() {
-  const name = textWert("Computer").trim();
-  if (!name) return [];
-  const k = Modell.schluessel(name);
-  return alleClients.filter(c => Modell.schluessel(c.Title) === k);
-}
+/* Die eingetragene Listen-ID (Entwurf eingerechnet) als Text, sonst "". */
+function geraetIdWert() { return Modell.geraetId(entwurf.wert("AdminClientId")); }
 
-/* Das Gerät, dessen Inhaber diese Person ist, oder null. Bei mehreren
-   gleichnamigen gewinnt das nicht archivierte – dieselbe Wahl trifft
-   Modell.anreichern. */
+/* Das Gerät, dessen Inhaber diese Person ist, oder null – gefunden über
+   die Listen-ID, nie über den Namen. */
 function inhaberGeraet() {
-  const treffer = geraeteMitDiesemNamen();
-  return treffer.filter(c => !c.__archiviert)[0] || treffer[0] || null;
+  const id = geraetIdWert();
+  if (!id) return null;
+  return alleClients.filter(c => String(c.id) === id)[0] || null;
 }
 
-function istMehrdeutig() { return geraeteMitDiesemNamen().length > 1; }
+/* Eine Listen-ID ist eingetragen, die Zeile gibt es aber nicht mehr
+   (Gerät gelöscht). */
+function geraetFehlt() { return !!geraetIdWert() && !inhaberGeraet(); }
 
 function primaerName() {
   return UI.text(zeile ? zeile.SCCMPrimaerGeraet : "").trim();
@@ -187,31 +183,31 @@ function primaerName() {
 /* Das SCCM-Primärgerät als Zeile der Liste «ADMIN-Clients», oder null.
    Nur ein ADMIN-Client kann einen Inhaber haben:
    meldet SCCM einen EDU-Client oder einen Namen, den die Liste nicht
-   kennt, gibt es nichts zu übernehmen. Bei gleichnamigen Geräten gewinnt
-   das nicht archivierte, wie in inhaberGeraet(). */
+   kennt, gibt es nichts zu übernehmen. SCCM meldet nur einen Namen: bei
+   gleichnamigen Geräten gilt das bevorzugte, wie in Modell.anreichern. */
 function primaerGeraet() {
   const name = primaerName();
   if (!name) return null;
   const k = Modell.schluessel(name);
-  const treffer = alleClients.filter(c => Modell.schluessel(c.Title) === k);
-  return treffer.filter(c => !c.__archiviert)[0] || treffer[0] || null;
+  return Modell.bevorzugtesGeraet(alleClients.filter(c => Modell.schluessel(c.Title) === k));
 }
 
 /* Weicht das SCCM-Primärgerät vom Gerät dieser Person ab – und ist es ein
    ADMIN-Client, also überhaupt als Inhaber-Gerät denkbar? Der Entwurf
    zählt mit, damit der Hinweis verschwindet, sobald es korrigiert ist.
-   SCCM bleibt Hinweisgeber: übernommen wird nur auf Klick. */
+   SCCM bleibt Hinweisgeber: übernommen wird nur auf Klick. Verglichen
+   werden Zeilen: ist die Person noch Inhaber des archivierten Vorgängers
+   gleichen Namens, weicht das neue Gerät ab und lässt sich übernehmen. */
 function primaerAbweichung() {
-  return !!primaerGeraet() && Modell.primaerWeichtAb(primaerName(), textWert("Computer"));
+  const p = primaerGeraet();
+  return !!p && String(p.id) !== geraetIdWert();
 }
 
 /* Meldet SCCM ein Primärgerät, das kein ADMIN-Client ist (meist ein
    EDU-Client), sagt die Seite das nur neutral: keine Warnung, kein
-   «Übernehmen». Gleicht es dem eingetragenen Namen, spricht schon der
-   Hinweis «Kein ADMIN-Client heisst …». */
+   «Übernehmen». */
 function primaerAusserhalb() {
-  const name = primaerName();
-  return !!name && !primaerGeraet() && Modell.primaerWeichtAb(name, textWert("Computer"));
+  return !!primaerName() && !primaerGeraet();
 }
 
 function primaerIstEdu() { return Modell.clientListe(primaerName()) === "edu"; }
@@ -228,8 +224,9 @@ function andereBenutzerVon(clientZeile) {
 function geraetGruende() {
   const gruende = [];
   if (primaerAbweichung()) gruende.push("SCCM meldet ein anderes Primärgerät als hier eingetragen.");
-  if (istMehrdeutig()) gruende.push("Der eingetragene Gerätename ist nicht eindeutig.");
+  if (geraetFehlt()) gruende.push("Das eingetragene Gerät gibt es in der Liste «ADMIN-Clients» nicht mehr.");
   const geraet = inhaberGeraet();
+  if (geraet && geraet.__archiviert) gruende.push("«" + geraet.Title + "» ist archiviert.");
   const andere = geraet ? andereBenutzerVon(geraet) : [];
   if (andere.length) {
     gruende.push("«" + geraet.Title + "» ist auch bei «" + andere.join("», «") + "» eingetragen.");
@@ -327,10 +324,9 @@ function geraetKarteKurz() {
   const k = UI.karte({ titel: "Gerät", aktionen: [zumGeraet] });
 
   const geraet = inhaberGeraet();
-  const name = textWert("Computer").trim();
   let wert;
   if (geraet) wert = geraetVerweis(geraet, "uebersicht-geraet");
-  else if (name) wert = UI.status("«" + name + "» nicht in der Liste", "warnung");
+  else if (geraetFehlt()) wert = UI.status("Gerät fehlt in der Liste", "warnung", { titel: "Listen-ID " + geraetIdWert() });
   else wert = UI.el("span", "t-leise", "Kein Gerät");
   k.inhalt.appendChild(UI.datenzeilen([
     UI.feldZeile("Inhaber von", wert),
@@ -401,15 +397,17 @@ function telefonKarte() {
 
 /* Nach einer Wahl: Bereich neu (ohne Auftritt), dann zeigt die Karte oben
    das Ergebnis (aufdecken) und der Fokus steht dort, wo es weitergeht. */
-function inhaberschaftSetzen(pcName, fokusSelektor) {
-  entwurf.setzeWert("Computer", pcName);
+/* «geraet» ist die Clientzeile oder null (Inhaberschaft aufheben).
+   Eingetragen wird ihre Listen-ID. */
+function inhaberschaftSetzen(geraet, fokusSelektor) {
+  entwurf.setzeWert("AdminClientId", geraet ? Number(geraet.id) : null);
   zeichneBereich();
   Bewegung.aufdecken(UI.$("b-geraet-ergebnis"));
   if (fokusSelektor) fokusAuf(fokusSelektor);
 }
 
 function inhaberWerden(c) {
-  inhaberschaftSetzen(c.Title, "[data-fokus=\"treffer-" + CSS.escape(String(c.id)) + "\"]");
+  inhaberschaftSetzen(c, "[data-fokus=\"treffer-" + CSS.escape(String(c.id)) + "\"]");
 }
 
 function bereichGeraet(ziel) {
@@ -421,12 +419,12 @@ function bereichGeraet(ziel) {
 
 function geraetKarte() {
   const geraet = inhaberGeraet();
-  const name = textWert("Computer").trim();
+  const id = geraetIdWert();
 
   const aktionen = [];
-  if (name) {
+  if (id) {
     const aufheben = UI.knopf({ text: "Inhaberschaft aufheben", variante: "leise", sinnbild: "schliessen",
-      beiKlick: function () { inhaberschaftSetzen("", "[data-fokus=\"geraet-suchen\"]"); }, fokus: "inhaberschaft-aufheben" });
+      beiKlick: function () { inhaberschaftSetzen(null, "[data-fokus=\"geraet-suchen\"]"); }, fokus: "inhaberschaft-aufheben" });
     aktionen.push(aufheben);
   }
   const k = UI.karte({
@@ -438,7 +436,7 @@ function geraetKarte() {
   const ergebnis = UI.el("div", "stapel");
   ergebnis.id = "b-geraet-ergebnis";
 
-  if (!name) {
+  if (!id) {
     ergebnis.appendChild(UI.leerzustand({
       sinnbild: "laptop",
       titel: "Kein Gerät",
@@ -457,48 +455,33 @@ function geraetKarte() {
         UI.status(andere.join(", "), "gefahr", { titel: "Ein Gerät hat genau einen Inhaber. Auf der Geräteseite bereinigen." })));
     }
     ergebnis.appendChild(UI.datenzeilen(zeilen));
+    if (geraet.__archiviert) {
+      ergebnis.appendChild(UI.banner({
+        ton: "warnung",
+        titel: "«" + geraet.Title + "» ist archiviert.",
+        text: "Das Nachfolgegerät unten zuweisen oder die Inhaberschaft aufheben."
+      }));
+    }
   } else {
     ergebnis.appendChild(UI.banner({
       ton: "warnung",
-      titel: "Kein ADMIN-Client heisst «" + name + "».",
-      text: "Namen prüfen oder unten ein Gerät wählen."
+      titel: "Das eingetragene Gerät gibt es nicht mehr.",
+      text: "Listen-ID " + id + " fehlt in der Liste «ADMIN-Clients»."
     }));
-  }
-
-  /* Gleichnamige Geräte: die Inhaberschaft hängt nur am Namen. */
-  const treffer = geraeteMitDiesemNamen();
-  if (treffer.length > 1) {
-    ergebnis.appendChild(UI.banner({
-      ton: "warnung",
-      titel: treffer.length + " Geräte heissen «" + name + "».",
-      text: "Die Inhaberschaft hängt nur am Namen und ist darum nicht eindeutig."
-    }));
-    ergebnis.appendChild(UI.zeilenliste(treffer.map(function (c) {
-      const z = UI.listenZeile({
-        titel: c.Title,
-        unter: ["Listen-ID " + c.id, UI.text(c.SCCM_Model), UI.text(c.GebaeudeStock)],
-        href: UI.adresse.client("admin", c.id),
-        sinnbild: "laptop",
-        aktuell: c === geraet,
-        status: [c === geraet ? UI.status("Wird angezeigt", "neutral", { sinnbild: "check" }) : null,
-          geraetStatus(c)],
-        fokus: "gleichnamig-" + c.id
-      });
-      return z;
-    })));
   }
 
   /* Vorschlag aus SCCM. Nur ein Vorschlag: übernommen wird auf Klick, der
-     Abgleich selbst schreibt die Inhaberschaft nie. Übernommen wird der
-     Name, wie ihn die Liste schreibt. Ist das Primärgerät kein ADMIN-Client
-     (EDU-Clients haben keinen Inhaber), steht nur ein ruhiger Hinweis. */
+     Abgleich selbst schreibt die Inhaberschaft nie. Übernommen wird die
+     Zeile, die der gemeldete Name meint (Modell.bevorzugtesGeraet). Ist das
+     Primärgerät kein ADMIN-Client (EDU-Clients haben keinen Inhaber), steht
+     nur ein ruhiger Hinweis. */
   if (primaerAbweichung()) {
-    const primaer = primaerGeraet().Title;
+    const primaer = primaerGeraet();
     const uebernehmen = UI.knopf({ text: "Übernehmen", variante: "leise",
       beiKlick: function () { inhaberschaftSetzen(primaer, "[data-fokus=\"geraet-aktuell\"]"); }, fokus: "sccm-uebernehmen" });
     ergebnis.appendChild(UI.banner({
       ton: "info",
-      text: "SCCM meldet «" + primaer + "» als Primärgerät.",
+      text: "SCCM meldet «" + primaer.Title + "» als Primärgerät.",
       knopf: uebernehmen
     }));
   } else if (primaerAusserhalb()) {
@@ -562,18 +545,15 @@ function trefferZeichnen(behaelter) {
   }
 
   const gewaehlt = inhaberGeraet();
-  const eingetragen = Modell.schluessel(textWert("Computer").trim());
   ziel.appendChild(UI.zeilenliste(treffer.slice(0, TREFFER_HOECHSTENS).map(function (c) {
-    /* «Inhaber» steht nur an dem Gerät, das der Eintrag wirklich meint –
-       bei gleichnamigen Geräten sonst an allen. */
+    /* «Inhaber» steht nur an der Zeile mit der eingetragenen Listen-ID –
+       ein gleichnamiges Gerät ist ein anderes Gerät. */
     const istAktuell = !!gewaehlt && String(gewaehlt.id) === String(c.id);
-    /* Ein gleichnamiges zweites Gerät: die Inhaberschaft hängt nur am
-       Namen, sie gilt hier also schon. «Zuweisen» änderte nichts und
-       sähe kaputt aus – stattdessen sagt ein Chip, warum es fehlt. */
-    const gleicherName = !istAktuell && !!eingetragen && Modell.schluessel(c.Title) === eingetragen;
-    const ohneAktion = istAktuell || gleicherName;
+    const ohneAktion = istAktuell;
     const andere = andereBenutzerVon(c);
     const teile = [UI.text(c.SCCM_Model), UI.text(c.GebaeudeStock)];
+    // Gleichnamige Geräte unterscheidet erst die Hardware.
+    if (c.__namensDublette && UI.text(c.SCCM_SerialNumber).trim()) teile.push("Seriennummer " + UI.text(c.SCCM_SerialNumber).trim());
     if (andere.length) teile.push("Inhaber: " + andere.join(", "));
     const aktionen = ohneAktion ? [] : [UI.knopf({ text: "Zuweisen", variante: "leise", klein: true,
       titel: andere.length
@@ -590,8 +570,6 @@ function trefferZeichnen(behaelter) {
       aktuell: istAktuell,
       status: [
         istAktuell ? UI.status("Inhaber", "erfolg") : null,
-        gleicherName ? UI.status("Gleicher Name", "neutral",
-          { titel: "Die Inhaberschaft hängt am Namen und gilt darum schon für dieses Gerät." }) : null,
         geraetStatus(c)
       ],
       aktionen: aktionen,
@@ -920,13 +898,22 @@ function ladefehlerZeigen(fehler) {
    ================================================================== */
 
 /* Werte so, wie Graph sie erwartet. Programmwerte sind immer «0» oder
-   «1»; «2» schreibt diese Seite nie. Eine aufgehobene Inhaberschaft
-   geht als null: Graph leert das Feld damit wirklich (wie auf der Geräteseite). */
+   «1»; «2» schreibt diese Seite nie. Die Inhaberschaft geht als Zahl
+   (Listen-ID), eine aufgehobene als null: Graph leert das Feld damit
+   wirklich (wie auf der Geräteseite). */
 function fuerGraph(feld, roh) {
   if (pSpalte[feld]) return Modell.stufe(roh) === 1 ? "1" : "0";
-  const t = (roh === null || roh === undefined) ? "" : String(roh);
-  if (feld === "Computer") return t.trim() === "" ? null : t.trim();
-  return t;
+  if (feld === "AdminClientId") {
+    const id = Modell.geraetId(roh);
+    return id ? Number(id) : null;
+  }
+  return (roh === null || roh === undefined) ? "" : String(roh);
+}
+
+/* PC-Name zu einer Listen-ID, für den Verlauf der Person. */
+function geraetName(id) {
+  const c = id ? alleClients.filter(z => String(z.id) === id)[0] : null;
+  return c ? String(c.Title || "").trim() : (id ? "Listen-ID " + id : "");
 }
 
 /* Sicherheitsnetz: nur bearbeitbare Felder dürfen hinaus. */
@@ -944,13 +931,17 @@ function speichern() {
       for (const feld of Object.keys(aenderungen)) {
         if (darfSchreiben(feld)) felder[feld] = fuerGraph(feld, aenderungen[feld]);
       }
-      /* Ein Gerätewechsel steht automatisch im Verlauf. */
-      if (Object.prototype.hasOwnProperty.call(felder, "Computer")) {
-        const alt = String(zeile.Computer || "").trim();
-        const neu = String(felder.Computer || "").trim();
-        if (alt !== neu) {
-          const eintrag = neu ? (alt ? "Gerät gewechselt: " + alt + " → " + neu : "Gerät erhalten: " + neu)
-            : "Gerät abgegeben: " + alt;
+      /* Ein Gerätewechsel steht automatisch im Verlauf, mit den PC-Namen. */
+      if (Object.prototype.hasOwnProperty.call(felder, "AdminClientId")) {
+        const altId = Modell.geraetId(zeile.AdminClientId);
+        const neuId = Modell.geraetId(felder.AdminClientId);
+        const alt = geraetName(altId);
+        const neu = geraetName(neuId);
+        if (altId !== neuId) {
+          // Gleicher Name, andere Zeile: das Nachfolgegerät eines ersetzten.
+          const wechsel = alt === neu ? "Gerät gewechselt: " + neu + " (neues Gerät, gleicher Name)"
+            : "Gerät gewechselt: " + alt + " → " + neu;
+          const eintrag = neu ? (alt ? wechsel : "Gerät erhalten: " + neu) : "Gerät abgegeben: " + alt;
           felder.Verlauf = F.verlaufAnhaengen(entwurf.wert("Verlauf"), eintrag);
         }
       }

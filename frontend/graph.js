@@ -910,7 +910,9 @@ const Mock = (function () {
     return z;
   }
 
-  function benutzerZeile(r, nummer, pcName, ids) {
+  /* «geraet»: die Clientzeile, deren Inhaber die Person ist, oder null.
+     Eingetragen wird ihre Listen-ID, wie in SharePoint. */
+  function benutzerZeile(r, nummer, geraet, ids) {
     const z = leereZeile(SPALTEN_BENUTZER);
     for (const id of ids) z[id] = "0";
 
@@ -936,7 +938,7 @@ const Mock = (function () {
     z.Firma = waehle(r, FIRMEN);
     z.ADAktiviert = r() < 0.92 ? "Ja" : "Nein";
     z.ADLetzterSync = vorTagen(0, 4);
-    z.Computer = pcName || "";
+    z.AdminClientId = geraet ? Number(geraet.id) : "";
     /* SCCMPrimaerGeraet setzt benutzerkontenAbgleichen(): meist gleich der
        Zuordnung, bei rund jedem zehnten Benutzer abweichend. */
     z.Bemerkung = r() < 0.1 ? "Zweitgerät im Homeoffice" : "";
@@ -973,7 +975,7 @@ const Mock = (function () {
      Person ihr Primärgerät; das landet in SCCMPrimaerGeraet.
 
      SCCM schreibt die Inhaberschaft nie: die Felder hier sind Beobachtung,
-     die Spalte «Computer» bleibt Handarbeit. Bei rund jedem zehnten
+     die Spalte «AdminClientId» bleibt Handarbeit. Bei rund jedem zehnten
      Datensatz weicht darum ein Feld ab — Handwechsel nicht nachgeführt,
      Support-Anmeldung, Zweitgerät. Genau diese Abweichungen erzeugen im
      Frontend die Hinweise «Primärer Benutzer ist nicht der Inhaber» und
@@ -987,21 +989,23 @@ const Mock = (function () {
   }
 
   function benutzerkontenAbgleichen(r, clients, benutzer) {
-    // Logins je Gerät, in der Reihenfolge der Benutzerliste.
+    // Logins je Gerät (Listen-ID), in der Reihenfolge der Benutzerliste.
+    // Die EDU-Clients haben im Vorführmodus eigene Ids ab 500.
     const nachGeraet = new Map();
     for (const b of benutzer) {
-      const pc = String(b.Computer || "").trim().toLowerCase();
-      if (!pc) continue;
-      if (!nachGeraet.has(pc)) nachGeraet.set(pc, []);
-      nachGeraet.get(pc).push(b.Title);
+      const id = Modell.geraetId(b.AdminClientId);
+      if (!id) continue;
+      if (!nachGeraet.has(id)) nachGeraet.set(id, []);
+      nachGeraet.get(id).push(b.Title);
     }
+    const nachId = new Map(clients.map(z => [String(z.id), z]));
     const alleLogins = benutzer.map(b => b.Title);
     const inSccm = clients.filter(z => Hilfe.istJa(z.SCCM_Found));
 
     /* --- Geräteseite --- */
     for (const z of clients) {
       if (!Hilfe.istJa(z.SCCM_Found)) continue;
-      const logins = nachGeraet.get(String(z.Title || "").toLowerCase()) || [];
+      const logins = nachGeraet.get(String(z.id)) || [];
       const online = Hilfe.istJa(z.SCCM_Online);
       const fremd = alleLogins[Math.floor(r() * alleLogins.length)];
 
@@ -1037,7 +1041,8 @@ const Mock = (function () {
 
     /* --- Benutzerseite --- */
     for (const b of benutzer) {
-      const zugeordnet = String(b.Computer || "").trim();
+      const geraet = nachId.get(Modell.geraetId(b.AdminClientId));
+      const zugeordnet = geraet ? String(geraet.Title || "").trim() : "";
       if (!zugeordnet) {
         // Ohne eigenes Gerät meldet SCCM manchmal trotzdem ein Primärgerät.
         b.SCCMPrimaerGeraet = r() < 0.25 && inSccm.length
@@ -1051,6 +1056,45 @@ const Mock = (function () {
         b.SCCMPrimaerGeraet = zugeordnet;
       }
     }
+  }
+
+
+  /* Eine Neuaufsetzung unter altem Namen: Der Vorgänger (andere Hardware,
+     andere Seriennummer) bleibt archiviert als eigene Zeile liegen, sein
+     Inhaber hängt noch an ihm; das neue Gerät hat noch keinen. So lässt
+     sich im Vorführmodus anschauen, dass die Inhaberschaft an der Hardware
+     hängt und nicht am Namen. Ohne Würfel, damit alle übrigen Vorführdaten
+     bleiben, wie sie sind. */
+  function neuaufsetzungZeigen(admin, benutzer) {
+    const vergeben = new Set(benutzer.map(b => Modell.geraetId(b.AdminClientId)));
+    const neu = admin.filter(z => Hilfe.istJa(z.SCCM_Found) && Modell.status(z.Status) === "Aktiv"
+      && !vergeben.has(String(z.id)))[0];
+    const person = benutzer.filter(b => !Modell.geraetId(b.AdminClientId))[0];
+    if (!neu || !person) return;
+    const eintrag = function (tage, text) {
+      return { id: "mock-neuaufsetzung-" + tage, datum: tagIso(tage), text: text, quelle: "sync", erstellt: vorTagen(tage, 4) };
+    };
+    neu.Verlauf = JSON.stringify([eintrag(21, "Aus SCCM neu angelegt")]);
+    let hoechste = 0;
+    for (const z of admin) hoechste = Math.max(hoechste, Number(z.id) || 0);
+    const alt = Object.assign({}, neu, {
+      id: String(hoechste + 1),
+      Status: "Archiviert",
+      SCCM_Found: "Nein",
+      SCCM_Online: "Nein",
+      SCCM_CurrentLogonUser: "",
+      SCCM_SyncStatus: "Kein SCCM-Gerät zu '" + neu.Title + "'",
+      SCCM_ResourceID: Number(neu.SCCM_ResourceID) - 4200,
+      SCCM_SerialNumber: "SN" + String(Number(String(neu.SCCM_SerialNumber).replace(/\D/g, "")) + 7),
+      SCCM_LastActive: vorTagen(23, 16),
+      Beschaffungsjahr: "2019/2020",
+      ErsatzGeplant: "2024/2025",
+      Verlauf: JSON.stringify([eintrag(1900, "Aus SCCM neu angelegt"),
+        eintrag(20, "In SCCM nicht mehr vorhanden, archiviert")])
+    });
+    admin.push(alt);
+    person.AdminClientId = Number(alt.id);
+    person.SCCMPrimaerGeraet = neu.Title;
   }
 
 
@@ -1079,14 +1123,14 @@ const Mock = (function () {
     const benutzer = [];
     let nr = 1;
     // Die ersten 42 ADMIN-Clients bekommen ihren Inhaber.
-    for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, admin[i].Title, ids));
+    for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, admin[i], ids));
     /* Zwei Altlasten: hier trägt eine zweite Person dasselbe Gerät. Ein
        Gerät hat genau einen Inhaber, darum zeigt das Frontend darauf den
        Fehler «Mehr als ein Inhaber» — ohne solche Zeilen wäre er im
        Vorführmodus nie zu sehen. */
-    for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, admin[i * 3].Title, ids));
+    for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, admin[i * 3], ids));
     // Zwölf Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Inhaber.
-    for (let i = 0; i < 12; i++) benutzer.push(benutzerZeile(r, nr++, "", ids));
+    for (let i = 0; i < 12; i++) benutzer.push(benutzerZeile(r, nr++, null, ids));
 
     /* Erst jetzt, wo beide Seiten stehen, die SCCM-Konten ableiten. Die
        EDU-Clients kommen mit: SCCM meldet auch dort Anmeldungen, nur die
@@ -1095,6 +1139,8 @@ const Mock = (function () {
 
     // Die Telefonliste hängt an den Benutzern (Kurzwahl = 200 + Nummer).
     const telefon = telefone(r, benutzer);
+
+    neuaufsetzungZeigen(admin, benutzer);
 
     zwischenspeicher = {
       admin: admin, edu: edu, benutzer: benutzer,

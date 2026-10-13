@@ -85,6 +85,10 @@ const CLIENT_ZUSATZ = [
 const INHABER_SPALTEN = ["__inhaberName", "__hatInhaber"];
 
 const BENUTZER_ZUSATZ = [
+  /* Der PC-Name des Geräts, dessen Inhaber die Person ist. In SharePoint
+     steht nur seine Listen-ID («AdminClientId»); diese Spalte ersetzt sie
+     (ERSETZTE_SPALTEN). */
+  { i: "__computerName",   d: "ADMIN-Client", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__hatGeraetText",  d: "Gerät zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__hatTelefonText", d: "Telefonnummer zugeordnet", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   /* Ersetzt die rohe Spalte «AD-Konto aktiv» (ERSETZTE_SPALTEN): ein leeres
@@ -183,7 +187,7 @@ const TAB = {
   edu: clientTab("edu", false, "EDU-Clients"),
   benutzer: {
     namensSpalte: "Anzeigename",
-    standard: ["Anzeigename", "Title", "Abteilung", "Funktion", "Computer", "__adAktivText"],
+    standard: ["Anzeigename", "Title", "Abteilung", "Funktion", "__computerName", "__adAktivText"],
     sortSpalte: "Anzeigename",
     facetten: [
       { k: "Abteilung",        d: "Abteilung" },
@@ -267,7 +271,9 @@ function anzahlText(tab, n) { return UI.zahlText(n) + " " + einheit(tab, n); }
    Platz der rohen ein. */
 const ERSETZTE_SPALTEN = {
   client: { Status: "__statusText", InDomaene: "__domaeneText" },
-  benutzer: { ADAktiviert: "__adAktivText" },
+  /* «Computer» hielt bis Oktober 2026 den PC-Namen; gemerkte Spaltenwahl und
+     alte Links zeigen dafür jetzt den Namen aus der Verknüpfung. */
+  benutzer: { ADAktiviert: "__adAktivText", AdminClientId: "__computerName", Computer: "__computerName" },
   telefone: { Status: "__statusText" }
 };
 
@@ -1340,6 +1346,27 @@ function zelle(tab, zeile, schluessel) {
     td.textContent = Modell.datumSchweiz(juengster.datum) + "  " + juengster.text
       + (liste.length > 1 ? "  (+" + (liste.length - 1) + ")" : "");
     UI.tipp(td, liste.map(e => Modell.datumSchweiz(e.datum) + "  " + e.text).join("\n"));
+    return td;
+  }
+
+  /* Das Gerät der Person: Verweis über die Listen-ID (der Name ist kein
+     Schlüssel), ein archiviertes mit Status. Zeigt die ID ins Leere
+     (Gerät gelöscht), steht eine Warnung. */
+  if (tab === "benutzer" && schluessel === "__computerName") {
+    if (zeile.__geraetFehlt) {
+      td.appendChild(UI.status("Gerät fehlt", "warnung", { titel: "Listen-ID " + zeile.__clientId + " fehlt in der Liste «ADMIN-Clients»" }));
+      return td;
+    }
+    const c = zeile.__client;
+    if (!c) return leerZelle(td);
+    td.className = "ohne-umbruch";
+    const link = el("a", "name-link", String(c.Title || "").trim() || "(ohne Namen)");
+    link.href = detailAdresse("admin", c.id);
+    td.appendChild(link);
+    if (c.__archiviert) {
+      td.appendChild(document.createTextNode(" "));
+      td.appendChild(UI.status(ARCHIVIERT, "neutral", { sinnbild: "archiv" }));
+    }
     return td;
   }
 

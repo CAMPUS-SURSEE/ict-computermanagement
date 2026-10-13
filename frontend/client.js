@@ -20,9 +20,12 @@
    Domäne, die es in SCCM nie geben wird (Gäste- und Prüfungsnotebooks).
 
    Der Inhaber – die Person, der das Gerät formal gehört – steht in der
-   Liste «Benutzer» (Spalte «Computer»). Nur ADMIN-Clients haben einen, und
-   höchstens einen; gepflegt wird er ausschliesslich hier. SCCM meldet
-   Primär- und Anmeldebenutzer, schreibt die Inhaberschaft aber nie.
+   Liste «Benutzer» (Spalte «AdminClientId» mit der Listen-ID dieser Zeile).
+   Die Inhaberschaft hängt damit an der Hardware, nicht am PC-Namen:
+   Umbenennen ändert sie nicht, und ein gleichnamiges neues Gerät erbt sie
+   nicht. Nur ADMIN-Clients haben einen Inhaber, und höchstens einen;
+   gepflegt wird er hier und auf der Benutzerseite. SCCM meldet Primär- und
+   Anmeldebenutzer, schreibt die Inhaberschaft aber nie.
 
    Gebaut wird nur über das Fundament: UI (bausteine.js, rahmen.js), Rahmen,
    Bewegung und F (fenster.js). Diese Datei enthält das Fachliche und das
@@ -309,8 +312,9 @@ function geraeteStatus() {
   return Modell.status(wert("Status"));
 }
 
-/* Andere Geräte mit demselben PC-Namen. PC-Namen sind kein Schlüssel: ein
-   ersetztes Gerät bleibt archiviert liegen und heisst weiterhin gleich. */
+/* Andere Geräte mit demselben PC-Namen. PC-Namen sind kein Schlüssel: jede
+   Zeile ist eine Hardware. Ein ersetztes Gerät bleibt archiviert liegen und
+   heisst weiterhin gleich wie sein Nachfolger. */
 function namensZwillinge() {
   const name = textWert("Title").trim();
   if (!name || !zeile) return [];
@@ -319,23 +323,33 @@ function namensZwillinge() {
     Modell.schluessel(z.Title) === k && String(z.id) !== String(zeile.id));
 }
 
-/* Alle Personen, deren Feld «Computer» auf dieses Gerät zeigt. Heissen
-   mehrere Geräte gleich, zählt – wie in Modell.anreichern – nur, wen die
-   Anreicherung diesem Gerät zugewiesen hat. Bei EDU-Clients immer leer.
-   Beides mit dem GESPEICHERTEN Namen (zeile.Title), nicht mit dem
-   getippten: sonst nähme ein archivierter Zwilling beim Umbenennen den
-   Inhaber des Geräts im Einsatz mit. */
+/* Gleichnamige Geräte, die nicht archiviert sind. Nur sie sind auffällig:
+   ein archivierter Vorgänger gleichen Namens ist der Normalfall. */
+function zwillingeImEinsatz() {
+  return namensZwillinge().filter(z => !z.__archiviert);
+}
+
+/* Die gleichnamigen Geräte als Verweise («Listen-ID 12 (Archiviert)»),
+   dahinter die Regel. Für Hinweise der Übersicht. */
+function zwillingText(liste) {
+  const t = el("span");
+  liste.forEach(function (z, i) {
+    if (i) t.appendChild(document.createTextNode(", "));
+    const a = el("a", "name-link", "Listen-ID " + z.id);
+    a.href = UI.adresse.client(listenName, z.id);
+    t.appendChild(a);
+    t.appendChild(document.createTextNode(" (" + Modell.status(z.Status) + ")"));
+  });
+  t.appendChild(document.createTextNode(". Jede Zeile ist ein eigenes Gerät."));
+  return t;
+}
+
+/* Alle Personen, deren «AdminClientId» die Listen-ID dieses Geräts trägt.
+   Der PC-Name spielt keine Rolle. Bei EDU-Clients immer leer. */
 function inhaberAlle() {
-  if (!zeile || !mitInhaber) return [];
-  const name = String(zeile.Title || "").trim();
-  if (!name) return [];
-  const k = Modell.schluessel(name);
-  const passend = alleBenutzer.filter(b => Modell.schluessel(b.Computer) === k);
-  const mehrdeutig = alleClients.some(z => Modell.schluessel(z.Title) === k && String(z.id) !== String(zeile.id));
-  const gefunden = mehrdeutig
-    ? passend.filter(b => b.__client && String(b.__client.id) === String(zeile.id))
-    : passend;
-  return gefunden.slice()
+  if (!zeile || !mitInhaber || neuModus) return [];
+  const id = String(zeile.id);
+  return alleBenutzer.filter(b => Modell.geraetId(b.AdminClientId) === id)
     .sort((a, b) => Hilfe.vergleiche(a.__name || a.Title, b.__name || b.Title));
 }
 
@@ -347,19 +361,6 @@ function personName(b) { return b ? (b.__name || b.Title || "") : ""; }
 function namenText(personen) {
   const namen = personen.map(b => "«" + personName(b) + "»");
   return namen.length < 2 ? (namen[0] || "") : namen.slice(0, -1).join(", ") + " und " + namen[namen.length - 1];
-}
-
-/* Wen ein Umbenennen mitnimmt: die Inhaberschaft hängt am Namen (Feld
-   «Computer» der Person). Ändert sich der Name wirklich – nicht nur in
-   Gross/Klein oder Leerzeichen, die Modell.schluessel ohnehin gleich
-   behandelt –, führt schreiben() das Feld dieser Personen nach; sonst
-   verlöre das Gerät still seinen Inhaber. inhaberAlle() rechnet mit dem
-   GESPEICHERTEN Namen, darum vor dem Speichern abfragen. */
-function mitziehende() {
-  if (neuModus || !zeile) return [];
-  const neu = textWert("Title").trim();
-  if (!neu || Modell.schluessel(neu) === Modell.schluessel(zeile.Title)) return [];
-  return inhaberAlle();
 }
 
 /* Die Hinweise: gefahr, warnung, info. Kein Score, keine Punkte. */
@@ -384,16 +385,23 @@ function hinweise() {
     info("Gerät liegt im Lager", "Es ist einsatzbereit, aber niemandem zugeteilt.");
   }
 
+  /* Gleichnamige Geräte. Jede Zeile ist eine eigene Hardware: ein
+     archivierter Vorgänger gleichen Namens ist nach einer Neuaufsetzung der
+     Normalfall (ruhiger Hinweis, der Verweis führt zu seinem Verlauf).
+     Auffällig ist erst ein zweites Gerät im Einsatz. */
   const zwillinge = namensZwillinge();
   if (zwillinge.length) {
-    const aktive = zwillinge.filter(z => !z.__archiviert).length;
-    warnung(zwillinge.length === 1 ? "Noch ein Gerät heisst gleich"
-      : zwillinge.length + " weitere Geräte heissen gleich",
-      "Der PC-Name «" + textWert("Title").trim() + "» kommt " + (zwillinge.length + 1)
-      + " Mal in der Liste vor" + (aktive ? "" : (zwillinge.length === 1 ? ", das andere Gerät ist archiviert"
-        : ", die übrigen Geräte sind archiviert")) + "."
-      + (mitInhaber ? " Die Inhaberschaft ist damit mehrdeutig, Vorrang hat das nicht archivierte Gerät." : "")
-      + " Am besten das alte Gerät umbenennen.");
+    const imEinsatz = zwillingeImEinsatz().length;
+    if (imEinsatz && betrieb !== "Archiviert") {
+      b.push({ ton: "warnung", text: zwillingText(zwillinge),
+        titel: imEinsatz === 1 ? "Noch ein Gerät im Einsatz heisst gleich" : imEinsatz + " weitere Geräte im Einsatz heissen gleich" });
+    } else if (betrieb === "Archiviert") {
+      b.push({ ton: "info", text: zwillingText(zwillinge),
+        titel: zwillinge.length === 1 ? "Ein weiteres Gerät heisst gleich" : zwillinge.length + " weitere Geräte heissen gleich" });
+    } else {
+      b.push({ ton: "info", text: zwillingText(zwillinge),
+        titel: zwillinge.length === 1 ? "Ein archiviertes Gerät heisst gleich" : zwillinge.length + " archivierte Geräte heissen gleich" });
+    }
   }
 
   const beschaffung = textWert("Beschaffungsjahr").trim();
@@ -413,9 +421,15 @@ function hinweise() {
 
   if (!inSccm()) {
     /* Ausserhalb der Domäne ist «nicht in SCCM» der Normalfall, kein Hinweis. */
+    /* Der Abgleich sucht das Gerät über seine Seriennummer, den Namen nimmt
+       er nur für Zeilen ohne Seriennummer. Ein gleichnamiges neues Gerät in
+       SCCM ist darum nicht dieses. */
     if (inDomaene()) {
-      warnung("Nicht in SCCM", "Zu diesem PC-Namen findet der Abgleich kein Gerät in SCCM. "
-        + "Entweder heisst das Gerät dort anders, oder es ist ausser Betrieb.");
+      const serie = String(zeile.SCCM_SerialNumber || "").trim();
+      warnung("Nicht in SCCM", serie
+        ? "In SCCM steht kein Gerät mit der Seriennummer «" + serie + "». Meist ist es ausser Betrieb."
+        : "Zu diesem PC-Namen findet der Abgleich kein Gerät in SCCM. "
+          + "Entweder heisst das Gerät dort anders, oder es ist ausser Betrieb.");
     }
     return b;
   }
@@ -486,7 +500,7 @@ function hinweise() {
 
   const ueberzaehlig = weitereInhaber();
   if (ueberzaehlig.length) {
-    gefahr("Mehr als ein Inhaber", "Bei " + namenText(inhaberAlle()) + " steht dieses Gerät im Feld «Computer». "
+    gefahr("Mehr als ein Inhaber", namenText(inhaberAlle()) + " sind als Inhaber eingetragen. "
       + "Im Bereich «Inhaber» die überzähligen Einträge entfernen.");
   }
   for (const a of inhaberAbweichungen()) info(a.titel, a.text);
@@ -544,31 +558,30 @@ function werteDerSpalte(feld) {
    (Option «neu» des Entwurfs). Hier steht nur, was je Feld dazukommt. */
 
 /* PC-Name mit Hinweis: erscheint beim Tippen als Banner (aufgedeckt,
-   weil der Benutzer ihn auslöst), beim Neuzeichnen ohne Bewegung. Er sagt
-   zweierlei: ob der Name schon vergeben ist (Warnung) und, bei einem
-   Gerät mit Inhaber, dass der Inhaber beim Speichern mitzieht (sonst nur
-   Info) – beides steht in EINEM Banner. */
+   weil der Benutzer ihn auslöst), beim Neuzeichnen ohne Bewegung. Er sagt,
+   ob der Name schon vergeben ist. Gleiche Namen sind erlaubt – jede Zeile
+   ist eine eigene Hardware, die Inhaberschaft hängt an der Listen-ID und
+   bleibt beim Umbenennen, wo sie ist. Warnung nur, wenn ein Gerät im
+   Einsatz so heisst; ein archiviertes gleichen Namens ist nur Info. */
 function titelZeile(hinweisText) {
   const ort = UI.hinweisPlatz({ id: "g-namenswarnung" });
   const setzen = function (mitBewegung) {
     const zwillinge = namensZwillinge();
-    const personen = mitziehende();
-    const vergeben = zwillinge.length
-      ? (zwillinge.length === 1 ? "Ein weiteres Gerät heisst bereits so (" : zwillinge.length
-        + " weitere Geräte heissen bereits so (")
-        + zwillinge.map(z => Modell.status(z.Status) + ", Listen-ID " + z.id).join("; ")
-        + ")." + (mitInhaber ? " Das ist erlaubt, macht die Inhaberschaft aber mehrdeutig." : "")
-      : "";
-    const mit = !personen.length ? ""
-      : (personen.length === 1
-        ? namenText(personen) + " bleibt Inhaber. Beim Speichern bekommt das Feld «Computer» der Person den neuen Namen."
-        : "Bei " + namenText(personen) + " steht dieses Gerät im Feld «Computer». Beim Speichern wird es dort umbenannt.");
-    const text = [vergeben, mit].filter(Boolean).join(" ");
-    ort.setzen(text ? (vergeben ? "w|" : "i|") + text : "", function () {
-      return vergeben
+    const aktive = zwillinge.filter(z => !z.__archiviert);
+    let text = "";
+    if (aktive.length) {
+      text = (aktive.length === 1 ? "Ein weiteres Gerät im Einsatz heisst bereits so (" : aktive.length
+        + " weitere Geräte im Einsatz heissen bereits so (")
+        + aktive.map(z => Modell.status(z.Status) + ", Listen-ID " + z.id).join("; ") + ").";
+    } else if (zwillinge.length) {
+      text = (zwillinge.length === 1 ? "Ein archiviertes Gerät heisst gleich (Listen-ID " : zwillinge.length
+        + " archivierte Geräte heissen gleich (Listen-ID ")
+        + zwillinge.map(z => z.id).join(", ") + "). Jede Zeile ist ein eigenes Gerät.";
+    }
+    ort.setzen(text ? (aktive.length ? "w|" : "i|") + text : "", function () {
+      return aktive.length
         ? UI.banner({ ton: "warnung", titel: "Name schon vergeben.", text: text })
-        : UI.banner({ ton: "info", sinnbild: "benutzer", titel: personen.length === 1 ? "Der Inhaber zieht mit."
-          : "Die Einträge ziehen mit.", text: text });
+        : UI.banner({ ton: "info", text: text });
     }, { aufdecken: mitBewegung });
   };
   setzen(false);
@@ -985,14 +998,9 @@ function bereichInhaber(ziel) {
   sperrbar.push(waehlen);
 
   const k = UI.karte({ titel: "Inhaber", aktionen: wem ? [waehlen] : [] });
-  if (namensZwillinge().length) {
-    k.inhalt.appendChild(UI.banner({ ton: "warnung", titel: "PC-Name ist nicht eindeutig.",
-      text: "Er kommt in der Liste «" + LISTEN_TITEL + "» " + (namensZwillinge().length + 1) + " Mal vor. "
-        + "Die Inhaberschaft gilt für das nicht archivierte Gerät." }));
-  }
   if (zuviele.length) {
     k.inhalt.appendChild(UI.banner({ ton: "gefahr", titel: "Mehr als ein Inhaber.",
-      text: "Bei " + (zuviele.length + 1) + " Personen steht dieses Gerät im Feld «Computer». Als Inhaber gilt "
+      text: (zuviele.length + 1) + " Personen sind als Inhaber dieses Geräts eingetragen. Als Inhaber gilt "
         + "die erste Person. Die übrigen unten entfernen." }));
   }
 
@@ -1002,9 +1010,19 @@ function bereichInhaber(ziel) {
     sperrbar.push(entfernen);
     k.inhalt.appendChild(UI.zeilenliste([personZeile(wem, [entfernen])]));
   } else {
-    k.inhalt.appendChild(UI.leerzustand({ sinnbild: "benutzer", titel: "Noch kein Inhaber",
-      text: "Das Gerät wird im Feld «Computer» der Person eingetragen.",
-      aktion: waehlen }));
+    /* Neu aufgesetzt unter dem Namen eines archivierten Geräts: dessen
+       Inhaber geht nicht von selbst mit (die Inhaberschaft hängt an der
+       Hardware), lässt sich aber mit einem Klick übernehmen. */
+    const vorgaenger = namensZwillinge().filter(z => z.__archiviert && z.__inhaber)[0];
+    if (vorgaenger) {
+      const uebernehmen = UI.knopf({ text: "Übernehmen", variante: "leise",
+        beiKlick: function () { inhaberWaehlenDialog(false, vorgaenger.__inhaber); }, fokus: "vorgaenger-uebernehmen" });
+      sperrbar.push(uebernehmen);
+      k.inhalt.appendChild(UI.banner({ ton: "info", knopf: uebernehmen,
+        text: "«" + personName(vorgaenger.__inhaber) + "» ist Inhaber des archivierten Geräts gleichen Namens (Listen-ID "
+          + vorgaenger.id + ")." }));
+    }
+    k.inhalt.appendChild(UI.leerzustand({ sinnbild: "benutzer", titel: "Noch kein Inhaber", aktion: waehlen }));
   }
   s.appendChild(k);
 
@@ -1833,10 +1851,7 @@ function speichern() {
     immer: neuModus,
     pruefen: pruefen,
     schreiben: schreiben,
-    nachladen: async function (erg) {
-      // Das Gerät ist gespeichert, eine Person aber nicht nachgeführt: das
-      // steht als Fehler neben der Erfolgsmeldung, bis man es wegklickt.
-      if (erg && erg.inhaberFehler) UI.meldung(erg.inhaberFehler, { ton: "fehler" });
+    nachladen: async function () {
       await datenLaden(true);
       zeileWaehlen();
       nachSpeichernZeigen();
@@ -1844,21 +1859,19 @@ function speichern() {
     zeichnen: nachSpeichernZeigen,
     fehlerText: neuModus ? "Anlegen fehlgeschlagen." : "Speichern fehlgeschlagen.",
     erfolgText: function (erg) {
+      // Auffällig ist nur ein zweites Gerät im Einsatz gleichen Namens.
       const dubletten = erg && erg.dubletten
-        ? " Achtung: «" + erg.name + "» steht jetzt " + (erg.dubletten + 1) + " Mal in der Liste." : "";
+        ? " Achtung: «" + erg.name + "» ist jetzt " + (erg.dubletten + 1) + " Mal im Einsatz." : "";
       if (erg && erg.neu) return "Gerät angelegt." + dubletten;
-      const mit = erg && erg.nachgefuehrt && erg.nachgefuehrt.length
-        ? " " + namenText(erg.nachgefuehrt) + (erg.nachgefuehrt.length === 1 ? " bleibt Inhaber." : " bleiben eingetragen.")
-        : "";
       return (erg && erg.anzahl === 1 ? "Änderung gespeichert." : (erg ? erg.anzahl : 0) + " Änderungen gespeichert.")
-        + mit + dubletten;
+        + dubletten;
     }
   });
 }
 
 async function schreiben() {
   const name = textWert("Title").trim();
-  const dubletten = namensZwillinge().length;
+  const dubletten = geraeteStatus() === "Archiviert" ? 0 : zwillingeImEinsatz().length;
   const felder = {};
   if (neuModus) {
     // Beim Anlegen alle bearbeitbaren Spalten mitgeben, damit die Zeile
@@ -1889,31 +1902,15 @@ async function schreiben() {
     if (alt !== neu) felder.Verlauf = F.verlaufAnhaengen(wert("Verlauf"), "Status geändert: " + alt + " → " + neu);
   }
   const anzahl = entwurf.anzahl();
-  // Vor dem Speichern: danach trägt die Zeile schon den neuen Namen.
-  const altName = String(zeile.Title || "").trim();
-  const mitziehen = mitziehende();
   zuletztAngelegt = false;
+  /* Ein neuer Name ändert an der Inhaberschaft nichts: sie hängt an der
+     Listen-ID dieser Zeile, nicht am Namen. */
   const antwort = await Daten.speichern(listenName, elementId, felder, zeile.__etag);
   F.uebernehmen(zeile, felder, antwort);
   abgeleiteteFelder(zeile);
   entwurf.leeren();
   F.melden("zeile-geaendert", elementId);
-
-  /* Umbenannt: der Inhaber zieht mit (Feld «Computer» + Verlaufseintrag).
-     Das Gerät ist dann schon gespeichert; scheitert eine Person, bleibt
-     der Speichervorgang ein Erfolg und die Meldung sagt, wer fehlt. */
-  let inhaberFehler = "";
-  if (mitziehen.length) {
-    try {
-      await inhaberSchreiben(mitziehen.map(b => ({ benutzer: b, pcName: name,
-        eintrag: "Gerät umbenannt: " + altName + " → " + name })), null);
-    } catch (fehler) {
-      inhaberFehler = "Der neue Name ist gespeichert, aber " + F.fehlerText(fehler).replace(/[.\s]+$/, "")
-        + ". Den Inhaber bitte im Bereich «Inhaber» neu festlegen.";
-    }
-  }
-  return { anzahl: anzahl, name: name, dubletten: dubletten,
-    nachgefuehrt: inhaberFehler ? [] : mitziehen, inhaberFehler: inhaberFehler };
+  return { anzahl: anzahl, name: name, dubletten: dubletten };
 }
 
 /* Nach dem Anlegen wechselt das Formular in das normale Fenster (mit
@@ -1939,11 +1936,21 @@ function verwerfen() {
    9. Inhaberschaft und Schnellaktionen
    ================================================================== */
 
-/* Schreibt zuerst das Gerät (Status, Verlauf), dann das Feld «Computer»
-   jeder Person. Ein leerer pcName entfernt die Inhaberschaft (null, damit
-   Graph das Feld wirklich leert); «eintrag» ersetzt den üblichen Satz im
-   Verlauf der Person (Umbenennen). Scheitert ein Schritt, sagt die Meldung,
-   welcher; nachgeladen wird danach immer (F.beschaeftigt, Fehler A8). */
+/* Das bisherige Gerät einer Person für ihren Verlauf, wenn es nicht dieses
+   ist: der PC-Name, bei gleichem Namen wie dieses Gerät mit Listen-ID. */
+function bisherigesGeraet(b) {
+  const id = Modell.geraetId(b.AdminClientId);
+  if (!id || id === String(zeile.id)) return "";
+  const name = b.__client ? String(b.__client.Title || "").trim() : "";
+  if (!name) return "Listen-ID " + id;
+  return Modell.schluessel(name) === Modell.schluessel(zeile.Title) ? name + ", Listen-ID " + id : name;
+}
+
+/* Schreibt zuerst das Gerät (Status, Verlauf), dann das Feld
+   «AdminClientId» jeder Person: «zuweisen» trägt die Listen-ID dieses
+   Geräts ein, sonst wird die Inhaberschaft entfernt (null, damit Graph das
+   Feld wirklich leert). Scheitert ein Schritt, sagt die Meldung, welcher;
+   nachgeladen wird danach immer (F.beschaeftigt, Fehler A8). */
 async function inhaberSchreiben(schritte, geraetFelder) {
   let geraetGespeichert = false;
   if (geraetFelder) {
@@ -1951,14 +1958,14 @@ async function inhaberSchreiben(schritte, geraetFelder) {
     geraetGespeichert = true;
     F.melden("zeile-geaendert", elementId);
   }
+  const name = String(zeile.Title || "").trim();
   for (const schritt of schritte) {
-    const neuerWert = String(schritt.pcName || "").trim() || null;
-    const bisher = String(schritt.benutzer.Computer || "").trim();
-    const eintrag = schritt.eintrag || (neuerWert
-      ? "Gerät erhalten: " + neuerWert + (bisher && bisher !== neuerWert ? " (vorher: " + bisher + ")" : "")
-      : (bisher ? "Gerät abgegeben: " + bisher : ""));
-    const felder = { Computer: neuerWert };
-    if (eintrag) felder.Verlauf = F.verlaufAnhaengen(schritt.benutzer.Verlauf, eintrag);
+    const bisher = bisherigesGeraet(schritt.benutzer);
+    const eintrag = schritt.zuweisen
+      ? "Gerät erhalten: " + name + (bisher ? " (vorher: " + bisher + ")" : "")
+      : "Gerät abgegeben: " + name;
+    const felder = { AdminClientId: schritt.zuweisen ? Number(zeile.id) : null };
+    felder.Verlauf = F.verlaufAnhaengen(schritt.benutzer.Verlauf, eintrag);
     try {
       await Daten.speichern("benutzer", schritt.benutzer.id, felder, schritt.benutzer.__etag);
     } catch (fehler) {
@@ -2012,7 +2019,7 @@ function fokusNachAktion() {
 }
 
 function abgabeSchritte() {
-  return inhaberAlle().map(a => ({ benutzer: a, pcName: "" }));
+  return inhaberAlle().map(a => ({ benutzer: a, zuweisen: false }));
 }
 
 function verlaufTextMit(basis, notiz) {
@@ -2105,27 +2112,29 @@ function inhaberEntfernenDialog(b) {
   const ja = UI.knopf({ text: istInhaber ? "Inhaber entfernen" : "Eintrag entfernen", variante: "primaer",
     beiKlick: async function () {
       const ok = await imDialogAusfuehren(d, ja, abbrechen, function () {
-        return inhaberSchreiben([{ benutzer: b, pcName: "" }], istInhaber
+        return inhaberSchreiben([{ benutzer: b, zuweisen: false }], istInhaber
           ? { Verlauf: F.verlaufAnhaengen(wert("Verlauf"), "Inhaber entfernt: " + personName(b)) } : null);
       });
       if (ok) UI.meldung("«" + personName(b) + "» ist nicht mehr eingetragen.");
     } });
   const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], inhalt: [el("p", "dialog-text",
-    "Das Feld «Computer» von «" + personName(b) + "» wird geleert. Das Gerät selbst bleibt unverändert.")] });
+    "«" + personName(b) + "» ist danach nicht mehr Inhaber. Das Gerät selbst bleibt unverändert.")] });
 }
 
 /* Inhaber wählen in zwei Schritten: suchen und wählen, dann bestätigen.
    Beide Schritte stehen im selben Dialog (an Ort und Stelle neu gefüllt).
    «ausgabe» (nur aus der Schnellaktion «Ausgeben an …»): das Gerät
    verlässt dabei das Lager und wird «Aktiv». Sonst ein gewöhnlicher
-   Inhaberwechsel – auch bei archivierten Geräten (Fehler A3). */
-function inhaberWaehlenDialog(ausgabe) {
+   Inhaberwechsel – auch bei archivierten Geräten (Fehler A3). «person»
+   springt gleich zur Bestätigung (Inhaber des Vorgängers übernehmen). */
+function inhaberWaehlenDialog(ausgabe, person) {
   if (F.istBeschaeftigt()) return;
   const pcName = textWert("Title").trim();
   if (!pcName) {
     UI.meldung("Ohne PC-Namen lässt sich kein Inhaber festlegen.", { ton: "fehler" });
     return;
   }
+  const id = String(zeile.id);
   const bisheriger = inhaber();
   const ausLager = ausgabe === true && geraeteStatus() !== "Aktiv";
   const titel = ausLager ? "Ausgeben an …" : (bisheriger ? "Inhaber wechseln" : "Inhaber festlegen");
@@ -2158,10 +2167,9 @@ function inhaberWaehlenDialog(ausgabe) {
   function treffer(liste, zahl) {
     const t = suchText.trim().toLowerCase();
     const woerter = t.split(/\s+/).filter(Boolean);
-    const k = Modell.schluessel(pcName);
     const rang = new Map();
     const passend = alleBenutzer.filter(function (b) {
-      if (Modell.schluessel(b.Computer) === k) return false;
+      if (Modell.geraetId(b.AdminClientId) === id) return false;
       if (!woerter.length) return true;
       const person = (personName(b) + " " + UI.text(b.Title)).toLowerCase();
       const alle = person + " " + UI.text(b.Abteilung).toLowerCase();
@@ -2178,7 +2186,8 @@ function inhaberWaehlenDialog(ausgabe) {
     }
     liste.appendChild(UI.zeilenliste(passend.slice(0, 40).map(function (b) {
       const unter = personUnter(b).slice(0, 2);
-      unter.push(String(b.Computer || "").trim() ? "hat «" + String(b.Computer).trim() + "»" : "kein Gerät");
+      const bisher = bisherigesGeraet(b);
+      unter.push(bisher ? "hat «" + bisher + "»" : "kein Gerät");
       return UI.listenZeile({ titel: personName(b), unter: unter, sinnbild: "benutzer",
         beiKlick: function () { schritt2(b); } });
     })));
@@ -2188,7 +2197,7 @@ function inhaberWaehlenDialog(ausgabe) {
   }
 
   function schritt2(b) {
-    const bisher = String(b.Computer || "").trim();
+    const bisher = bisherigesGeraet(b);
     const abgebende = inhaberAlle().filter(a => String(a.id) !== String(b.id));
     d.titel(ausLager ? "Ausgeben an «" + personName(b) + "»?" : "«" + personName(b) + "» als Inhaber?");
     UI.leeren(d.inhalt);
@@ -2214,8 +2223,8 @@ function inhaberWaehlenDialog(ausgabe) {
         if (ausLager) geraetFelder.Status = "Aktiv";
         /* Erst lösen, dann setzen: dazwischen hat das Gerät keinen Inhaber,
            aber nie zwei. */
-        const schritte = abgebende.map(a => ({ benutzer: a, pcName: "" }));
-        schritte.push({ benutzer: b, pcName: pcName });
+        const schritte = abgebende.map(a => ({ benutzer: a, zuweisen: false }));
+        schritte.push({ benutzer: b, zuweisen: true });
         const ok = await imDialogAusfuehren(d, ja, zurueck, function () { return inhaberSchreiben(schritte, geraetFelder); });
         if (ok) UI.meldung(ausLager ? "Ausgegeben an «" + personName(b) + "»." : "«" + personName(b) + "» ist jetzt Inhaber.");
       } });
@@ -2223,7 +2232,8 @@ function inhaberWaehlenDialog(ausgabe) {
     ja.focus();
   }
 
-  schritt1();
+  if (person) schritt2(person);
+  else schritt1();
 }
 
 
@@ -2240,8 +2250,8 @@ function loeschenDialog() {
     titel: "Gerät löschen?",
     text: "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.",
     warnung: personen.length === 1
-      ? "Bei «" + personName(personen[0]) + "» bleibt der PC-Name im Feld «Computer» stehen und zeigt danach ins Leere."
-      : (personen.length > 1 ? "Bei " + personen.length + " Personen bleibt der PC-Name im Feld «Computer» stehen und "
+      ? "Bei «" + personName(personen[0]) + "» bleibt die Inhaberschaft stehen und zeigt danach ins Leere."
+      : (personen.length > 1 ? "Bei " + personen.length + " Personen bleibt die Inhaberschaft stehen und "
         + "zeigt danach ins Leere." : ""),
     wort: textWert("Title").trim() || String(zeile.id),
     knopfText: "Löschen",

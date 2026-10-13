@@ -15,6 +15,12 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 > (Abschnitt 10). Dabei neu: die Spalte **«In Domäne»** in beiden Client-Listen. Steht sie auf
 > Nein, lässt der SCCM-Abgleich die Zeile vollständig in Ruhe — das ist der Weg für die 94
 > Gäste- und Prüfungsnotebooks ohne Domäne, die es in SCCM nie geben wird.
+>
+> **Umstellung vom 13.10.2026.** Die Inhaberschaft hängt an der **Hardware**, nicht mehr am PC-Namen:
+> Die Benutzer-Liste speichert in der neuen Spalte **«AdminClientId»** die Listen-ID des Geräts statt
+> seines Namens in «Computer». Ein umbenanntes Gerät behält so seinen Inhaber, und ein neues Gerät mit
+> dem Namen eines archivierten erbt ihn nicht. Den Bestand stellt `Migriere-Inhaberschaft.ps1` um
+> (Abschnitt 11).
 
 ---
 
@@ -28,7 +34,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `298 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `322 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -39,6 +45,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **von einer Detailseite zur Liste zurück** | Eintrag **«← ADMIN-Clients»** (bzw. «← Benutzer» …) zuoberst in der Navigation links; in schmalen Fenstern und in den Neu-Formularen steht derselbe Link **«‹ ADMIN-Clients»** über dem Titel. Er führt zur Liste so, wie man sie verlassen hat – mit Suche, Filtern und Sortierung. Die Wortmarke «ICT.INVENTAR» oben links führt zur Übersicht |
 | **einen Verlaufseintrag erfassen** | Geräteseite → Bereich «Stammdaten», Benutzerseite → Bereich «Bemerkung», Telefonseite → Bereich «Hinweis & Verlauf»; Karte **«Verlauf»** → «Neuer Eintrag» (Datum wählbar), dann in der Speicherleiste unten **«Speichern»** (oder Ctrl+S) |
 | **den Inhaber eines Geräts ändern** | Geräteseite eines ADMIN-Clients → Bereich **«Inhaber»** → «Inhaber wechseln»; der bisherige Inhaber gibt das Gerät dabei automatisch ab (Abschnitt 2.8). EDU-Clients haben bewusst keinen Inhaber |
+| **einem neu aufgesetzten PC den bisherigen Inhaber geben** | Ein neues Gerät unter altem Namen bekommt eine eigene Zeile ohne Inhaber – der Inhaber hängt am archivierten Vorgänger. Geräteseite des neuen Geräts → Bereich **«Inhaber»** → beim Hinweis auf den Vorgänger **«Übernehmen»**. Oder auf der Benutzerseite → Bereich «Gerät» → «SCCM meldet … als Primärgerät» → «Übernehmen» (Abschnitt 2.8) |
 | **ein Gerät ins Lager legen, ausgeben oder archivieren** | Geräteseite → Schnellaktionen rechts im Seitenkopf (**«Ins Lager legen»**, **«Ausgeben an …»**, **«Archivieren»**, bei archivierten **«Reaktivieren»**; bei EDU-Clients statt «Ausgeben an …» **«In Betrieb nehmen»**): setzt Status, Inhaber und Verlauf in einem Schritt. Solange etwas ungespeichert ist, sind sie gesperrt; der Tooltip sagt warum |
 | **ein Gerät einlagern** | Status auf **`Lager`** setzen – nicht auf `Archiviert`: solange das Gerät in SCCM steht, setzt der nächste Sync `Archiviert` wieder auf `Aktiv` |
 | **ein Gerät ausser Betrieb nehmen** | das Gerät **aus SCCM löschen** – der nächste Sync setzt die Zeile dann selbst auf `Archiviert`. Von Hand archivieren ist nur für Geräte nötig, die nicht in SCCM stehen («In Domäne» = Nein); das Frontend weist beim Status «Archiviert» und im Dialog «Archivieren?» darauf hin |
@@ -63,7 +70,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 |---|---|---|
 | Liste **ADMIN-Clients** | Titel = PC-Name, dazu Gebäude/Stock, Bemerkung, **Status**, **In Domäne**, **Verlauf**, Beschaffungsjahr, Ersatz geplant und 79 `SCCM_*`-Spalten | Menschen (Frontend/SharePoint) + Sync (`SCCM_*`, `Status`, an `Verlauf` angehängt, `Title` nur bei einer Umbenennung in SCCM) |
 | Liste **EDU-Clients** | dieselben Spalten wie «ADMIN-Clients» (`schema-client.json`); enthält alle SCCM-Geräte, deren Name mit `EDU` beginnt. Ohne Inhaberschaft | dieselben wie oben |
-| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **Computer** (die Inhaberschaft, angezeigt als «ADMIN-Client», Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (Computer, Bemerkung, Verlauf, Programmstufe 0/1) |
+| Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **AdminClientId** (die Inhaberschaft: Listen-ID des ADMIN-Clients, im Frontend als «ADMIN-Client» mit seinem Namen angezeigt, Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (AdminClientId, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Software-Liste) + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
 
@@ -163,6 +170,7 @@ dass irgendetwas besser würde.
 | `Benenne-ListenAdresse.ps1` | einmalig: ändert die Adresse einer Liste (`.../Lists/Computer` → `.../Lists/ADMIN-Clients`) über die SharePoint-REST-Schnittstelle |
 | `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
+| `Migriere-Inhaberschaft.ps1` | einmalig: stellt die Inhaberschaft vom PC-Namen («Computer») auf die Listen-ID des Geräts («AdminClientId») um, auf Wunsch löscht es danach «Computer» (Abschnitt 11) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
 | `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Literale in den Seiten-CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
@@ -282,10 +290,14 @@ Listen derselbe:
    das Gerät mit der jüngsten Aktivität zuerst. Liefert SCCM mehrere Ressourcen mit **derselben
    Seriennummer** (Neuaufsetzung, Altdatensatz), gilt die mit der jüngsten Aktivität
    (`LastActive`, `LastHardwareScan`, `LastDDR`, `LastPolicyRequest`, AD-Anmeldung); die Dublette
-   wird ins Log geschrieben.
+   wird ins Log geschrieben. Eine Zeile gehört damit immer einer Hardware: Wird ein alter PC aus SCCM
+   gelöscht (Zeile archiviert) und sein Name für ein anderes Gerät wiederverwendet, entsteht eine neue
+   Zeile. Auch die Inhaberschaft hängt an der Zeile, nicht am Namen (Abschnitt 2.8) – das neue Gerät
+   erbt den Inhaber des alten nicht.
 6. **Umbenennung**: Weicht bei einem Treffer über die Seriennummer der SCCM-Name vom Titel ab, setzt
    der Sync `Title` auf den neuen Namen und hängt «Umbenannt von ALT zu NEU (SCCM)» an den Verlauf.
-   Das ist der **einzige** Fall, in dem der Sync die manuelle Spalte `Title` schreibt.
+   Das ist der **einzige** Fall, in dem der Sync die manuelle Spalte `Title` schreibt. Der Inhaber
+   bleibt dabei, wo er ist: er zeigt auf die Listen-ID, nicht auf den Namen.
 7. Nur geänderte `SCCM_*`-Felder als PATCH schreiben.
 8. Geräte ohne passende Zeile neu anlegen, mit Status `Aktiv` und dem Verlaufseintrag
    «Aus SCCM neu angelegt».
@@ -445,39 +457,59 @@ die Spalte und löscht sie. Zuerst mit `-WhatIf`, dann ohne; braucht nur die Dev
 ### 2.8 Inhaberschaft (wem ein Gerät gehört)
 
 Jeder **ADMIN-Client** hat **genau einen Inhaber**: die Person, der er formal gehört. Gespeichert
-wird das in der Spalte `Computer` der Benutzer-Liste (Anzeigename «ADMIN-Client») – dort steht der
-PC-Name. Daraus folgt beides zugleich: eine Person ist Inhaber von höchstens einem Gerät, und ein
-Gerät hat höchstens einen Inhaber.
+wird das in der Spalte `AdminClientId` der Benutzer-Liste (Anzeigename «ADMIN-Client-ID», Zahl) –
+dort steht die **Listen-ID** der Zeile in «ADMIN-Clients», nicht ihr Name. Daraus folgt beides
+zugleich: eine Person ist Inhaber von höchstens einem Gerät, und ein Gerät hat höchstens einen
+Inhaber. Das Frontend zeigt statt der Zahl den PC-Namen (Spalte «ADMIN-Client» der Benutzertabelle).
+
+**Die Inhaberschaft hängt an der Hardware, nicht am Namen.** Eine Zeile steht für ein Gerät
+(Abschnitt 2.2, Zuordnung über die Seriennummer), und die Inhaberschaft zeigt auf diese Zeile:
+
+| Fall | Was mit der Inhaberschaft passiert |
+|---|---|
+| Gerät wird umbenannt (im Frontend oder in SCCM) | nichts – der Inhaber bleibt |
+| Alter PC wird aus SCCM gelöscht (Zeile «Archiviert»), ein anderes Gerät bekommt seinen Namen | Das neue Gerät bekommt eine eigene Zeile **ohne** Inhaber; der Inhaber hängt weiter am archivierten Vorgänger. Die Geräteseite des neuen Geräts bietet im Bereich «Inhaber» an, ihn zu übernehmen («Übernehmen»), die Benutzerseite meldet «… ist archiviert» und bietet das SCCM-Primärgerät zum Übernehmen an |
+| Dieselbe Hardware wird neu aufgesetzt (gleiche Seriennummer) | nichts – der Sync findet dieselbe Zeile wieder und reaktiviert sie |
+| Gerät wird gelöscht (Papierkorb) | Die Listen-ID bleibt bei der Person stehen und zeigt ins Leere («Gerät fehlt»). Holt man die Zeile aus dem Papierkorb zurück, behält sie ihre Listen-ID, und die Inhaberschaft gilt wieder |
+
+Bis zum 13.10.2026 stand in der Spalte `Computer` der PC-Name. Damit verlor ein in SCCM umbenanntes
+Gerät still seinen Inhaber, und ein neues Gerät erbte den Inhaber eines gleichnamigen alten.
+`Migriere-Inhaberschaft.ps1` stellt den Bestand um (Abschnitt 11).
 
 **EDU-Clients haben bewusst keinen Inhaber.** Sie sind Schulungsgeräte und gehören niemandem
 persönlich. Auf ihrer Geräteseite fehlen darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»
 (an ihrer Stelle steht «In Betrieb nehmen»), in der Tabelle die Spalten «Inhaber» und «Inhaber gesetzt».
-Der interne Spaltenname `Computer` bleibt unverändert – SharePoint kann interne Namen nicht mehr
-ändern, und Sync wie Frontend sprechen die Spalte über ihn an.
+`AdminClientId` zeigt immer in die Liste «ADMIN-Clients».
 
-**Nur von Hand.** Der Sync fasst `Computer` **nie** an; `ConvertTo-BenutzerFelder` schreibt die
+**Nur von Hand.** Der Sync fasst `AdminClientId` **nie** an; `ConvertTo-BenutzerFelder` schreibt die
 Spalte gar nicht erst. Gepflegt wird sie ausschliesslich im Frontend:
 
 | Wo | Was |
 |---|---|
-| Geräteseite → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird das Feld `Computer` des bisherigen Inhabers geleert, bevor das des neuen gesetzt wird – so gibt es nie zwei. |
-| Benutzerseite → Bereich **«Gerät»** | «Zuweisen» für einen gesuchten ADMIN-Client, «Inhaberschaft aufheben» |
+| Geräteseite → Bereich **«Inhaber»** | «Inhaber festlegen» / «Inhaber wechseln» / «Inhaber entfernen». Beim Wechsel wird die Inhaberschaft des bisherigen Inhabers entfernt, bevor die des neuen gesetzt wird – so gibt es nie zwei. Hat das Gerät keinen Inhaber, aber ein archiviertes Gerät gleichen Namens einen, steht dort «Übernehmen» |
+| Benutzerseite → Bereich **«Gerät»** | «Zuweisen» für einen gesuchten ADMIN-Client, «Inhaberschaft aufheben». Gleichnamige Geräte zeigen in der Suche ihre Seriennummer |
 | Liste «ADMIN-Clients», Spalte **«Inhaber»** | Anzeige mit Verweis auf die Benutzerseite; Facette «Inhaber gesetzt» |
+| Liste «Benutzer», Spalte **«ADMIN-Client»** | PC-Name des Geräts mit Verweis auf die Geräteseite, bei einem archivierten mit Status «Archiviert», bei einer Listen-ID ohne Zeile «Gerät fehlt» |
 
 **SCCM ist nur Hinweisgeber.** `SCCM_PrimaryUser`, `SCCM_LastLogonUser`, `SCCM_CurrentLogonUser`,
 `SCCM_TopConsoleUser` und `SCCMPrimaerGeraet` sagen, wer an einem Gerät *arbeitet* – nicht, wem es
 *gehört*. Weichen sie vom Inhaber ab, zeigt die Geräteseite einen Hinweis («Primärer Benutzer
 (SCCM) ist nicht der Inhaber»); geändert wird nichts. Das SCCM-Primärgerät lässt sich auf der
-Benutzerseite auf Klick übernehmen.
+Benutzerseite auf Klick übernehmen. SCCM meldet es nur als Namen: heissen mehrere Geräte so, gilt das
+nicht archivierte, darunter das, das in SCCM steht.
 
-**Altlasten.** Weil die Spalte nur den *Namen* speichert, kann sie mehrdeutig werden:
+**Gleiche PC-Namen** sind erlaubt und nach einer Neuaufsetzung der Normalfall. Die Geräteseite nennt
+gleichnamige Geräte mit Verweis: ein archiviertes als Info («Ein archiviertes Gerät heisst gleich»),
+ein zweites Gerät **im Einsatz** als Warnung («Noch ein Gerät im Einsatz heisst gleich»). Dasselbe
+sagt der Hinweis unter dem PC-Namen beim Tippen.
+
+**Altlasten:**
 
 | Fall | Was das Frontend tut |
 |---|---|
-| Bei zwei Personen steht derselbe PC-Name im Feld «Computer» | Die Geräteseite meldet «Mehr als ein Inhaber» (als Gefahr, mit Sinnbild), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein Status «+n» neben dem Namen. |
-| Zwei Geräte heissen gleich | Der Eintrag zählt zum nicht archivierten Gerät; Geräte- und Benutzerseite warnen davor. Sauberer ist es, das alte Gerät umzubenennen oder zu archivieren. |
-| Der PC-Name existiert gar nicht | Die Benutzerseite meldet «Kein ADMIN-Client heisst «…».» |
-| Im Feld «Computer» steht ein EDU-Client | Er wird nirgends zum Inhaber: EDU-Clients kennen keine Inhaberschaft. Auf der Benutzerseite steht «Kein ADMIN-Client heisst «…».» – der Eintrag gehört gelöscht. |
+| Zwei Personen tragen dieselbe Listen-ID | Die Geräteseite meldet «Mehr als ein Inhaber» (als Gefahr, mit Sinnbild), zeigt die überzähligen Einträge in einer eigenen Karte und bietet «Eintrag entfernen». Als Inhaber gilt der alphabetisch erste Name. In der Liste steht ein Status «+n» neben dem Namen. |
+| Die Listen-ID zeigt auf keine Zeile (Gerät gelöscht) | Benutzerseite und Benutzertabelle melden «Gerät fehlt»; auf der Benutzerseite ein Gerät zuweisen oder die Inhaberschaft aufheben |
+| Der Inhaber hängt an einem archivierten Gerät | Geräteseite: «Status «Archiviert», aber ein Inhaber ist eingetragen»; Benutzerseite: «… ist archiviert» |
 
 ---
 
@@ -587,10 +619,12 @@ Archivieren und Reaktivieren), die **Aufteilung ADMIN-/EDU-Clients** (`Get-Clien
 (leer gilt als Ja, eine Zeile mit Nein wird nie archiviert und zählt nicht in den Archivschutz), die
 **Umrechnung der Excel-Blätter** (Zellbezug, Zahlenformat, Arbeitsplatz ohne eigenes Gerät,
 Gerätename ↔ Standort, Beschaffungsjahr aus den Kreuzen, Programmstufen, Dubletten, Login-Zuordnung
-über gekürzten Login und Anzeigename), Anzahl und Form der Schemaeinträge sowie die Syntax aller
-`*.ps1` in `code/` und `code/server/`.
+über gekürzten Login und Anzeigename), die **Umstellung der Inhaberschaft** vom PC-Namen auf die
+Listen-ID (`Get-InhaberMigration`: eindeutiger Name, gleichnamige Geräte, unbekannter Name, schon
+umgestellt, Konflikt), Anzahl und Form der Schemaeinträge sowie die Syntax aller `*.ps1` in `code/`
+und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 298 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 322 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -615,6 +649,8 @@ Erwartete Ausgabe: `Ergebnis: 298 bestanden, 0 fehlgeschlagen`.
 | `Archivschutz greift: …` | SCCM lieferte nichts oder zu viele Zeilen würden archiviert | SCCM-Provider und WMI-Rechte prüfen; bei einer echten Massenausmusterung `LoeschSchutzProzent` bewusst erhöhen |
 | Viele Zeilen plötzlich «Archiviert» | die Seriennummern stimmen nicht überein (z. B. Mainboardtausch, Platzhalter im BIOS) | `SCCM_SerialNumber` der betroffenen Zeilen mit SCCM vergleichen; den Status wieder auf `Aktiv` setzen, der nächste Lauf ordnet über den Namen neu zu |
 | Ein Gerät wird doppelt angelegt statt zugeordnet | die Zeile trägt in `SCCM_SerialNumber` eine andere Seriennummer als das SCCM-Gerät, deshalb greift auch der Namensfallback nicht | `SCCM_SerialNumber` in der Zeile leeren; die überzählige Zeile archivieren |
+| Ein neu aufgesetzter PC hat keinen Inhaber, der alte (archivierte) schon | so gewollt: die Inhaberschaft hängt an der Hardware, das neue Gerät ist eine eigene Zeile | Geräteseite des neuen Geräts → «Inhaber» → «Übernehmen» (Abschnitt 2.8) |
+| Frontend: «Gerät fehlt» bei einer Person | ihre `AdminClientId` zeigt auf eine gelöschte Zeile | auf der Benutzerseite ein Gerät zuweisen oder die Inhaberschaft aufheben; oder die Zeile aus dem Papierkorb der Site zurückholen |
 | `Verlauf von '…' ist unbrauchbar – Zeile übersprungen` | der Inhalt der Spalte `Verlauf` ist kein gültiges JSON-Array (von Hand bearbeitet?) | Inhalt in der Zeile sichten und auf `[]` oder ein gültiges Array setzen; der Sync überschreibt ihn absichtlich nicht |
 | Ein PC fehlt in der Liste | er wurde nie gelöscht – die Client-Phasen löschen nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen. Zweiter Verdacht: der Name beginnt mit `EDU` und der PC steht in der anderen Liste |
 | Ein PC steht plötzlich in der anderen Client-Liste | er wurde in SCCM umbenannt und hat dabei die Seite gewechselt (`EDU`-Präfix dazu oder weg) | Das ist so gewollt: die alte Zeile ist archiviert, die neue frisch angelegt. Wer den Verlauf mitnehmen will, verschiebt die Zeile mit `Migriere-Clients.ps1 -Schritte Umzug` |
@@ -991,3 +1027,26 @@ Danach zur Kontrolle:
 powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1
 powershell -ExecutionPolicy Bypass -File .\server\Sync-Inventar.ps1 -WhatIf
 ```
+
+---
+
+## 11. Die Umstellung der Inhaberschaft vom 13.10.2026
+
+Bis zu diesem Tag hielt die Spalte `Computer` der Benutzer-Liste den **PC-Namen** des Geräts. Die
+Inhaberschaft hing damit am Namen statt an der Hardware: Ein in SCCM umbenanntes Gerät verlor still
+seinen Inhaber (der Sync ändert nur den Titel), und ein neues Gerät mit dem Namen eines archivierten
+übernahm dessen Inhaber. Neu steht in **`AdminClientId`** die Listen-ID der Zeile (Abschnitt 2.8).
+Der Sync ist nicht betroffen – er hat die Spalte nie geschrieben.
+
+Den Bestand in SharePoint stellt `Migriere-Inhaberschaft.ps1` um:
+
+1. Spalte `AdminClientId` in der Benutzer-Liste anlegen, falls sie fehlt.
+2. ADMIN-Clients und Benutzer lesen und nach `lokal\Migration-Inhaberschaft-<Zeitstempel>.json` sichern.
+3. Je Person mit einem Namen in `Computer` die Zeile bestimmen – nach derselben Regel, nach der das
+   Frontend bisher angezeigt hat (gleicher Name; bei mehreren die erste nicht archivierte) – und ihre
+   Listen-ID eintragen. Schon umgestellte Personen bleiben unberührt; eine abweichende ID wird nicht
+   überschrieben, sondern als Konflikt gemeldet; ein Name ohne Zeile bleibt ohne ID und steht als WARN im Log.
+4. Mit `-AlteSpalteLoeschen`: prüfen, dass jede Person mit Namen die passende ID trägt, dann `Computer` löschen.
+
+Mit `-WhatIf` wird nur gelesen, gesichert und gezählt. Das Skript braucht ein Konto mit Vollzugriff
+auf die Site (Spalte anlegen und löschen) und läuft nicht während eines Syncs.

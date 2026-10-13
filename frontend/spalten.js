@@ -121,7 +121,7 @@ const SPALTEN_BENUTZER = [
   { i: "ADAktiviert", d: "AD-Konto aktiv", t: "Text", g: "AD", q: "ad" },
   { i: "ADLetzterSync", d: "Letzter AD-Abgleich", t: "DateTime", g: "AD", q: "ad" },
   { i: "SCCMPrimaerGeraet", d: "Primärgerät (SCCM)", t: "Text", g: "SCCM", q: "sccm" },
-  { i: "Computer", d: "ADMIN-Client", t: "Text", g: "Zuordnung", q: "manuell" },
+  { i: "AdminClientId", d: "ADMIN-Client-ID", t: "Number", g: "Zuordnung", q: "manuell" },
   { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Zuordnung", q: "manuell" },
   { i: "Verlauf", d: "Verlauf", t: "Note", g: "Zuordnung", q: "manuell" }
 ];

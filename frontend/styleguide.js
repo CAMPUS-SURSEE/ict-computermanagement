@@ -968,7 +968,7 @@
       const d = UI.dialog({
         titel: "Gerät löschen?", breit: true,
         inhalt: [el("p", null, "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen."),
-          UI.banner({ ton: "warnung", text: "Bei «Muster Max» bleibt der PC-Name im Feld «Computer» stehen und zeigt danach ins Leere." }),
+          UI.banner({ ton: "warnung", text: "Bei «Muster Max» bleibt die Inhaberschaft stehen und zeigt danach ins Leere." }),
           UI.feld("Zur Bestätigung «" + wort + "» eingeben", feld, { klasse: "dialog-bestaetigung" })],
         knoepfe: [knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } }), endgueltig],
         fokus: feld

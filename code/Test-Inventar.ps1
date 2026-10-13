@@ -55,6 +55,7 @@ $InventarNurFunktionen = $true
 . (Join-Path $ServerDir 'Inventar-Gemeinsam.ps1')
 . (Join-Path $ServerDir 'Sync-Inventar.ps1')
 . (Join-Path $TestDir 'Migriere-FruehererEintrag.ps1')
+. (Join-Path $TestDir 'Migriere-Inhaberschaft.ps1')
 . (Join-Path $TestDir 'Abgleich-Excel.ps1')
 
 # ---------------------------------------------------------------------------
@@ -391,7 +392,11 @@ Pruefe 'Benutzer-Schema: Verlauf ist Note'  'Note' (@($schemaB | Where-Object { 
 Pruefe 'Software-Schema: 6 Spalten'          6 $schemaS.Count
 Pruefe 'Software-Schema: Titel heisst Programm-ID' 'Programm-ID' (@($schemaS | Where-Object { $_.internal -eq 'Title' })[0].display)
 Pruefe 'Software-Schema: AdGruppen ist Note' 'Note' (@($schemaS | Where-Object { $_.internal -eq 'AdGruppen' })[0].type)
-Pruefe 'Benutzer-Schema: Computer heisst ADMIN-Client' 'ADMIN-Client' (@($schemaB | Where-Object { $_.internal -eq 'Computer' })[0].display)
+Pruefe 'Benutzer-Schema: keine Spalte Computer mehr' 0 (@($schemaB | Where-Object { $_.internal -eq 'Computer' }).Count)
+Pruefe 'Benutzer-Schema: AdminClientId ist Number' 'Number' (@($schemaB | Where-Object { $_.internal -eq 'AdminClientId' })[0].type)
+Pruefe 'Benutzer-Schema: AdminClientId von Hand' 'manuell' (@($schemaB | Where-Object { $_.internal -eq 'AdminClientId' })[0].source)
+# Ergaenze-Spalten erkennt Spalten auch am Anzeigenamen: der neue darf nicht der alte sein.
+Pruefe 'Benutzer-Schema: AdminClientId nicht «ADMIN-Client»' 'True' ((@($schemaB | Where-Object { $_.internal -eq 'AdminClientId' })[0].display) -ne 'ADMIN-Client')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Aufteilung ADMIN-Clients / EDU-Clients'
@@ -534,6 +539,42 @@ Pruefe 'Treffer über gekürzten Login' 'Gekürzt' (Find-BenutzerZeile $bLogin $
 Pruefe 'Treffer über Anzeigename'  'Anzeigename' (Find-BenutzerZeile $bLogin $bName 'Karina.Frumann' 'Fruman Karina').Weg
 Pruefe 'Mehrdeutiger Name zählt nicht' '' (Find-BenutzerZeile $bLogin $bName 'X.Y' 'Doppelt Name').Weg
 Pruefe 'Kein Treffer'              ''  (Find-BenutzerZeile $bLogin $bName 'Nicht.Da' 'Da Nicht').Weg
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Inhaberschaft: PC-Name -> Listen-ID (Migriere-Inhaberschaft)'
+Pruefe 'GeraetId: Zahl'          '17' (Get-GeraetIdText 17)
+Pruefe 'GeraetId: Kommazahl'     '17' (Get-GeraetIdText 17.0)
+Pruefe 'GeraetId: Text'          '17' (Get-GeraetIdText ' 17 ')
+Pruefe 'GeraetId: Text mit ,0'   '17' (Get-GeraetIdText '17,0')
+Pruefe 'GeraetId: leer'          ''   (Get-GeraetIdText '')
+Pruefe 'GeraetId: null'          ''   (Get-GeraetIdText $null)
+Pruefe 'GeraetId: 0'             ''   (Get-GeraetIdText 0)
+Pruefe 'GeraetId: Name'          ''   (Get-GeraetIdText 'CAMPUS-073')
+function InhClient($id, $titel, $status) { [pscustomobject]@{ Id = $id; Title = $titel; Status = $status } }
+function InhBenutzer($id, $login, $pc, $gid) { [pscustomobject]@{ Id = $id; Title = $login; Computer = $pc; AdminClientId = $gid } }
+$mClients = @((InhClient '12' 'CAMPUS-073' 'Archiviert'), (InhClient '40' 'CAMPUS-073' 'Aktiv'), (InhClient '5' 'CAMPUS-001' ''), (InhClient '7' 'CAMPUS-009' 'Archiviert'))
+$mPlan = @(Get-InhaberMigration @(
+        (InhBenutzer '1' 'a' 'CAMPUS-001' $null),
+        (InhBenutzer '2' 'b' 'campus-073' $null),
+        (InhBenutzer '3' 'c' 'CAMPUS-009' $null),
+        (InhBenutzer '4' 'd' 'CAMPUS-999' $null),
+        (InhBenutzer '5' 'e' 'CAMPUS-001' 5),
+        (InhBenutzer '6' 'f' 'CAMPUS-001' 40),
+        (InhBenutzer '7' 'g' '' 12),
+        (InhBenutzer '8' 'h' '' $null)) $mClients)
+function InhPlan($id) { @($mPlan | Where-Object { $_.BenutzerId -eq $id })[0] }
+Pruefe 'Migration: nur Personen mit Gerät'        7 $mPlan.Count
+Pruefe 'Migration: eindeutiger Name -> setzen'    'setzen' (InhPlan '1').Aktion
+Pruefe 'Migration: eindeutiger Name -> ID'        '5' (InhPlan '1').ClientId
+Pruefe 'Migration: Gross/Klein egal'              'setzen' (InhPlan '2').Aktion
+Pruefe 'Migration: gleichnamig -> nicht archiviert' '40' (InhPlan '2').ClientId
+Pruefe 'Migration: gleichnamig gemeldet'          'True' (InhPlan '2').Mehrdeutig
+Pruefe 'Migration: nur archiviert -> trotzdem'    '7' (InhPlan '3').ClientId
+Pruefe 'Migration: unbekannter Name'              'unbekannt' (InhPlan '4').Aktion
+Pruefe 'Migration: unbekannt ohne ID'             '' (InhPlan '4').ClientId
+Pruefe 'Migration: schon umgestellt'              'fertig' (InhPlan '5').Aktion
+Pruefe 'Migration: andere ID -> Konflikt'         'konflikt' (InhPlan '6').Aktion
+Pruefe 'Migration: nur ID, kein Name'             'fertig' (InhPlan '7').Aktion
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'
