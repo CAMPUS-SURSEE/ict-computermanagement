@@ -19,19 +19,61 @@
 # 1) Protokoll
 # ---------------------------------------------------------------------------
 $script:InventarLogPath = $null
+$script:InventarLogZaehler = @{ ERROR = 0; WARN = 0 }
+$script:InventarLogFehlerZeilen = New-Object System.Collections.ArrayList
 
 function Set-InventarLog {
-    <# Legt die Logdatei fest. Ohne Aufruf schreibt Log() nur auf die Konsole. #>
-    param([string]$Pfad)
+    <#
+      Legt die Logdatei fest. Ohne Aufruf schreibt Log() nur auf die Konsole.
+      Ist die Datei grösser als MaxMB, wird sie vorher weggerollt (Invoke-LogRotation) – das Log
+      wächst so nie unbegrenzt, auch wenn der Sync jahrelang alle 30 Minuten läuft.
+    #>
+    param([string]$Pfad, [double]$MaxMB = 10, [int]$Behalten = 5)
     $script:InventarLogPath = $Pfad
+    $script:InventarLogZaehler = @{ ERROR = 0; WARN = 0 }
+    $script:InventarLogFehlerZeilen = New-Object System.Collections.ArrayList
+    if ($Pfad) { try { [void](Invoke-LogRotation -Pfad $Pfad -MaxMB $MaxMB -Behalten $Behalten) } catch { } }
+}
+
+function Invoke-LogRotation {
+    <#
+      Rollt eine Logdatei weg, sobald sie MaxMB erreicht: Sync-Inventar.log -> .log.1 -> .log.2 …
+      Die älteste (.log.<Behalten>) fällt weg. Rückgabe: $true, wenn gerollt wurde.
+    #>
+    param([string]$Pfad, [double]$MaxMB = 10, [int]$Behalten = 5)
+    if (-not $Pfad -or -not (Test-Path -LiteralPath $Pfad)) { return $false }
+    if ((Get-Item -LiteralPath $Pfad).Length -lt ($MaxMB * 1MB)) { return $false }
+    if ($Behalten -lt 1) { $Behalten = 1 }
+    for ($i = $Behalten; $i -ge 1; $i--) {
+        $quelle = $(if ($i -eq 1) { $Pfad } else { "$Pfad.$($i - 1)" })
+        if (Test-Path -LiteralPath $quelle) { Move-Item -LiteralPath $quelle -Destination "$Pfad.$i" -Force }
+    }
+    return $true
+}
+
+function Get-LogZaehler {
+    <# Wie viele ERROR- und WARN-Zeilen seit Set-InventarLog geschrieben wurden, dazu die letzten Fehlertexte. #>
+    return [pscustomobject]@{
+        Fehler      = [int]$script:InventarLogZaehler['ERROR']
+        Warnungen   = [int]$script:InventarLogZaehler['WARN']
+        FehlerTexte = @($script:InventarLogFehlerZeilen)
+    }
 }
 
 function Log {
     param([string]$msg, [string]$lvl = 'INFO')
     $line = "{0} [{1}] {2}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $lvl, $msg
     Write-Host $line
+    if ($script:InventarLogZaehler.ContainsKey($lvl)) { $script:InventarLogZaehler[$lvl]++ }
+    if ($lvl -eq 'ERROR') {
+        if ($null -eq $script:InventarLogFehlerZeilen) { $script:InventarLogFehlerZeilen = New-Object System.Collections.ArrayList }
+        if ($script:InventarLogFehlerZeilen.Count -lt 10) { [void]$script:InventarLogFehlerZeilen.Add($msg) }
+    }
     if ($script:InventarLogPath) {
-        try { Add-Content -Path $script:InventarLogPath -Value $line -Encoding UTF8 } catch { }
+        # Ein zweiter Versuch, falls die Datei gerade von jemandem geöffnet ist (Editor, Virenscanner).
+        for ($i = 1; $i -le 2; $i++) {
+            try { Add-Content -Path $script:InventarLogPath -Value $line -Encoding UTF8; break } catch { Start-Sleep -Milliseconds 200 }
+        }
     }
 }
 
@@ -537,15 +579,35 @@ function Set-GraphToken {
     $script:GraphTokenTime = Get-Date
 }
 
-function Get-GraphTokenZertifikat {
-    <#
-      Client-Credentials-Flow mit Zertifikat (JWT-Assertion). Erwartet ein Objekt mit
-      TenantId, ClientId und CertThumbprint.
-    #>
+function Get-SyncZertifikat {
+    <# Das Anmeldezertifikat des Syncs (LocalMachine\My, sonst CurrentUser\My) zum Thumbprint der Konfiguration. #>
     param($Cfg)
     $cert = Get-ChildItem -Path "Cert:\LocalMachine\My\$($Cfg.CertThumbprint)" -ErrorAction SilentlyContinue
     if (-not $cert) { $cert = Get-ChildItem -Path "Cert:\CurrentUser\My\$($Cfg.CertThumbprint)" -ErrorAction SilentlyContinue }
     if (-not $cert) { throw "Zertifikat $($Cfg.CertThumbprint) nicht gefunden (LocalMachine\My oder CurrentUser\My)" }
+    return $cert
+}
+
+function Get-ZertifikatHinweis {
+    <#
+      Warnt rechtzeitig vor dem Ablauf des Anmeldezertifikats. Rückgabe: Text oder '' (alles gut).
+      Abgelaufen -> der Sync kann sich nicht mehr anmelden; das steht dann ohnehin als Fehler im Log.
+    #>
+    param([datetime]$GueltigBis, [datetime]$Heute = (Get-Date), [int]$VorlaufTage = 60)
+    $rest = [math]::Floor(($GueltigBis - $Heute).TotalDays)
+    if ($rest -lt 0) { return "Das Anmeldezertifikat ist am $($GueltigBis.ToString('dd.MM.yyyy')) abgelaufen – erneuern (README Abschnitt 7.1)." }
+    if ($rest -le $VorlaufTage) { return "Das Anmeldezertifikat läuft in $rest Tagen ab ($($GueltigBis.ToString('dd.MM.yyyy'))) – erneuern (README Abschnitt 7.1)." }
+    return ''
+}
+
+function Get-GraphTokenZertifikat {
+    <#
+      Client-Credentials-Flow mit Zertifikat (JWT-Assertion). Erwartet ein Objekt mit
+      TenantId, ClientId und CertThumbprint. Ein kurzer Netzausfall beim Anmelden bricht den Lauf
+      nicht ab: bis zu drei Versuche; eine Ablehnung durch Entra ID (4xx) wird sofort gemeldet.
+    #>
+    param($Cfg)
+    $cert = Get-SyncZertifikat $Cfg
 
     $b64 = { param($b) [Convert]::ToBase64String($b).TrimEnd('=').Replace('+', '-').Replace('/', '_') }
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
@@ -569,8 +631,57 @@ function Get-GraphTokenZertifikat {
         client_assertion      = $jwt
         grant_type            = 'client_credentials'
     }
-    $resp = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$($Cfg.TenantId)/oauth2/v2.0/token" -Body $body -ContentType 'application/x-www-form-urlencoded'
-    return $resp.access_token
+    for ($versuch = 1; $versuch -le 3; $versuch++) {
+        try {
+            $resp = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$($Cfg.TenantId)/oauth2/v2.0/token" -Body $body -ContentType 'application/x-www-form-urlencoded' -TimeoutSec 60
+            return $resp.access_token
+        } catch {
+            $status = Get-HttpStatus $_
+            if ($versuch -ge 3 -or ($status -ge 400 -and $status -lt 500)) {
+                throw "Anmeldung an Entra ID fehlgeschlagen: $($_.Exception.Message) $($_.ErrorDetails.Message)"
+            }
+            Start-Sleep -Seconds (15 * $versuch)
+        }
+    }
+}
+
+function Get-HttpStatus {
+    <# HTTP-Status aus einem Fehlerobjekt von Invoke-RestMethod; ohne Antwort (Netz, Zeitüberschreitung) $null. #>
+    param($Fehler)
+    try {
+        $r = $Fehler.Exception.Response
+        if ($null -ne $r -and $null -ne $r.StatusCode) { return [int]$r.StatusCode }
+    } catch { }
+    return $null
+}
+
+function Get-GraphWiederholung {
+    <#
+      Entscheidet nach einem fehlgeschlagenen Graph-Aufruf, ob und wann es nochmals versucht wird.
+      Reine Funktion, damit Test-Inventar.ps1 sie ohne Netz prüfen kann.
+        401                  -> einmal neu anmelden und sofort wiederholen (Token abgelaufen)
+        429, 503             -> wiederholen, für jede Methode: der Aufruf wurde nicht ausgeführt
+        500, 502, 504, Netz  -> wiederholen, aber nur für GET, PATCH, PUT und DELETE. Ein POST
+                                könnte trotz Fehler angekommen sein; ein zweiter legte eine Dublette an.
+        alles andere         -> nicht wiederholen
+      Gewartet wird Retry-After (höchstens 120 s), sonst 5, 10, 20, 40 … s.
+    #>
+    param($Status, [string]$Methode = 'GET', [int]$Versuch = 1, $RetryAfter, [bool]$SchonNeuAngemeldet = $false)
+    $m = ([string]$Methode).ToUpperInvariant()
+    $idempotent = @('GET', 'PATCH', 'PUT', 'DELETE', 'MERGE') -contains $m
+    $warten = [math]::Min(120, 5 * [math]::Pow(2, [math]::Max(0, $Versuch - 1)))
+    $ra = 0
+    if ($null -ne $RetryAfter -and [int]::TryParse(([string]$RetryAfter).Trim(), [ref]$ra) -and $ra -gt 0) { $warten = [math]::Min(120, $ra) }
+    $ergebnis = [pscustomobject]@{ Wiederholen = $false; Warten = 0; NeuAnmelden = $false }
+    if ($Status -eq 401) {
+        if (-not $SchonNeuAngemeldet) { $ergebnis.Wiederholen = $true; $ergebnis.NeuAnmelden = $true }
+        return $ergebnis
+    }
+    if ($Status -eq 429 -or $Status -eq 503) { $ergebnis.Wiederholen = $true; $ergebnis.Warten = $warten; return $ergebnis }
+    if ($idempotent -and ($null -eq $Status -or $Status -eq 500 -or $Status -eq 502 -or $Status -eq 504)) {
+        $ergebnis.Wiederholen = $true; $ergebnis.Warten = $warten; return $ergebnis
+    }
+    return $ergebnis
 }
 
 function Get-GraphTokenDeviceCode {
@@ -628,45 +739,58 @@ function Get-GraphTokenDeviceCode {
     throw 'Device-Code-Anmeldung abgelaufen (keine Anmeldung innerhalb der Frist).'
 }
 
-function Invoke-Graph {
-    <# Graph-Aufruf mit Wiederholung bei 429/503/504. #>
-    param([string]$Method = 'GET', [string]$Uri, $Body, [string]$ContentType = 'application/json; charset=utf-8')
-    if (-not $script:GraphToken -or ((Get-Date) - $script:GraphTokenTime).TotalMinutes -gt 45) {
+function Update-GraphToken {
+    <# Holt ein frisches Token, wenn keins da ist, es älter als 45 Minuten ist oder -Erzwingen gilt. #>
+    param([switch]$Erzwingen)
+    if ($Erzwingen -or -not $script:GraphToken -or ((Get-Date) - $script:GraphTokenTime).TotalMinutes -gt 45) {
         if ($script:GraphTokenProvider) {
             $script:GraphToken = & $script:GraphTokenProvider
             $script:GraphTokenTime = Get-Date
         }
     }
     if (-not $script:GraphToken) { throw 'Kein Graph-Token vorhanden (Set-GraphToken oder Set-GraphTokenProvider aufrufen).' }
-    $headers = @{ Authorization = "Bearer $script:GraphToken"; Accept = 'application/json' }
+}
+
+function Invoke-Graph {
+    <#
+      Graph-Aufruf mit Wiederholung (Regeln in Get-GraphWiederholung): Drosselung, kurze Ausfälle
+      und ein abgelaufenes Token führen nicht zum Fehler, solange ein späterer Versuch klappt.
+    #>
+    param([string]$Method = 'GET', [string]$Uri, $Body, [string]$ContentType = 'application/json; charset=utf-8', [int]$Versuche = 6)
     if ($Uri -notmatch '^https://') { $Uri = 'https://graph.microsoft.com/v1.0' + $Uri }
-    for ($try = 1; $try -le 5; $try++) {
+    $payload = $null
+    if ($null -ne $Body) {
+        $payload = $Body
+        if ($Body -isnot [byte[]]) { $payload = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 12 -Compress)) }
+    }
+    $neuAngemeldet = $false
+    for ($try = 1; $try -le $Versuche; $try++) {
+        Update-GraphToken
+        $headers = @{ Authorization = "Bearer $script:GraphToken"; Accept = 'application/json' }
         try {
-            if ($null -ne $Body) {
-                $payload = $Body
-                if ($Body -isnot [byte[]]) {
-                    $json = $Body | ConvertTo-Json -Depth 12 -Compress
-                    $payload = [Text.Encoding]::UTF8.GetBytes($json)
-                }
-                return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -Body $payload -ContentType $ContentType
-            } else {
-                return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers
+            if ($null -ne $payload) {
+                return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -Body $payload -ContentType $ContentType -TimeoutSec 120
             }
+            return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -TimeoutSec 120
         } catch {
-            $status = $null; try { $status = [int]$_.Exception.Response.StatusCode } catch { }
-            if ($status -eq 429 -or $status -eq 503 -or $status -eq 504) {
-                $wait = 5 * $try; try { $wait = [int]$_.Exception.Response.Headers['Retry-After'] } catch { }
-                if ($wait -le 0) { $wait = 5 * $try }
-                Log "Graph $status – warte $wait s (Versuch $try)" 'WARN'
-                Start-Sleep -Seconds $wait
+            $fehlerSatz = $_
+            $status = Get-HttpStatus $fehlerSatz
+            $retryAfter = $null
+            try { $retryAfter = $fehlerSatz.Exception.Response.Headers['Retry-After'] } catch { }
+            $plan = Get-GraphWiederholung -Status $status -Methode $Method -Versuch $try -RetryAfter $retryAfter -SchonNeuAngemeldet $neuAngemeldet
+            if ($plan.Wiederholen -and $try -lt $Versuche) {
+                if ($plan.NeuAnmelden) { $neuAngemeldet = $true; Update-GraphToken -Erzwingen; continue }
+                $was = $(if ($null -eq $status) { 'ohne Antwort' } else { "HTTP $status" })
+                Log "Graph $Method $was – neuer Versuch in $($plan.Warten) s (Versuch $try von $Versuche)" 'WARN'
+                Start-Sleep -Seconds ([int]$plan.Warten)
                 continue
             }
-            $detail = $_.ErrorDetails.Message
-            if (-not $detail) { try { $sr = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream()); $detail = $sr.ReadToEnd() } catch { } }
-            throw "Graph $Method $Uri fehlgeschlagen: $($_.Exception.Message) $detail"
+            $detail = $fehlerSatz.ErrorDetails.Message
+            if (-not $detail) { try { $sr = New-Object IO.StreamReader($fehlerSatz.Exception.Response.GetResponseStream()); $detail = $sr.ReadToEnd() } catch { } }
+            throw "Graph $Method $Uri fehlgeschlagen: $($fehlerSatz.Exception.Message) $detail"
         }
     }
-    throw "Graph $Method $Uri nach 5 Versuchen fehlgeschlagen"
+    throw "Graph $Method $Uri nach $Versuche Versuchen fehlgeschlagen"
 }
 
 function Get-GraphAlle {

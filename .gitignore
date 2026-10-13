@@ -8,8 +8,11 @@
 Sync-Inventar.config*.json
 !Sync-Inventar.config.example.json
 
-# Logdateien der Skripte (Sync, Spalten ergänzen, Migrationen)
+# Logdateien der Skripte (Sync, Spalten ergänzen, Migrationen), auch die weggerollten
+# (Sync-Inventar.log.1 …), und die Statusdatei des Syncs
 *.log
+*.log.[0-9]
+*.status.json
 
 # Datenexporte und Sicherungen der Migrationsskripte
 lokal

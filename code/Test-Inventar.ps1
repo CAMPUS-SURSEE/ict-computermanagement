@@ -274,6 +274,69 @@ $p = Get-ClientZuordnung @((Geraet 1 'PC1' 'SN-A' '2026-09-01')) @((ZeileD 10 'G
 Pruefe 'Ohne Domäne: Nachbarzeile trifft' '11' $p.Zuordnungen[0].ZeileId
 Pruefe 'Ohne Domäne: nur eine aktive Zeile' 1 $p.AktiveZeilen
 
+# l) Neu aufgesetzte Geräte: SCCM hat einen neuen Datensatz ohne Hardware-Inventar (Regel 6).
+#    Vorbild: CAMPUS-041 (09.10.2026) und die EDU-155-Notebooks (02.10.2026).
+$heute = [datetime]'2026-10-13T12:00:00Z'
+function GeraetNeu($rid, $name, $erstellt) {
+    [pscustomobject]@{ ResourceId = $rid; Name = $name; Seriennummer = ''; Aktivitaet = '2026-10-13'; InventarAusstehend = $true; Erstellt = [datetime]$erstellt }
+}
+function ZeileR($id, $titel, $sccmSn, $status, $rid) {
+    [pscustomobject]@{ Id = $id; Title = $titel; SCCM_SerialNumber = $sccmSn; Seriennummer = ''; Status = $status; SCCM_ResourceID = $rid }
+}
+# a) Zeile im Einsatz mit Seriennummer wird festgehalten: nicht archiviert, keine Dublette
+$p = Get-ClientZuordnung @((GeraetNeu 9 'EDU-155-03' '2026-10-02')) @((ZeileR 18 'EDU-155-03' 'CZC1527N2P' 'Aktiv' 93)) -Heute $heute
+Pruefe 'Neu aufgesetzt: Zeile festgehalten'      1 $p.Wartend.Count
+Pruefe 'Neu aufgesetzt: Grund festgehalten'      'festgehalten' $p.Wartend[0].Grund
+Pruefe 'Neu aufgesetzt: welche Zeile'            '18' $p.Wartend[0].ZeileId
+Pruefe 'Neu aufgesetzt: keine Dublette'          0 $p.Neu.Count
+Pruefe 'Neu aufgesetzt: nicht archiviert'        0 $p.Archivieren.Count
+Pruefe 'Neu aufgesetzt: nicht überschrieben'     0 $p.Zuordnungen.Count
+Pruefe 'Neu aufgesetzt: Archivschutz zählt Zeile' 1 $p.AktiveZeilen
+# … sobald das Inventar da ist, trifft die Seriennummer dieselbe Zeile
+$p = Get-ClientZuordnung @((Geraet 9 'EDU-155-03' 'CZC1527N2P' '2026-10-13')) @((ZeileR 18 'EDU-155-03' 'CZC1527N2P' 'Aktiv' 93)) -Heute $heute
+Pruefe 'Nach dem Inventar: dieselbe Zeile'       '18' $p.Zuordnungen[0].ZeileId
+# b) archivierte Zeile ohne Seriennummer wird reaktiviert (CAMPUS-041: Zeilen 44 und 222)
+$p = Get-ClientZuordnung @((GeraetNeu 16780104 'CAMPUS-041' '2026-10-09')) @((ZeileR 44 'CAMPUS-041' '' 'Archiviert' ''), (ZeileR 222 'CAMPUS-041' '' 'Archiviert' 16780084)) -Heute $heute
+Pruefe 'Neu aufgesetzt: archivierte Zeile ohne Serie trifft' 1 $p.Zuordnungen.Count
+Pruefe 'Neu aufgesetzt: die jüngste Zeile'       '222' $p.Zuordnungen[0].ZeileId
+Pruefe 'Neu aufgesetzt: reaktiviert'             'Aktiv' $p.Zuordnungen[0].StatusNeu
+Pruefe 'Neu aufgesetzt: Verlauf reaktiviert'     'Wieder in SCCM vorhanden, reaktiviert' $p.Zuordnungen[0].VerlaufTexte[0]
+Pruefe 'Neu aufgesetzt: keine dritte Zeile'      0 $p.Neu.Count
+# c) archivierte Zeile mit Seriennummer: warten statt anlegen …
+$p = Get-ClientZuordnung @((GeraetNeu 7 'PC-A' '2026-10-12')) @((ZeileR 10 'PC-A' 'SN-ALT' 'Archiviert' 3)) -Heute $heute
+Pruefe 'Archiviert mit Serie: wartet'            'wartet' $p.Wartend[0].Grund
+Pruefe 'Archiviert mit Serie: nichts neu'        0 $p.Neu.Count
+Pruefe 'Archiviert mit Serie: nicht reaktiviert' 0 $p.Zuordnungen.Count
+# … aber höchstens WartezeitTage lang
+$p = Get-ClientZuordnung @((GeraetNeu 7 'PC-A' '2026-10-01')) @((ZeileR 10 'PC-A' 'SN-ALT' 'Archiviert' 3)) -Heute $heute -WartezeitTage 7
+Pruefe 'Nach der Wartezeit: neu angelegt'        1 $p.Neu.Count
+Pruefe 'Nach der Wartezeit: nichts wartet'       0 $p.Wartend.Count
+$ohneDatum = [pscustomobject]@{ ResourceId = 7; Name = 'PC-A'; Seriennummer = ''; Aktivitaet = ''; InventarAusstehend = $true; Erstellt = $null }
+$p = Get-ClientZuordnung @($ohneDatum) @((ZeileR 10 'PC-A' 'SN-ALT' 'Archiviert' 3)) -Heute $heute
+Pruefe 'Ohne Anlagedatum: lieber anlegen'        1 $p.Neu.Count
+# d) ohne gleichnamige Zeile entsteht die Zeile sofort
+$p = Get-ClientZuordnung @((GeraetNeu 7 'PC-NEU' '2026-10-13')) @((ZeileR 10 'PC-ANDERS' 'SN-X' 'Aktiv' 3)) -Heute $heute
+Pruefe 'Neues Gerät ohne Inventar: sofort neu'   1 $p.Neu.Count
+# e) gleichnamige Zeile ohne Seriennummer: normaler Namensfallback
+$p = Get-ClientZuordnung @((GeraetNeu 7 'PC-B' '2026-10-13')) @((ZeileR 10 'PC-B' '' 'Aktiv' '')) -Heute $heute
+Pruefe 'Ohne Inventar, Zeile ohne Serie: Treffer' '10' $p.Zuordnungen[0].ZeileId
+Pruefe 'Ohne Inventar, Zeile ohne Serie: Grund'   'Name' $p.Zuordnungen[0].Grund
+# f) ein fertig inventarisiertes Gerät gleichen Namens hat Vorrang
+$p = Get-ClientZuordnung @((GeraetNeu 8 'PC-C' '2026-10-13'), (Geraet 2 'PC-C' '' '2026-10-01')) @((ZeileR 10 'PC-C' '' 'Aktiv' '')) -Heute $heute
+Pruefe 'Vorrang: inventarisiertes Gerät trifft'  '2' $p.Zuordnungen[0].Geraet.ResourceId
+Pruefe 'Vorrang: das andere wartet'              1 $p.Wartend.Count
+# g) ohne InventarAusstehend bleibt alles wie bisher (archivierte Zeile wird nicht über den Namen genommen)
+$p = Get-ClientZuordnung @((Geraet 1 'PC-D' '' '2026-10-13')) @((ZeileR 10 'PC-D' 'SN-D' 'Archiviert' 3)) -Heute $heute
+Pruefe 'Mit Inventar: neue Zeile wie bisher'     1 $p.Neu.Count
+
+# m) Dublette: zwei Zeilen tragen dieselbe ResourceID – die überzählige wird mit Hinweis archiviert
+$p = Get-ClientZuordnung @((Geraet 93 'EDU-155-03' 'CZC1527N2P' '2026-10-13')) @((ZeileR 18 'EDU-155-03' 'CZC1527N2P' 'Aktiv' '93'), (ZeileR 128 'EDU-155-03' '' 'Aktiv' '93.0')) -Heute $heute
+Pruefe 'Dublette: Original trifft'               '18' $p.Zuordnungen[0].ZeileId
+Pruefe 'Dublette: überzählige archiviert'        '128' $p.Archivieren[0].ZeileId
+Pruefe 'Dublette: Verlaufstext nennt Zeile'      'Doppelte Zeile: das SCCM-Gerät (ResourceID 93) steht in Zeile ID 18, archiviert' $p.Archivieren[0].Verlauf
+$p = Get-ClientZuordnung @((Geraet 1 'PC6' 'SN-D' '2026-09-01')) @((ZeileR 10 'PC5' 'SN-C' 'Aktiv' '55'))
+Pruefe 'Ohne Dublette: Standardtext'             'In SCCM nicht mehr vorhanden, archiviert' $p.Archivieren[0].Verlauf
+
 # ---------------------------------------------------------------------------
 Abschnitt 'Archivschutz'
 $a1 = Test-ArchivSchutz 0 100 10 50
@@ -369,6 +432,16 @@ $t = Get-TelefonAbgleich @((TelZeile 1 '' '' 'Leer' '' '' ''), (TelZeile 2 '111'
 Pruefe 'Abgleich: leere Zeile gemeldet'   'True' (($t.Warnungen -join ' ') -match 'ID 1')
 Pruefe 'Abgleich: nur eine Zeile je Nummer' 1 $t.Updates.Count
 Pruefe 'Abgleich: Nummer aus AD nicht neu' 0 $t.Neu.Count
+
+# h) Unvollständige Nummer im AD (nur der Hausblock «+41 41 926 2»): keine Nummer, keine Dublette
+$t = Get-TelefonAbgleich @() @((AdUser 'ana.andrade' 'A' '+41 41 926 2'), (AdUser 'arne.decker' 'D' '+41419262'))
+Pruefe 'Unvollständig: nichts angelegt'      0 $t.Neu.Count
+Pruefe 'Unvollständig: keine Dublette'       'False' (($t.Warnungen -join ' ') -match 'steht im AD bei')
+Pruefe 'Unvollständig: gemeldet'             'True' (($t.Warnungen -join ' ') -match 'unvollständig')
+Pruefe 'Kurzwahl im AD bleibt gültig'        1 (Get-TelefonAbgleich @() @((AdUser 'x.y' 'Y' '300'))).Neu.Count
+# i) AD nicht vollständig gelesen: Benutzer wird nicht geleert
+$t = Get-TelefonAbgleich @((TelZeile 1 '222' '+41 41 926 22 22' 'Egger Bernadette' 'Person' 'Aktiv' 'bernadette.egger')) @() -NichtLeeren
+Pruefe 'NichtLeeren: kein Update'            0 $t.Updates.Count
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Schemadateien'
@@ -506,6 +579,95 @@ Pruefe 'Migration: unbekannt ohne ID'             '' (InhPlan '4').ClientId
 Pruefe 'Migration: schon umgestellt'              'fertig' (InhPlan '5').Aktion
 Pruefe 'Migration: andere ID -> Konflikt'         'konflikt' (InhPlan '6').Aktion
 Pruefe 'Migration: nur ID, kein Name'             'fertig' (InhPlan '7').Aktion
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Betrieb: Graph-Wiederholung, Zertifikat, Status, Log'
+$w = Get-GraphWiederholung -Status 401 -Methode 'GET' -Versuch 1
+Pruefe '401: neu anmelden'                 'True'  $w.NeuAnmelden
+Pruefe '401: wiederholen'                  'True'  $w.Wiederholen
+Pruefe '401 zweimal: aufgeben'             'False' (Get-GraphWiederholung -Status 401 -Methode 'GET' -Versuch 2 -SchonNeuAngemeldet $true).Wiederholen
+Pruefe '429 POST: wiederholen'             'True'  (Get-GraphWiederholung -Status 429 -Methode 'POST').Wiederholen
+Pruefe '429: Retry-After befolgt'          7       (Get-GraphWiederholung -Status 429 -Methode 'GET' -RetryAfter '7').Warten
+Pruefe '429: Retry-After höchstens 120 s'  120     (Get-GraphWiederholung -Status 429 -Methode 'GET' -RetryAfter '999').Warten
+Pruefe '503 POST: wiederholen'             'True'  (Get-GraphWiederholung -Status 503 -Methode 'POST').Wiederholen
+Pruefe '500 GET: wiederholen'              'True'  (Get-GraphWiederholung -Status 500 -Methode 'GET').Wiederholen
+Pruefe '502 PATCH: wiederholen'            'True'  (Get-GraphWiederholung -Status 502 -Methode 'PATCH').Wiederholen
+Pruefe '500 POST: nicht (Dublette)'        'False' (Get-GraphWiederholung -Status 500 -Methode 'POST').Wiederholen
+Pruefe 'Netzfehler PATCH: wiederholen'     'True'  (Get-GraphWiederholung -Status $null -Methode 'PATCH').Wiederholen
+Pruefe 'Netzfehler POST: nicht'            'False' (Get-GraphWiederholung -Status $null -Methode 'POST').Wiederholen
+Pruefe '404: nicht wiederholen'            'False' (Get-GraphWiederholung -Status 404 -Methode 'GET').Wiederholen
+Pruefe '400: nicht wiederholen'            'False' (Get-GraphWiederholung -Status 400 -Methode 'PATCH').Wiederholen
+Pruefe 'Wartezeit wächst (Versuch 3)'      20      (Get-GraphWiederholung -Status 503 -Methode 'GET' -Versuch 3).Warten
+
+# Invoke-Graph mit nachgebautem Invoke-RestMethod: erst 503, dann Erfolg; 401 holt ein neues Token.
+function Neuer-HttpFehler([int]$Status) {
+    $ex = New-Object System.Exception "HTTP $Status (Test)"
+    Add-Member -InputObject $ex -NotePropertyName Response -NotePropertyValue ([pscustomobject]@{ StatusCode = $Status; Headers = @{ 'Retry-After' = '1' } })
+    return $ex
+}
+$script:IrmAntworten = New-Object System.Collections.ArrayList
+$script:IrmAufrufe = 0
+function Invoke-RestMethod {
+    $script:IrmAufrufe++
+    $naechste = $script:IrmAntworten[0]; $script:IrmAntworten.RemoveAt(0)
+    if ($naechste -is [int]) { throw (Neuer-HttpFehler $naechste) }
+    return $naechste
+}
+$script:TokenAbrufe = 0
+Set-GraphTokenProvider { $script:TokenAbrufe++; "token-$($script:TokenAbrufe)" }
+[void]$script:IrmAntworten.Add(503); [void]$script:IrmAntworten.Add([pscustomobject]@{ ok = 1 })
+$r = Invoke-Graph -Uri '/test'
+Pruefe 'Invoke-Graph: 503 dann Erfolg'      1 $r.ok
+Pruefe 'Invoke-Graph: zwei Aufrufe'         2 $script:IrmAufrufe
+$script:IrmAufrufe = 0; $script:IrmAntworten.Clear()
+[void]$script:IrmAntworten.Add(401); [void]$script:IrmAntworten.Add([pscustomobject]@{ ok = 2 })
+$vorher = $script:TokenAbrufe
+$r = Invoke-Graph -Uri '/test'
+Pruefe 'Invoke-Graph: 401 dann Erfolg'      2 $r.ok
+Pruefe 'Invoke-Graph: Token neu geholt'     1 ($script:TokenAbrufe - $vorher)
+$script:IrmAufrufe = 0; $script:IrmAntworten.Clear()
+[void]$script:IrmAntworten.Add(500); [void]$script:IrmAntworten.Add([pscustomobject]@{ ok = 3 })
+$postFehler = $false
+try { [void](Invoke-Graph -Method POST -Uri '/test' -Body @{ a = 1 }) } catch { $postFehler = $true }
+Pruefe 'Invoke-Graph: POST 500 wirft'       'True' $postFehler
+Pruefe 'Invoke-Graph: POST nur ein Aufruf'  1 $script:IrmAufrufe
+Remove-Item function:Invoke-RestMethod
+
+Pruefe 'Zertifikat: lange gültig'          ''     (Get-ZertifikatHinweis -GueltigBis ([datetime]'2031-09-02') -Heute ([datetime]'2026-10-13'))
+Pruefe 'Zertifikat: bald fällig'           'True' ((Get-ZertifikatHinweis -GueltigBis ([datetime]'2026-11-12') -Heute ([datetime]'2026-10-13')) -match 'in 30 Tagen')
+Pruefe 'Zertifikat: abgelaufen'            'True' ((Get-ZertifikatHinweis -GueltigBis ([datetime]'2026-10-01') -Heute ([datetime]'2026-10-13')) -match 'abgelaufen')
+
+Pruefe 'Kurztext: OK'                      'OK'              (Get-SyncStatusKurztext -Fehler 0 -Warnungen 0)
+Pruefe 'Kurztext: eine Warnung'            'OK, 1 Warnung'   (Get-SyncStatusKurztext -Fehler 0 -Warnungen 1)
+Pruefe 'Kurztext: Warnungen'               'OK, 3 Warnungen' (Get-SyncStatusKurztext -Fehler 0 -Warnungen 3)
+Pruefe 'Kurztext: Fehler mit Meldung'      '2 Fehler: SCCM weg' (Get-SyncStatusKurztext -Fehler 2 -Warnungen 0 -Meldungen @('SCCM   weg', 'zweiter'))
+Pruefe 'Kurztext: höchstens 255 Zeichen'   255 (Get-SyncStatusKurztext -Fehler 1 -Warnungen 0 -Meldungen @('x' * 400)).Length
+
+# Log-Rotation in einem leeren Testordner
+$logOrdner = Join-Path ([IO.Path]::GetTempPath()) ('inventar-test-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $logOrdner | Out-Null
+$logDatei = Join-Path $logOrdner 'test.log'
+Set-Content -Path $logDatei -Value ('x' * 2000) -Encoding ASCII
+Pruefe 'Rotation: klein bleibt'            'False' (Invoke-LogRotation -Pfad $logDatei -MaxMB 1)
+Pruefe 'Rotation: gross wird gerollt'      'True'  (Invoke-LogRotation -Pfad $logDatei -MaxMB 0.001 -Behalten 2)
+Pruefe 'Rotation: .1 vorhanden'            'True'  (Test-Path "$logDatei.1")
+Pruefe 'Rotation: Original weg'            'False' (Test-Path $logDatei)
+Set-Content -Path $logDatei -Value ('y' * 2000) -Encoding ASCII
+[void](Invoke-LogRotation -Pfad $logDatei -MaxMB 0.001 -Behalten 2)
+Set-Content -Path $logDatei -Value ('z' * 2000) -Encoding ASCII
+[void](Invoke-LogRotation -Pfad $logDatei -MaxMB 0.001 -Behalten 2)
+Pruefe 'Rotation: höchstens 2 alte'        'False' (Test-Path "$logDatei.3")
+Pruefe 'Rotation: jüngstes in .1'          'True'  ((Get-Content "$logDatei.1" -Raw) -match '^z')
+Pruefe 'Rotation: älteres in .2'           'True'  ((Get-Content "$logDatei.2" -Raw) -match '^y')
+Set-InventarLog $logDatei
+Log 'eins' 'ERROR'; Log 'zwei' 'WARN'; Log 'drei'
+$zl = Get-LogZaehler
+Pruefe 'Log zählt Fehler'                  1 $zl.Fehler
+Pruefe 'Log zählt Warnungen'               1 $zl.Warnungen
+Pruefe 'Log merkt Fehlertext'              'eins' $zl.FehlerTexte[0]
+Pruefe 'Log schreibt in die Datei'         3 @(Get-Content $logDatei).Count
+Set-InventarLog $null
+Remove-Item -LiteralPath $logOrdner -Recurse -Force
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'

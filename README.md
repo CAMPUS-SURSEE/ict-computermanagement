@@ -21,6 +21,10 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 > seines Namens in «Computer». Ein umbenanntes Gerät behält so seinen Inhaber, und ein neues Gerät mit
 > dem Namen eines archivierten erbt ihn nicht. `Migriere-Inhaberschaft.ps1` hat den Bestand am selben
 > Tag umgestellt und die alte Spalte gelöscht (Abschnitt 11).
+>
+> **Produktivstart vom 13.10.2026.** Die Excel-Listen sind abgelöst: Der Stand vom 13.10.2026 ist in die
+> Listen übernommen, und die Blätter «Computer und User», «EDU-Geräte» (Inventar) und «Telefonnummer»
+> (S4B) tragen ein Overlay «Abgelöst» mit Link auf das Tool. Gepflegt wird nur noch im Tool (Abschnitt 12).
 
 ---
 
@@ -28,13 +32,14 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 
 | Ich möchte … | Das ist zu tun |
 |---|---|
-| **wissen, ob der Sync läuft** | Log unter `C:\ComputerInventar\Sync-Inventar.log` ansehen; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
-| **den Sync von Hand starten** | auf dem Server: `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
+| **wissen, ob der Sync läuft** | Frontend → **Übersicht**: zuoberst unter «Handlungsbedarf» steht «Letzter Abgleich mit SCCM und AD: …»; ein Banner erscheint, wenn der letzte Lauf Fehler hatte oder länger als 2 Stunden her ist. Details: `C:\ComputerInventar\Sync-Inventar.log` und `Sync-Inventar.status.json` auf `adminsrv319`; die geplante Aufgabe zeigt `0x0` bei Erfolg, `0x1` bei Fehlern |
+| **den Sync von Hand starten** | auf dem Server: Aufgabenplanung → «Computer Inventar Sync» → Ausführen, oder `powershell -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1` (vorher gefahrlos mit `-WhatIf`) |
+| **eine neue Fassung des Syncs auf den Server bringen** | `Installiere-Sync.ps1` im Ordner `code` (Abschnitt 2.5): testet, sichert, kopiert, prüft mit einem Probelauf und richtet die geplante Aufgabe ein |
 | **ein Programm hinzufügen oder ändern** | Frontend → Navigation links **«Software»** → **«Neues Programm»** bzw. Klick auf den Namen einer Karte. Die Spalte in der Benutzer-Liste entsteht dabei von selbst (Abschnitt 3) |
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `322 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `352 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -82,7 +87,7 @@ adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint
 │ Active Directory (LDAP/ADSI)     │  Zertifikat     │ Liste "Benutzer"                   │
 │   Benutzer + telephoneNumber     │                 │ Liste "Telefonnummern"             │
 │        ▲                         │ ──────────────▶ │ Liste "Software"                   │
-│ Geplante Aufgabe (SYSTEM), 4 h   │  Sites.Selected │                                    │
+│ Geplante Aufgabe (SYSTEM), 30 min│  Sites.Selected │                                    │
 │  → C:\ComputerInventar\          │                 │ Entra-App "SCCM-SharePoint-Sync"   │
 │     Sync-Inventar.ps1            │                 │ Entra-App "Computer Inventar       │
 └──────────────────────────────────┘                 │            Frontend" (SPA)         │
@@ -157,7 +162,13 @@ dass irgendetwas besser würde.
 |---|---|
 | `Sync-Inventar.ps1` | der laufende Sync (SCCM → ADMIN-/EDU-Clients, AD → Benutzer, AD → Telefonnummern) |
 | `Inventar-Gemeinsam.ps1` | gemeinsame Funktionen: Log, Geschäftsjahr, Graph, Spaltendefinitionen |
-| `Sync-Inventar.config.json` | Konfiguration mit den echten Werten. Liegt im Arbeitsverzeichnis, ist aber in `.gitignore` und kommt nie nach GitHub – sie enthält ClientId und Zertifikat-Thumbprint. Vorlage ohne Geheimnisse: `Sync-Inventar.config.example.json` |
+| `Sync-Inventar.config.json` | Konfiguration mit den echten Werten. **Führend ist die Fassung auf dem Server**; `Installiere-Sync.ps1` überschreibt sie nie. Die Kopie im Arbeitsverzeichnis ist in `.gitignore` und kommt nie nach GitHub – sie enthält ClientId und Zertifikat-Thumbprint. Vorlage ohne Geheimnisse: `Sync-Inventar.config.example.json` |
+
+Auf dem Server entstehen daneben `Sync-Inventar.log` (rollt ab 10 MB weg, die letzten fünf bleiben als
+`.log.1` … `.log.5`), `Sync-Inventar.status.json` (Zustand des letzten vollständigen Laufs) und
+`_sicherung\` (die Skripte vor jeder Installation, die letzten zehn). Den Zustand schreibt der Sync
+ausserdem als `Inventar/sync-status.json` in die Dokumentbibliothek der Site; dessen Titel liest die
+Übersicht im Frontend.
 
 | `code/` – läuft vom Arbeitsplatz | Zweck |
 |---|---|
@@ -170,6 +181,7 @@ dass irgendetwas besser würde.
 | `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
 | `Migriere-Inhaberschaft.ps1` | einmalig: stellt die Inhaberschaft vom PC-Namen («Computer») auf die Listen-ID des Geräts («AdminClientId») um, auf Wunsch löscht es danach «Computer» (Abschnitt 11) |
+| `Installiere-Sync.ps1` | bringt `code/server/` auf `adminsrv319` und richtet die geplante Aufgabe ein: Tests, Sicherung, Kopie mit Prüfsumme, Probelauf als SYSTEM, Aufgabe alle 30 Minuten (Abschnitt 2.5) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
 | `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Literale in den Seiten-CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
@@ -255,6 +267,7 @@ die Fundstellen mit Datei und Zeile, Exit-Code 0/1. Was danach im Browser anzuse
 | `AdUserOUs` | **Array von OU-DNs**; nur Benutzer aus diesen OUs kommen in die Liste |
 | `AdServer` | optional ein bestimmter Domänencontroller |
 | `LoeschSchutzProzent` | Standard 50 (siehe 2.3) |
+| `InventarWartezeitTage` | Standard 7: so lange wartet der Sync bei einem neu aufgesetzten Gerät ohne Hardware-Inventar auf die Seriennummer, bevor er es wie ein neues Gerät anlegt (2.2, Schritt 4a) |
 | `SmsProvider`, `SiteCode` | SCCM |
 | `LogPath` | Logdatei |
 
@@ -272,7 +285,9 @@ Listen derselbe:
    Felder aus; alles andere läuft normal weiter. Das gilt in allen drei Phasen: eine fehlende
    Spalte kostet nur ihre eigenen Felder, nie eine ganze Zeile. Anlegen: `Ergaenze-Spalten.ps1`
    oder von Hand in den Listeneinstellungen (Abschnitt 4).
-2. SCCM per WMI lesen. Zeilen mit **«In Domäne = Nein»** fallen hier vollständig heraus: Sie
+2. SCCM per WMI lesen – auch Datensätze, die noch kein Betriebssystem tragen (das ist bei einem
+   frisch aufgesetzten Gerät die ersten Stunden so; bis zum 13.10.2026 fielen sie durch den Filter
+   gegen Server-Betriebssysteme und galten als verschwunden). Zeilen mit **«In Domäne = Nein»** fallen hier vollständig heraus: Sie
    bekommen kein Gerät, keine SCCM-Felder, werden nie archiviert und zählen nicht in die aktiven
    Zeilen des Archivschutzes. Leer gilt als Ja, ältere Zeilen verhalten sich also wie bisher.
 3. **Zuordnung über die Seriennummer**, nicht über den Namen — je Liste getrennt. Verglichen wird die SCCM-Seriennummer
@@ -284,6 +299,22 @@ Listen derselbe:
    Zeilen, die **selbst keine gültige Seriennummer** tragen und **nicht `Archiviert`** sind. So
    finden von Hand angelegte Zeilen ihr Gerät (und erben dessen Nummer),
    während ein neu aufgesetztes Gerät nie die archivierte Leiche gleichen Namens erbt.
+
+   4a. **Neu aufgesetzte Geräte («Inventar ausstehend»)**. Beim Neuaufsetzen löscht SCCM oft den
+   alten Datensatz und legt einen neuen an, der Stunden bis Tage lang weder Hardware-Inventar noch
+   Seriennummer hat. Ob es dieselbe Hardware ist, zeigt erst die Seriennummer. Bis dahin gilt für
+   ein solches Gerät, wenn Schritt 4 keine Zeile findet:
+
+   | Gleichnamige Zeile | Was der Sync tut |
+   |---|---|
+   | im Einsatz (`Aktiv`/`Lager`), mit Seriennummer | **festhalten**: die Zeile wird weder archiviert noch überschrieben, es entsteht keine Dublette. Kommt das Inventar, trifft die Seriennummer dieselbe Zeile (gleiche Hardware) – oder die Zeile wird archiviert und eine neue angelegt (andere Hardware) |
+   | archiviert, ohne Seriennummer | **reaktivieren** (die jüngste solche Zeile): sie hatte nie eine Hardware-Identität |
+   | archiviert, mit Seriennummer | **warten**, nichts anlegen – höchstens `InventarWartezeitTage` (7) ab Anlage des SCCM-Datensatzes, danach wie ein neues Gerät |
+   | keine | sofort neu anlegen |
+
+   Das Log nennt jedes wartende Gerät («… ist neu aufgesetzt und hat noch kein Hardware-Inventar …»).
+   Anlass waren CAMPUS-041 (am 09.10.2026 archiviert, weil SCCM das neu aufgesetzte Gerät bis zum
+   13.10. ohne Betriebssystem führte) und die EDU-155-Notebooks (am 02.10.2026 je doppelt angelegt).
 5. **Mehrere Geräte mit demselben Namen sind erlaubt**, in der Liste wie in SCCM. Nichts im Sync
    setzt voraus, dass der Titel eindeutig ist; bei gleichen Namen wird der Reihe nach zugeteilt,
    das Gerät mit der jüngsten Aktivität zuerst. Liefert SCCM mehrere Ressourcen mit **derselben
@@ -302,7 +333,9 @@ Listen derselbe:
    «Aus SCCM neu angelegt».
 9. **Archivieren statt löschen**: Zeilen ohne SCCM-Gerät bekommen `SCCM_Found = Nein`, Status
    `Archiviert` und den Verlaufseintrag «In SCCM nicht mehr vorhanden, archiviert» – auch
-   `Lager`-Geräte. Taucht ein archiviertes Gerät wieder in SCCM auf, setzt der Sync es auf `Aktiv`
+   `Lager`-Geräte. Trägt die Zeile die ResourceID eines Geräts, das in diesem Lauf einer anderen
+   Zeile zugeordnet ist, ist sie eine Dublette; ihr Verlaufseintrag lautet dann «Doppelte Zeile: das
+   SCCM-Gerät (ResourceID …) steht in Zeile ID …, archiviert». Taucht ein archiviertes Gerät wieder in SCCM auf, setzt der Sync es auf `Aktiv`
    und schreibt «Wieder in SCCM vorhanden, reaktiviert». `Lager` bleibt unangetastet, solange das
    Gerät in SCCM ist, ein leerer Status wird beim ersten Kontakt zu `Aktiv`.
    **Die Client-Phasen löschen nie eine Zeile** – sie kennen keinen `DELETE`-Pfad. Vorgeschaltet ist
@@ -321,7 +354,9 @@ Listen derselbe:
 3. AD-Benutzer der konfigurierten OUs lesen (Subtree), Manager-DN in den Anzeigenamen auflösen (Cache).
 4. Je Programm mit hinterlegten AD-Gruppen die Mitglieder **rekursiv** ermitteln. Bevorzugt eine
    einzige LDAP-Abfrage je Gruppe mit `memberOf:1.2.840.113556.1.4.1941:=<Gruppen-DN>`; schlägt das
-   fehl, greift `Get-ADGroupMember -Recursive`. Eine fehlende Gruppe wird geloggt und übersprungen.
+   fehl, greift `Get-ADGroupMember -Recursive`. Eine Gruppe, die es im AD nicht gibt, wird geloggt
+   und zählt als leer. Lässt sich eine Gruppe dagegen **nicht lesen** (AD-Fehler), bleiben die
+   Stufen dieses Programms im Lauf unverändert – ein kurzer AD-Fehler nimmt niemandem die `2` weg.
 5. Primärgeräte aus `SMS_UserMachineRelationship` (bei mehreren das alphabetisch erste).
 6. Upsert je AD-Benutzer, nur Deltas. Programme: Mitglied → `2`; nicht Mitglied und bisher `2` → `0`;
    `1` bleibt `1`, leer bleibt leer.
@@ -336,7 +371,9 @@ Listen derselbe:
    Benutzers, kommt sein Login in `Benutzer`; ein leerer Name wird mit dem AD-Anzeigenamen gefüllt,
    ein leerer Typ wird `Person`, Status `Frei` wird `Aktiv`. Jede dieser Änderungen steht im Verlauf.
 4. Steht die Nummer bei niemandem mehr, wird `Benutzer` geleert (mit Verlaufseintrag). Name, Typ und
-   Status bleiben stehen – ob eine Nummer frei ist, entscheidet ein Mensch.
+   Status bleiben stehen – ob eine Nummer frei ist, entscheidet ein Mensch. Konnte das AD in diesem
+   Lauf nicht vollständig gelesen werden, wird nichts geleert. Eine unvollständige Nummer im AD
+   (z. B. nur `+41 41 926 2` ohne Kurzwahl) wird gemeldet und nicht abgeglichen.
 5. Nummern aus dem Hausblock (`TelefonPraefix`), die im AD stehen, aber in der Liste fehlen, werden
    **neu angelegt** (Typ `Person`, Status `Aktiv`, Verlauf «Aus dem AD neu angelegt»). Mobil- und
    Fremdnummern werden nur zugeordnet, nie angelegt.
@@ -344,6 +381,21 @@ Listen derselbe:
    geloggt. **Diese Phase löscht nie.**
 
 Exit-Code 1, sobald ein Fehler aufgetreten ist.
+
+**Robustheit** (seit 13.10.2026) – damit der Sync ohne Pflege läuft:
+
+| Störung | Verhalten |
+|---|---|
+| eine Phase scheitert (SCCM, eine Liste, AD) | Fehler ins Log, die übrigen Phasen laufen weiter; ohne SCCM bleibt das Primärgerät der Benutzer unverändert |
+| Graph drosselt (429) oder antwortet kurz nicht (5xx, Netz) | bis zu 6 Versuche mit wachsender Wartezeit bzw. `Retry-After`; ein POST wird nach 5xx/Netzfehler nicht wiederholt (sonst Dublette) |
+| Token abgelaufen (401) | einmal neu anmelden und wiederholen |
+| Anmeldung bei Entra ID scheitert am Netz | drei Versuche; eine Ablehnung (Zertifikat, App) wird sofort gemeldet |
+| eine AD-OU lässt sich nicht lesen | ein zweiter Versuch nach 10 s; scheitert auch er, wird in diesem Lauf kein Benutzer gelöscht und keine Telefonzuordnung geleert |
+| das AD ist ganz weg | eine Fehlermeldung, Benutzer- und Telefon-Phase ändern nichts |
+| ein Lauf dauert länger als das Intervall | der nächste beendet sich sofort (Sperre `Global\ComputerInventar-Sync`); die Aufgabe bricht nach 25 Minuten ab |
+| das Log wächst | ab 10 MB weggerollt, fünf alte Dateien bleiben |
+| das Zertifikat läuft bald ab | ab 60 Tagen vorher eine Warnung je Lauf (Abschnitt 7.1); das jetzige gilt bis 02.09.2031 |
+| etwas Unvorhergesehenes | ein Fangnetz schreibt es ins Log und in den Status, statt still abzubrechen |
 
 ### 2.3 Löschschutz (Benutzer) und Archivschutz (Clients)
 
@@ -367,57 +419,73 @@ zu archivieren.
 Sync-Inventar.ps1 [-ConfigPath <json>] [-WhatIf] [-IncludeServers]
                   [-OnlyClients] [-ClientListen Alle|Admin|Edu]
                   [-OnlyBenutzer] [-OnlyTelefone]
-                  [-DumpOnly] [-OnlyDevices <Name,Name>]
+                  [-DumpOnly] [-OnlyDevices <Name,Name>] [-LogPath <Datei>]
 ```
 
 | Parameter | Zweck |
 |---|---|
-| `-WhatIf` | zeigt nur, was geschrieben/gelöscht würde |
+| `-WhatIf` | zeigt nur, was geschrieben/gelöscht würde; darf neben einem laufenden Sync laufen |
 | `-OnlyClients` / `-OnlyBenutzer` / `-OnlyTelefone` | nur eine Phase (`-OnlyTelefone` liest kein SCCM) |
 | `-ClientListen` | nur eine der beiden Client-Listen abgleichen: `Admin` oder `Edu` (Vorgabe `Alle`) |
 | `-DumpOnly` | nur SCCM lesen und die aufbereiteten Felder ausgeben |
 | `-IncludeServers` | Server-Betriebssysteme mitnehmen |
 | `-OnlyDevices` | nur diese Geräte (zum Testen) |
+| `-LogPath` | anderes Log als in der Konfiguration (Probeläufe von `Installiere-Sync.ps1`) |
+
+Den Status (`Sync-Inventar.status.json`, `Inventar/sync-status.json`) schreiben nur vollständige
+Läufe ohne diese Schalter – ein Probelauf verfälscht die Anzeige im Frontend also nie.
 
 ### 2.5 Auf den Server bringen
 
-`C:\ComputerInventar\` auf `adminsrv319` ist eine flache Kopie von `code/server/` – **samt
-Konfiguration**. Es ist also nur noch ein Befehl, und auf dem Server ist nichts von Hand
-nachzuziehen:
+`C:\ComputerInventar\` auf `adminsrv319` enthält `Sync-Inventar.ps1` und `Inventar-Gemeinsam.ps1` aus
+`code/server/` und die Konfiguration. Verteilt wird mit **`Installiere-Sync.ps1`** von einem
+Arbeitsplatz aus, mit einem Konto, das auf dem Server Administrator ist – am einfachsten aus der
+AdminShell, wo das Domänenkonto in `$Cred` steht:
 
 ```powershell
-robocopy .\code\server \\adminsrv319\C$\ComputerInventar /XF Sync-Inventar.config.example.json
+& .\code\Installiere-Sync.ps1 -Credential $Cred -JetztStarten
 ```
 
-Ausgelassen wird einzig die Vorlage – sie hat auf dem Server nichts zu suchen und würde nur
-Verwirrung stiften. Ohne `/MIR`, bewusst: der Ordner enthält auch `Sync-Inventar.log`, und ein
-Spiegelabgleich würde das Log bei jedem Kopieren löschen.
+Das Skript
 
-**Damit ist `code/server/Sync-Inventar.config.json` im Arbeitsverzeichnis die führende Fassung.**
-Wer eine Listen-ID, eine OU oder den Zertifikat-Thumbprint ändert, ändert sie hier und kopiert;
-umgekehrt geht nichts zurück. Die Datei steht in `.gitignore` (`Sync-Inventar.config*.json`,
-mit Ausnahme der Vorlage) und kommt darum nie nach GitHub – sie enthält die ClientId der
-Entra-App und den Thumbprint des Anmeldezertifikats.
+1. führt `Test-Inventar.ps1` aus und verteilt nichts, wenn ein Test fehlschlägt,
+2. sichert die Skripte und die Konfiguration auf dem Server nach `_sicherung\<Zeitstempel>\`
+   (die letzten zehn bleiben),
+3. kopiert die beiden Skripte und vergleicht die Prüfsummen,
+4. macht einen **Probelauf als SYSTEM** mit `-WhatIf` über eine einmalige Aufgabe (genau wie der
+   echte Sync; in einer Remote-Sitzung erreichte er das AD nicht). Bricht der Probelauf ab, spielt
+   es die gesicherten Skripte zurück,
+5. legt die geplante Aufgabe an oder gleicht sie an (Abschnitt 2.6),
+6. startet mit `-JetztStarten` einen echten Lauf, wartet ihn ab und zeigt Ergebnis, Log-Ende und Status.
 
-Danach auf dem Server einmal `Sync-Inventar.ps1 -WhatIf` laufen lassen. Die Werkzeuge aus `code/`
-gehören **nicht** dorthin: sie ändern Listenstrukturen und die Software-Liste und werden bewusst
-von Hand von einem Arbeitsplatz aus gestartet.
+`-NurAnzeigen` zeigt nur, was auf dem Server liegt und wie die Aufgabe steht; `-IntervallMinuten`
+ändert den Takt (Vorgabe 30).
+
+**Die Konfiguration auf dem Server ist die führende Fassung** und wird nie überschrieben. Wer eine
+Listen-ID, eine OU oder den Zertifikat-Thumbprint ändert, ändert sie dort (eine Sicherung legt
+`Installiere-Sync.ps1` bei jedem Lauf an). Die Kopie in `code/server/` dient nur den Werkzeugen am
+Arbeitsplatz; sie steht in `.gitignore` (`Sync-Inventar.config*.json`, mit Ausnahme der Vorlage) und
+kommt nie nach GitHub – sie enthält die ClientId der Entra-App und den Thumbprint des
+Anmeldezertifikats.
+
+Die übrigen Werkzeuge aus `code/` gehören **nicht** auf den Server: sie ändern Listenstrukturen und
+die Software-Liste und werden bewusst von Hand von einem Arbeitsplatz aus gestartet.
 
 ### 2.6 Geplante Aufgabe
 
-Läuft als **SYSTEM** alle 4 Stunden. Das funktioniert auf dem Site-Server, weil das Computerkonto
-sowohl SCCM- als auch AD-Leserechte hat. Auf einem anderen Server ein Dienstkonto mit SCCM-Rolle
-«Read-only Analyst» und AD-Leserecht verwenden und diesem in `certlm.msc` Leserecht auf den privaten
-Schlüssel geben.
+«Computer Inventar Sync» läuft als **SYSTEM** **alle 30 Minuten** rund um die Uhr (Beginn jeweils
+fünf Minuten nach der vollen Stunde), höchstens 25 Minuten lang, nie zweimal gleichzeitig, holt einen
+verpassten Lauf nach einem Neustart nach und hängt nicht am Akku- oder Netzbetrieb. Eine Änderung in
+SCCM oder im AD steht damit spätestens nach einer halben Stunde im Tool (bei einem neu aufgesetzten
+Gerät zählt die Zeit, bis SCCM dessen Hardware-Inventar hat, Abschnitt 2.2). Ein Lauf dauert gut
+eine Minute.
 
-Neu registrieren, falls die Aufgabe fehlt:
+Das funktioniert auf dem Site-Server, weil das Computerkonto sowohl SCCM- als auch AD-Leserechte hat.
+Auf einem anderen Server ein Dienstkonto mit SCCM-Rolle «Read-only Analyst» und AD-Leserecht verwenden
+und diesem in `certlm.msc` Leserecht auf den privaten Schlüssel geben.
 
-```powershell
-$a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\ComputerInventar\Sync-Inventar.ps1'
-$t = New-ScheduledTaskTrigger -Once -At 06:00 -RepetitionInterval (New-TimeSpan -Hours 4)
-Register-ScheduledTask -TaskName 'Computer Inventar Sync' -Action $a -Trigger $t -User 'SYSTEM' -RunLevel Highest
-```
-
+Fehlt die Aufgabe oder stimmt ihr Takt nicht, legt `Installiere-Sync.ps1` sie neu an; dabei verteilt es
+immer auch die Skripte aus dem Arbeitsverzeichnis.
 ### 2.7 Telefonnummern
 
 Die Liste «Telefonnummern» ersetzt die Excel-Datei «Telefonnummerm S4B.xlsx» (Blatt «Telefonnummer»).
@@ -618,10 +686,13 @@ Archivieren und Reaktivieren), die **Aufteilung ADMIN-/EDU-Clients** (`Get-Clien
 (leer gilt als Ja, eine Zeile mit Nein wird nie archiviert und zählt nicht in den Archivschutz), die
 **Umstellung der Inhaberschaft** vom PC-Namen auf die
 Listen-ID (`Get-InhaberMigration`: eindeutiger Name, gleichnamige Geräte, unbekannter Name, schon
-umgestellt, Konflikt), Anzahl und Form der Schemaeinträge sowie die Syntax aller `*.ps1` in `code/`
-und `code/server/`.
+umgestellt, Konflikt), **neu aufgesetzte Geräte** ohne Hardware-Inventar (festhalten, reaktivieren, warten,
+Wartezeit, Vorrang des inventarisierten Geräts) und **Dubletten**, unvollständige AD-Telefonnummern, die
+**Betriebsregeln** (Wiederholung von Graph-Aufrufen samt nachgebautem `Invoke-RestMethod`, Zertifikatswarnung,
+Status-Kurztext, Log-Rotation und -Zähler), Anzahl und Form der Schemaeinträge sowie die Syntax aller
+`*.ps1` in `code/` und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 277 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 352 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -649,7 +720,15 @@ Erwartete Ausgabe: `Ergebnis: 277 bestanden, 0 fehlgeschlagen`.
 | Ein neu aufgesetzter PC hat keinen Inhaber, der alte (archivierte) schon | so gewollt: die Inhaberschaft hängt an der Hardware, das neue Gerät ist eine eigene Zeile | Geräteseite des neuen Geräts → «Inhaber» → «Übernehmen» (Abschnitt 2.8) |
 | Frontend: «Gerät fehlt» bei einer Person | ihre `AdminClientId` zeigt auf eine gelöschte Zeile | auf der Benutzerseite ein Gerät zuweisen oder die Inhaberschaft aufheben; oder die Zeile aus dem Papierkorb der Site zurückholen |
 | `Verlauf von '…' ist unbrauchbar – Zeile übersprungen` | der Inhalt der Spalte `Verlauf` ist kein gültiges JSON-Array (von Hand bearbeitet?) | Inhalt in der Zeile sichten und auf `[]` oder ein gültiges Array setzen; der Sync überschreibt ihn absichtlich nicht |
-| Ein PC fehlt in der Liste | er wurde nie gelöscht – die Client-Phasen löschen nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen. Zweiter Verdacht: der Name beginnt mit `EDU` und der PC steht in der anderen Liste |
+| Ein PC fehlt in der Liste | er wurde nie gelöscht – die Client-Phasen löschen nie | in SharePoint nach Status `Archiviert` filtern; nur ein Mensch kann eine Zeile löschen. Zweiter Verdacht: der Name beginnt mit `EDU` und der PC steht in der anderen Liste. Dritter: er ist neu aufgesetzt und SCCM hat noch kein Hardware-Inventar – das Log sagt «… ist neu aufgesetzt und hat noch kein Hardware-Inventar …»; er erscheint, sobald SCCM die Seriennummer kennt (Abschnitt 2.2, Schritt 4a) |
+| Übersicht: «Abgleich steht.» | der letzte vollständige Lauf ist über 2 Stunden her: Aufgabe deaktiviert, Server aus, Lauf hängt | auf `adminsrv319` die Aufgabe «Computer Inventar Sync» und das Log-Ende ansehen; `Installiere-Sync.ps1 -NurAnzeigen` zeigt beides vom Arbeitsplatz aus |
+| Übersicht: «Letzter Abgleich mit Fehlern.» | der letzte Lauf hatte mindestens einen ERROR; der Kurztext nennt den ersten | Log auf dem Server; die übrigen Phasen sind trotzdem gelaufen |
+| `Ein anderer Sync-Lauf ist noch aktiv – dieser Lauf entfällt.` | der vorige Lauf arbeitet noch (sehr langsames Graph oder SCCM) | nichts zu tun, solange es nicht bei jedem Lauf steht |
+| `Doppelte Zeile: das SCCM-Gerät (ResourceID …) steht in Zeile ID …` im Verlauf | zwei Zeilen gehörten zum selben SCCM-Gerät (vor dem 13.10.2026 beim Neuaufsetzen entstanden) | die archivierte Dublette kann gelöscht werden; Inhaber und Verlauf stehen in der genannten Zeile |
+| `Telefonnummer '…' von '…' im AD ist unvollständig` | im AD-Feld «Telefon» steht nur ein Teil der Nummer | im AD die ganze Nummer eintragen oder das Feld leeren |
+| `Das AD ist nicht erreichbar …` | der Server erreicht keinen Domänencontroller | DC und Netz prüfen; Benutzer und Telefonnummern bleiben unverändert, bis der nächste Lauf durchkommt |
+| `Sync-Status konnte nicht nach SharePoint geschrieben werden` | der Entra-App fehlt das Schreibrecht auf die Dokumentbibliothek der Site | Rolle `write` der App auf die Site prüfen (Abschnitt 7.1, Schritt 5); der Sync selbst läuft weiter |
+| `Das Anmeldezertifikat läuft in … Tagen ab` | Zertifikat bald abgelaufen | erneuern (Abschnitt 7.1) |
 | Ein PC steht plötzlich in der anderen Client-Liste | er wurde in SCCM umbenannt und hat dabei die Seite gewechselt (`EDU`-Präfix dazu oder weg) | Das ist so gewollt: die alte Zeile ist archiviert, die neue frisch angelegt. Wer den Verlauf mitnehmen will, verschiebt die Zeile mit `Migriere-Clients.ps1 -Schritte Umzug` |
 | Ein Gerät steht in **beiden** Client-Listen | ein Umzug ist zwischen Anlegen und Löschen abgebrochen | Die überzählige Zeile von Hand löschen; das Log von `Migriere-Clients.ps1` nennt den Namen |
 | `TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen` | `TelefonListId` fehlt in `Sync-Inventar.config.json` | ID aus den Listeneinstellungen der Liste «Telefonnummern» eintragen (steht auch in `frontend/konfig.js`) |
@@ -1047,3 +1126,32 @@ auf die Site (Spalte anlegen und löschen) und läuft nicht während eines Syncs
 mehrdeutigen Namen. Danach ist `Computer` gelöscht worden; der alte Stand liegt in
 `lokal\Migration-Inhaberschaft-20261013-110223.json`. Das Leeren von `AdminClientId` mit `null` ist gegen
 das echte SharePoint geprüft. Ein erneuter Lauf meldet nur noch, dass es `Computer` nicht mehr gibt.
+
+---
+
+## 12. Die Ablösung der Excel-Listen vom 13.10.2026
+
+Zwischen dem Abgleich vom 08.09.2026 (Abschnitt 10) und dem Produktivstart wurden die beiden Excel-Dateien
+weitergepflegt, das Tool lief nur im Test. Am 13.10.2026 ist der Excel-Stand ein letztes Mal übernommen
+worden, als Dreiwegevergleich zwischen der Excel-Fassung vor dem Abgleich (Version 758 vom 07.09.), der
+aktuellen Excel und SharePoint. Ein Skript im Repository gibt es dafür nicht, der Lauf war einmalig.
+
+| Regel | Folge |
+|---|---|
+| Wo die Excel etwas sagt, gilt sie, auch gegen Testeingaben im Tool | 113 Zeilen geändert: Bemerkungen, Standort und Beschaffungsjahr neu aufgesetzter Geräte, Inhaberschaften (u. a. CAMPUS-124 → Simon Hintermann, CAMPUS-147 → Driton Lazraj), Programmstufen |
+| Eine «2» (AD-Gruppe) bleibt | wie beim Abgleich vom 08.09. |
+| Firefox: Kreuz in der Excel wird «1» | Der Sync hatte am 08.09. die alten «2» auf «0» gesetzt, weil Firefox keine AD-Gruppe hat |
+| Telefon: vom AD-Sync gesetzte Werte bleiben | 318 (Auviso Technik), 356 (Ruiz Elisabete), 371 (Typ) – der nächste Sync setzte sie sonst zurück |
+| Testeinträge im Verlauf werden entfernt | CAMPUS-002, -007, -055, -073 und Janis Zesiger |
+
+Nicht übernommen, weil es kein AD-Konto im Sync-Bereich gibt: Isabella.Memaj, Florian.Steffen,
+Celina.Inderbinden, Yvonne.Estermann, Tamara.Unternaehrer und die Sammelbegriffe (Marketing,
+Seminarsupport, TechD, FRW). Die Tablets «Mercato» und «Piazza» haben keinen PC-Namen und stehen
+darum in keiner Client-Liste; ihre Benutzerzeilen sind übernommen.
+
+Sicherung vorher: `lokal\Ablösung-Excel-Sicherung-20261013-155353.json`, Protokoll:
+`lokal\Ablösung-Excel-Protokoll-20261013-161529.txt`. Danach wurden über die Blätter «Computer und User»,
+«EDU-Geräte» und «Telefonnummer» ein weisses, halbtransparentes Feld und eine Karte «Abgelöst» mit Link
+auf https://campussursee-ictinventar.pages.dev/ gelegt (Formen `Abgeloest-Overlay` und `Abgeloest-Karte`;
+zum Entfernen beide löschen). Die übrigen Blätter («Tel-Mitarbeiter», «TV Gebäude 1», «Budget 2025_26»)
+sind unberührt. Die Fassungen ohne Overlay liegen in der Versionshistorie der Dateien.

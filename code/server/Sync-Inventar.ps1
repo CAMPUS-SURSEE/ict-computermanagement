@@ -71,7 +71,8 @@ param(
     [switch]$OnlyBenutzer,
     [switch]$OnlyTelefone,
     [switch]$DumpOnly,
-    [string[]]$OnlyDevices
+    [string[]]$OnlyDevices,
+    [string]$LogPath    # überschreibt LogPath der Konfiguration (Probeläufe von Installiere-Sync.ps1)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -245,8 +246,10 @@ function Get-ClientZuordnung {
       Ordnet SCCM-Geräte den Zeilen einer Client-Liste zu. Reine Funktion, damit sie ohne
       SCCM und ohne Graph geprüft werden kann.
 
-      $SccmGeraete: Objekte mit ResourceId, Name, Seriennummer, Aktivitaet (jüngste SCCM-Aktivität)
-      $Zeilen     : Objekte mit Id, Title, SCCM_SerialNumber, Status, InDomaene
+      $SccmGeraete: Objekte mit ResourceId, Name, Seriennummer, Aktivitaet (jüngste SCCM-Aktivität),
+                    optional InventarAusstehend (kein Hardware-Inventar und keine Seriennummer)
+                    und Erstellt (Anlage des SCCM-Datensatzes)
+      $Zeilen     : Objekte mit Id, Title, SCCM_SerialNumber, SCCM_ResourceID, Status, InDomaene
 
       Regeln:
        0. Zeilen mit «In Domäne = Nein» sind vom Abgleich ausgenommen: kein Gerät, keine
@@ -266,13 +269,25 @@ function Get-ClientZuordnung {
           Titel nachgeführt und ein Verlaufseintrag vorgemerkt.
        5. Zeilen ohne SCCM-Gerät werden archiviert (nie gelöscht), archivierte Zeilen mit Gerät
           reaktiviert. «Lager» bleibt unangetastet, solange das Gerät in SCCM ist.
+       6. Neu aufgesetzte Geräte («Inventar ausstehend»): Beim Neuaufsetzen legt SCCM einen neuen
+          Datensatz an, der Stunden bis Tage lang weder Hardware-Inventar noch Seriennummer hat.
+          Ob es dieselbe Hardware ist, entscheidet erst die Seriennummer. Bis dahin gilt, falls
+          Regel 2 keine Zeile findet:
+            a) eine gleichnamige Zeile im Einsatz (mit Seriennummer) wird festgehalten – sie wird
+               weder archiviert noch geändert, und es entsteht keine Dublette;
+            b) sonst wird eine archivierte gleichnamige Zeile ohne Seriennummer reaktiviert (sie
+               hatte nie eine Hardware-Identität, es spricht also nichts dagegen);
+            c) sonst, wenn eine archivierte gleichnamige Zeile mit Seriennummer existiert, wird
+               gewartet und nichts angelegt – höchstens WartezeitTage lang ab Anlage des
+               SCCM-Datensatzes, danach entsteht die Zeile wie bei einem neuen Gerät.
     #>
-    param($SccmGeraete, $Zeilen)
+    param($SccmGeraete, $Zeilen, [datetime]$Heute = (Get-Date), [int]$WartezeitTage = 7)
 
     $warnungen = New-Object System.Collections.ArrayList
     $zuordnungen = New-Object System.Collections.ArrayList
     $neu = New-Object System.Collections.ArrayList
     $archivieren = New-Object System.Collections.ArrayList
+    $wartend = New-Object System.Collections.ArrayList
 
     # --- 1) SCCM-Geräte nach Seriennummer gruppieren --------------------------
     $nachSerie = @{}
@@ -317,12 +332,18 @@ function Get-ClientZuordnung {
     $zeilenSortiert = @($alleZeilen | Where-Object { Test-InDomaene $_ })
     $zNachSerie = @{}
     $zNachName = @{}
+    $zAlleNachName = @{}   # alle Zeilen je Name, auch mit Seriennummer und archivierte (Regel 6)
     $zustand = @{}   # ZeileId -> Hilfsdaten
     foreach ($z in $zeilenSortiert) {
         $id = [string](Get-Feld $z 'Id')
         $sn = Get-ZeilenSeriennummer $z
         $st = Get-StatusNorm (Get-Text $z 'Status')
         $zustand[$id] = [pscustomobject]@{ Zeile = $z; Seriennummer = $sn; Status = $st; Titel = (Get-Text $z 'Title') }
+        $kAlle = NormName (Get-Text $z 'Title')
+        if ($kAlle -ne '') {
+            if (-not $zAlleNachName.ContainsKey($kAlle)) { $zAlleNachName[$kAlle] = New-Object System.Collections.ArrayList }
+            [void]$zAlleNachName[$kAlle].Add($z)
+        }
         if ($sn -ne '') {
             if (-not $zNachSerie.ContainsKey($sn)) { $zNachSerie[$sn] = New-Object System.Collections.ArrayList }
             [void]$zNachSerie[$sn].Add($z)
@@ -361,8 +382,11 @@ function Get-ClientZuordnung {
     foreach ($g in $ohneSerie) { [void]$ueberNamen.Add($g) }
 
     # Namensfallback: jüngstes Gerät zuerst, damit es bei gleichen Namen die Zeile bekommt.
+    # Geräte mit ausstehendem Inventar kommen je Name zuletzt – ein fertig inventarisiertes
+    # Gerät gleichen Namens hat Vorrang.
     $ueberNamenSortiert = @(@($ueberNamen) | Sort-Object `
         @{ Expression = { NormName (Get-Text $_ 'Name') } }, `
+        @{ Expression = { [bool](Get-Feld $_ 'InventarAusstehend') } }, `
         @{ Expression = { ConvertTo-Zeitpunkt (Get-Feld $_ 'Aktivitaet') }; Descending = $true }, `
         @{ Expression = { [string](Get-Feld $_ 'ResourceId') } })
     foreach ($g in $ueberNamenSortiert) {
@@ -373,12 +397,46 @@ function Get-ClientZuordnung {
                 if (-not $belegt.Contains([string](Get-Feld $kandidat 'Id'))) { $z = $kandidat; break }
             }
         }
+        if ($null -eq $z -and [bool](Get-Feld $g 'InventarAusstehend') -and $k -ne '' -and $zAlleNachName.ContainsKey($k)) {
+            # Regel 6: neu aufgesetztes Gerät ohne Inventar – noch nicht entscheidbar, ob es
+            # dieselbe Hardware ist wie eine gleichnamige Zeile.
+            $frei = @(@($zAlleNachName[$k]) | Where-Object { -not $belegt.Contains([string](Get-Feld $_ 'Id')) })
+            $imEinsatz = @($frei | Where-Object { $zustand[[string](Get-Feld $_ 'Id')].Status -ne 'Archiviert' })
+            $archiviertOhneSerie = @($frei | Where-Object { $s = $zustand[[string](Get-Feld $_ 'Id')]; $s.Status -eq 'Archiviert' -and $s.Seriennummer -eq '' })
+            if ($imEinsatz.Count -gt 0) {
+                # a) festhalten: weder archivieren noch überschreiben
+                $h = $imEinsatz[0]
+                [void]$belegt.Add([string](Get-Feld $h 'Id'))
+                [void]$wartend.Add([pscustomobject]@{ Geraet = $g; Name = (Get-Text $g 'Name'); ZeileId = [string](Get-Feld $h 'Id'); Grund = 'festgehalten' })
+                continue
+            }
+            if ($archiviertOhneSerie.Count -gt 0) {
+                # b) die jüngste archivierte Zeile ohne Seriennummer reaktivieren
+                $z = $archiviertOhneSerie[$archiviertOhneSerie.Count - 1]
+            } else {
+                # c) archivierte Zeile mit Seriennummer: warten, höchstens WartezeitTage. Ist das
+                #    Anlagedatum unbekannt, lieber sichtbar anlegen als unbegrenzt warten.
+                $erstellt = ConvertTo-Zeitpunkt (Get-Feld $g 'Erstellt')
+                if ($erstellt -ne [datetime]::MinValue -and ($Heute - $erstellt).TotalDays -lt $WartezeitTage) {
+                    [void]$wartend.Add([pscustomobject]@{ Geraet = $g; Name = (Get-Text $g 'Name'); ZeileId = ''; Grund = 'wartet' })
+                    continue
+                }
+            }
+        }
         if ($null -eq $z) {
             [void]$neu.Add([pscustomobject]@{ Geraet = $g; Name = (Get-Text $g 'Name'); Verlauf = 'Aus SCCM neu angelegt'; Status = 'Aktiv' })
             continue
         }
         [void]$zuordnungen.Add((New-Zuordnung $g $zustand[[string](Get-Feld $z 'Id')] 'Name'))
         [void]$belegt.Add([string](Get-Feld $z 'Id'))
+    }
+
+    # ResourceID -> Zeile, der das Gerät in diesem Lauf zugeordnet ist (für den Verlaufstext
+    # einer Dublette: dasselbe SCCM-Gerät steht schon in einer anderen Zeile).
+    $zeileVonRessource = @{}
+    foreach ($zu in $zuordnungen) {
+        $rid = [string](Get-Feld $zu.Geraet 'ResourceId')
+        if ($rid -ne '' -and -not $zeileVonRessource.ContainsKey($rid)) { $zeileVonRessource[$rid] = $zu.ZeileId }
     }
 
     # --- 4) Zeilen ohne SCCM-Gerät -------------------------------------------
@@ -390,13 +448,18 @@ function Get-ClientZuordnung {
         if ($s.Status -ne 'Archiviert') { $aktiveZeilen++ }
         if ($belegt.Contains($id)) { continue }
         if ($s.Status -eq 'Archiviert') { continue }
+        $text = 'In SCCM nicht mehr vorhanden, archiviert'
+        $eigeneRid = ([string](Get-Feld $z 'SCCM_ResourceID')) -replace '\.0+$', ''
+        if ($eigeneRid -ne '' -and $zeileVonRessource.ContainsKey($eigeneRid)) {
+            $text = "Doppelte Zeile: das SCCM-Gerät (ResourceID $eigeneRid) steht in Zeile ID $($zeileVonRessource[$eigeneRid]), archiviert"
+        }
         [void]$archivieren.Add([pscustomobject]@{
                 Zeile     = $z
                 ZeileId   = $id
                 Titel     = $s.Titel
                 StatusAlt = $s.Status
                 StatusNeu = 'Archiviert'
-                Verlauf   = 'In SCCM nicht mehr vorhanden, archiviert'
+                Verlauf   = $text
             })
     }
 
@@ -404,6 +467,7 @@ function Get-ClientZuordnung {
         Zuordnungen  = @($zuordnungen.ToArray())
         Neu          = @($neu.ToArray())
         Archivieren  = @($archivieren.ToArray())
+        Wartend      = @($wartend.ToArray())
         AktiveZeilen = $aktiveZeilen
         Ausserhalb   = @($ausserhalb).Count
         Warnungen    = @($warnungen.ToArray())
@@ -472,7 +536,9 @@ function Get-TelefonAbgleich {
        5. Haben mehrere AD-Benutzer dieselbe Nummer, gilt der alphabetisch erste Login;
           die Dublette wird gemeldet. Gelöscht wird nie.
     #>
-    param($Zeilen, $AdBenutzer, [string]$Praefix)
+    param($Zeilen, $AdBenutzer, [string]$Praefix, [switch]$NichtLeeren)
+    # -NichtLeeren: das AD wurde nicht vollständig gelesen – eine Nummer, die bei niemandem steht,
+    # behält dann ihren Benutzer (Regel 3 entfällt für diesen Lauf).
     if (-not $Praefix) { $Praefix = $script:TelefonPraefixStandard }
 
     $warnungen = New-Object System.Collections.ArrayList
@@ -487,6 +553,13 @@ function Get-TelefonAbgleich {
         if ($z -eq '') { continue }
         $login = Get-Text $u 'Login'
         if ($login -eq '') { continue }
+        # Eine Schweizer Nummer hat mit Landesvorwahl genau 11 Ziffern. Steht im AD nur ein Teil
+        # (z. B. der Hausblock «+41 41 926 2» ohne Kurzwahl), ist das keine Nummer: sonst gälten
+        # alle Konten mit demselben Bruchstück als Dublette derselben Nummer.
+        if ($z.StartsWith('41') -and $z.Length -ne 11) {
+            [void]$warnungen.Add("Telefonnummer '$(Get-Text $u 'Telefon')' von '$login' im AD ist unvollständig – nicht abgeglichen.")
+            continue
+        }
         if ($adNachNummer.ContainsKey($z)) {
             $bisher = $adNachNummer[$z]
             $bisherLogin = Get-Text $bisher 'Login'
@@ -545,7 +618,7 @@ function Get-TelefonAbgleich {
                 [void]$texte.Add("Nummer ist im AD bei $login vergeben – Status von Frei auf Aktiv gesetzt")
             }
             if ($voll -eq '') { $delta['Telefonnummer'] = Format-Telefon $ziffern $Praefix }
-        } elseif ($alt -ne '') {
+        } elseif ($alt -ne '' -and -not $NichtLeeren) {
             $delta['Benutzer'] = $null
             [void]$texte.Add("Nicht mehr im AD bei $alt hinterlegt")
         }
@@ -587,23 +660,120 @@ function Get-TelefonAbgleich {
     }
 }
 
+function Get-SyncStatusKurztext {
+    <#
+      Einzeiliger Zustand des Laufs für das Frontend (Titel der Datei Inventar/sync-status.json,
+      höchstens 255 Zeichen): «OK», «OK, 3 Warnungen» oder «2 Fehler: <erste Meldung>».
+      Das Frontend zeigt bei «Fehler» einen Hinweis in der Übersicht.
+    #>
+    param([int]$Fehler, [int]$Warnungen, [string[]]$Meldungen)
+    if ($Fehler -le 0) {
+        if ($Warnungen -le 0) { return 'OK' }
+        return "OK, $Warnungen Warnung$(if ($Warnungen -ne 1) { 'en' })"
+    }
+    $t = "$Fehler Fehler"
+    $erste = @(@($Meldungen) | Where-Object { $_ })[0]
+    if ($erste) { $t += ': ' + (([string]$erste) -replace '\s+', ' ').Trim() }
+    if ($t.Length -gt 255) { $t = $t.Substring(0, 254) + '…' }
+    return $t
+}
+
 if ($InventarNurFunktionen) { return }
 
 # ===========================================================================
 # Hauptteil
 # ===========================================================================
+# Robustheit des Hauptteils:
+#  - Jede Phase (SCCM lesen, ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern) läuft in
+#    einem eigenen try/catch. Scheitert eine, laufen die übrigen trotzdem; der Fehler steht im Log.
+#  - Ein zweiter Lauf, während der erste noch arbeitet, beendet sich sofort (Sperre).
+#  - Am Ende steht der Zustand des Laufs in Sync-Inventar.status.json neben dem Log und – für die
+#    Übersicht im Frontend – als Inventar/sync-status.json in der Dokumentbibliothek der Site.
+$SyncVersion = '2026-10-13'
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ScriptDir 'Sync-Inventar.config.json' }
-$cfg = Read-JsonDatei $ConfigPath
-$LogPath = $cfg.LogPath
+$LogVorgabe = $LogPath
 if (-not $LogPath) { $LogPath = Join-Path $ScriptDir 'Sync-Inventar.log' }
+try {
+    $cfg = Read-JsonDatei $ConfigPath
+} catch {
+    Set-InventarLog $LogPath
+    Log "Konfiguration $ConfigPath ist nicht lesbar – Abbruch: $_" 'ERROR'
+    exit 1
+}
+if ($cfg.LogPath -and -not $LogVorgabe) { $LogPath = [string]$cfg.LogPath }
 Set-InventarLog $LogPath
 Set-GraphTokenProvider { Get-GraphTokenZertifikat $cfg }
 
 $fehler = 0
 $now = Get-Date
+$script:PhasenStatus = [ordered]@{}
 
 $LoeschSchutzProzent = 50
 if ($null -ne $cfg.LoeschSchutzProzent) { $LoeschSchutzProzent = [double]$cfg.LoeschSchutzProzent }
+$InventarWartezeitTage = 7
+if ($null -ne $cfg.InventarWartezeitTage) { $InventarWartezeitTage = [int]$cfg.InventarWartezeitTage }
+
+# Sperre gegen überlappende Läufe. -WhatIf und -DumpOnly schreiben nichts und dürfen parallel laufen.
+$script:Sperre = $null
+if (-not $WhatIf -and -not $DumpOnly) {
+    $frei = $true
+    try {
+        $script:Sperre = New-Object System.Threading.Mutex($false, 'Global\ComputerInventar-Sync')
+        try { $frei = $script:Sperre.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $frei = $true }
+    } catch { $frei = $true }
+    if (-not $frei) {
+        Log 'Ein anderer Sync-Lauf ist noch aktiv – dieser Lauf entfällt.' 'WARN'
+        exit 0
+    }
+}
+
+$SiteId = $null
+function Write-SyncStatus {
+    <#
+      Hält den Zustand eines vollständigen Laufs fest (Teilläufe mit -Only…, -WhatIf usw. nicht):
+        - Sync-Inventar.status.json neben dem Log (zum Nachsehen auf dem Server),
+        - Inventar/sync-status.json in der Dokumentbibliothek der Site; der Titel der Datei trägt
+          den Kurztext (Get-SyncStatusKurztext). Das Frontend liest Titel und Änderungszeit über
+          Graph und meldet in der Übersicht, wenn der letzte Lauf Fehler hatte oder zu lange her ist.
+      Scheitert das Hochladen, steht eine Warnung im Log – der Lauf selbst gilt deswegen nicht als
+      fehlgeschlagen.
+    #>
+    $teil = [bool]($WhatIf -or $DumpOnly -or $OnlyDevices -or $OnlyClients -or $OnlyBenutzer -or $OnlyTelefone -or $IncludeServers -or $ClientListen -ne 'Alle')
+    if ($teil) { return }
+    $ende = Get-Date
+    $z = Get-LogZaehler
+    $kurz = Get-SyncStatusKurztext -Fehler $script:fehler -Warnungen $z.Warnungen -Meldungen $z.FehlerTexte
+    $status = [ordered]@{
+        version       = $SyncVersion
+        rechner       = $env:COMPUTERNAME
+        start         = (ToIso $now)
+        ende          = (ToIso $ende)
+        dauerSekunden = [int]($ende - $now).TotalSeconds
+        fehler        = [int]$script:fehler
+        warnungen     = [int]$z.Warnungen
+        kurztext      = $kurz
+        phasen        = $script:PhasenStatus
+        meldungen     = @($z.FehlerTexte)
+    }
+    try { Write-JsonDatei $status (Join-Path (Split-Path -Parent $LogPath) 'Sync-Inventar.status.json') } catch { Log "Statusdatei konnte nicht geschrieben werden: $_" 'WARN' }
+    if (-not $SiteId) { return }
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes(($status | ConvertTo-Json -Depth 6))
+        $datei = Invoke-Graph -Method PUT -Uri "/sites/$SiteId/drive/root:/Inventar/sync-status.json:/content" -Body $bytes -ContentType 'application/json'
+        Invoke-Graph -Method PATCH -Uri "/sites/$SiteId/drive/items/$($datei.id)/listItem/fields" -Body @{ Title = $kurz } | Out-Null
+    } catch {
+        Log "Sync-Status konnte nicht nach SharePoint geschrieben werden (die Übersicht im Frontend zeigt dann keinen Zustand): $_" 'WARN'
+    }
+}
+
+# Fangnetz: Was trotz der try/catch-Blöcke je Phase durchschlägt, landet im Log und im Status,
+# statt den Lauf stumm zu beenden.
+trap {
+    Log "Unerwarteter Abbruch: $_ $($_.InvocationInfo.PositionMessage)" 'ERROR'
+    $script:fehler++
+    try { Write-SyncStatus } catch { }
+    exit 1
+}
 
 # ---------------------------------------------------------------------------
 # SCCM auslesen
@@ -626,26 +796,45 @@ $IntentMap = @{ 1 = 'Erforderlich'; 2 = 'Verfügbar'; 3 = 'Simulation' }
 $EPInfectionMap = @{ 0 = 'Unbekannt'; 1 = 'Sauber'; 2 = 'Sauber (Bedrohung entfernt)'; 3 = 'Infiziert (Aktion ausstehend)'; 4 = 'Infiziert (Bereinigung fehlgeschlagen)' }
 $EncryptMap = @{ 0 = 'Keine'; 1 = 'AES 128 + Diffuser'; 2 = 'AES 256 + Diffuser'; 3 = 'AES 128'; 4 = 'AES 256'; 5 = 'Hardware'; 6 = 'XTS-AES 128'; 7 = 'XTS-AES 256' }
 
-Log "==== Sync-Start (Provider $srv, Site $($cfg.SiteCode)) ===="
+Log "==== Sync-Start (Version $SyncVersion, Provider $srv, Site $($cfg.SiteCode)) ===="
 $nurBenutzer = [bool]$OnlyBenutzer -and -not $OnlyClients
 # Nur die Telefon-Phase: braucht das AD, aber kein SCCM.
 $nurTelefone = [bool]$OnlyTelefone -and -not $OnlyClients -and -not $OnlyBenutzer
 
+# Rechtzeitig vor dem Ablauf des Anmeldezertifikats warnen (README Abschnitt 7.1).
+try {
+    $hinweis = Get-ZertifikatHinweis -GueltigBis (Get-SyncZertifikat $cfg).NotAfter -Heute $now
+    if ($hinweis) { Log $hinweis 'WARN' }
+} catch { }
+
 $systems = @()
 $primary = @{}
+$sccmOk = $false
 if (-not $nurTelefone) {
+  try {
+    # Ein frisch aufgesetztes Gerät steht in SCCM zuerst ohne Betriebssystem da (manueller Eintrag
+    # der Betriebssystembereitstellung). «not like '%Server%'» allein liesse es weg (NULL ist nicht
+    # «nicht wie»), und der Sync hielte es für verschwunden – darum ausdrücklich «is null».
     $osFilter = ''
-    if (-not $IncludeServers) { $osFilter = " and OperatingSystemNameandVersion not like '%Server%'" }
-    $systems = @(Q "select ResourceId,Name,Client,Active,Obsolete,Decommissioned,ClientVersion,ResourceDomainORWorkgroup,DistinguishedName,CreationDate,LastLogonTimestamp,LastLogonUserName,LastLogonUserDomain,IPAddresses,MACAddresses,ADSiteName,IsVirtualMachine,SMBIOSGUID,BuildExt,OperatingSystemNameandVersion,SMSUniqueIdentifier,AADDeviceID from SMS_R_System where Obsolete=0$osFilter")
+    if (-not $IncludeServers) { $osFilter = " and (OperatingSystemNameandVersion is null or OperatingSystemNameandVersion not like '%Server%')" }
+    $systems = @(Q "select ResourceId,Name,Client,Active,Obsolete,Decommissioned,ClientVersion,ResourceDomainORWorkgroup,DistinguishedName,CreationDate,LastLogonTimestamp,LastLogonUserName,LastLogonUserDomain,IPAddresses,MACAddresses,ADSiteName,IsVirtualMachine,SMBIOSGUID,BuildExt,OperatingSystemNameandVersion,SMSUniqueIdentifier,AADDeviceID from SMS_R_System where Obsolete=0$osFilter" |
+        Where-Object { $_.Name -and $_.Name -notmatch 'Unknown Computer' })
     if ($OnlyDevices) { $systems = @($systems | Where-Object { $OnlyDevices -contains $_.Name }) }
     Log "SCCM: $($systems.Count) Geräte"
     $idList = ($systems | ForEach-Object { $_.ResourceId }) -join ','
-    if (-not $idList) { throw 'Keine Geräte gefunden' }
+    if (-not $idList) { throw 'SCCM hat kein einziges Gerät geliefert.' }
 
     $primary = Group-ById (Q "select ResourceID,UniqueUserName,Types from SMS_UserMachineRelationship where IsActive=1")
+    $sccmOk = $true
+  } catch {
+    Log "SCCM konnte nicht gelesen werden – die Client-Phasen entfallen, die Benutzer-Phase lässt das Primärgerät unverändert: $_" 'ERROR'
+    $fehler++
+    $script:PhasenStatus['SCCM'] = 'Fehler'
+  }
 }
 
-if (-not $nurBenutzer -and -not $nurTelefone) {
+if ($sccmOk -and -not $nurBenutzer) {
+  try {
     $combined = Group-ById (Q "select * from SMS_CombinedDeviceResources where ResourceID in ($idList)")
     $compsys = Group-ById (Q 'select ResourceID,Manufacturer,Model,SystemType,Domain from SMS_G_System_COMPUTER_SYSTEM')
     $os = Group-ById (Q 'select ResourceID,Caption,Version,InstallDate,LastBootUpTime,OSLanguage,TotalVisibleMemorySize from SMS_G_System_OPERATING_SYSTEM')
@@ -669,6 +858,13 @@ if (-not $nurBenutzer -and -not $nurTelefone) {
     $collNames = @{}; foreach ($c in (Q 'select CollectionID,Name from SMS_Collection')) { $collNames[$c.CollectionID] = $c.Name }
     $members = Group-ById (Q 'select ResourceID,CollectionID from SMS_FullCollectionMembership')
     Log 'SCCM-Inventar geladen'
+    $script:PhasenStatus['SCCM'] = 'OK'
+  } catch {
+    Log "SCCM-Inventar konnte nicht gelesen werden – die Client-Phasen entfallen: $_" 'ERROR'
+    $fehler++
+    $sccmOk = $false
+    $script:PhasenStatus['SCCM'] = 'Fehler'
+  }
 }
 
 function Build-SccmFields($sys) {
@@ -814,8 +1010,17 @@ if ($DumpOnly) {
 # ---------------------------------------------------------------------------
 $SiteId = $cfg.SiteId
 if (-not $SiteId) {
-    $u = [uri]$cfg.SiteUrl
-    $SiteId = (Invoke-Graph -Uri ('/sites/{0}:{1}' -f $u.Host, $u.AbsolutePath)).id
+    try {
+        $u = [uri]$cfg.SiteUrl
+        $SiteId = (Invoke-Graph -Uri ('/sites/{0}:{1}' -f $u.Host, $u.AbsolutePath)).id
+    } catch {
+        # Ohne Site (Anmeldung gescheitert, Graph nicht erreichbar) ist keine Phase möglich.
+        Log "Anmeldung an Microsoft Graph bzw. Zugriff auf die Site gescheitert – Lauf abgebrochen: $_" 'ERROR'
+        $fehler++
+        $script:PhasenStatus['Graph'] = 'Fehler'
+        Write-SyncStatus
+        exit 1
+    }
 }
 function Get-ListId([string]$Wert) {
     # Platzhalter aus der Vorlage («<...>») gelten als «nicht konfiguriert».
@@ -910,12 +1115,16 @@ function Invoke-ClientPhase {
             $d = ConvertFrom-WmiDate $w
             if ($d -and $d -gt $akt) { $akt = $d }
         }
+        # Neu aufgesetzt und noch nicht inventarisiert: weder Seriennummer noch Hardware-Scan.
+        $ohneHwScan = -not ($c -and (ConvertFrom-WmiDate $c.LastHardwareScan))
         [void]$geraete.Add([pscustomobject]@{
-                ResourceId   = $rid
-                Name         = [string]$sys.Name
-                Seriennummer = [string]$serial
-                Aktivitaet   = $akt
-                Sys          = $sys
+                ResourceId         = $rid
+                Name               = [string]$sys.Name
+                Seriennummer       = [string]$serial
+                Aktivitaet         = $akt
+                InventarAusstehend = ($ohneHwScan -and -not (Test-Seriennummer ([string]$serial)))
+                Erstellt           = (ConvertFrom-WmiDate $sys.CreationDate)
+                Sys                = $sys
             })
     }
 
@@ -927,6 +1136,7 @@ function Invoke-ClientPhase {
                 Title             = [string]$it.fields.Title
                 Seriennummer      = [string]$it.fields.Seriennummer
                 SCCM_SerialNumber = [string]$it.fields.SCCM_SerialNumber
+                SCCM_ResourceID   = [string]$it.fields.SCCM_ResourceID
                 Status            = [string]$it.fields.Status
                 Verlauf           = [string]$it.fields.Verlauf
                 InDomaene         = $it.fields.InDomaene
@@ -934,10 +1144,17 @@ function Invoke-ClientPhase {
             })
     }
 
-    $plan = Get-ClientZuordnung $geraete $zeilen
+    $plan = Get-ClientZuordnung $geraete $zeilen -Heute $now -WartezeitTage $InventarWartezeitTage
     foreach ($w in $plan.Warnungen) { Log "$titel`: $w" 'WARN' }
     if ($plan.Ausserhalb -gt 0) {
         Log "$titel`: $($plan.Ausserhalb) Zeile(n) mit «In Domäne = Nein» – vom Abgleich ausgenommen (kein SCCM-Gerät, keine Archivierung)."
+    }
+    foreach ($w in $plan.Wartend) {
+        if ($w.Grund -eq 'festgehalten') {
+            Log "$titel`: $($w.Name) (ResourceID $($w.Geraet.ResourceId)) ist neu aufgesetzt und hat noch kein Hardware-Inventar – Zeile ID $($w.ZeileId) bleibt unverändert, bis SCCM die Seriennummer kennt."
+        } else {
+            Log "$titel`: $($w.Name) (ResourceID $($w.Geraet.ResourceId)) hat noch kein Hardware-Inventar; eine archivierte Zeile gleichen Namens hat eine Seriennummer – angelegt wird erst, wenn SCCM die Seriennummer kennt (spätestens nach $InventarWartezeitTage Tagen)."
+        }
     }
 
     $stats = @{ updated = 0; created = 0; unchanged = 0; archiviert = 0; reaktiviert = 0; umbenannt = 0; uebersprungen = 0 }
@@ -1008,8 +1225,8 @@ function Invoke-ClientPhase {
                         $script:fehler++; $stats.uebersprungen++; continue
                     }
                 }
-                if ($WhatIf) { Log "WHATIF Archivieren (nicht mehr in SCCM): $($a.Titel)"; $stats.archiviert++; continue }
-                try { Invoke-Graph -Method PATCH -Uri "$itemsBase/$($a.ZeileId)/fields" -Body $body | Out-Null; $stats.archiviert++; Log "Archiviert (nicht mehr in SCCM): $($a.Titel)" }
+                if ($WhatIf) { Log "WHATIF Archivieren $($a.Titel) (ID $($a.ZeileId)): $($a.Verlauf)"; $stats.archiviert++; continue }
+                try { Invoke-Graph -Method PATCH -Uri "$itemsBase/$($a.ZeileId)/fields" -Body $body | Out-Null; $stats.archiviert++; Log "Archiviert $($a.Titel) (ID $($a.ZeileId)): $($a.Verlauf)" }
                 catch { Log "Fehler beim Archivieren von $($a.Titel): $_" 'ERROR'; $script:fehler++ }
             }
         }
@@ -1017,7 +1234,7 @@ function Invoke-ClientPhase {
     Log ("$titel fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} archiviert, {4} reaktiviert, {5} umbenannt, {6} übersprungen" -f $stats.updated, $stats.created, $stats.unchanged, $stats.archiviert, $stats.reaktiviert, $stats.umbenannt, $stats.uebersprungen)
 }
 
-if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
+if (-not $OnlyBenutzer -and -not $OnlyTelefone -and $sccmOk) {
     # SCCM-Geräte auf die beiden Listen aufteilen – allein über den Namen.
     $nachListe = @{ admin = New-Object System.Collections.ArrayList; edu = New-Object System.Collections.ArrayList }
     foreach ($sys in $systems) { [void]$nachListe[(Get-ClientListe ([string]$sys.Name))].Add($sys) }
@@ -1035,7 +1252,14 @@ if (-not $OnlyBenutzer -and -not $OnlyTelefone) {
             $fehler++
             continue
         }
-        Invoke-ClientPhase -Liste $ph.Liste -ListId $ph.ListId -SccmGeraete @($nachListe[$ph.Liste])
+        $fehlerVorher = $fehler
+        try {
+            Invoke-ClientPhase -Liste $ph.Liste -ListId $ph.ListId -SccmGeraete @($nachListe[$ph.Liste])
+        } catch {
+            Log "$titel`: Phase abgebrochen – die übrigen Phasen laufen weiter: $_" 'ERROR'
+            $fehler++
+        }
+        $script:PhasenStatus[$titel] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
     }
 }
 # ===========================================================================
@@ -1138,38 +1362,50 @@ function Get-GruppenMitgliederRekursiv {
       Rekursive Mitglieder einer AD-Gruppe (sAMAccountName der Gruppe) als Logins.
       Bevorzugt eine einzige LDAP-Abfrage mit memberOf:1.2.840.113556.1.4.1941 (schnell),
       Fallback auf Get-ADGroupMember -Recursive.
+
+      Rückgabe: Objekt mit Logins und Sicher. Sicher = $false heisst: die Mitglieder sind wegen
+      eines Lesefehlers unbekannt – der Aufrufer darf dann niemandem die Stufe 2 wegnehmen. Eine
+      Gruppe, die es im AD nicht (mehr) gibt, ist dagegen ein sicheres Ergebnis: keine Mitglieder.
     #>
     param([string]$Gruppe, [string]$DomainDn, [string]$Server, [bool]$MitModul)
     $logins = New-Object System.Collections.ArrayList
+    # LDAP-Sonderzeichen im Gruppennamen maskieren (RFC 4515), z. B. «Spo_K&A» ist harmlos, «(» nicht.
+    $gEsc = ([string]$Gruppe) -replace '\\', '\5c' -replace '\*', '\2a' -replace '\(', '\28' -replace '\)', '\29'
     try {
-        $gs = New-AdSucher $DomainDn ("(&(objectCategory=group)(sAMAccountName=$Gruppe))") @('distinguishedname') $Server
+        $gs = New-AdSucher $DomainDn ("(&(objectCategory=group)(sAMAccountName=$gEsc))") @('distinguishedname') $Server
         $g = $gs.FindOne()
         $gs.Dispose()
-        if (-not $g) { throw "Gruppe '$Gruppe' nicht gefunden" }
+        if (-not $g) {
+            Log "AD-Gruppe '$Gruppe' gibt es nicht – Name auf der Programmseite unter «AD-Gruppen» prüfen." 'WARN'
+            return [pscustomobject]@{ Logins = @(); Sicher = $true }
+        }
         $gdn = Get-AdWert $g 'distinguishedname'
-        $ms = New-AdSucher $DomainDn ("(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=$gdn))") @('samaccountname') $Server
+        $dnEsc = $gdn -replace '\\', '\5c' -replace '\*', '\2a' -replace '\(', '\28' -replace '\)', '\29'
+        $ms = New-AdSucher $DomainDn ("(&(objectCategory=person)(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=$dnEsc))") @('samaccountname') $Server
         foreach ($r in $ms.FindAll()) {
             $l = Get-AdWert $r 'samaccountname'
             if ($l) { [void]$logins.Add($l) }
         }
         $ms.Dispose()
-        return $logins
+        return [pscustomobject]@{ Logins = @($logins.ToArray()); Sicher = $true }
     } catch {
         Log "LDAP-Abfrage für Gruppe '$Gruppe' fehlgeschlagen: $_" 'WARN'
     }
     if ($MitModul) {
         try {
+            $logins = New-Object System.Collections.ArrayList
             $p = @{ Identity = $Gruppe; Recursive = $true }
             if ($Server) { $p['Server'] = $Server }
             foreach ($m in (Get-ADGroupMember @p)) {
                 if ($m.objectClass -eq 'user' -and $m.SamAccountName) { [void]$logins.Add([string]$m.SamAccountName) }
             }
-            return $logins
+            return [pscustomobject]@{ Logins = @($logins.ToArray()); Sicher = $true }
         } catch {
             Log "Get-ADGroupMember für Gruppe '$Gruppe' fehlgeschlagen: $_" 'ERROR'
+            $script:fehler++
         }
     }
-    return $logins
+    return [pscustomobject]@{ Logins = @(); Sicher = $false }
 }
 
 function Get-AdBenutzerAlle {
@@ -1186,17 +1422,26 @@ function Get-AdBenutzerAlle {
     if (-not $ous -or $ous.Count -eq 0) { throw 'AdUserOUs fehlt in der Konfiguration (Array von OU-DNs).' }
 
     $alle = @{}
+    # Unvollständig = mindestens eine OU liess sich nicht lesen. Dann fehlen deren Benutzer nur
+    # scheinbar; gelöscht bzw. als «nicht mehr im AD» geleert wird in diesem Lauf nichts.
+    $script:AdUnvollstaendig = $false
     foreach ($ou in $ous) {
-        if (-not $ou -or [string]$ou -match '^<') { Log "OU-Eintrag '$ou' sieht nach Platzhalter aus – bitte den echten DN eintragen." 'ERROR'; $script:fehler++; continue }
-        try {
-            $gefunden = Get-AdBenutzerAusOu $ou $adServer $mitModul
-            Log "AD: $($gefunden.Count) Benutzer in $ou"
-            foreach ($u in $gefunden) {
-                $k = NormLogin $u.Login
-                if ($k -eq '') { continue }
-                if (-not $alle.ContainsKey($k)) { $alle[$k] = $u }
+        if (-not $ou -or [string]$ou -match '^<') { Log "OU-Eintrag '$ou' sieht nach Platzhalter aus – bitte den echten DN eintragen." 'ERROR'; $script:fehler++; $script:AdUnvollstaendig = $true; continue }
+        $gefunden = @(); $gelesen = $false
+        for ($versuch = 1; $versuch -le 2 -and -not $gelesen; $versuch++) {
+            try { $gefunden = @(Get-AdBenutzerAusOu $ou $adServer $mitModul); $gelesen = $true }
+            catch {
+                if ($versuch -lt 2) { Start-Sleep -Seconds 10; continue }
+                Log "AD-Fehler in OU '$ou': $_" 'ERROR'; $script:fehler++; $script:AdUnvollstaendig = $true
             }
-        } catch { Log "AD-Fehler in OU '$ou': $_" 'ERROR'; $script:fehler++ }
+        }
+        if (-not $gelesen) { continue }
+        Log "AD: $($gefunden.Count) Benutzer in $ou"
+        foreach ($u in $gefunden) {
+            $k = NormLogin $u.Login
+            if ($k -eq '') { continue }
+            if (-not $alle.ContainsKey($k)) { $alle[$k] = $u }
+        }
     }
     Log "AD: $($alle.Count) Benutzer insgesamt"
     $script:AdBenutzerCache = $alle
@@ -1205,6 +1450,8 @@ function Get-AdBenutzerAlle {
 }
 
 if (-not $OnlyClients -and -not $OnlyTelefone) {
+  $fehlerVorher = $fehler
+  try {
     if (-not $BenutzerListId) { throw 'BenutzerListId fehlt in der Konfiguration.' }
     $benutzerBase = "/sites/$SiteId/lists/$BenutzerListId/items"
 
@@ -1265,6 +1512,11 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
 
     # 3) AD-Benutzer lesen
     $adBenutzer = Get-AdBenutzerAlle
+    if ($adBenutzer.Count -eq 0 -and $script:AdUnvollstaendig) {
+        # Kein einziger Benutzer und ein Lesefehler: das AD ist nicht erreichbar. Gruppen
+        # abzufragen brächte nur dieselbe Meldung je Gruppe; geändert wird ohnehin nichts.
+        throw 'Das AD ist nicht erreichbar – Benutzer und Programmstufen bleiben in diesem Lauf unverändert.'
+    }
     $mitModul = [bool]$script:AdMitModul
     $adServer = [string]$cfg.AdServer
     $ous = @($cfg.AdUserOUs)
@@ -1280,12 +1532,15 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
 
     # 4) Gruppenmitgliedschaften je Programm
     $mitgliedschaft = @{}   # Login -> Liste Programm-Ids
+    $unsicherIds = New-Object System.Collections.Generic.HashSet[string]   # Programme mit Lesefehler
     foreach ($p in $programmListe) {
         $gruppen = @($p.adGruppen)
         if ($gruppen.Count -eq 0) { continue }
         foreach ($g in $gruppen) {
             if (-not $g) { continue }
-            $mitglieder = Get-GruppenMitgliederRekursiv ([string]$g) $domainDn $adServer $mitModul
+            $erg = Get-GruppenMitgliederRekursiv ([string]$g) $domainDn $adServer $mitModul
+            if (-not $erg.Sicher) { [void]$unsicherIds.Add([string]$p.id) }
+            $mitglieder = @($erg.Logins)
             Log "AD-Gruppe '$g' ($($p.id)): $($mitglieder.Count) Mitglieder"
             foreach ($m in $mitglieder) {
                 $k = NormLogin $m
@@ -1293,6 +1548,13 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
                 if (-not $mitgliedschaft[$k].Contains($p.id)) { [void]$mitgliedschaft[$k].Add($p.id) }
             }
         }
+    }
+
+    # Programme, deren Gruppen nicht sicher gelesen werden konnten, bleiben in diesem Lauf, wie
+    # sie sind – sonst verlöre jedes Mitglied bei einem kurzen AD-Fehler seine Stufe 2.
+    if ($unsicherIds.Count -gt 0) {
+        Log "Programmstufen von $(@($unsicherIds) -join ', ') bleiben in diesem Lauf unverändert (AD-Gruppe nicht lesbar)." 'WARN'
+        $programmIds = @($programmIds | Where-Object { -not $unsicherIds.Contains([string]$_) })
     }
 
     # 5) Primärgeräte aus SCCM (Login -> Gerätename)
@@ -1334,6 +1596,9 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
             $delta = [ordered]@{}
             foreach ($f in $felder.Keys) {
                 if ($f -eq 'ADLetzterSync') { continue }
+                # Ohne SCCM-Daten (SCCM nicht erreichbar) bleibt das Primärgerät, wie es ist –
+                # sonst würde ein Ausfall von SCCM es bei allen Benutzern leeren.
+                if ($f -eq 'SCCMPrimaerGeraet' -and -not $sccmOk) { continue }
                 if ((Norm $felder[$f]) -ne (Norm $it.fields.$f)) { $delta[$f] = $felder[$f] }
             }
             foreach ($pd in (Get-ProgrammDelta $it.fields $mitgliedIds $programmIds).GetEnumerator()) { $delta[$pd.Key] = $pd.Value }
@@ -1360,7 +1625,9 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
         if (-not $adBenutzer.ContainsKey($k)) { $zuLoeschen += $it }
     }
     $schutz = Test-Loeschschutz $adBenutzer.Count $bItems.Count $zuLoeschen.Count $LoeschSchutzProzent
-    if (-not $schutz.Erlaubt) {
+    if ($script:AdUnvollstaendig -and $zuLoeschen.Count -gt 0) {
+        Log "Benutzer: $($zuLoeschen.Count) Zeile(n) ohne AD-Konto bleiben stehen, weil das AD in diesem Lauf nicht vollständig gelesen werden konnte." 'WARN'
+    } elseif (-not $schutz.Erlaubt) {
         Log "Löschschutz greift: $($schutz.Grund)" 'ERROR'
         $fehler++
     } else {
@@ -1371,6 +1638,11 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
         }
     }
     Log ('Benutzer fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} gelöscht' -f $bstats.updated, $bstats.created, $bstats.unchanged, $bstats.deleted)
+  } catch {
+    Log "Benutzer: Phase abgebrochen – die übrigen Phasen laufen weiter: $_" 'ERROR'
+    $fehler++
+  }
+  $script:PhasenStatus['Benutzer'] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
 }
 
 # ===========================================================================
@@ -1380,6 +1652,8 @@ if (-not $OnlyClients -and -not $OnlyBenutzer) {
     if (-not $TelefonListId) {
         Log 'TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen (ID steht in den Listeneinstellungen und in frontend\konfig.js).' 'WARN'
     } else {
+      $fehlerVorher = $fehler
+      try {
         $telefonBase = "/sites/$SiteId/lists/$TelefonListId/items"
         $praefix = $script:TelefonPraefixStandard
         if ($cfg.TelefonPraefix) { $praefix = [string]$cfg.TelefonPraefix }
@@ -1392,6 +1666,9 @@ if (-not $OnlyClients -and -not $OnlyBenutzer) {
 
         # 2) AD-Benutzer (aus der Benutzer-Phase, sonst jetzt lesen)
         $adBenutzer = Get-AdBenutzerAlle
+        if ($adBenutzer.Count -eq 0 -and $script:AdUnvollstaendig) {
+            throw 'Das AD ist nicht erreichbar – die Telefonliste bleibt in diesem Lauf unverändert.'
+        }
 
         # 3) Liste lesen
         $tItems = Get-GraphAlle "$telefonBase`?`$expand=fields&`$top=500"
@@ -1412,7 +1689,7 @@ if (-not $OnlyClients -and -not $OnlyBenutzer) {
         }
 
         # 4) Abgleich rechnen und schreiben
-        $tPlan = Get-TelefonAbgleich $tZeilen @($adBenutzer.Values) $praefix
+        $tPlan = Get-TelefonAbgleich $tZeilen @($adBenutzer.Values) $praefix -NichtLeeren:([bool]$script:AdUnvollstaendig)
         foreach ($w in $tPlan.Warnungen) { Log $w 'WARN' }
         $tstats = @{ updated = 0; created = 0; uebersprungen = 0 }
 
@@ -1445,8 +1722,15 @@ if (-not $OnlyClients -and -not $OnlyBenutzer) {
             catch { Log "Telefon-Anlage-Fehler $($n.Felder.Title): $_" 'ERROR'; $fehler++ }
         }
         Log ('Telefone fertig: {0} aktualisiert, {1} neu, {2} übersprungen' -f $tstats.updated, $tstats.created, $tstats.uebersprungen)
+      } catch {
+        Log "Telefonnummern: Phase abgebrochen: $_" 'ERROR'
+        $fehler++
+      }
+      $script:PhasenStatus['Telefonnummern'] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
     }
 }
 
-Log ("==== Fertig: {0} Fehler ====" -f $fehler)
+Log ("==== Fertig: {0} Fehler, {1} Warnungen, {2:N0} s ====" -f $fehler, (Get-LogZaehler).Warnungen, ((Get-Date) - $now).TotalSeconds)
+Write-SyncStatus
 if ($fehler) { exit 1 }
+exit 0

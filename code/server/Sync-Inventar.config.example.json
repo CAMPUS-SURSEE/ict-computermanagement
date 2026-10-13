@@ -18,5 +18,6 @@
     "OU=Windows 10,OU=Users,OU=Staff,DC=sasadmin,DC=local"
   ],
   "LoeschSchutzProzent": 50,
+  "InventarWartezeitTage": 7,
   "LogPath": "C:\\ComputerInventar\\Sync-Inventar.log"
 }

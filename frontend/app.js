@@ -401,6 +401,7 @@ let benutzer = [];         // angereicherte Benutzer-Zeilen
 let telefone = [];         // angereicherte Zeilen der Telefonliste
 let software = [];         // Zeilen der Liste «Software»
 let programmSpalten = [];  // Spaltenobjekte daraus
+let syncZustand = null;    // { zeit, text } des letzten Sync-Laufs oder null (Daten.syncStatus)
 const sichtbar = { admin: [], edu: [], benutzer: [], telefone: [] };
 
 /* Ersetzt das frühere Signal «#reiter hidden»: erst nach dem ersten
@@ -683,13 +684,15 @@ async function datenLaden(still) {
     };
   };
 
-  const [rohAdmin, rohEdu, rohBenutzer, rohTelefone, rohSoftware] = await Promise.all([
+  const [rohAdmin, rohEdu, rohBenutzer, rohTelefone, rohSoftware, sync] = await Promise.all([
     Daten.clients("admin", melden("admin")),
     listeLaden("edu", melden("edu"), still),
     Daten.benutzer(melden("benutzer")),
     listeLaden("telefon", melden("telefone"), still),
-    listeLaden("software", melden("software"), still)
+    listeLaden("software", melden("software"), still),
+    Daten.syncStatus()
   ]);
+  syncZustand = sync;
 
   const fehlgeschlagen = [];
   function stand(liste, roh) {
@@ -2081,12 +2084,42 @@ function abschnitt(id, titel, meta, inhalt) {
   return s;
 }
 
+/* Zustand des Abgleichs mit SCCM und AD (Sync-Inventar.ps1, läuft alle 30
+   Minuten). Liegt der letzte Lauf länger als SYNC_VERALTET_MIN zurück, steht
+   ein Gefahren-Banner über dem Handlungsbedarf – dann zeigen die Listen
+   womöglich einen alten Stand. Hatte er Fehler, ein Warn-Banner mit dem
+   Kurztext. Sonst eine leise Zeile mit der Zeit. Ohne Statusdatei (Sync noch
+   nie gelaufen, kein Zugriff) erscheint nichts. */
+const SYNC_VERALTET_MIN = 120;
+
+function syncHinweis() {
+  const s = syncZustand;
+  if (!s || !s.zeit) return null;
+  const zeit = new Date(s.zeit);
+  if (isNaN(zeit.getTime())) return null;
+  const minuten = (Date.now() - zeit.getTime()) / 60000;
+  const wann = UI.zeitText(zeit);
+  if (minuten > SYNC_VERALTET_MIN) {
+    return UI.banner({ ton: "gefahr", titel: "Abgleich steht.",
+      text: "Der letzte Abgleich mit SCCM und AD war am " + wann + " – die Listen zeigen womöglich nicht den aktuellen Stand. "
+        + "Geplante Aufgabe «Computer Inventar Sync» auf adminsrv319 prüfen." });
+  }
+  if (/Fehler/.test(s.text)) {
+    return UI.banner({ ton: "warnung", titel: "Letzter Abgleich mit Fehlern.",
+      text: s.text + " (" + wann + "). Details im Log auf adminsrv319." });
+  }
+  return UI.hinweis("Letzter Abgleich mit SCCM und AD: " + wann + ".");
+}
+
 /* Handlungsbedarf (Mapping 7.2 #14): eine Zeile je offener Kennzahl aus
-   allen Listen, Gefahr vor Warnung. Leer: Erfolgshinweis. */
+   allen Listen, Gefahr vor Warnung. Leer: Erfolgshinweis. Der Sync-Zustand
+   (syncHinweis) steht zuoberst. */
 function handlungsbedarf(punkte) {
   punkte.sort((a, b) => (TON_RANG[a.ton] ?? 9) - (TON_RANG[b.ton] ?? 9));
+  const sync = syncHinweis();
   if (!punkte.length) {
     return abschnitt("uebersicht-handlungsbedarf", "Handlungsbedarf", null, [
+      sync,
       UI.banner({ ton: "erfolg", text: "Keine offenen Punkte." })
     ]);
   }
@@ -2102,7 +2135,7 @@ function handlungsbedarf(punkte) {
   liste.classList.add("aufgaben");
   const n = punkte.length;
   return abschnitt("uebersicht-handlungsbedarf", "Handlungsbedarf",
-    n === 1 ? "1 offener Punkt" : n + " offene Punkte", [liste]);
+    n === 1 ? "1 offener Punkt" : n + " offene Punkte", [sync, liste]);
 }
 
 /* Die weiteren Kennzahlen einer Bestandskarte als klickbare Kennwerte

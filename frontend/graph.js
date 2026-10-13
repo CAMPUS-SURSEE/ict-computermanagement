@@ -24,6 +24,8 @@
      await Daten.loeschen(liste, id)       → true
      await Daten.programmSpalteAnlegen(id, name) → legt die Spalte eines neuen
                                              Programms in der Benutzer-Liste an
+     await Daten.syncStatus()              → { zeit, text } des letzten Sync-Laufs
+                                             oder null
      Daten.mockModus                       → true im Vorführmodus (?mock=1)
    «liste» ist "admin", "edu", "benutzer", "telefon" oder "software".
    «fortschritt» ist eine Rückrufe-Funktion, die nach jeder geladenen Seite die
@@ -390,6 +392,26 @@ const Daten = (function () {
     return true;
   }
 
+  /** Zustand des letzten Sync-Laufs (Sync-Inventar.ps1 auf adminsrv319):
+     { zeit, text } aus Änderungszeit und Titel der Datei
+     Inventar/sync-status.json, die der Sync nach jedem vollständigen Lauf
+     schreibt. Gelesen werden nur die Metadaten über Graph – der Inhalt käme
+     über eine Umleitung nach SharePoint, die die Inhaltsrichtlinie
+     (_headers, connect-src) nicht zulässt. null, wenn die Datei fehlt oder
+     nicht lesbar ist; die Übersicht zeigt dann nichts dazu an. */
+  async function syncStatus() {
+    if (mockModus) return Mock.syncStatus();
+    try {
+      const d = await anfrage("/sites/" + KONFIG.siteId
+        + "/drive/root:/Inventar/sync-status.json?$expand=listItem($expand=fields($select=Title))",
+        { was: "den Sync-Status" });
+      const felder = d && d.listItem && d.listItem.fields ? d.listItem.fields : {};
+      return { zeit: d ? d.lastModifiedDateTime : null, text: String(felder.Title || "") };
+    } catch (e) {
+      return null;
+    }
+  }
+
   return {
     mockModus: mockModus,
     clients: clients,
@@ -400,7 +422,8 @@ const Daten = (function () {
     speichern: speichern,
     anlegen: anlegen,
     loeschen: loeschen,
-    programmSpalteAnlegen: programmSpalteAnlegen
+    programmSpalteAnlegen: programmSpalteAnlegen,
+    syncStatus: syncStatus
   };
 })();
 
@@ -1297,6 +1320,16 @@ const Mock = (function () {
      bedienen lässt. */
   function programmSpalteAnlegen() { return true; }
 
+  /* Sync-Zustand: Standard «vor 12 Minuten ohne Fehler»; ?sync=fehler zeigt
+     einen Lauf mit Fehler, ?sync=alt einen, der zu lange zurückliegt. */
+  function syncStatus() {
+    const art = ABFRAGE.get("sync");
+    const minuten = art === "alt" ? 26 * 60 : 12;
+    const zeit = new Date(Date.now() - minuten * 60 * 1000).toISOString();
+    if (art === "fehler") return { zeit: zeit, text: "1 Fehler: EDU-Clients: Liste konnte nicht gelesen werden (Vorführfehler)." };
+    return { zeit: zeit, text: "OK" };
+  }
+
   return {
     zeilen: zeilen,
     clients: function (liste) { return zeilen(liste === "edu" ? "edu" : "admin"); },
@@ -1308,6 +1341,7 @@ const Mock = (function () {
     anlegen: anlegen,
     loeschen: loeschen,
     programmSpalteAnlegen: programmSpalteAnlegen,
+    syncStatus: syncStatus,
     zuruecksetzen: zuruecksetzen,
     anzahlAenderungen: anzahlAenderungen
   };
