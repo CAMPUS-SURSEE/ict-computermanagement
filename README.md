@@ -12,15 +12,15 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 >
 > **Excel-Abgleich vom 08.09.2026.** Die beiden Excel-Inventare («Computer und User Inventar.xlsx»,
 > «Telefonnummerm S4B.xlsx») sind einmalig in die Listen übernommen worden — `Abgleich-Excel.ps1`
-> (Abschnitt 10). Dabei neu: die Spalte **«In Domäne»** in beiden Client-Listen. Steht sie auf
+> (Abschnitt 10; seit dem 13.10.2026 nur noch in der Git-Historie). Dabei neu: die Spalte **«In Domäne»** in beiden Client-Listen. Steht sie auf
 > Nein, lässt der SCCM-Abgleich die Zeile vollständig in Ruhe — das ist der Weg für die 94
 > Gäste- und Prüfungsnotebooks ohne Domäne, die es in SCCM nie geben wird.
 >
 > **Umstellung vom 13.10.2026.** Die Inhaberschaft hängt an der **Hardware**, nicht mehr am PC-Namen:
 > Die Benutzer-Liste speichert in der neuen Spalte **«AdminClientId»** die Listen-ID des Geräts statt
 > seines Namens in «Computer». Ein umbenanntes Gerät behält so seinen Inhaber, und ein neues Gerät mit
-> dem Namen eines archivierten erbt ihn nicht. Den Bestand stellt `Migriere-Inhaberschaft.ps1` um
-> (Abschnitt 11).
+> dem Namen eines archivierten erbt ihn nicht. `Migriere-Inhaberschaft.ps1` hat den Bestand am selben
+> Tag umgestellt und die alte Spalte gelöscht (Abschnitt 11).
 
 ---
 
@@ -166,7 +166,6 @@ dass irgendetwas besser würde.
 | `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und Liste «Software» fehlen – der Reparaturweg, wenn eine Spalte fehlt (Abschnitt 4) |
 | `Entferne-Spalte.ps1` | löscht eine benannte Spalte nach Sicherung ihrer Werte (Gegenstück zu `Ergaenze-Spalten.ps1`) |
 | `Graph-Sitzung.ps1` | haltbare Anmeldung: einmal Device-Code, danach still über das Refresh-Token aus `lokal\graph-sitzung.xml` (DPAPI-verschlüsselt). Wird von den Werkzeugen daneben eingebunden |
-| `Abgleich-Excel.ps1` | einmalig: übernimmt die beiden Excel-Inventare in die Listen (Abschnitt 10) |
 | `Benenne-ListenAdresse.ps1` | einmalig: ändert die Adresse einer Liste (`.../Lists/Computer` → `.../Lists/ADMIN-Clients`) über die SharePoint-REST-Schnittstelle |
 | `Migriere-Clients.ps1` | einmalig: benennt «Computer» in «ADMIN-Clients» um, legt «EDU-Clients» und «Software» an, zieht die EDU-Zeilen um (Abschnitt 9) |
 | `Migriere-FruehererEintrag.ps1` | einmalig: überführt «Früherer Eintrag» der Telefonliste in den Verlauf und löscht die Spalte (Abschnitt 2.7) |
@@ -474,7 +473,7 @@ Inhaber. Das Frontend zeigt statt der Zahl den PC-Namen (Spalte «ADMIN-Client»
 
 Bis zum 13.10.2026 stand in der Spalte `Computer` der PC-Name. Damit verlor ein in SCCM umbenanntes
 Gerät still seinen Inhaber, und ein neues Gerät erbte den Inhaber eines gleichnamigen alten.
-`Migriere-Inhaberschaft.ps1` stellt den Bestand um (Abschnitt 11).
+`Migriere-Inhaberschaft.ps1` hat den Bestand am 13.10.2026 umgestellt (Abschnitt 11).
 
 **EDU-Clients haben bewusst keinen Inhaber.** Sie sind Schulungsgeräte und gehören niemandem
 persönlich. Auf ihrer Geräteseite fehlen darum der Bereich «Inhaber» und die Aktion «Ausgeben an …»
@@ -617,14 +616,12 @@ Archivieren und Reaktivieren), die **Aufteilung ADMIN-/EDU-Clients** (`Get-Clien
 **Umrechnung Software-Zeile → Programm** samt Sortierung und Id-Prüfung, die Telefonnummern
 (Normalisierung, Kurzwahl, Abgleich mit dem AD), das Verhalten bei fehlenden Spalten, **«In Domäne»**
 (leer gilt als Ja, eine Zeile mit Nein wird nie archiviert und zählt nicht in den Archivschutz), die
-**Umrechnung der Excel-Blätter** (Zellbezug, Zahlenformat, Arbeitsplatz ohne eigenes Gerät,
-Gerätename ↔ Standort, Beschaffungsjahr aus den Kreuzen, Programmstufen, Dubletten, Login-Zuordnung
-über gekürzten Login und Anzeigename), die **Umstellung der Inhaberschaft** vom PC-Namen auf die
+**Umstellung der Inhaberschaft** vom PC-Namen auf die
 Listen-ID (`Get-InhaberMigration`: eindeutiger Name, gleichnamige Geräte, unbekannter Name, schon
 umgestellt, Konflikt), Anzahl und Form der Schemaeinträge sowie die Syntax aller `*.ps1` in `code/`
 und `code/server/`.
 
-Erwartete Ausgabe: `Ergebnis: 322 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 277 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -944,14 +941,9 @@ Vor den SharePoint-Listen wurde das Inventar in zwei Excel-Dateien geführt, und
 danach weitergepflegt worden. `Abgleich-Excel.ps1` hat sie einmalig übernommen: **was in der Excel
 steht, gilt** – mit einer begründeten Ausnahme bei den Telefonnummern (siehe unten).
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Abgleich-Excel.ps1 -WhatIf
-powershell -ExecutionPolicy Bypass -File .\Abgleich-Excel.ps1
-```
-
-Immer zuerst mit `-WhatIf`. Mit `-Bereiche Clients` (oder `Edu`, `Software`, `Benutzer`, `Telefon`,
-`Aufraeumen`) läuft nur ein Teil. Die Anmeldung hält über `Graph-Sitzung.ps1`: einmal Device-Code,
-danach still über das Refresh-Token in `lokal\graph-sitzung.xml`.
+Das Skript ist am 13.10.2026 gelöscht worden und steht nur noch in der Git-Historie: Es schrieb die
+Inhaberschaft als PC-Namen in die Spalte `Computer`, die es seit der Umstellung (Abschnitt 11) nicht
+mehr gibt. Seit dem Abgleich wird nur noch in SharePoint gepflegt.
 
 ### Was woher kommt
 
@@ -1050,3 +1042,8 @@ Den Bestand in SharePoint stellt `Migriere-Inhaberschaft.ps1` um:
 
 Mit `-WhatIf` wird nur gelesen, gesichert und gezählt. Das Skript braucht ein Konto mit Vollzugriff
 auf die Site (Spalte anlegen und löschen) und läuft nicht während eines Syncs.
+
+**Gelaufen am 13.10.2026:** 133 Personen umgestellt, keine ohne passendes Gerät, keine Konflikte, keine
+mehrdeutigen Namen. Danach ist `Computer` gelöscht worden; der alte Stand liegt in
+`lokal\Migration-Inhaberschaft-20261013-110223.json`. Das Leeren von `AdminClientId` mit `null` ist gegen
+das echte SharePoint geprüft. Ein erneuter Lauf meldet nur noch, dass es `Computer` nicht mehr gibt.

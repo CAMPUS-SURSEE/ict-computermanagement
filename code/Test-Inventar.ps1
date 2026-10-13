@@ -56,7 +56,6 @@ $InventarNurFunktionen = $true
 . (Join-Path $ServerDir 'Sync-Inventar.ps1')
 . (Join-Path $TestDir 'Migriere-FruehererEintrag.ps1')
 . (Join-Path $TestDir 'Migriere-Inhaberschaft.ps1')
-. (Join-Path $TestDir 'Abgleich-Excel.ps1')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Geschäftsjahr'
@@ -471,74 +470,6 @@ Pruefe 'Migration idempotent: nur leeren'    'leeren' $migNochmal.Aktion
 $migFehler = $false
 try { [void](Get-FruehererEintragMigration -Verlauf 'kaputt {' -Wert 'X' -Zeitpunkt $migZeit) } catch { $migFehler = $true }
 Pruefe 'Migration: unlesbarer Verlauf wirft'  'True' $migFehler
-
-# ---------------------------------------------------------------------------
-Abschnitt 'Abgleich Excel -> SharePoint'
-
-# Zellbezug und Zahlenformat der .xlsx
-Pruefe 'Spaltenindex A'   1  (ConvertTo-SpaltenIndex 'A1')
-Pruefe 'Spaltenindex Z'   26 (ConvertTo-SpaltenIndex 'Z9')
-Pruefe 'Spaltenindex AA'  27 (ConvertTo-SpaltenIndex 'AA12')
-Pruefe 'Spaltenindex DH' 112 (ConvertTo-SpaltenIndex 'DH474')
-Pruefe 'Zahl 17.1 ohne Rattenschwanz' '17.1' (Format-XlsxZahl '17.100000000000001')
-Pruefe 'Zahl bleibt ganzzahlig'       '373'  (Format-XlsxZahl '373')
-Pruefe 'Text bleibt Text'             '17.3' (Format-XlsxZahl '17.3')
-Pruefe 'Nichtzahl bleibt unverändert' 'EDU-1' (Format-XlsxZahl 'EDU-1')
-
-# Arbeitsplatz ohne eigenes Gerät
-Pruefe 'Kein PC ist kein Gerät'        'False' (Test-EigenesGeraet 'Kein PC')
-Pruefe 'kein pc ist kein Gerät'        'False' (Test-EigenesGeraet 'kein pc')
-Pruefe 'Shared ist kein eigenes Gerät' 'False' (Test-EigenesGeraet 'Shared CAMPUS-070')
-Pruefe 'Leer ist kein Gerät'           'False' (Test-EigenesGeraet '')
-Pruefe 'CAMPUS-001 ist ein Gerät'      'True'  (Test-EigenesGeraet 'CAMPUS-001')
-
-# Gerätename und Standort im EDU-Blatt
-Pruefe 'Name ohne Standort'       'EDU-155-01'  (Split-GeraeteName 'EDU-155-01').Name
-Pruefe 'Standort leer'            ''            (Split-GeraeteName 'EDU-155-01').Standort
-Pruefe 'Name vor Leerzeichen'     'EDULAP-031'  (Split-GeraeteName 'EDULAP-031 Konferenzsaal 1').Name
-Pruefe 'Standort nach Leerzeichen' 'Konferenzsaal 1' (Split-GeraeteName 'EDULAP-031 Konferenzsaal 1').Standort
-Pruefe 'Bindestrich fällt weg'    'Halle 23 - Schmidlin' (Split-GeraeteName 'EDULAP-107 - Halle 23 - Schmidlin').Standort
-Pruefe 'Name bei Bindestrich'     'EDULAP-107'  (Split-GeraeteName 'EDULAP-107 - Halle 23 - Schmidlin').Name
-
-# Beschaffungsjahr und Ersatz aus den Kreuzen
-Pruefe 'Jüngstes Jahr zählt'  '2025/2026' (Get-BeschaffungsjahrAusKreuzen @('2019/2020', '2025/2026') '2026/2027')
-Pruefe 'Budgetjahr zählt nicht' '2021/2022' (Get-BeschaffungsjahrAusKreuzen @('2021/2022', '2026/2027') '2026/2027')
-Pruefe 'Ohne Kreuz kein Jahr'  ''          (Get-BeschaffungsjahrAusKreuzen @() '2026/2027')
-Pruefe 'Ersatz = Beschaffung + 5' '2026/2027' (Get-ErsatzGeplant '2021/2022' $false '2026/2027')
-Pruefe 'Ersatz schlägt Budget'    '2030/2031' (Get-ErsatzGeplant '2025/2026' $true '2026/2027')
-Pruefe 'Budget ohne Beschaffung'  '2026/2027' (Get-ErsatzGeplant '' $true '2026/2027')
-Pruefe 'Weder noch'               ''          (Get-ErsatzGeplant '' $false '2026/2027')
-
-# Programmstufen: die Excel gilt, eine vom AD gesetzte 2 bleibt
-Pruefe 'Kreuz auf leer -> 1'   '1'   (Get-ProgrammstufeNeu $true '')
-Pruefe 'Kreuz auf 0 -> 1'      '1'   (Get-ProgrammstufeNeu $true '0')
-Pruefe 'Kreuz auf 1 -> nichts' ''    ([string](Get-ProgrammstufeNeu $true '1'))
-Pruefe 'Kreuz auf 2 -> nichts' ''    ([string](Get-ProgrammstufeNeu $true '2'))
-Pruefe 'Leer auf 1 -> 0'       '0'   (Get-ProgrammstufeNeu $false '1')
-Pruefe 'Leer auf 2 -> nichts'  ''    ([string](Get-ProgrammstufeNeu $false '2'))
-Pruefe 'Leer auf leer -> nichts' ''  ([string](Get-ProgrammstufeNeu $false ''))
-Pruefe 'Leer auf 0 -> nichts'  ''    ([string](Get-ProgrammstufeNeu $false '0'))
-
-# Dubletten im EDU-Blatt zusammenfassen
-$mg = Merge-GeraeteZeilen @(
-    [pscustomobject]@{ Title = 'EDULAP-147'; GebaeudeStock = 'Halle 23'; Seriennummer = ''; InDomaene = $false },
-    [pscustomobject]@{ Title = 'edulap-147'; GebaeudeStock = ''; Seriennummer = 'SN-1'; InDomaene = $true },
-    [pscustomobject]@{ Title = 'EDULAP-148'; GebaeudeStock = ''; Seriennummer = ''; InDomaene = $false }
-) @('GebaeudeStock', 'Seriennummer')
-Pruefe 'Dublette zusammengefasst'   2 @($mg.Geraete).Count
-Pruefe 'Dublette gemeldet'          'edulap-147' ([string]@($mg.Doppelt)[0])
-Pruefe 'Erster Wert gewinnt'        'Halle 23' @($mg.Geraete)[0].GebaeudeStock
-Pruefe 'Leeres Feld wird aufgefüllt' 'SN-1'    @($mg.Geraete)[0].Seriennummer
-Pruefe 'In Domäne einmal Ja reicht' 'True'     @($mg.Geraete)[0].InDomaene
-
-# Login-Zuordnung: Leerzeichen, 20-Zeichen-Grenze des AD, Anzeigename
-Pruefe 'Login ohne Leerzeichen' 'thameur.midassi' (Get-ExcelLoginSchluessel 'Thameur. Midassi')
-$bLogin = @{ 'michael.roethlisberg' = 'A'; 'karina.fruman' = 'B' }
-$bName = @{ 'fruman karina' = @('B'); 'doppelt name' = @('C', 'D') }
-Pruefe 'Treffer über gekürzten Login' 'Gekürzt' (Find-BenutzerZeile $bLogin $bName 'Michael.Roethlisberger' 'Röthlisberger Michael').Weg
-Pruefe 'Treffer über Anzeigename'  'Anzeigename' (Find-BenutzerZeile $bLogin $bName 'Karina.Frumann' 'Fruman Karina').Weg
-Pruefe 'Mehrdeutiger Name zählt nicht' '' (Find-BenutzerZeile $bLogin $bName 'X.Y' 'Doppelt Name').Weg
-Pruefe 'Kein Treffer'              ''  (Find-BenutzerZeile $bLogin $bName 'Nicht.Da' 'Da Nicht').Weg
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Inhaberschaft: PC-Name -> Listen-ID (Migriere-Inhaberschaft)'
