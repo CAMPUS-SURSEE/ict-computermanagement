@@ -82,7 +82,7 @@ try {
 
     # --- 2) Sicherung -----------------------------------------------------------
     Schritt "Sicherung auf $ComputerName"
-    $sicherung = Invoke-Command -Session $s -ArgumentList $Ziel, (, $Dateien) {
+    $sicherung = Invoke-Command -Session $s -ArgumentList $Ziel, $Dateien {
         param($Ziel, $Dateien)
         if (-not (Test-Path (Join-Path $Ziel 'Sync-Inventar.config.json'))) {
             throw "Auf dem Server fehlt $Ziel\Sync-Inventar.config.json. Zuerst nach README Abschnitt 7.1 anlegen."
@@ -141,7 +141,7 @@ try {
     $abbruch = @($probe.Zeilen | Where-Object { $_ -match 'Unerwarteter Abbruch|Lauf abgebrochen|Konfiguration .* nicht lesbar' })
     if ($abbruch.Count -gt 0) {
         Write-Host '  Probelauf abgebrochen – die gesicherten Skripte werden zurückgespielt.' -ForegroundColor Red
-        Invoke-Command -Session $s -ArgumentList $Ziel, $sicherung, (, $Dateien) {
+        Invoke-Command -Session $s -ArgumentList $Ziel, $sicherung, $Dateien {
             param($Ziel, $Sicherung, $Dateien)
             foreach ($d in $Dateien) { $q = Join-Path $Sicherung $d; if (Test-Path $q) { Copy-Item $q (Join-Path $Ziel $d) -Force } }
         }
