@@ -1298,3 +1298,8 @@ und die Excel-Kameras C015, C057, C117, C119, C120 und C121 ohne Hardware in Mil
 
 Die Bewertung stammt von 2021; seither wurden viele Kameras ersetzt (etwa die Gänge in Gebäude 10, 2024).
 Sie dient als Ausgangspunkt, nicht als aktueller Befund – «Bewertet am» zeigt ihr Alter.
+
+Am 15.10.2026 wurde die Excel wie die übrigen (Abschnitt 12) unbenutzbar gemacht: auf allen neun Blättern ein
+weisses, halbtransparentes Feld (Form `Abgeloest-Overlay`), darauf im Raster «Abgelöst – seit 13.10.2026 im
+ICT-Inventar» mit Link auf die Kameraliste (Formen `Abgeloest-Text-n`), Fixierung aufgehoben, Blatt geschützt
+ohne Passwort. Die Fassung ohne Overlay liegt in der Versionshistorie der Datei.
