@@ -20,7 +20,8 @@
        Mit -MilestoneBenutzer und -MilestoneKennwort legt es zusätzlich die Anmeldung als
        Basisbenutzer von Milestone ab: das Kennwort mit DPAPI (LocalMachine) verschlüsselt in
        <Ziel>\Milestone.kennwort, lesbar nur auf dem Server, und MilestoneAnmeldung = Basis.
-    4. Probelauf auf dem Server mit -WhatIf (schreibt nichts). Scheitert er mit einem Abbruch,
+    4. Probelauf auf dem Server mit -WhatIf (schreibt nichts), dazu -KameraRechteJetzt und
+       -MilestoneDiagnose: die Rechte der Milestone-Rollen werden immer mitgeprüft. Scheitert er mit einem Abbruch,
        werden die gesicherten Skripte zurückgespielt.
     5. Geplante Aufgabe «Computer Inventar Sync» anlegen oder angleichen: als SYSTEM, alle
        IntervallMinuten Minuten rund um die Uhr, höchstens 25 Minuten Laufzeit, kein zweiter Lauf
@@ -186,7 +187,7 @@ try {
         $log = Join-Path $Ziel '_probelauf.log'
         if (Test-Path $log) { Remove-Item $log -Force }
         $aktion = New-ScheduledTaskAction -Execute 'powershell.exe' -WorkingDirectory $Ziel `
-            -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$Ziel\Sync-Inventar.ps1`" -WhatIf -LogPath `"$log`""
+            -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$Ziel\Sync-Inventar.ps1`" -WhatIf -KameraRechteJetzt -MilestoneDiagnose -LogPath `"$log`""
         $konto = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
         $einst = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 25) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         Register-ScheduledTask -TaskName $name -Action $aktion -Principal $konto -Settings $einst -Force | Out-Null

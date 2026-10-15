@@ -937,8 +937,13 @@ function ConvertTo-RollenMitglied {
     $art = 'AD-Benutzer'
     if ($artRoh -match 'group|gruppe') { $art = 'AD-Gruppe' }
     elseif ($artRoh -match 'basic') { $art = 'Basisbenutzer' }
+    # Lokale und eingebaute Konten des Milestone-Servers (NT AUTHORITY\NETWORK SERVICE,
+    # BUILTIN\Administrators) gibt es im AD nicht – sie werden nicht aufgelöst.
+    $kurz = $(if ($name -match '\\') { $name.Substring($name.LastIndexOf('\') + 1) } else { $name })
+    if ($name -match '^(?i)(NT AUTHORITY|NT-AUTORIT\S*|BUILTIN|VORDEFINIERT)\\' -or
+        $kurz -match '^(?i)(NETWORK SERVICE|NETZWERKDIENST|LOCAL SERVICE|LOKALER DIENST|SYSTEM|Everyone|Jeder)$') { $art = 'Systemkonto' }
     $konto = ''
-    if ($art -ne 'Basisbenutzer') { $konto = $(if ($name -match '\\') { $name.Substring($name.LastIndexOf('\') + 1) } else { $name }) }
+    if ($art -ne 'Basisbenutzer' -and $art -ne 'Systemkonto') { $konto = $(if ($name -match '\\') { $name.Substring($name.LastIndexOf('\') + 1) } else { $name }) }
     return [pscustomobject]@{ Art = $art; Name = $name; Konto = $konto }
 }
 
@@ -995,6 +1000,12 @@ function Get-RollenVerlauf {
     if ($m.Weg.Count) { [void]$texte.Add("Mitglied entfernt: $(Format-Aufzaehlung $m.Weg)") }
     $alt = ConvertFrom-RollenKameras $KamerasAlt
     $neu = ConvertFrom-RollenKameras $KamerasNeu
+    # Leere Spalte = Rechte wurden noch nie gelesen ('{}' = gelesen, keine Kamera): der erste Abgleich
+    # ist keine Änderung und erscheint nicht als «Zugriff erhalten».
+    if (([string]$KamerasAlt).Trim() -eq '' -and ([string]$KamerasNeu).Trim() -ne '') {
+        [void]$texte.Add("Rechte erstmals aus Milestone gelesen: Zugriff auf $($neu.Count) Kamera$(if ($neu.Count -ne 1) { 's' })")
+        return @($texte.ToArray())
+    }
     $name = { param($id) if ($Namen -and $Namen.ContainsKey($id)) { $Namen[$id] } else { $id } }
     $dazu = @($neu.Keys | Where-Object { -not $alt.ContainsKey($_) } | ForEach-Object { & $name $_ } | Sort-Object)
     $weg = @($alt.Keys | Where-Object { -not $neu.ContainsKey($_) } | ForEach-Object { & $name $_ } | Sort-Object)
@@ -2283,7 +2294,7 @@ if ($mitKameras -and $milestoneOk -and $KameraRolleListId) {
             } elseif ($rechteLesbar) {
                 foreach ($kanalId in @($hwVonKanal.Keys)) {
                     try {
-                        $antwort = Invoke-Milestone -Pfad "cameras/$kanalId`?task=ChangeSecurityPermissions" -Methode 'POST' -Body @{ userPath = @{ type = 'roles'; id = $rid } } -Versuche 1
+                        $antwort = Get-MilestoneKameraRechte $kanalId $rid
                         if ($MilestoneDiagnose -and -not $diagnose.Contains('rechte')) { $diagnose['rechte'] = $antwort }
                         $rechte = @(ConvertFrom-MilestoneRechte $antwort)
                         if ($rechte.Count -eq 0) { continue }
@@ -2291,13 +2302,14 @@ if ($mitKameras -and $milestoneOk -and $KameraRolleListId) {
                         $bisher = @(); if ($kameras.ContainsKey($hw)) { $bisher = @($kameras[$hw]) }
                         $kameras[$hw] = @(Sort-KameraRechte (@($bisher) + @($rechte)))
                     } catch {
-                        if ($_.Exception.Data['Status'] -eq 403) {
-                            Log "Das Konto des Syncs darf die Rechte der Kameras nicht lesen (403) – nur Rollen und Mitglieder werden abgeglichen. In Milestone braucht die Rolle des Syncs das Recht, die Sicherheit der Kameras zu sehen (README Abschnitt 7.5)." 'ERROR'
-                            $fehler++
-                            $rechteLesbar = $false
-                            break
-                        }
-                        Log "Rolle «$($r.name)», Kamera $($hwName[$hwVonKanal[$kanalId]]): Rechte nicht lesbar: $($_.Exception.Message)" 'WARN'
+                        # Ein unvollständiges Bild wäre ein falscher Nachweis: bei jedem Fehler bleiben
+                        # Rechte und «Sichtbar für» in diesem Lauf, wie sie sind (nächster Lauf versucht es neu).
+                        $status = $_.Exception.Data['Status']
+                        $warum = $(if ($status -eq 403) { 'keine Berechtigung (403)' } elseif ($status -eq 404) { 'Milestone kennt die Rolle für die Rechteabfrage nicht (404) – der Rolle des Syncs fehlt das Recht, die Sicherheit der Rollen zu verwalten' } else { "Fehler $status" })
+                        Log "Rechte der Kameras nicht lesbar ($warum; Rolle «$($r.name)», Kamera $($hwName[$hwVonKanal[$kanalId]])) – nur Rollen und Mitglieder werden abgeglichen (README Abschnitt 7.5). $($_.Exception.Message)" 'ERROR'
+                        $fehler++
+                        $rechteLesbar = $false
+                        break
                     }
                 }
             }
@@ -2338,6 +2350,10 @@ if ($mitKameras -and $milestoneOk -and $KameraRolleListId) {
                 MS_Kameras      = (ConvertTo-RollenKameras $e.Kameras)
                 MS_KameraAnzahl = $e.Kameras.Count
                 MS_SyncStatus   = $(if (-not $rechteLesbar -and -not $e.Admin) { 'Rechte nicht lesbar (Berechtigung des Sync-Kontos in Milestone)' } elseif (-not $e.Sicher) { 'AD-Gruppe nicht vollständig lesbar' } else { 'OK' })
+            }
+            # Probeläufe zeigen je Rolle, was gelesen wurde (Installiere-Sync.ps1 filtert auf «Milestone»).
+            if ($WhatIf -or $MilestoneDiagnose) {
+                Log ('Milestone-Rolle «{0}»: {1} Mitglieder, {2} Personen, {3} Kameras, Rechte: {4}' -f $name, @($e.Mitglieder).Count, @($e.Logins).Count, $e.Kameras.Count, $(if ($alleRechte.Count) { $alleRechte -join ', ' } else { '–' }))
             }
             # Ohne lesbare Rechte bleiben Kameras und Rechte der Zeile, wie sie sind.
             if (-not $rechteLesbar -and -not $e.Admin) { $felder.Remove('MS_Rechte'); $felder.Remove('MS_Kameras'); $felder.Remove('MS_KameraAnzahl') }

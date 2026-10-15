@@ -1016,30 +1016,55 @@ function Get-KameraModell {
 # VIEW_LIVE oder PLAYBACK (je nach Schnittstelle auch viewLive). Verglichen wird ohne
 # Unterstriche und ohne Gross-/Kleinschreibung. GENERIC_READ ist Voraussetzung für alles und
 # wird nicht eigens genannt; Unbekanntes bleibt mit seinem Namen stehen.
+# Die Namen von XProtect 2024 R1 (Antwort vom 15.10.2026) stehen jeweils zuerst.
 $script:KameraRechtNamen = [ordered]@{
-    'viewlive'               = 'Live'
-    'playback'               = 'Wiedergabe'
-    'export'                 = 'Export'
-    'sequences'              = 'Sequenzen'
-    'smartsearch'            = 'Intelligente Suche'
-    'ptzcontrol'             = 'PTZ'
-    'ptz'                    = 'PTZ'
-    'ptzpresetcontrol'       = 'PTZ-Positionen'
-    'startrecording'         = 'Manuelle Aufzeichnung'
-    'manualrecording'        = 'Manuelle Aufzeichnung'
-    'bookmarkview'           = 'Lesezeichen ansehen'
-    'bookmarkadd'            = 'Lesezeichen erstellen'
-    'bookmarkedit'           = 'Lesezeichen bearbeiten'
-    'bookmarkdelete'         = 'Lesezeichen löschen'
-    'evidencelockview'       = 'Beweissicherung ansehen'
-    'evidencelockcreate'     = 'Beweissicherung erstellen'
-    'evidencelockedit'       = 'Beweissicherung bearbeiten'
-    'evidencelockdelete'     = 'Beweissicherung löschen'
-    'retrieveedgerecordings' = 'Edge-Aufnahmen abrufen'
-    'audiolive'              = 'Audio live'
-    'audioplayback'          = 'Audio Wiedergabe'
+    'viewlive'                     = 'Live'
+    'viewrestrictedlive'           = 'Live (eingeschränkt)'
+    'playback'                     = 'Wiedergabe'
+    'playbackrestrictedrecordings' = 'Wiedergabe (eingeschränkt)'
+    'export'                       = 'Export'
+    'readsequences'                = 'Sequenzen'
+    'sequences'                    = 'Sequenzen'
+    'smartsearch'                  = 'Intelligente Suche'
+    'ptzcontrol'                   = 'PTZ'
+    'ptz'                          = 'PTZ'
+    'activateptzpreset'            = 'PTZ-Positionen'
+    'ptzpresetcontrol'             = 'PTZ-Positionen'
+    'manageptzpreset'              = 'PTZ-Positionen verwalten'
+    'managelockptzpreset'          = 'PTZ-Positionen sperren'
+    'reserveptzsession'            = 'PTZ-Sitzung reservieren'
+    'releaseptzsession'            = 'PTZ-Sitzung freigeben'
+    'auxcommands'                  = 'AUX-Befehle'
+    'startmanualrecording'         = 'Manuelle Aufzeichnung'
+    'stopmanualrecording'          = 'Manuelle Aufzeichnung'
+    'startrecording'               = 'Manuelle Aufzeichnung'
+    'manualrecording'              = 'Manuelle Aufzeichnung'
+    'readbookmarks'                = 'Lesezeichen ansehen'
+    'bookmarkview'                 = 'Lesezeichen ansehen'
+    'createbookmarks'              = 'Lesezeichen erstellen'
+    'bookmarkadd'                  = 'Lesezeichen erstellen'
+    'editbookmarks'                = 'Lesezeichen bearbeiten'
+    'bookmarkedit'                 = 'Lesezeichen bearbeiten'
+    'deletebookmarks'              = 'Lesezeichen löschen'
+    'bookmarkdelete'               = 'Lesezeichen löschen'
+    'readevidencelock'             = 'Beweissicherung ansehen'
+    'evidencelockview'             = 'Beweissicherung ansehen'
+    'createevidencelock'           = 'Beweissicherung erstellen'
+    'evidencelockcreate'           = 'Beweissicherung erstellen'
+    'evidencelockedit'             = 'Beweissicherung bearbeiten'
+    'deleteevidencelock'           = 'Beweissicherung löschen'
+    'evidencelockdelete'           = 'Beweissicherung löschen'
+    'readrestrictions'             = 'Einschränkungen ansehen'
+    'createrestrictions'           = 'Einschränkungen erstellen'
+    'deleterestrictions'           = 'Einschränkungen löschen'
+    'readremoterecordings'         = 'Edge-Aufnahmen abrufen'
+    'retrieveedgerecordings'       = 'Edge-Aufnahmen abrufen'
+    'deleterecordings'             = 'Aufnahmen löschen'
+    'liftprivacymasking'           = 'Privatsphärenmaske aufheben'
+    'audiolive'                    = 'Audio live'
+    'audioplayback'                = 'Audio Wiedergabe'
 }
-$script:KameraRechtIgnorieren = @('genericread', 'genericwrite', 'genericdelete', 'managesecurity', 'readsecurity', 'fullcontrol', 'enabled')
+$script:KameraRechtIgnorieren = @('genericread', 'genericwrite', 'genericdelete', 'managesecurity', 'readsecurity', 'fullcontrol', 'enabled', 'deviceptzpriority')
 
 function Get-KameraRechtName {
     <# Anzeigename eines Rechts aus Milestone; '' für Rechte, die nicht genannt werden. #>
@@ -1101,7 +1126,8 @@ function ConvertFrom-MilestoneRechte {
         $n = Get-KameraRechtName $k
         if ($n -ne '' -and -not $namen.Contains($n)) { [void]$namen.Add($n) }
     }
-    if (-not ($namen.Contains('Live') -or $namen.Contains('Wiedergabe'))) { return @() }
+    $bild = @('Live', 'Live (eingeschränkt)', 'Wiedergabe', 'Wiedergabe (eingeschränkt)')
+    if (-not @($namen | Where-Object { $bild -contains $_ }).Count) { return @() }
     return @(Sort-KameraRechte $namen)
 }
 
@@ -1237,6 +1263,9 @@ function Invoke-Milestone {
             }
             $e = New-Object Exception("Milestone $Methode $Pfad fehlgeschlagen: $($f.Exception.Message) $($f.ErrorDetails.Message)")
             $e.Data['Status'] = $status
+            # Rumpf der Fehlerantwort: ChangeSecurityPermissions ohne Rechte antwortet mit 400 und
+            # liefert die aktuellen Werte trotzdem mit (Get-MilestoneKameraRechte).
+            $e.Data['Antwort'] = [string]$f.ErrorDetails.Message
             throw $e
         }
     }
@@ -1249,6 +1278,32 @@ function Get-MilestoneListe {
     if ($null -eq $r) { return @() }
     if ($r.PSObject.Properties['array']) { return @($r.array) }
     return @($r)
+}
+
+function Get-MilestoneKameraRechte {
+    <#
+      Rechte einer Rolle auf einen Kamerakanal, roh wie von Milestone. Eine Leseschnittstelle dafür
+      gibt es nicht (Stand XProtect 2024 R1, Auskunft Milestone im Entwicklerforum 04/2025): die
+      Aufgabe «ChangeSecurityPermissions» nur mit userPath und ohne zu setzende Rechte ändert nichts,
+      antwortet mit 400 und liefert die aktuellen Werte im Rumpf. Diese 400 ist hier der Normalfall;
+      eine 400 ohne lesbaren Rumpf und alle anderen Fehler gehen weiter an den Aufrufer.
+    #>
+    param([string]$KanalId, [string]$RolleId)
+    # «type» muss vor «id» stehen: sonst liest Milestone die ID als 00000000-… und antwortet mit
+    # 404 «Unknown resource» (gesehen am 15.10.2026 mit 2024 R1) – daher [ordered].
+    $body = [ordered]@{ userPath = [ordered]@{ type = 'roles'; id = $RolleId } }
+    try {
+        return Invoke-Milestone -Pfad "cameras/$KanalId`?task=ChangeSecurityPermissions" -Methode 'POST' -Body $body -Versuche 1
+    } catch {
+        $fehlerRecord = $_
+        $text = [string]$fehlerRecord.Exception.Data['Antwort']
+        if ($fehlerRecord.Exception.Data['Status'] -eq 400 -and $text.Trim().StartsWith('{')) {
+            $obj = $null
+            try { $obj = $text | ConvertFrom-Json } catch { }
+            if ($null -ne $obj) { return $obj }
+        }
+        throw $fehlerRecord
+    }
 }
 
 function Get-MilestoneGeraete {

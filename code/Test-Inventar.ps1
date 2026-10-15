@@ -753,6 +753,8 @@ Pruefe 'Kamera-Felder: 0001-Datum ignoriert'   '2026-10-01T10:00:00Z' $kf['MS_Ge
 # Rollen
 Pruefe 'Mitglied: AD-Gruppe'   'AD-Gruppe|Hot_NachtD' ((ConvertTo-RollenMitglied ([pscustomobject]@{ accountName = 'SASADMIN\Hot_NachtD'; identityType = 'WindowsGroup' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
 Pruefe 'Mitglied: Domäne ergänzt' 'AD-Benutzer|SASADMIN\anna|anna' ((ConvertTo-RollenMitglied ([pscustomobject]@{ name = 'anna'; domain = 'SASADMIN'; identityType = 'WindowsUser' })) | ForEach-Object { "$($_.Art)|$($_.Name)|$($_.Konto)" })
+Pruefe 'Mitglied: Systemkonto'   'Systemkonto|' ((ConvertTo-RollenMitglied ([pscustomobject]@{ accountName = 'NETWORK SERVICE'; identityType = 'WindowsGroup' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
+Pruefe 'Mitglied: BUILTIN'       'Systemkonto|' ((ConvertTo-RollenMitglied ([pscustomobject]@{ accountName = 'BUILTIN\Administrators'; identityType = 'WindowsGroup' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
 Pruefe 'Mitglied: Basisbenutzer' 'Basisbenutzer|' ((ConvertTo-RollenMitglied ([pscustomobject]@{ displayName = 'admin'; identityType = 'BasicUser' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
 $tab = @{ 'h2' = @('Live'); 'h1' = @('Live', 'Wiedergabe') }
 $json = ConvertTo-RollenKameras $tab
@@ -765,6 +767,9 @@ Pruefe 'Rollen-Verlauf: Mitglied weg'     'Mitglied entfernt: AD-Gruppe | A' $rv
 Pruefe 'Rollen-Verlauf: Kamera dazu'      'Zugriff auf 1 Kamera erhalten: Drei' $rv[2]
 Pruefe 'Rollen-Verlauf: Kamera weg'       'Zugriff auf 1 Kamera verloren: Zwei' $rv[3]
 Pruefe 'Rollen-Verlauf: Rechte geändert'  'Rechte geändert bei Eins' $rv[4]
+$rv = @(Get-RollenVerlauf '' '' '' '{"h1":["Live"],"h2":["Live"]}' @{ h1 = 'Eins'; h2 = 'Zwei' })
+Pruefe 'Rollen-Verlauf: erster Abgleich ist keine Änderung' 'Rechte erstmals aus Milestone gelesen: Zugriff auf 2 Kameras' ($rv -join '|')
+Pruefe 'Rollen-Verlauf: «{}» gilt als gelesen'  'Zugriff auf 1 Kamera erhalten: Eins' ((@(Get-RollenVerlauf '' '' '{}' '{"h1":["Live"]}' @{ h1 = 'Eins' })) -join '|')
 Pruefe 'Kamera-Rollen-Text'               "A: Live`nB: Live, Export" (Get-KameraRollenText @([pscustomobject]@{ Rolle = 'B'; Rechte = @('Live', 'Export') }, [pscustomobject]@{ Rolle = 'A'; Rechte = @('Live') }))
 Pruefe 'Rechte-Abgleich fällig ohne Lauf'  'True'  (Test-RollenAbgleichFaellig $null 6)
 Pruefe 'Rechte-Abgleich nicht fällig'      'False' (Test-RollenAbgleichFaellig '2026-10-13T08:00:00Z' 6 ([datetime]'2026-10-13T10:00:00Z'))
@@ -804,6 +809,37 @@ Pruefe 'Excel: G17 über Ort im Gebäude'    'Ort (C096)' $exPlan.Zuordnung['c']
 Pruefe 'Excel: Unbekanntes bleibt offen'   1 $exPlan.Offen.Count
 Pruefe 'Excel: Inventar ohne Hardware'     'C067 10.11.15.188 Reception' ($exPlan.OhneHardware -join ';')
 Pruefe 'Kennwort: Verschlüsselung hin und zurück' 'geheim-123' (Unprotect-MilestoneKennwort (Protect-MilestoneKennwort (ConvertTo-SecureString 'geheim-123' -AsPlainText -Force)))
+
+# Rechte lesen: ChangeSecurityPermissions ohne Rechte antwortet mit 400 und den Werten im Rumpf
+$invokeMilestoneEcht = ${function:Invoke-Milestone}
+$script:MsTestAntwort = $null
+function Invoke-Milestone {
+    param([string]$Pfad, [string]$Methode = 'GET', $Body, [int]$Versuche = 4)
+    $script:MsTestAufruf = "$Methode $Pfad $($Body | ConvertTo-Json -Depth 8 -Compress)"
+    $a = $script:MsTestAntwort
+    if ($a.Status -eq 200) { return ($a.Text | ConvertFrom-Json) }
+    $e = New-Object Exception("Milestone $Methode $Pfad fehlgeschlagen")
+    $e.Data['Status'] = $a.Status
+    $e.Data['Antwort'] = $a.Text
+    throw $e
+}
+$script:MsTestAntwort = @{ Status = 400; Text = '{"error":{"httpCode":400},"data":{"VIEW_LIVE":"True","PLAYBACK":"False","EXPORT":"True"}}' }
+Pruefe 'Rechte lesen: 400 mit Werten gilt'   'Live,Export' ((ConvertFrom-MilestoneRechte (Get-MilestoneKameraRechte 'k1' 'r1')) -join ',')
+Pruefe 'Rechte lesen: nur userPath, type vor id' 'POST cameras/k1?task=ChangeSecurityPermissions {"userPath":{"type":"roles","id":"r1"}}' $script:MsTestAufruf
+# echte Antwort von XProtect 2024 R1 (gekürzt, 15.10.2026)
+$script:MsTestAntwort = @{ Status = 400; Text = '{ "params" : { "userPath" : { "type" : "roles", "id" : "10ab" }, "EXPORT" : true, "GENERIC_READ" : true, "PLAYBACK" : true, "READ_SEQUENCES" : true, "SMARTSEARCH" : true, "VIEW_LIVE" : true, "GENERIC_WRITE" : false, "CREATE_BOOKMARKS" : false, "ptz_CONTROL" : false, "DEVICELIVEVIEW" : "Default", "dEVICERECORDEDBROWSETimeBackward" : 0, "DEVICEPTZPRIORITY" : false } }' }
+Pruefe 'Rechte lesen: echte Antwort 2024 R1'  'Live,Wiedergabe,Export,Sequenzen,Intelligente Suche' ((ConvertFrom-MilestoneRechte (Get-MilestoneKameraRechte 'k1' 'r1')) -join ',')
+Pruefe 'Rechte: nur eingeschränkt live zählt'  'Live (eingeschränkt)' ((ConvertFrom-MilestoneRechte ([pscustomobject]@{ VIEW_RESTRICTED_LIVE = $true; GENERIC_READ = $true })) -join ',')
+$script:MsTestAntwort = @{ Status = 200; Text = '{"result":{"VIEW_LIVE":"True","PLAYBACK":"True"}}' }
+Pruefe 'Rechte lesen: 200 gilt ebenso'       'Live,Wiedergabe' ((ConvertFrom-MilestoneRechte (Get-MilestoneKameraRechte 'k1' 'r1')) -join ',')
+foreach ($fall in @(@{ Name = '403 wird weitergereicht'; Status = 403; Text = '{"error":{"httpCode":403}}' },
+                    @{ Name = '400 ohne Rumpf wird weitergereicht'; Status = 400; Text = '' })) {
+    $script:MsTestAntwort = @{ Status = $fall.Status; Text = $fall.Text }
+    $status = $null
+    try { [void](Get-MilestoneKameraRechte 'k1' 'r1') } catch { $status = $_.Exception.Data['Status'] }
+    Pruefe "Rechte lesen: $($fall.Name)" $fall.Status $status
+}
+Set-Item function:Invoke-Milestone $invokeMilestoneEcht
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'

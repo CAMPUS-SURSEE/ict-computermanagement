@@ -45,7 +45,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `428 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `439 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -469,8 +469,10 @@ Das Skript
 2. sichert die Skripte und die Konfiguration auf dem Server nach `_sicherung\<Zeitstempel>\`
    (die letzten zehn bleiben),
 3. kopiert die beiden Skripte und vergleicht die Prüfsummen,
-4. macht einen **Probelauf als SYSTEM** mit `-WhatIf` über eine einmalige Aufgabe (genau wie der
-   echte Sync; in einer Remote-Sitzung erreichte er das AD nicht). Bricht der Probelauf ab, spielt
+4. macht einen **Probelauf als SYSTEM** mit `-WhatIf -KameraRechteJetzt -MilestoneDiagnose` über eine
+   einmalige Aufgabe (genau wie der echte Sync; in einer Remote-Sitzung erreichte er das AD nicht).
+   Er zeigt je Milestone-Rolle Mitglieder, Kameras und Rechte und legt `Milestone-Diagnose.json`
+   neben das Log. Bricht der Probelauf ab, spielt
    es die gesicherten Skripte zurück,
 5. legt die geplante Aufgabe an oder gleicht sie an (Abschnitt 2.6),
 6. startet mit `-JetztStarten` einen echten Lauf, wartet ihn ab und zeigt Ergebnis, Log-Ende und Status.
@@ -619,8 +621,12 @@ dem Computerkonto des Sync-Servers oder einem Basisbenutzer von Milestone (Absch
 `-KameraRechteJetzt`; der Zeitpunkt steht in `Sync-Inventar.kamerarechte.json` neben dem Log):
 
 1. Rollen und ihre Mitglieder lesen (`roles`, `roles/<id>/users`).
-2. Je Rolle und Kamera die Rechte lesen (Aufgabe «ChangeSecurityPermissions» mit der Rolle – nur
-   lesend, ohne Werte ändert sie nichts). Gezählt wird eine Kamera, wenn die Rolle **Live** oder
+2. Je Rolle und Kamera die Rechte lesen. Eine Leseschnittstelle dafür hat Milestone nicht (Stand
+   2024 R1, Auskunft Milestone im Entwicklerforum 04/2025); der Sync ruft die Aufgabe
+   «ChangeSecurityPermissions» nur mit der Rolle und **ohne** zu setzende Rechte auf. Milestone ändert
+   dann nichts, antwortet mit **400** und liefert die aktuellen Werte trotzdem mit
+   (`Get-MilestoneKameraRechte`). Im Rumpf muss `type` vor `id` stehen, sonst liest Milestone die
+   Rollen-ID als `00000000-…` und antwortet mit 404 «Unknown resource». Gezählt wird eine Kamera, wenn die Rolle **Live** oder
    **Wiedergabe** hat; dazu stehen die übrigen Rechte (Export, PTZ, Lesezeichen …). Die Rolle der
    Administratoren sieht alles («Vollzugriff»).
 3. AD-Gruppen unter den Mitgliedern rekursiv in Logins auflösen (wie bei den Programmen, Abschnitt 3).
@@ -630,9 +636,12 @@ dem Computerkonto des Sync-Servers oder einem Basisbenutzer von Milestone (Absch
    Eine Rolle, die es in Milestone nicht mehr gibt, bekommt `MS_Gefunden` = Nein und bleibt stehen.
 5. Je Kamera die Spalte «Sichtbar für» (`MS_Rollen`) schreiben.
 
-Darf das Sync-Konto die Rechte nicht lesen (403), bleiben Kameras und Rechte der Rollen unverändert,
-Mitglieder und Personen werden trotzdem abgeglichen; im Log steht ein ERROR mit dem Hinweis auf
-Abschnitt 7.5. Bleiben die Rechte leer, obwohl kein Fehler kommt: einmal mit `-OnlyKameras
+Scheitert die Rechteabfrage (403, 404 oder ein anderer Fehler), bleiben Kameras, Rechte und «Sichtbar
+für» in diesem Lauf unverändert – ein halbes Bild wäre ein falscher Nachweis. Mitglieder und Personen
+werden trotzdem abgeglichen; im Log steht **ein** ERROR mit dem Grund, und der nächste Lauf versucht es
+neu. Der erste erfolgreiche Abgleich einer Rolle steht im Verlauf als «Rechte erstmals aus Milestone
+gelesen», nicht als «Zugriff erhalten». Eingebaute Konten des Milestone-Servers unter den Mitgliedern
+(`NT AUTHORITY\NETWORK SERVICE`, `BUILTIN\…`) erscheinen als «Systemkonto» und werden nicht im AD gesucht. Bleiben die Rechte leer, obwohl kein Fehler kommt: einmal mit `-OnlyKameras
 -KameraRechteJetzt -MilestoneDiagnose` laufen lassen und `Milestone-Diagnose.json` ansehen – dort steht,
 wie Milestone die Rechte nennt (die Namen liest `ConvertFrom-MilestoneRechte`).
 
@@ -763,7 +772,7 @@ Zuordnung Milestone-Hardware ↔ Kamerazeile (Hardware-ID, MAC, Seriennummer, IP
 Hardware, Lager wird nie archiviert), Rollen-Mitglieder, Rollen-Verlauf, die Verschlüsselung des
 Milestone-Kennworts und die Zuordnung der Excel-Bewertungen (`Migriere-Kameras.ps1`).
 
-Erwartete Ausgabe: `Ergebnis: 428 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 439 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -1003,10 +1012,19 @@ Verweise im Frontend dürfen weiter `client.html` heissen. Die Anmeldung ist dav
 
 ### 7.5 Lesekonto für Milestone (Kameras und Rechte)
 
-Der Sync läuft als SYSTEM auf `adminsrv319` und meldet sich bei Milestone standardmässig mit dem
-**Computerkonto `SASADMIN\ADMINSRV319$`** an (`MilestoneAnmeldung` = `Windows`, kein Kennwort). Das
+> **Stand 15.10.2026 – in Betrieb mit dem Basisbenutzer.** Der Sync meldet sich als Basisbenutzer
+> **`inventar-sync`** an (`MilestoneAnmeldung` = `Basis`, Kennwort verschlüsselt in
+> `C:\ComputerInventar\Milestone.kennwort`). `inventar-sync` gehört in Milestone der Rolle
+> **«Administrators»** an (Entscheid Janis Zesiger) – damit sieht der Sync alle Rollen und Rechte. Er
+> schreibt trotzdem nie etwas nach Milestone: der einzige POST ist die Rechteabfrage ohne Werte
+> (Abschnitt 2.9). Die AD-Gruppe `Milestone_InventarSync` (Mitglied `ADMINSRV319$`) besteht noch, wird
+> aber nicht gebraucht. Kennwort ändern: in Milestone ändern, dann
+> `Installiere-Sync.ps1 -Credential $Cred -MilestoneBenutzer 'inventar-sync' -MilestoneKennwort (Read-Host -AsSecureString 'Kennwort')`.
+
+Der Sync läuft als SYSTEM auf `adminsrv319` und kann sich bei Milestone auch mit dem
+**Computerkonto `SASADMIN\ADMINSRV319$`** anmelden (`MilestoneAnmeldung` = `Windows`, kein Kennwort). Das
 funktioniert, sobald das Konto in Milestone einer Rolle angehört – ohne Rolle antwortet Milestone mit
-403 (Stand 13.10.2026: Anmeldung klappt, Rolle fehlt noch).
+403.
 
 1. **AD-Gruppe** anlegen, z. B. `Milestone_InventarSync`, Mitglied: Computerkonto `ADMINSRV319$`.
    Danach `adminsrv319` neu starten oder `klist -li 0x3e7 purge` als Administrator ausführen, damit
@@ -1025,8 +1043,10 @@ funktioniert, sobald das Konto in Milestone einer Rolle angehört – ohne Rolle
    & .\code\Installiere-Sync.ps1 -Credential $Cred -MilestoneServer 'http://adminsrv347' -JetztStarten
    ```
 
-   Im Probelauf und im Log erscheinen «Milestone (…): 112 Kamera-Hardware» und «Milestone: n Rollen».
-   Bei «403» fehlt der Rolle ein Recht (Schritt 2).
+   Im Probelauf und im Log erscheinen «Milestone (…): 112 Kamera-Hardware», «Milestone: n Rollen» und
+   je Rolle eine Zeile «Milestone-Rolle «…»: … Kameras, Rechte: …». Bei «403» fehlt der Rolle ein
+   Recht (Schritt 2). Eine eigene Rolle mit nur diesen Rechten ist gegen echte Daten nicht geprüft;
+   der Betrieb läuft über die Rolle «Administrators» (siehe oben).
 
 **Alternative: Basisbenutzer von Milestone** (lokales Konto ohne AD) – geht ebenso, mit zwei Nachteilen:
 das Kennwort muss auf dem Server liegen (mit DPAPI LocalMachine verschlüsselt in
