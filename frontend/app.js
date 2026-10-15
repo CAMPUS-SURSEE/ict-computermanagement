@@ -10,6 +10,8 @@
      Benutzer        Tabelle der Benutzer-Liste, mit Programm-Filter je Stufe.
      Telefonnummern  Tabelle der Telefonliste.
      Software        Eine Karte je Programm der Liste «Software».
+     Kameras         Tabelle der Liste «Kameras» (Hardware aus Milestone).
+     Kamerarechte    Eine Karte je Rolle der Liste «Kamera-Rollen».
 
    Gebaut wird ausschliesslich über die Bausteine UI.* (bausteine.js,
    rahmen.js), Rahmen.* und Bewegung.*. Diese Datei kennt nur das, was die
@@ -106,6 +108,22 @@ const TELEFON_ZUSATZ = [
   { i: "__abteilung",          d: "Abteilung (AD)",     t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__benutzerQuelleText", d: "Verknüpfung",        t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__nameAbweichungText", d: "Name weicht vom AD ab", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
+];
+
+/* Abgeleitete Spalten der Kameraliste. «Sichtbar für» kommt aus der Liste
+   «Kamera-Rollen» (live verknüpft, Modell.kamerasAnreichern) und ersetzt die
+   Textspalte, die der Sync schreibt. Ja/Nein-Felder als Text, damit ein
+   leeres Feld (Kamera nicht in Milestone) überall gleich erscheint. */
+const KAMERA_ZUSATZ = [
+  { i: "__statusText",        d: "Status",               t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__inMilestoneText",   d: "In Milestone",         t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__aktivText",         d: "In Milestone aktiv",   t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__aufzeichnungText",  d: "Aufzeichnung",         t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__rollenText",        d: "Sichtbar für",         t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__rollenAnzahl",      d: "Anzahl Rollen",        t: "Number", g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__unbenanntText",     d: "Kanal ohne Namen",     t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__ersatzText",        d: "Ersatzstatus",         t: "Text",   g: "Abgeleitet", q: "abgeleitet" },
+  { i: "__hatJahrText",       d: "Beschaffungsjahr erfasst", t: "Text", g: "Abgeleitet", q: "abgeleitet" }
 ];
 
 const TELEFON_QUELLE_TEXT = {
@@ -222,12 +240,48 @@ const TAB = {
     hatSpeicher: false,
     hatProgramme: false,
     csvName: "Telefonnummern"
+  },
+  kameras: {
+    namensSpalte: "Title",
+    standard: ["Title", "__statusText", "Gebaeude", "Raum", "MS_Modell", "MS_Adresse",
+               "__aufzeichnungText", "__rollenText", "Zustaendig"],
+    sortSpalte: "Title",
+    facetten: [
+      { k: "__statusText",       d: "Status" },
+      { k: "Gebaeude",           d: "Gebäude" },
+      { k: "__inMilestoneText",  d: "In Milestone" },
+      { k: "__aktivText",        d: "In Milestone aktiv" },
+      { k: "__aufzeichnungText", d: "Aufzeichnung" },
+      { k: "__unbenanntText",    d: "Kanal ohne Namen" },
+      { k: "MS_Hersteller",      d: "Hersteller" },
+      { k: "MS_Modell",          d: "Modell" },
+      { k: "Zustaendig",         d: "Zuständig" },
+      { k: "Qualitaet",          d: "Bildqualität" },
+      { k: "Positionierung",     d: "Positionierung" },
+      { k: "Beschaffungsjahr",   d: "Beschaffungsjahr" },
+      { k: "__hatJahrText",      d: "Beschaffungsjahr erfasst" },
+      { k: "__ersatzText",       d: "Ersatzstatus" }
+    ],
+    zeitspalten: [
+      { k: "MS_Geaendert",   d: "In Milestone geändert" },
+      { k: "MS_LetzterSync", d: "Letzter Milestone-Abgleich" }
+    ],
+    hatSpeicher: false,
+    hatProgramme: false,
+    hatRolle: true,
+    csvName: "Kameras"
   }
 };
 
-/* Die vier Tabellenansichten. Alles, was «für jede Tabelle» gilt, läuft
+/* Die fünf Tabellenansichten. Alles, was «für jede Tabelle» gilt, läuft
    über diese Liste. */
-const TABELLEN = ["admin", "edu", "benutzer", "telefone"];
+const TABELLEN = ["admin", "edu", "benutzer", "telefone", "kameras"];
+
+/* Tabellen mit Status «Archiviert»: archivierte Zeilen sind dort
+   standardmässig ausgeblendet (Schalter im Filterblatt, «ar» im Link). */
+const ARCHIV_TABELLEN = ["admin", "edu", "kameras"];
+
+function hatArchiv(tab) { return ARCHIV_TABELLEN.indexOf(tab) > -1; }
 
 /* Die beiden Client-Tabellen. Wo im Code «tab === "admin"» stünde, ist fast
    immer diese Frage gemeint: geht es um eine Liste von Geräten? */
@@ -243,17 +297,21 @@ function istClientTab(tab) { return CLIENT_TABELLEN.indexOf(tab) > -1; }
 const EINHEIT = {
   admin: ["ADMIN-Client", "ADMIN-Clients"], edu: ["EDU-Client", "EDU-Clients"],
   benutzer: ["Benutzer", "Benutzer", "Benutzern"], telefone: ["Telefonnummer", "Telefonnummern"],
-  software: ["Programm", "Programme", "Programmen"]
+  software: ["Programm", "Programme", "Programmen"], kameras: ["Kamera", "Kameras"],
+  kamerarechte: ["Rolle", "Rollen"]
 };
 
-const SINNBILD = { admin: "laptop", edu: "edu", benutzer: "benutzer", telefone: "telefon", software: "software" };
+const SINNBILD = { admin: "laptop", edu: "edu", benutzer: "benutzer", telefone: "telefon", software: "software",
+  kameras: "kamera", kamerarechte: "schild" };
 
 const SUCH_PLATZHALTER = {
   admin: "PC-Name, Inhaber, Modell, Ort …",
   edu: "PC-Name, Modell, Ort …",
   benutzer: "Name, Login, Abteilung, Gerät …",
   telefone: "Kurzwahl, Nummer, Name, Abteilung …",
-  software: "Programm, Programm-ID, AD-Gruppe …"
+  software: "Programm, Programm-ID, AD-Gruppe …",
+  kameras: "Name, Raum, Modell, IP-Adresse, Rolle …",
+  kamerarechte: "Rolle, AD-Gruppe, Zweck …"
 };
 
 function einheit(tab, n) { return EINHEIT[tab][n === 1 ? 0 : 1]; }
@@ -274,7 +332,9 @@ const ERSETZTE_SPALTEN = {
   /* «Computer» hielt bis Oktober 2026 den PC-Namen; gemerkte Spaltenwahl und
      alte Links zeigen dafür jetzt den Namen aus der Verknüpfung. */
   benutzer: { ADAktiviert: "__adAktivText", AdminClientId: "__computerName", Computer: "__computerName" },
-  telefone: { Status: "__statusText" }
+  telefone: { Status: "__statusText" },
+  kameras: { Status: "__statusText", MS_Gefunden: "__inMilestoneText", MS_Aktiv: "__aktivText",
+             MS_Aufzeichnung: "__aufzeichnungText", MS_Rollen: "__rollenText" }
 };
 
 function ersetzteSpalten(tab) {
@@ -310,13 +370,14 @@ function spaltenUebernehmen(tab, liste) {
 function spaltenListe(tab) {
   if (tab === "benutzer") return mitErsatz(tab, SPALTEN_BENUTZER, BENUTZER_ZUSATZ).concat(programmSpalten);
   if (tab === "telefone") return mitErsatz(tab, SPALTEN_TELEFON, TELEFON_ZUSATZ);
+  if (tab === "kameras") return mitErsatz(tab, SPALTEN_KAMERA, KAMERA_ZUSATZ);
   const alle = mitErsatz(tab, SPALTEN_CLIENT, CLIENT_ZUSATZ);
   return TAB[tab].mitInhaber ? alle : alle.filter(s => INHABER_SPALTEN.indexOf(s.i) === -1);
 }
 
 /* Nachschlagewerk interner Name → Spaltenobjekt. Wird nach dem Laden der
    Programme neu aufgebaut. */
-const SPALTE = { admin: {}, edu: {}, benutzer: {}, telefone: {} };
+const SPALTE = { admin: {}, edu: {}, benutzer: {}, telefone: {}, kameras: {} };
 
 function spaltenIndexAufbauen() {
   for (const tab of TABELLEN) {
@@ -357,7 +418,7 @@ function spaltenOrdnen(tab, liste) {
    2. Zustand und Adresse
    ================================================================== */
 
-const ANSICHTEN = ["uebersicht", "admin", "edu", "benutzer", "telefone", "software"];
+const ANSICHTEN = ["uebersicht", "admin", "edu", "benutzer", "telefone", "software", "kameras", "kamerarechte"];
 const SPEICHER_SPALTEN = "ictinventar.spalten.";   // + Ansicht
 const SPEICHER_DICHTE  = "ictinventar.dichte";     // alle Listen
 const SPEICHER_ARCHIV  = "ictinventar.archiv.";    // + Client-Ansicht
@@ -377,6 +438,7 @@ function leererTabZustand(tab) {
     speicher: "",
     programm: "",        // interner Name eines Programms
     programmStufe: "",   // "" | "1" | "2"
+    rolle: "",           // Listen-ID einer Kamera-Rolle (nur Kameras: «sichtbar für»)
     sortSpalte: TAB[tab].sortSpalte,
     sortAuf: true,
     spalten: TAB[tab].standard.slice(),
@@ -392,8 +454,14 @@ const zustand = {
   edu: leererTabZustand("edu"),
   benutzer: leererTabZustand("benutzer"),
   telefone: leererTabZustand("telefone"),
-  software: { suche: "" }
+  kameras: leererTabZustand("kameras"),
+  software: { suche: "" },
+  kamerarechte: leererRechteZustand()
 };
+
+/* Die Ansicht «Kamerarechte» ist keine Tabelle: eine Karte je Rolle, dazu
+   die Suche und der Schalter «Nur ohne Nachweis». */
+function leererRechteZustand() { return { suche: "", offen: false }; }
 
 let adminClients = [];     // angereicherte Zeilen der Liste «ADMIN-Clients»
 let eduClients = [];       // angereicherte Zeilen der Liste «EDU-Clients»
@@ -401,8 +469,10 @@ let benutzer = [];         // angereicherte Benutzer-Zeilen
 let telefone = [];         // angereicherte Zeilen der Telefonliste
 let software = [];         // Zeilen der Liste «Software»
 let programmSpalten = [];  // Spaltenobjekte daraus
+let kameras = [];          // angereicherte Zeilen der Liste «Kameras»
+let kameraRollen = [];     // angereicherte Zeilen der Liste «Kamera-Rollen»
 let syncZustand = null;    // { zeit, text } des letzten Sync-Laufs oder null (Daten.syncStatus)
-const sichtbar = { admin: [], edu: [], benutzer: [], telefone: [] };
+const sichtbar = { admin: [], edu: [], benutzer: [], telefone: [], kameras: [] };
 
 /* Ersetzt das frühere Signal «#reiter hidden»: erst nach dem ersten
    erfolgreichen Laden ist die Seite bedienbar (Nachladen, Ansichtswechsel
@@ -436,8 +506,9 @@ function facettenWertLesen(w) { return w === LEER_WERT ? "" : w; }
    die hierher geführt hat. */
 function parameterVon(a, z, sprung) {
   const p = new URLSearchParams();
-  if (a === "software") {
+  if (a === "software" || a === "kamerarechte") {
     if (z.suche) p.set("q", z.suche);
+    if (a === "kamerarechte" && z.offen) p.set("o", "1");
     return p;
   }
   if (TABELLEN.indexOf(a) === -1) return p;
@@ -459,6 +530,7 @@ function parameterVon(a, z, sprung) {
     p.set("pg", z.programm);
     if (z.programmStufe) p.set("ps", z.programmStufe);
   }
+  if (z.rolle) p.set("ro", z.rolle);
   if (!sprung) {
     if (z.sortSpalte !== TAB[a].sortSpalte || !z.sortAuf) {
       p.set("s", z.sortSpalte + ":" + (z.sortAuf ? "auf" : "ab"));
@@ -466,7 +538,7 @@ function parameterVon(a, z, sprung) {
     p.set("c", z.spalten.join(","));
     if (z.dicht) p.set("d", "kompakt");
   }
-  if (istClientTab(a)) p.set("ar", z.archiv ? "1" : "0");
+  if (hatArchiv(a)) p.set("ar", z.archiv ? "1" : "0");
   return p;
 }
 
@@ -503,6 +575,11 @@ function hashLesen() {
     zustand.software.suche = p.get("q") || "";
     return;
   }
+  if (a === "kamerarechte") {
+    zustand.kamerarechte.suche = p.get("q") || "";
+    zustand.kamerarechte.offen = p.get("o") === "1";
+    return;
+  }
   if (TABELLEN.indexOf(a) === -1) return;
 
   const z = zustand[a];
@@ -526,6 +603,7 @@ function hashLesen() {
   z.speicher = p.get("sp") || "";
   z.programm = p.get("pg") || "";
   z.programmStufe = z.programm ? (p.get("ps") || "") : "";
+  z.rolle = TAB[a].hatRolle ? (p.get("ro") || "") : "";
 
   const s = p.get("s");
   if (s) {
@@ -545,7 +623,7 @@ function hashLesen() {
     if (liste.length) z.spalten = liste;
   }
 
-  if (istClientTab(a)) {
+  if (hatArchiv(a)) {
     const ar = p.get("ar");
     if (ar !== null) z.archiv = ar === "1";
   }
@@ -563,7 +641,7 @@ function einstellungenLaden() {
         const liste = JSON.parse(roh);
         if (Array.isArray(liste) && liste.length) zustand[tab].spalten = spaltenUebernehmen(tab, liste);
       }
-      if (istClientTab(tab)) zustand[tab].archiv = localStorage.getItem(SPEICHER_ARCHIV + tab) === "1";
+      if (hatArchiv(tab)) zustand[tab].archiv = localStorage.getItem(SPEICHER_ARCHIV + tab) === "1";
     } catch (e) { /* Ohne Speicher gilt die Standardauswahl. */ }
   }
 }
@@ -572,7 +650,7 @@ function einstellungenMerken(tab) {
   try {
     localStorage.setItem(SPEICHER_SPALTEN + tab, JSON.stringify(zustand[tab].spalten));
     localStorage.setItem(SPEICHER_DICHTE, zustand[tab].dicht ? "kompakt" : "normal");
-    if (istClientTab(tab)) localStorage.setItem(SPEICHER_ARCHIV + tab, zustand[tab].archiv ? "1" : "0");
+    if (hatArchiv(tab)) localStorage.setItem(SPEICHER_ARCHIV + tab, zustand[tab].archiv ? "1" : "0");
   } catch (e) { /* Privater Modus: dann eben nur für diese Sitzung. */ }
 }
 
@@ -591,12 +669,12 @@ function spaltenPruefen() {
    3. Laden und Anreichern
    ================================================================== */
 
-const fortschritt = { admin: 0, edu: 0, benutzer: 0, telefone: 0, software: 0 };
+const fortschritt = { admin: 0, edu: 0, benutzer: 0, telefone: 0, software: 0, kameras: 0, kamerarechte: 0 };
 
 function fortschrittText() {
   return ["ADMIN-Clients " + fortschritt.admin, "EDU-Clients " + fortschritt.edu,
     "Benutzer " + fortschritt.benutzer, "Telefonnummern " + fortschritt.telefone,
-    "Software " + fortschritt.software].join(" · ");
+    "Software " + fortschritt.software, "Kameras " + fortschritt.kameras].join(" · ");
 }
 
 /* Zusätzliche Felder, die nur die Hauptseite braucht (Facettenwerte als
@@ -628,23 +706,44 @@ function nachbereiten() {
     t.__nameAbweichung = !!(b && name && Modell.schluessel(name) !== Modell.schluessel(b.Anzeigename));
     t.__nameAbweichungText = t.__nameAbweichung ? "Ja" : "Nein";
   }
+  for (const k of kameras) {
+    k.__statusText = k.__status;
+    k.__inMilestoneText = k.__inMilestone ? "Ja" : "Nein";
+    k.__aktivText = k.__inMilestone ? (k.__aktiv ? "Ja" : "Nein") : "";
+    k.__aufzeichnungText = k.__inMilestone ? (k.__aufzeichnung ? "Ja" : "Nein") : "";
+    k.__rollenText = k.__rollenNamen.join(", ");
+    k.__rollenAnzahl = k.__rollenNamen.length;
+    k.__unbenanntText = k.__unbenannt ? "Ja" : "Nein";
+    k.__ersatzText = ERSATZ_TEXT[k.__ersatzStatus] || ERSATZ_TEXT.unbekannt;
+    k.__hatJahrText = String(k.Beschaffungsjahr || "").trim() ? "Ja" : "Nein";
+  }
 }
 
 /* Nachzügler-Listen: «EDU-Clients», «Telefonnummern» und «Software» sind
    jünger als der Rest. Fehlt ihre Listen-ID oder die Liste, bleibt die
    betroffene Ansicht leer und sagt, was zu tun ist — die übrigen laufen
    normal weiter. */
-const listenHinweis = { edu: "", telefon: "", software: "" };
+const listenHinweis = { edu: "", telefon: "", software: "", kamera: "", kamerarolle: "" };
 
 const LISTEN_KONFIG = {
   edu: { titel: "EDU-Clients", schluessel: "eduClientListId" },
   telefon: { titel: "Telefonnummern", schluessel: "telefonListId" },
-  software: { titel: "Software", schluessel: "softwareListId" }
+  software: { titel: "Software", schluessel: "softwareListId" },
+  kamera: { titel: "Kameras", schluessel: "kameraListId" },
+  kamerarolle: { titel: "Kamera-Rollen", schluessel: "kameraRolleListId" }
 };
+
+/* Hinweis zur Liste hinter einer Tabellenansicht ("" = alles in Ordnung). */
+function hinweisVon(tab) {
+  if (tab === "edu") return listenHinweis.edu;
+  if (tab === "telefone") return listenHinweis.telefon;
+  if (tab === "kameras") return listenHinweis.kamera;
+  return "";
+}
 
 /* Der letzte gelungene Stand der Nachzügler-Listen (roh). Scheitert eine
    davon beim stillen Nachladen, gilt er weiter (Fehler B3). */
-const letzterStand = { edu: [], telefon: [], software: [] };
+const letzterStand = { edu: [], telefon: [], software: [], kamera: [], kamerarolle: [] };
 
 /* Liefert die Zeilen, [] mit Hinweis (fehlt/Fehler beim ersten Laden) oder
    null (Fehler beim stillen Nachladen: alten Stand behalten). */
@@ -659,6 +758,8 @@ async function listeLaden(liste, fortschrittRuf, still) {
     let zeilen;
     if (liste === "edu") zeilen = await Daten.clients("edu", fortschrittRuf);
     else if (liste === "telefon") zeilen = await Daten.telefone(fortschrittRuf);
+    else if (liste === "kamera") zeilen = await Daten.kameras(fortschrittRuf);
+    else if (liste === "kamerarolle") zeilen = await Daten.kameraRollen(fortschrittRuf);
     else zeilen = await Daten.software(fortschrittRuf);
     listenHinweis[liste] = "";
     return zeilen;
@@ -684,12 +785,14 @@ async function datenLaden(still) {
     };
   };
 
-  const [rohAdmin, rohEdu, rohBenutzer, rohTelefone, rohSoftware, sync] = await Promise.all([
+  const [rohAdmin, rohEdu, rohBenutzer, rohTelefone, rohSoftware, rohKameras, rohRollen, sync] = await Promise.all([
     Daten.clients("admin", melden("admin")),
     listeLaden("edu", melden("edu"), still),
     Daten.benutzer(melden("benutzer")),
     listeLaden("telefon", melden("telefone"), still),
     listeLaden("software", melden("software"), still),
+    listeLaden("kamera", melden("kameras"), still),
+    listeLaden("kamerarolle", melden("kamerarechte"), still),
     Daten.syncStatus()
   ]);
   syncZustand = sync;
@@ -703,12 +806,16 @@ async function datenLaden(still) {
   const edu = stand("edu", rohEdu);
   const tel = stand("telefon", rohTelefone);
   const sw = stand("software", rohSoftware);
+  const kam = stand("kamera", rohKameras);
+  const rol = stand("kamerarolle", rohRollen);
 
   fortschritt.admin = rohAdmin.length;
   fortschritt.edu = edu.length;
   fortschritt.benutzer = rohBenutzer.length;
   fortschritt.telefone = tel.length;
   fortschritt.software = sw.length;
+  fortschritt.kameras = kam.length;
+  fortschritt.kamerarechte = rol.length;
   if (!still) Rahmen.zustand("laden", { fortschritt: fortschrittText() });
 
   software = sw;
@@ -723,6 +830,9 @@ async function datenLaden(still) {
   benutzer = ergebnis.benutzer;
   eduClients = Modell.clientsAnreichern(edu).clients;
   telefone = Modell.telefoneAnreichern(tel, benutzer).telefone;
+  const video = Modell.kamerasAnreichern(kam, rol, benutzer);
+  kameras = video.kameras;
+  kameraRollen = video.rollen;
   nachbereiten();
   return fehlgeschlagen;
 }
@@ -735,6 +845,7 @@ async function datenLaden(still) {
 function zeilenVon(tab) {
   if (tab === "benutzer") return benutzer;
   if (tab === "telefone") return telefone;
+  if (tab === "kameras") return kameras;
   if (tab === "edu") return eduClients;
   return adminClients;
 }
@@ -774,7 +885,7 @@ function speicherPasst(wert, stufe) {
    führte dieser Filter in eine garantiert leere Liste. */
 function archivSichtbar(tab) {
   const z = zustand[tab];
-  if (!z || !istClientTab(tab)) return true;
+  if (!z || !hatArchiv(tab)) return true;
   if (z.archiv) return true;
   return (z.facetten.__statusText || []).indexOf(ARCHIVIERT) > -1;
 }
@@ -782,14 +893,14 @@ function archivSichtbar(tab) {
 /* Was ohne Filter zu sehen wäre: sind die archivierten ausgeblendet,
    gehören sie nicht in den Nenner. */
 function grundmenge(tab) {
-  return istClientTab(tab) && !archivSichtbar(tab)
+  return hatArchiv(tab) && !archivSichtbar(tab)
     ? zeilenVon(tab).filter(z => !z.__archiviert) : zeilenVon(tab);
 }
 
 function filtern(tab) {
   const z = zustand[tab];
   const worte = z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const archivWeg = istClientTab(tab) && !archivSichtbar(tab);
+  const archivWeg = hatArchiv(tab) && !archivSichtbar(tab);
 
   return zeilenVon(tab).filter(function (zeile) {
     if (archivWeg && zeile.__archiviert) return false;
@@ -810,6 +921,7 @@ function filtern(tab) {
         if (String(stufe) !== z.programmStufe) return false;
       } else if (stufe === 0) return false;
     }
+    if (z.rolle && !(zeile.__rollen || []).some(e => String(e.rolle.id) === z.rolle)) return false;
     return true;
   });
 }
@@ -885,6 +997,7 @@ function aktiveFilter(tab) {
   for (const k of Object.keys(z.zeit)) if (z.zeit[k]) n++;
   if (z.speicher) n++;
   if (z.programm) n++;
+  if (z.rolle) n++;
   return n;
 }
 
@@ -896,6 +1009,7 @@ function filterZuruecksetzen(tab, mitSuche) {
   z.speicher = "";
   z.programm = "";
   z.programmStufe = "";
+  z.rolle = "";
 }
 
 function facetteSetzen(z, schluessel, wert) { z.facetten[schluessel] = [wert]; }
@@ -908,7 +1022,7 @@ function facetteSetzen(z, schluessel, wert) { z.facetten[schluessel] = [wert]; }
    anwählen). «ohneArchiv» erzwingt das Weglassen (Übersicht: ihr Sprung
    blendet die archivierten aus). */
 function werteZaehlen(tab, schluessel, ohneArchiv) {
-  const archivWeg = istClientTab(tab)
+  const archivWeg = hatArchiv(tab)
     && (ohneArchiv || (schluessel !== "__statusText" && !archivSichtbar(tab)));
   const zaehler = new Map();
   for (const z of zeilenVon(tab)) {
@@ -941,7 +1055,7 @@ function aktiveClients(tab) { return zeilenVon(tab).filter(z => !z.__archiviert)
    Ctrl-Klick: neuer Tab). */
 function sprungAdresse(tab, setzen) {
   if (tab === "uebersicht") return UI.adresse.liste(tab);
-  const z = leererTabZustand(tab);
+  const z = tab === "kamerarechte" ? leererRechteZustand() : leererTabZustand(tab);
   if (setzen) setzen(z);
   return UI.adresse.liste(tab, parameterVon(tab, z, true));
 }
@@ -965,11 +1079,21 @@ function sprungKlick(tab, setzen) {
    ausgelöst hat, sie nicht mitzählt (Fehler B1). */
 function springeMitFilter(tab, setzen) {
   if (tab === "uebersicht" || tab === "software") return ansichtWechseln(tab);
+  if (tab === "kamerarechte") {
+    zustand.kamerarechte = leererRechteZustand();
+    if (setzen) setzen(zustand.kamerarechte);
+    if (zustand.ansicht === tab) {
+      zeichneKamerarechteAnsicht();
+      hashSchreiben();
+      return Promise.resolve(true);
+    }
+    return ansichtWechseln(tab);
+  }
   const z = zustand[tab];
   filterZuruecksetzen(tab, true);
   /* Auch gemerkt: sonst stünde nach dem Neuladen wieder die gemerkte
      Einstellung da, und die Liste zeigte mehr, als die Zahl versprach. */
-  if (istClientTab(tab) && z.archiv) { z.archiv = false; einstellungenMerken(tab); }
+  if (hatArchiv(tab) && z.archiv) { z.archiv = false; einstellungenMerken(tab); }
   if (setzen) setzen(z);
   neuBerechnen(tab);
   const k = knoten[tab];
@@ -988,6 +1112,8 @@ function springeMitFilter(tab, setzen) {
 function detailAdresse(tab, id) {
   if (tab === "benutzer") return UI.adresse.benutzer(id);
   if (tab === "telefone") return UI.adresse.telefon(id);
+  if (tab === "kameras") return UI.adresse.kamera(id);
+  if (tab === "kamerarechte") return UI.adresse.kamerarolle(id);
   return UI.adresse.client(tab, id);
 }
 
@@ -1076,7 +1202,8 @@ const NEU = {
   admin: { text: "Neuer ADMIN-Client", adresse: () => UI.adresse.client("admin", null, { neu: true }) },
   edu: { text: "Neuer EDU-Client", adresse: () => UI.adresse.client("edu", null, { neu: true }) },
   telefone: { text: "Neue Telefonnummer", adresse: () => UI.adresse.telefon(null, { neu: true }) },
-  software: { text: "Neues Programm", adresse: () => UI.adresse.software(null, { neu: true }) }
+  software: { text: "Neues Programm", adresse: () => UI.adresse.software(null, { neu: true }) },
+  kameras: { text: "Neue Kamera", adresse: () => UI.adresse.kamera(null, { neu: true }) }
 };
 
 function neuKnopf(tab) {
@@ -1315,9 +1442,39 @@ function zelle(tab, zeile, schluessel) {
     }
   }
 
+  if (tab === "kameras") {
+    /* Der Normalfall bleibt Text; nur was auffällt, bekommt einen Status. */
+    if (schluessel === "__aufzeichnungText") {
+      if (!zeile.__inMilestone) return leerZelle(td);
+      if (zeile.__aufzeichnung) td.textContent = "Ja";
+      else td.appendChild(UI.status("Keine Aufzeichnung", "warnung"));
+      return td;
+    }
+    if (schluessel === "__aktivText") {
+      if (!zeile.__inMilestone) return leerZelle(td);
+      if (zeile.__aktiv) td.textContent = "Ja";
+      else td.appendChild(UI.status("Deaktiviert", "warnung", { sinnbild: "aus" }));
+      return td;
+    }
+    if (schluessel === "__inMilestoneText") {
+      if (zeile.__inMilestone) td.textContent = "Ja";
+      else td.appendChild(UI.status(String(zeile.MS_HardwareId || "").trim() ? "Nicht mehr" : "Nie", "neutral"));
+      return td;
+    }
+    if (schluessel === "__unbenanntText") {
+      if (!zeile.__unbenannt) { td.textContent = "Nein"; return td; }
+      td.appendChild(UI.status(zeile.__unbenannt === 1 ? "1 Kanal" : zeile.__unbenannt + " Kanäle", "warnung"));
+      return td;
+    }
+    if (schluessel === "__rollenText") {
+      if (!zeile.__rollenNamen.length) return leerZelle(td);
+      return textZelle(td, zeile.__rollenText);
+    }
+  }
+
   /* Status: der Normalfall «Aktiv» bleibt Text; Lager und Archiv bekommen
      einen Status mit eigenem Sinnbild. */
-  if (istClientTab(tab) && schluessel === "__statusText") {
+  if (hatArchiv(tab) && schluessel === "__statusText") {
     const st = zeile.__status;
     if (st === "Lager") td.appendChild(UI.status("Lager", "neutral", { sinnbild: "lager" }));
     else if (st === ARCHIVIERT) td.appendChild(UI.status(ARCHIVIERT, "neutral", { sinnbild: "archiv" }));
@@ -1485,10 +1642,10 @@ function trefferText(tab, mitEinheit) {
    sagt, was zu tun ist. */
 function leerArt(tab) {
   if (sichtbar[tab].length) return null;
-  const hinweis = tab === "edu" ? listenHinweis.edu : (tab === "telefone" ? listenHinweis.telefon : "");
+  const hinweis = hinweisVon(tab);
   if (!zeilenVon(tab).length) return hinweis ? "konfig" : "leer";
   const z = zustand[tab];
-  if (!z.suche.trim() && !aktiveFilter(tab) && istClientTab(tab) && !archivSichtbar(tab)) return "archiv";
+  if (!z.suche.trim() && !aktiveFilter(tab) && hatArchiv(tab) && !archivSichtbar(tab)) return "archiv";
   return "filter";
 }
 
@@ -1496,7 +1653,8 @@ const LEER_TEXT = {
   admin: "Neue Geräte erscheinen nach dem nächsten SCCM-Abgleich oder über «Neuer ADMIN-Client».",
   edu: "Neue Geräte erscheinen nach dem nächsten SCCM-Abgleich oder über «Neuer EDU-Client».",
   benutzer: "Benutzer kommen mit dem nächsten Abgleich aus dem Active Directory.",
-  telefone: "Die erste Nummer lässt sich über «Neue Telefonnummer» erfassen."
+  telefone: "Die erste Nummer lässt sich über «Neue Telefonnummer» erfassen.",
+  kameras: "Kameras kommen mit dem nächsten Abgleich aus Milestone; eine Kamera ausserhalb von Milestone lässt sich über «Neue Kamera» erfassen."
 };
 
 function leerzustandBauen(tab, art) {
@@ -1504,7 +1662,7 @@ function leerzustandBauen(tab, art) {
   let l;
   if (art === "konfig") {
     l = UI.leerzustand({ sinnbild: SINNBILD[tab], titel: "Liste «" + titel + "» nicht verfügbar",
-      text: tab === "edu" ? listenHinweis.edu : listenHinweis.telefon });
+      text: hinweisVon(tab) });
   } else if (art === "leer") {
     l = UI.leerzustand({ sinnbild: SINNBILD[tab], titel: "Noch keine " + titel, text: LEER_TEXT[tab] });
   } else if (art === "archiv") {
@@ -1530,7 +1688,7 @@ function leerzustandBauen(tab, art) {
 function leerzustandZeigen(tab) {
   const k = knoten[tab];
   const art = leerArt(tab);
-  const schluessel = art === "konfig" ? art + (tab === "edu" ? listenHinweis.edu : listenHinweis.telefon) : art;
+  const schluessel = art === "konfig" ? art + hinweisVon(tab) : art;
   k.rahmen.hidden = !!art;
   k.leer.hidden = !art;
   if (schluessel === k.leerArt) return;
@@ -1556,6 +1714,7 @@ function zaehlerAnzeigen(tab) {
    Filter, den das Blatt nicht kennt (aus einem Link), heisst wie seine
    Spalte. */
 const SPEICHER_NAME = "Freier Speicher auf Laufwerk C";
+const ROLLE_FILTER_NAME = "Sichtbar für Rolle";
 
 function filterName(tab, schluessel) {
   const f = TAB[tab].facetten.find(x => x.k === schluessel)
@@ -1612,10 +1771,15 @@ function zeichneChips(tab) {
       + (z.programmStufe ? " · " + (stufe ? stufe.d.replace(/\s*\(\d\)$/, "") : z.programmStufe) : ""),
       function () { z.programm = ""; z.programmStufe = ""; });
   }
+  if (z.rolle) {
+    filterChips++;
+    const r = kameraRollen.find(x => String(x.id) === z.rolle);
+    chip("rolle", ROLLE_FILTER_NAME + ": " + (r ? String(r.Title || "").trim() : "Rolle " + z.rolle), function () { z.rolle = ""; });
+  }
   /* Der Archivschalter nimmt einen Filter WEG; als Chip steht er trotzdem
      hier, damit sichtbar ist, warum mehr Geräte in der Liste stehen. Er
      zählt nicht als Filter: «Alle Filter entfernen» legt ihn nicht um. */
-  if (istClientTab(tab) && z.archiv) {
+  if (hatArchiv(tab) && z.archiv) {
     chip("archiv", "Archivierte eingeblendet", function () { z.archiv = false; einstellungenMerken(tab); },
       "Archivierte Geräte wieder ausblenden");
   }
@@ -1718,7 +1882,7 @@ function filterOeffnen(tab) {
   /* Archivierte Geräte sind standardmässig ausgeblendet; der Schalter
      steht hier, weil er einen Filter wegnimmt. */
   let archivGruppe = null;
-  if (istClientTab(tab)) {
+  if (hatArchiv(tab)) {
     archivGruppe = UI.mehrfach({
       legende: "Archiv", name: tab + "-archiv",
       eintraege: [{ wert: "an", text: "Archivierte Geräte anzeigen", zahl: zaehle(zeilenVon(tab), g => g.__archiviert),
@@ -1778,6 +1942,17 @@ function filterOeffnen(tab) {
     felder.appendChild(UI.feld("Berechtigung für Programm", programmWahl));
     felder.appendChild(UI.feld("Berechtigungsstufe", stufenWahl));
   }
+  let rollenWahl = null;
+  const rollenWerte = () => kameraRollen.filter(r => r.__inMilestone)
+    .slice().sort((a, b) => Hilfe.vergleiche(a.Title, b.Title)).map(r => [String(r.id), String(r.Title || "").trim()]);
+  if (TAB[tab].hatRolle) {
+    rollenWahl = UI.eingabe({ art: "auswahl", id: tab + "-rolle", leer: "Alle Rollen",
+      werte: rollenWerte(), wert: z.rolle,
+      beiAenderung: function (w) { z.rolle = w; nachFilter(tab); } });
+    rollenWahl.lesen = () => z.rolle;
+    auswahlen.push(rollenWahl);
+    felder.appendChild(UI.feld(ROLLE_FILTER_NAME, rollenWahl, { hinweis: "Rolle aus Milestone, die die Kamera sehen darf." }));
+  }
   if (felder.childNodes.length) inhalt.push(felder);
 
   const gruppen = {};
@@ -1832,6 +2007,13 @@ function filterOeffnen(tab) {
         programmWahl.werteSetzen(neu, z.programm);
       }
       stufenWahl.disabled = !z.programm;
+    }
+    if (rollenWahl) {
+      const neu = rollenWerte();
+      const alt = Array.from(rollenWahl.options).filter(o => o.value).map(o => [o.value, o.textContent]);
+      if (JSON.stringify(neu) !== JSON.stringify(alt) && document.activeElement !== rollenWahl) {
+        rollenWahl.werteSetzen(neu, z.rolle);
+      }
     }
     for (const a of auswahlen) if (document.activeElement !== a && a.value !== a.lesen()) a.value = a.lesen();
     UI.knopfSperren(zuruecksetzen, aktiveFilter(tab) ? "" : "Kein Filter aktiv.");
@@ -2071,6 +2253,36 @@ function telefonKennzahlen() {
   ];
 }
 
+/* Kameras: was in Milestone auffällt (nicht mehr da, deaktiviert, ohne
+   Aufzeichnung, Kanal ohne Namen) und Rollen ohne Zweck oder Bewilligung.
+   «Nicht in Milestone» zählt nur Kameras im Status «Aktiv»: eine Kamera im
+   Lager steht mit Absicht nicht in Milestone. Die Rollen-Kennzahl springt in
+   die Ansicht «Kamerarechte» (tab). */
+function kameraKennzahlen() {
+  const imEinsatz = aktiveClients("kameras");
+  const archiviert = kameras.length - imEinsatz.length;
+  const ohneNachweis = zaehle(kameraRollen, r => r.__inMilestone && r.__ohneNachweis);
+  return [
+    { t: "Im Einsatz", w: imEinsatz.length, setzen: nichts,
+      unter: UI.zahlText(zaehle(imEinsatz, k => k.__status === "Lager")) + " davon im Lager" },
+    { t: "Nicht in Milestone", w: zaehle(imEinsatz, k => !k.__inMilestone && k.__status === "Aktiv"), ton: "warnung",
+      unter: "Status «Aktiv», aber keine Hardware in Milestone",
+      setzen: function (z) { facetteSetzen(z, "__inMilestoneText", "Nein"); facetteSetzen(z, "__statusText", "Aktiv"); } },
+    { t: "In Milestone deaktiviert", w: zaehle(imEinsatz, k => k.__inMilestone && !k.__aktiv), ton: "warnung",
+      setzen: z => facetteSetzen(z, "__aktivText", "Nein") },
+    { t: "Ohne Aufzeichnung", w: zaehle(imEinsatz, k => k.__inMilestone && !k.__aufzeichnung), ton: "warnung",
+      unter: "kein aktiver Kanal zeichnet auf", setzen: z => facetteSetzen(z, "__aufzeichnungText", "Nein") },
+    { t: "Kanal ohne Namen", w: zaehle(imEinsatz, k => k.__unbenannt > 0), ton: "warnung",
+      unter: "Kanal heisst in Milestone noch wie das Modell", setzen: z => facetteSetzen(z, "__unbenanntText", "Ja") },
+    { t: "Ersatz überfällig", w: zaehle(imEinsatz, k => k.__ersatzStatus === "ueberfaellig"), ton: "gefahr",
+      unter: "geplant vor " + Modell.gjAktuell(), setzen: z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig) },
+    { t: "Rollen ohne Nachweis", w: ohneNachweis, ton: "warnung", tab: "kamerarechte",
+      unter: "Zweck oder Bewilligung fehlt", setzen: function (z) { z.offen = true; } },
+    { t: "Archiviert", w: archiviert, unter: "in der Liste ausgeblendet",
+      setzen: z => facetteSetzen(z, "__statusText", ARCHIVIERT) }
+  ];
+}
+
 /* Ein Abschnitt der Übersicht: Titel (h2) mit optionaler Meta-Zeile rechts. */
 function abschnitt(id, titel, meta, inhalt) {
   const s = el("section", "uebersicht-abschnitt");
@@ -2108,7 +2320,7 @@ function syncHinweis() {
     return UI.banner({ ton: "warnung", titel: "Letzter Abgleich mit Fehlern.",
       text: s.text + " (" + wann + "). Details im Log auf adminsrv319." });
   }
-  return UI.hinweis("Letzter Abgleich mit SCCM und AD: " + wann + ".");
+  return UI.hinweis("Letzter Abgleich mit SCCM, AD und Milestone: " + wann + ".");
 }
 
 /* Handlungsbedarf (Mapping 7.2 #14): eine Zeile je offener Kennzahl aus
@@ -2143,10 +2355,12 @@ function handlungsbedarf(punkte) {
    eine offene Kennzahl mit ihrem Ton als Sinnbild. */
 function kennwertListe(tab, liste) {
   return UI.kennwerte(liste.map(function (kz) {
+    // Eine Kennzahl kann in eine andere Ansicht springen (kz.tab).
+    const ziel = kz.tab || tab;
     return {
       name: kz.t, wert: kz.w, ton: istOffen(kz) ? kz.ton : undefined,
-      href: kz.setzen ? sprungAdresse(tab, kz.setzen) : undefined,
-      beiKlick: kz.setzen ? sprungKlick(tab, kz.setzen) : undefined,
+      href: kz.setzen ? sprungAdresse(ziel, kz.setzen) : undefined,
+      beiKlick: kz.setzen ? sprungKlick(ziel, kz.setzen) : undefined,
       titel: kz.unter ? kz.t + " – " + kz.unter : undefined,
       fokus: "kz-" + tab + "-" + kz.t
     };
@@ -2343,10 +2557,11 @@ function zeichneUebersicht() {
     bestandKarte("admin", clientKennzahlen("admin"), null, offen),
     bestandKarte("edu", clientKennzahlen("edu"), listenHinweis.edu && !eduClients.length ? listenHinweis.edu : null, offen),
     bestandKarte("benutzer", benutzerKennzahlen(), null, offen),
-    bestandKarte("telefone", telefonKennzahlen(), listenHinweis.telefon && !telefone.length ? listenHinweis.telefon : null, offen)
+    bestandKarte("telefone", telefonKennzahlen(), listenHinweis.telefon && !telefone.length ? listenHinweis.telefon : null, offen),
+    bestandKarte("kameras", kameraKennzahlen(), listenHinweis.kamera && !kameras.length ? listenHinweis.kamera : null, offen)
   ]);
 
-  const planung = anhaengen(el("div", "karten planung"), [planungKarte("admin"), planungKarte("edu")]);
+  const planung = anhaengen(el("div", "karten planung"), [planungKarte("admin"), planungKarte("edu"), planungKarte("kameras")]);
 
   const verteilungen = anhaengen(el("div", "karten"), [
     verteilungsKarte("admin", "SCCM_Model", "ADMIN-Clients nach Modell"),
@@ -2354,7 +2569,9 @@ function zeichneUebersicht() {
     verteilungsKarte("edu", "SCCM_Model", "EDU-Clients nach Modell"),
     verteilungsKarte("edu", "SCCM_OSVersion", "EDU-Clients nach OS-Version"),
     verteilungsKarte("admin", "GebaeudeStock", "ADMIN-Clients nach Gebäude / Stock"),
-    verteilungsKarte("benutzer", "Abteilung", "Benutzer nach Abteilung")
+    verteilungsKarte("benutzer", "Abteilung", "Benutzer nach Abteilung"),
+    verteilungsKarte("kameras", "MS_Modell", "Kameras nach Modell"),
+    verteilungsKarte("kameras", "Gebaeude", "Kameras nach Gebäude")
   ]);
 
   anhaengen(ansicht, [
@@ -2508,6 +2725,157 @@ function zeichneSoftwareAnsicht() {
 
 
 /* ==================================================================
+   10b. Kamerarechte
+
+   Eine Karte je Rolle aus Milestone: wer Mitglied ist (AD-Gruppen), welche
+   Rechte sie hat, auf wie viele Kameras und wie viele Personen das sind.
+   Führend ist Milestone; hier steht dazu der Nachweis (Zweck, bewilligt
+   durch, am), gepflegt auf der Rollenseite (kamerarolle.html).
+   ================================================================== */
+
+function rechteGeruest() {
+  const ansicht = $("ansicht-kamerarechte");
+  const kopf = UI.seitenkopf({ titel: "Kamerarechte", titelId: "kamerarechte-titel" });
+  const suchfeld = UI.suchfeld({
+    id: "kamerarechte-suche", platzhalter: SUCH_PLATZHALTER.kamerarechte, label: "Kamerarechte durchsuchen", kuerzel: "/",
+    beiEingabe: function (wert) {
+      zustand.kamerarechte.suche = wert;
+      zeichneKamerarechte();
+      hashSchreiben();
+    }
+  });
+  const nurOffen = UI.chip({ text: "Nur ohne Nachweis", gewaehlt: zustand.kamerarechte.offen, id: "kamerarechte-offen",
+    beiKlick: function (an) {
+      zustand.kamerarechte.offen = an;
+      zeichneKamerarechte();
+      hashSchreiben();
+    } });
+  const anzahl = el("p", "anzahl");
+  anzahl.id = "kamerarechte-anzahl";
+  anzahl.setAttribute("aria-live", "polite");
+  const leiste = anhaengen(el("div", "werkzeugleiste"), [suchfeld, nurOffen, leistenEnde(anzahl, null)]);
+  const stand = el("div", "kamerarechte-stand");
+  const liste = el("div", "karten software-karten kamerarechte-liste");
+  liste.id = "kamerarechte-liste";
+  anhaengen(ansicht, [kopf, leiste, stand, liste]);
+  knoten.kamerarechte = { ansicht: ansicht, kopf: kopf, suchfeld: suchfeld, nurOffen: nurOffen, anzahl: anzahl, stand: stand, liste: liste };
+}
+
+/* Die Kameras einer Rolle: Link in die Kameraliste, gefiltert auf genau
+   diese Rolle – die Zahl stimmt so mit der Liste überein. */
+function rollenKameraLink(r) {
+  const n = r.__inMilestone ? r.__kameras.length : 0;
+  const text = UI.zahlText(n) + (n === 1 ? " Kamera" : " Kameras");
+  if (!n) return el("span", null, text);
+  const setzen = function (z) { z.rolle = String(r.id); };
+  const a = el("a", null, text);
+  a.href = sprungAdresse("kameras", setzen);
+  a.addEventListener("click", sprungKlick("kameras", setzen));
+  a.setAttribute("data-fokus", "kr-" + r.id + "-kameras");
+  UI.tipp(a, "Kameras dieser Rolle in der Liste zeigen");
+  return a;
+}
+
+function rollenKarte(r) {
+  const karte = UI.karte({ titel: String(r.Title || "").trim() || "(ohne Namen)", ebene: 3, klasse: "software-karte kamerarolle-karte" });
+  const h = karte.kopf.querySelector(".karte-titel");
+  leeren(h);
+  const name = el("a", "name-link", String(r.Title || "").trim() || "(ohne Namen)");
+  name.href = UI.adresse.kamerarolle(r.id);
+  name.setAttribute("data-fokus", "kr-" + r.id + "-name");
+  name.addEventListener("click", function (ev) {
+    UI.adresse.listeMerken();
+    if (!modifiziert(ev)) stelleMerken(null);
+  });
+  h.appendChild(name);
+
+  const status = [];
+  if (!r.__inMilestone) status.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
+  else if (r.__ohneNachweis) status.push(UI.status("Nachweis fehlt", "warnung", { titel: "Zweck oder «Bewilligt durch» fehlt" }));
+  // Die Rolle der Administratoren sieht alles; heisst sie schon so, sagt der Titel es.
+  if (r.__admin && !/admin/i.test(String(r.Title || ""))) status.push(UI.status("Administratoren", "neutral", { sinnbild: "schloss" }));
+
+  const n = r.__personen.length + r.__unbekannt.length;
+  const zahlen = el("p", "hinweis");
+  zahlen.appendChild(UI.teile([rollenKameraLink(r), UI.zahlText(n) + (n === 1 ? " Person" : " Personen")]));
+
+  const gruppen = r.__adGruppen.length
+    ? UI.chips(r.__adGruppen.map(g => UI.status(g, "neutral", { sinnbild: "benutzerGruppe" })))
+    : UI.meta(r.__mitglieder.length ? r.__mitglieder.map(m => m.name).join(", ") : "Keine Mitglieder");
+  const rechte = r.__rechte.length ? UI.meta("Rechte: " + r.__rechte.join(", ")) : null;
+  const zweck = String(r.Zweck || "").trim();
+  const nachweis = zweck
+    ? UI.meta(zweck + (String(r.BewilligtDurch || "").trim() ? " – bewilligt durch " + String(r.BewilligtDurch).trim()
+      + (String(r.BewilligtAm || "").trim() ? " am " + Modell.datumSchweiz(String(r.BewilligtAm).trim()) : "") : ""))
+    : null;
+  anhaengen(karte.inhalt, [status.length ? UI.chips(status) : null, zahlen, gruppen, rechte, nachweis]);
+  return karte;
+}
+
+function zeichneKamerarechte() {
+  const k = knoten.kamerarechte;
+  const z = zustand.kamerarechte;
+  leeren(k.liste);
+  leeren(k.stand);
+  k.nurOffen.setzen(z.offen);
+
+  if (listenHinweis.kamerarolle && !kameraRollen.length) {
+    k.liste.appendChild(UI.leerzustand({ sinnbild: "schild", titel: "Liste «Kamera-Rollen» nicht verfügbar",
+      text: listenHinweis.kamerarolle }));
+    UI.textSetzen(k.anzahl, "");
+    return;
+  }
+  if (!kameraRollen.length) {
+    k.liste.appendChild(UI.leerzustand({ sinnbild: "schild", titel: "Noch keine Rollen",
+      text: "Der Abgleich liest die Rollen aus Milestone, sobald das Konto des Syncs sie lesen darf (README Abschnitt 7.5)." }));
+    UI.textSetzen(k.anzahl, "");
+    return;
+  }
+
+  // Stand des Abgleichs: der jüngste Zeitpunkt über alle Rollen.
+  let juengster = null;
+  for (const r of kameraRollen) {
+    const d = Hilfe.datum(r.MS_LetzterSync);
+    if (d && (!juengster || d > juengster)) juengster = d;
+  }
+  if (juengster) k.stand.appendChild(UI.hinweis("Rechte aus Milestone, zuletzt abgeglichen " + UI.zeitText(juengster)
+    + ". Geändert werden sie im Management Client von Milestone, nicht hier."));
+
+  const worte = z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const passend = kameraRollen.filter(function (r) {
+    if (z.offen && !(r.__inMilestone && r.__ohneNachweis)) return false;
+    for (const w of worte) if (r.__such.indexOf(w) === -1) return false;
+    return true;
+  }).sort(function (a, b) {
+    // Rollen in Milestone zuerst, dann nach Namen.
+    if (a.__inMilestone !== b.__inMilestone) return a.__inMilestone ? -1 : 1;
+    return Hilfe.vergleiche(a.Title, b.Title);
+  });
+
+  if (!passend.length) {
+    k.liste.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
+      aktion: { text: "Filter zurücksetzen", fokus: "kamerarechte-leer-aktion", beiKlick: function () {
+        zustand.kamerarechte = leererRechteZustand();
+        k.suchfeld.eingabe.value = "";
+        zeichneKamerarechte();
+        hashSchreiben();
+        k.suchfeld.eingabe.focus();
+      } } }));
+  } else {
+    anhaengen(k.liste, passend.map(rollenKarte));
+  }
+  UI.textSetzen(k.anzahl, passend.length === kameraRollen.length
+    ? anzahlText("kamerarechte", kameraRollen.length)
+    : UI.zahlText(passend.length) + " von " + UI.zahlText(kameraRollen.length));
+}
+
+function zeichneKamerarechteAnsicht() {
+  knoten.kamerarechte.suchfeld.setzen(zustand.kamerarechte.suche);
+  zeichneKamerarechte();
+}
+
+
+/* ==================================================================
    11. Ansichten wechseln, Nachladen, Rundfunkkanal
    ================================================================== */
 
@@ -2524,6 +2892,7 @@ function zeichneAnsicht() {
   const a = zustand.ansicht;
   if (a === "uebersicht") zeichneUebersicht();
   else if (a === "software") zeichneSoftwareAnsicht();
+  else if (a === "kamerarechte") zeichneKamerarechteAnsicht();
   else zeichneTabellenAnsicht(a);
 }
 
@@ -2633,7 +3002,9 @@ function autoNachladenStarten() {
    dem nächsten automatischen Takt. */
 const MELDUNGEN = ["zeile-geaendert", "zeile-neu", "zeile-geloescht", "benutzer-geaendert",
                    "telefon-geaendert", "telefon-neu", "telefon-geloescht",
-                   "software-geaendert", "software-neu", "software-geloescht"];
+                   "software-geaendert", "software-neu", "software-geloescht",
+                   "kamera-geaendert", "kamera-neu", "kamera-geloescht",
+                   "kamerarolle-geaendert", "kamerarolle-geloescht"];
 
 function kanalVerbinden() {
   if (!window.BroadcastChannel) return;
@@ -2707,6 +3078,7 @@ function start() {
   uebersichtGeruest();
   for (const tab of TABELLEN) tabellenGeruest(tab);
   softwareGeruest();
+  rechteGeruest();
 
   Rahmen.navigation({ gruppen: Rahmen.HAUPTZIELE, aktiv: zustand.ansicht, label: "Hauptnavigation",
     beiWahl: function (schluessel) { ansichtWechseln(schluessel); } });
@@ -2764,7 +3136,8 @@ function ereignisseVerbinden() {
     if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
     if (tippt(e.target) || UI.ebeneOffen()) return;
     e.preventDefault();
-    const name = TABELLEN.indexOf(zustand.ansicht) > -1 || zustand.ansicht === "software" ? zustand.ansicht : "admin";
+    const name = TABELLEN.indexOf(zustand.ansicht) > -1 || zustand.ansicht === "software"
+      || zustand.ansicht === "kamerarechte" ? zustand.ansicht : "admin";
     const fokussieren = function () {
       const feld = suchfeldVon(name);
       if (feld) { feld.focus(); feld.select(); }

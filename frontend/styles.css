@@ -325,3 +325,7 @@ button.zeitstrahl-saeule:active::before {
 
 /* Der Programmname ist ein Link; ein langer Name bricht um. */
 .software-karte .karte-titel { overflow-wrap: anywhere; }
+
+/* Kamerarechte: dieselben Karten wie die Software; der Hinweis zum Stand
+   des Abgleichs nimmt keinen Platz, solange er fehlt. */
+.kamerarechte-stand:empty { display: none; }

@@ -41,6 +41,19 @@
     - legt Nummern aus dem Hausblock (TelefonPraefix), die im AD stehen, aber in der Liste fehlen, neu an.
       Gelöscht wird in dieser Phase nie.
 
+  Phase Kameras (nur wenn KameraListId und MilestoneServer konfiguriert sind):
+    - liest die Hardware aus Milestone XProtect (REST-API des Management Servers),
+    - ordnet sie über Hardware-ID, MAC, Seriennummer und IP den Zeilen der Liste «Kameras» zu,
+    - schreibt die MS_*-Felder, führt Umbenennungen nach, füllt leere Felder Gebäude und Raum,
+    - legt neue Hardware an und archiviert verschwundene (mit Archivschutz). Gelöscht wird nie.
+
+  Phase Kamera-Rollen (nur wenn KameraRolleListId konfiguriert ist; höchstens alle
+  MilestoneRechteStunden Stunden, Standard 6):
+    - liest Rollen, Mitglieder und die Rechte jeder Rolle auf jede Kamera aus Milestone,
+    - löst die AD-Gruppen der Mitglieder rekursiv in Logins auf,
+    - schreibt die Liste «Kamera-Rollen» und je Kamera die Spalte «Sichtbar für».
+      Die Rechte werden nur gelesen, nie geändert.
+
 .PARAMETER OnlyClients
   Nur die Client-Phasen ausführen (ADMIN-Clients und EDU-Clients).
 
@@ -52,6 +65,17 @@
 
 .PARAMETER OnlyTelefone
   Nur die Telefon-Phase ausführen (liest AD, aber kein SCCM).
+
+.PARAMETER OnlyKameras
+  Nur die Kamera-Phasen ausführen (Milestone -> Kameras und Kamera-Rollen; kein SCCM).
+
+.PARAMETER KameraRechteJetzt
+  Die Rechte der Milestone-Rollen jetzt abgleichen, auch wenn der letzte Abgleich jünger ist als
+  MilestoneRechteStunden.
+
+.PARAMETER MilestoneDiagnose
+  Schreibt die ersten Antworten von Milestone zu Rollen, Mitgliedern und Rechten roh nach
+  Milestone-Diagnose.json neben dem Log (zum Nachsehen, wenn die Rechte leer bleiben).
 
 .PARAMETER DumpOnly
   Nur SCCM auslesen und die aufbereiteten Felder ausgeben (kein SharePoint-Zugriff).
@@ -70,6 +94,9 @@ param(
     [string]$ClientListen = 'Alle',
     [switch]$OnlyBenutzer,
     [switch]$OnlyTelefone,
+    [switch]$OnlyKameras,
+    [switch]$KameraRechteJetzt,
+    [switch]$MilestoneDiagnose,
     [switch]$DumpOnly,
     [string[]]$OnlyDevices,
     [string]$LogPath    # überschreibt LogPath der Konfiguration (Probeläufe von Installiere-Sync.ps1)
@@ -660,6 +687,342 @@ function Get-TelefonAbgleich {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Abgleich Milestone-Hardware <-> Liste «Kameras» (rein, ohne Graph und Milestone)
+# ---------------------------------------------------------------------------
+
+function Get-KameraName {
+    <# Name einer Hardware für die Liste: der Name ihres ersten Kanals, sonst der Hardware-Name. #>
+    param($Geraet)
+    $kanaele = @(@(Get-Feld $Geraet 'Kanaele') | Where-Object { $_ } | Sort-Object { [int](Get-Feld $_ 'Kanal') })
+    foreach ($k in $kanaele) { $n = Get-Text $k 'Name'; if ($n -ne '') { return $n } }
+    return (Get-Text $Geraet 'HardwareName')
+}
+
+function Get-KameraKanalText {
+    <# Kanäle als Text, einer je Zeile: «1 | 10.300 Treppe Trakt 1 | Aktiv | Aufzeichnung ein». #>
+    param($Kanaele)
+    $zeilen = foreach ($k in @(@($Kanaele) | Where-Object { $_ } | Sort-Object { [int](Get-Feld $_ 'Kanal') })) {
+        '{0} | {1} | {2} | {3}' -f ([int](Get-Feld $k 'Kanal') + 1), (Get-Text $k 'Name'),
+            $(if ([bool](Get-Feld $k 'Aktiv')) { 'Aktiv' } else { 'Deaktiviert' }),
+            $(if ([bool](Get-Feld $k 'Aufzeichnung')) { 'Aufzeichnung ein' } else { 'Aufzeichnung aus' })
+    }
+    return (@($zeilen) -join "`n")
+}
+
+function ConvertTo-KameraFelder {
+    <#
+      Hardware aus Milestone (Get-MilestoneGeraete) -> Felder MS_* der Liste «Kameras».
+      «In Milestone aktiv» heisst: Hardware aktiviert und mindestens ein Kanal aktiviert;
+      «Aufzeichnung»: mindestens ein aktiver Kanal zeichnet auf. Leere Texte werden $null
+      (Graph leert damit das Feld).
+    #>
+    param($Geraet, $Zeitpunkt)
+    if (-not $Zeitpunkt) { $Zeitpunkt = Get-Date }
+    $kanaele = @(@(Get-Feld $Geraet 'Kanaele') | Where-Object { $_ })
+    $aktiveKanaele = @($kanaele | Where-Object { [bool](Get-Feld $_ 'Aktiv') })
+    $hwAktiv = [bool](Get-Feld $Geraet 'HardwareAktiv')
+    $modell = Get-KameraModell (Get-Text $Geraet 'Modell')
+    # Jüngste Änderung an Hardware oder Kanälen; Milestone liefert «0001-01-01» für «unbekannt».
+    $geaendert = $null
+    foreach ($w in @((Get-Text $Geraet 'Geaendert')) + @($kanaele | ForEach-Object { Get-Text $_ 'Geaendert' })) {
+        if (-not $w -or $w -like '0001-*') { continue }
+        $d = $null
+        try { $d = [datetime]::Parse($w, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal) } catch { continue }
+        if ($null -eq $geaendert -or $d -gt $geaendert) { $geaendert = $d }
+    }
+    $serie = ([string](Get-Text $Geraet 'Seriennummer')).Trim()
+    $f = [ordered]@{
+        MS_HardwareId      = (Get-Text $Geraet 'HardwareId')
+        MS_Gefunden        = 'Ja'
+        MS_HardwareName    = Trunc (Get-Text $Geraet 'HardwareName')
+        MS_Adresse         = (Get-Text $Geraet 'Adresse')
+        MS_Mac             = (NormMac (Get-Text $Geraet 'Mac'))
+        MS_Seriennummer    = Trunc $serie
+        MS_Hersteller      = $modell.Hersteller
+        MS_Modell          = Trunc $modell.Modell
+        MS_Firmware        = (Get-Text $Geraet 'Firmware')
+        MS_Aktiv           = JaNein ($hwAktiv -and $aktiveKanaele.Count -gt 0)
+        MS_Aufzeichnung    = JaNein ($hwAktiv -and @($aktiveKanaele | Where-Object { [bool](Get-Feld $_ 'Aufzeichnung') }).Count -gt 0)
+        MS_KanalAnzahl     = $kanaele.Count
+        MS_Kanaele         = (Get-KameraKanalText $kanaele)
+        MS_RecordingServer = (Get-Text $Geraet 'RecordingServer')
+        MS_Geaendert       = (ToIso $geaendert)
+        MS_LetzterSync     = (ToIso $Zeitpunkt)
+        MS_SyncStatus      = 'OK'
+    }
+    foreach ($k in @($f.Keys)) { if ($f[$k] -is [string] -and $f[$k].Trim() -eq '') { $f[$k] = $null } }
+    return $f
+}
+
+function Get-KameraZuordnung {
+    <#
+      Ordnet die Hardware aus Milestone den Zeilen der Liste «Kameras» zu. Reine Funktion.
+
+      $Geraete: Objekte aus Get-MilestoneGeraete (HardwareId, Mac, Seriennummer, Adresse, Kanaele …)
+      $Zeilen : Objekte mit Id, Title, Status, Gebaeude, Raum, MS_HardwareId, MS_Mac,
+                MS_Seriennummer, MS_Adresse
+
+      Regeln:
+       1. Schlüssel ist die Hardware-ID aus Milestone. Danach die MAC-Adresse, danach die
+          Seriennummer – so bleibt eine Zeile bei ihrer Hardware, auch wenn die Kamera in
+          Milestone entfernt und neu hinzugefügt wurde (neue ID).
+       2. Zeilen ohne Hardware-ID (von Hand oder aus der Excel-Übernahme) werden zusätzlich über
+          die IP-Adresse gefunden, solange sie nicht archiviert sind.
+       3. Stehen mehrere Zeilen für dieselbe Hardware, gilt die erste nicht archivierte; die
+          übrigen gelten als ohne Hardware (Dublette, wird archiviert).
+       4. Hardware ohne Zeile wird neu angelegt (Status «Aktiv»).
+       5. Eine Zeile, die schon einmal mit Milestone verknüpft war (Hardware-ID gesetzt) und
+          deren Hardware fehlt, wird archiviert – ausser sie ist «Lager» (ausgebaut, liegt im
+          Lager) oder schon archiviert. Zeilen, die nie verknüpft waren, bleiben unberührt.
+          Gelöscht wird nie.
+       6. Umbenennung in Milestone, Reaktivierung, neue IP-Adresse und ersetzte Hardware
+          (gleiche ID, andere Seriennummer) kommen in den Verlauf; leere Felder «Gebäude» und
+          «Raum» werden aus dem Namen gefüllt.
+    #>
+    param($Geraete, $Zeilen)
+    $warnungen = New-Object System.Collections.ArrayList
+    $zuordnungen = New-Object System.Collections.ArrayList
+    $neu = New-Object System.Collections.ArrayList
+    $archivieren = New-Object System.Collections.ArrayList
+
+    $alle = @(@($Zeilen) | Where-Object { $null -ne $_ } | Sort-Object { Get-ZeilenSortierschluessel $_ })
+    $zustand = @{}
+    $nachId = @{}; $nachMac = @{}; $nachSerie = @{}; $nachIp = @{}
+    foreach ($z in $alle) {
+        $id = [string](Get-Feld $z 'Id')
+        $st = Get-StatusNorm (Get-Text $z 'Status')
+        $s = [pscustomobject]@{ Zeile = $z; Id = $id; Status = $st; HwId = (Get-Text $z 'MS_HardwareId') }
+        $zustand[$id] = $s
+        $schluesselListe = @(
+            @($nachId, $s.HwId),
+            @($nachMac, (NormMac (Get-Text $z 'MS_Mac'))),
+            @($nachSerie, $(if (Test-Seriennummer (Get-Text $z 'MS_Seriennummer')) { NormSeriennummer (Get-Text $z 'MS_Seriennummer') } else { '' }))
+        )
+        foreach ($paar in $schluesselListe) {
+            $index = $paar[0]; $k = [string]$paar[1]
+            if ($k -eq '') { continue }
+            if (-not $index.ContainsKey($k)) { $index[$k] = New-Object System.Collections.ArrayList }
+            [void]$index[$k].Add($s)
+        }
+        $ip = Get-Text $z 'MS_Adresse'
+        if ($s.HwId -eq '' -and $st -ne 'Archiviert' -and $ip -ne '') {
+            if (-not $nachIp.ContainsKey($ip)) { $nachIp[$ip] = New-Object System.Collections.ArrayList }
+            [void]$nachIp[$ip].Add($s)
+        }
+    }
+
+    $belegt = New-Object System.Collections.Generic.HashSet[string]
+    function Waehle($index, [string]$k) {
+        if ($k -eq '' -or -not $index.ContainsKey($k)) { return $null }
+        $frei = @($index[$k] | Where-Object { -not $belegt.Contains($_.Id) })
+        if ($frei.Count -eq 0) { return $null }
+        $bevorzugt = @($frei | Where-Object { $_.Status -ne 'Archiviert' })
+        if ($bevorzugt.Count -gt 0) { return $bevorzugt[0] }
+        return $frei[0]
+    }
+
+    foreach ($g in @(@($Geraete) | Where-Object { $_ } | Sort-Object { Get-Text $_ 'HardwareId' })) {
+        $hwId = Get-Text $g 'HardwareId'
+        $mac = NormMac (Get-Text $g 'Mac')
+        $serie = $(if (Test-Seriennummer (Get-Text $g 'Seriennummer')) { NormSeriennummer (Get-Text $g 'Seriennummer') } else { '' })
+        $ip = Get-Text $g 'Adresse'
+        $s = $null; $grund = ''
+        foreach ($versuch in @(@($nachId, $hwId, 'Hardware-ID'), @($nachMac, $mac, 'MAC-Adresse'), @($nachSerie, $serie, 'Seriennummer'), @($nachIp, $ip, 'IP-Adresse'))) {
+            $s = Waehle $versuch[0] ([string]$versuch[1])
+            if ($s) { $grund = $versuch[2]; break }
+        }
+        if (-not $s) {
+            $name = Get-KameraName $g
+            $ort = Get-KameraOrt $name
+            [void]$neu.Add([pscustomobject]@{ Geraet = $g; Name = $name; Gebaeude = $ort.Gebaeude; Raum = $ort.Raum; Verlauf = 'Aus Milestone neu angelegt'; Status = 'Aktiv' })
+            continue
+        }
+        [void]$belegt.Add($s.Id)
+        [void]$zuordnungen.Add((New-KameraZuordnung $g $s $grund))
+    }
+
+    # Mehrfach verknüpfte Hardware-IDs melden (Regel 3).
+    foreach ($k in @($nachId.Keys)) {
+        if (@($nachId[$k]).Count -gt 1) {
+            [void]$warnungen.Add("Hardware-ID $k steht in $(@($nachId[$k]).Count) Zeilen (IDs $((@($nachId[$k]) | ForEach-Object { $_.Id }) -join ', ')).")
+        }
+    }
+
+    $hwImLauf = @{}
+    foreach ($zu in $zuordnungen) { $hwImLauf[(Get-Text $zu.Geraet 'HardwareId')] = $zu.ZeileId }
+    $aktiveZeilen = 0
+    foreach ($s in @($zustand.Values | Sort-Object { Get-ZeilenSortierschluessel $_.Zeile })) {
+        if ($s.HwId -eq '') { continue }
+        if ($s.Status -ne 'Archiviert') { $aktiveZeilen++ }
+        if ($belegt.Contains($s.Id) -or $s.Status -eq 'Archiviert' -or $s.Status -eq 'Lager') { continue }
+        $text = 'In Milestone nicht mehr vorhanden, archiviert'
+        if ($hwImLauf.ContainsKey($s.HwId)) { $text = "Doppelte Zeile: die Hardware steht in Zeile ID $($hwImLauf[$s.HwId]), archiviert" }
+        [void]$archivieren.Add([pscustomobject]@{ Zeile = $s.Zeile; ZeileId = $s.Id; Titel = (Get-Text $s.Zeile 'Title'); Verlauf = $text })
+    }
+
+    return [pscustomobject]@{
+        Zuordnungen  = @($zuordnungen.ToArray())
+        Neu          = @($neu.ToArray())
+        Archivieren  = @($archivieren.ToArray())
+        AktiveZeilen = $aktiveZeilen
+        Warnungen    = @($warnungen.ToArray())
+    }
+}
+
+function New-KameraZuordnung {
+    <# Zuordnungseintrag einer Hardware zu einer Zeile: Name, Status, leere Ortsfelder, Verlaufstexte (Regel 6). #>
+    param($Geraet, $Zustand, [string]$Grund)
+    $z = $Zustand.Zeile
+    $verlauf = New-Object System.Collections.ArrayList
+    $felder = [ordered]@{}
+
+    $alterName = Get-Text $z 'Title'
+    $name = Get-KameraName $Geraet
+    if ($name -ne '' -and $alterName -cne $name) {
+        $felder['Title'] = $name
+        if ($alterName -ne '') { [void]$verlauf.Add("Umbenannt in Milestone: $alterName → $name") }
+    }
+    if ($Grund -ne 'Hardware-ID') {
+        [void]$verlauf.Add("Mit Milestone verknüpft (über $Grund)")
+    }
+    if ($Zustand.Status -eq 'Archiviert') {
+        $felder['Status'] = 'Aktiv'
+        [void]$verlauf.Add('Wieder in Milestone vorhanden, reaktiviert')
+    } elseif ($Zustand.Status -eq '') {
+        $felder['Status'] = 'Aktiv'
+    }
+    $altIp = Get-Text $z 'MS_Adresse'
+    $ip = Get-Text $Geraet 'Adresse'
+    if ($altIp -ne '' -and $ip -ne '' -and $altIp -ne $ip) { [void]$verlauf.Add("IP-Adresse geändert: $altIp → $ip") }
+    $altSerie = NormSeriennummer (Get-Text $z 'MS_Seriennummer')
+    $serie = NormSeriennummer (Get-Text $Geraet 'Seriennummer')
+    if ($Grund -eq 'Hardware-ID' -and $altSerie -ne '' -and $serie -ne '' -and $altSerie -ne $serie) {
+        [void]$verlauf.Add("Hardware in Milestone ersetzt: Seriennummer $altSerie → $serie")
+    }
+    $ort = Get-KameraOrt $name
+    if ((Get-Text $z 'Gebaeude') -eq '' -and $ort.Gebaeude -ne '') { $felder['Gebaeude'] = $ort.Gebaeude }
+    if ((Get-Text $z 'Raum') -eq '' -and $ort.Raum -ne '') { $felder['Raum'] = $ort.Raum }
+
+    return [pscustomobject]@{
+        Geraet       = $Geraet
+        Zeile        = $z
+        ZeileId      = $Zustand.Id
+        Grund        = $Grund
+        Titel        = $(if ($alterName) { $alterName } else { $name })
+        StatusAlt    = $Zustand.Status
+        Felder       = $felder
+        VerlaufTexte = @($verlauf.ToArray())
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Milestone-Rollen und Kamerarechte (rein)
+# ---------------------------------------------------------------------------
+
+function ConvertTo-RollenMitglied {
+    <#
+      Ein Mitglied einer Milestone-Rolle (roles/<id>/users) -> Art, Name, Konto.
+        Art   'AD-Gruppe' | 'AD-Benutzer' | 'Basisbenutzer'
+        Name  wie Milestone es zeigt (SASADMIN\Hot_NachtD)
+        Konto sAMAccountName ohne Domäne (Hot_NachtD); bei Basisbenutzern leer
+      Milestone nennt die Art je nach Version identityType, memberType oder userType.
+    #>
+    param($Mitglied)
+    $name = ''
+    foreach ($f in 'accountName', 'name', 'displayName') { $name = Get-Text $Mitglied $f; if ($name) { break } }
+    $domaene = Get-Text $Mitglied 'domain'
+    if ($domaene -and $name -and $name -notmatch '\\') { $name = "$domaene\$name" }
+    $artRoh = ((@('identityType', 'memberType', 'userType', 'type') | ForEach-Object { Get-Text $Mitglied $_ }) -join ' ').ToLowerInvariant()
+    $art = 'AD-Benutzer'
+    if ($artRoh -match 'group|gruppe') { $art = 'AD-Gruppe' }
+    elseif ($artRoh -match 'basic') { $art = 'Basisbenutzer' }
+    $konto = ''
+    if ($art -ne 'Basisbenutzer') { $konto = $(if ($name -match '\\') { $name.Substring($name.LastIndexOf('\') + 1) } else { $name }) }
+    return [pscustomobject]@{ Art = $art; Name = $name; Konto = $konto }
+}
+
+function Get-ListenAenderung {
+    <# Vergleicht zwei Textlisten (ohne Gross-/Kleinschreibung): was dazugekommen und was weggefallen ist. #>
+    param([string[]]$Alt, [string[]]$Neu)
+    $a = @(@($Alt) | Where-Object { $_ } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $n = @(@($Neu) | Where-Object { $_ } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $dazu = @($n | Where-Object { $x = $_; -not ($a | Where-Object { $_ -ieq $x }) } | Sort-Object -Unique)
+    $weg = @($a | Where-Object { $x = $_; -not ($n | Where-Object { $_ -ieq $x }) } | Sort-Object -Unique)
+    return [pscustomobject]@{ Dazu = $dazu; Weg = $weg }
+}
+
+function Format-Aufzaehlung {
+    <# «a, b, c» – nach $Max Namen «und n weitere». #>
+    param([string[]]$Namen, [int]$Max = 8)
+    $l = @($Namen)
+    if ($l.Count -le $Max) { return ($l -join ', ') }
+    return (($l | Select-Object -First $Max) -join ', ') + " und $($l.Count - $Max) weitere"
+}
+
+function ConvertFrom-RollenKameras {
+    <# Spalte MS_Kameras (JSON Hardware-ID -> Rechte) -> Hashtable; leer oder unlesbar -> leer. #>
+    param([string]$Text)
+    $h = @{}
+    $t = ([string]$Text).Trim()
+    if ($t -eq '') { return $h }
+    try { $o = ConvertFrom-Json $t } catch { return $h }
+    if ($null -eq $o) { return $h }
+    foreach ($p in $o.PSObject.Properties) { $h[[string]$p.Name] = @(@($p.Value) | Where-Object { $_ } | ForEach-Object { [string]$_ }) }
+    return $h
+}
+
+function ConvertTo-RollenKameras {
+    <# Hashtable Hardware-ID -> Rechte -> kompaktes JSON, nach ID sortiert (stabil, damit nur echte Änderungen schreiben). #>
+    param($Tabelle)
+    $teile = foreach ($k in @(@($Tabelle.Keys) | Sort-Object)) {
+        $rechte = @(@($Tabelle[$k]) | Where-Object { $_ })
+        (ConvertTo-Json -InputObject ([string]$k) -Compress) + ':[' + ((@($rechte | ForEach-Object { ConvertTo-Json -InputObject ([string]$_) -Compress })) -join ',') + ']'
+    }
+    return '{' + (@($teile) -join ',') + '}'
+}
+
+function Get-RollenVerlauf {
+    <#
+      Verlaufstexte einer Rollenzeile aus altem und neuem Stand: Mitglieder und Kameras, die
+      dazugekommen oder weggefallen sind, und Kameras mit geänderten Rechten. $Namen: Hardware-ID ->
+      Kameraname (für lesbare Texte).
+    #>
+    param([string]$MitgliederAlt, [string]$MitgliederNeu, [string]$KamerasAlt, [string]$KamerasNeu, $Namen)
+    $texte = New-Object System.Collections.ArrayList
+    $m = Get-ListenAenderung ($MitgliederAlt -split "`r?`n") ($MitgliederNeu -split "`r?`n")
+    if ($m.Dazu.Count) { [void]$texte.Add("Mitglied hinzugefügt: $(Format-Aufzaehlung $m.Dazu)") }
+    if ($m.Weg.Count) { [void]$texte.Add("Mitglied entfernt: $(Format-Aufzaehlung $m.Weg)") }
+    $alt = ConvertFrom-RollenKameras $KamerasAlt
+    $neu = ConvertFrom-RollenKameras $KamerasNeu
+    $name = { param($id) if ($Namen -and $Namen.ContainsKey($id)) { $Namen[$id] } else { $id } }
+    $dazu = @($neu.Keys | Where-Object { -not $alt.ContainsKey($_) } | ForEach-Object { & $name $_ } | Sort-Object)
+    $weg = @($alt.Keys | Where-Object { -not $neu.ContainsKey($_) } | ForEach-Object { & $name $_ } | Sort-Object)
+    $anders = @($neu.Keys | Where-Object { $alt.ContainsKey($_) -and ((@($alt[$_]) -join ',') -ne (@($neu[$_]) -join ',')) } | ForEach-Object { & $name $_ } | Sort-Object)
+    if ($dazu.Count) { [void]$texte.Add("Zugriff auf $($dazu.Count) Kamera$(if ($dazu.Count -ne 1) { 's' }) erhalten: $(Format-Aufzaehlung $dazu)") }
+    if ($weg.Count) { [void]$texte.Add("Zugriff auf $($weg.Count) Kamera$(if ($weg.Count -ne 1) { 's' }) verloren: $(Format-Aufzaehlung $weg)") }
+    if ($anders.Count) { [void]$texte.Add("Rechte geändert bei $(Format-Aufzaehlung $anders)") }
+    return @($texte.ToArray())
+}
+
+function Get-KameraRollenText {
+    <# Spalte MS_Rollen einer Kamera: eine Rolle je Zeile, «Rolle: Live, Wiedergabe», nach Rolle sortiert. #>
+    param($Eintraege)
+    $zeilen = foreach ($e in @(@($Eintraege) | Where-Object { $_ } | Sort-Object { Get-Text $_ 'Rolle' })) {
+        '{0}: {1}' -f (Get-Text $e 'Rolle'), ((@(Get-Feld $e 'Rechte') | Where-Object { $_ }) -join ', ')
+    }
+    return (@($zeilen) -join "`n")
+}
+
+function Test-RollenAbgleichFaellig {
+    <# Ist der Abgleich der Rechte fällig? Ja ohne früheren Lauf, sonst nach Ablauf von $Stunden. #>
+    param($LetzterLauf, [double]$Stunden = 6, [datetime]$Jetzt = (Get-Date))
+    if ($Stunden -le 0) { return $true }
+    $d = ConvertTo-Zeitpunkt $LetzterLauf
+    if ($d -eq [datetime]::MinValue) { return $true }
+    return (($Jetzt.ToUniversalTime() - $d.ToUniversalTime()).TotalHours -ge $Stunden)
+}
+
 function Get-SyncStatusKurztext {
     <#
       Einzeiliger Zustand des Laufs für das Frontend (Titel der Datei Inventar/sync-status.json,
@@ -689,7 +1052,7 @@ if ($InventarNurFunktionen) { return }
 #  - Ein zweiter Lauf, während der erste noch arbeitet, beendet sich sofort (Sperre).
 #  - Am Ende steht der Zustand des Laufs in Sync-Inventar.status.json neben dem Log und – für die
 #    Übersicht im Frontend – als Inventar/sync-status.json in der Dokumentbibliothek der Site.
-$SyncVersion = '2026-10-13'
+$SyncVersion = '2026-10-13.2'
 if (-not $ConfigPath) { $ConfigPath = Join-Path $ScriptDir 'Sync-Inventar.config.json' }
 $LogVorgabe = $LogPath
 if (-not $LogPath) { $LogPath = Join-Path $ScriptDir 'Sync-Inventar.log' }
@@ -738,7 +1101,7 @@ function Write-SyncStatus {
       Scheitert das Hochladen, steht eine Warnung im Log – der Lauf selbst gilt deswegen nicht als
       fehlgeschlagen.
     #>
-    $teil = [bool]($WhatIf -or $DumpOnly -or $OnlyDevices -or $OnlyClients -or $OnlyBenutzer -or $OnlyTelefone -or $IncludeServers -or $ClientListen -ne 'Alle')
+    $teil = [bool]($WhatIf -or $DumpOnly -or $OnlyDevices -or $OnlyClients -or $OnlyBenutzer -or $OnlyTelefone -or $OnlyKameras -or $IncludeServers -or $ClientListen -ne 'Alle')
     if ($teil) { return }
     $ende = Get-Date
     $z = Get-LogZaehler
@@ -800,6 +1163,9 @@ Log "==== Sync-Start (Version $SyncVersion, Provider $srv, Site $($cfg.SiteCode)
 $nurBenutzer = [bool]$OnlyBenutzer -and -not $OnlyClients
 # Nur die Telefon-Phase: braucht das AD, aber kein SCCM.
 $nurTelefone = [bool]$OnlyTelefone -and -not $OnlyClients -and -not $OnlyBenutzer
+# Nur die Kamera-Phasen: Milestone (und für die Rollen das AD), kein SCCM.
+$nurKameras = [bool]$OnlyKameras -and -not $OnlyClients -and -not $OnlyBenutzer -and -not $OnlyTelefone
+$mitKameras = $nurKameras -or -not ($OnlyClients -or $OnlyBenutzer -or $OnlyTelefone)
 
 # Rechtzeitig vor dem Ablauf des Anmeldezertifikats warnen (README Abschnitt 7.1).
 try {
@@ -810,7 +1176,7 @@ try {
 $systems = @()
 $primary = @{}
 $sccmOk = $false
-if (-not $nurTelefone) {
+if (-not $nurTelefone -and -not $nurKameras) {
   try {
     # Ein frisch aufgesetztes Gerät steht in SCCM zuerst ohne Betriebssystem da (manueller Eintrag
     # der Betriebssystembereitstellung). «not like '%Server%'» allein liesse es weg (NULL ist nicht
@@ -1033,6 +1399,8 @@ $EduClientListId = Get-ListId $cfg.EduClientListId
 $BenutzerListId = Get-ListId $cfg.BenutzerListId
 $TelefonListId = Get-ListId $cfg.TelefonListId
 $SoftwareListId = Get-ListId $cfg.SoftwareListId
+$KameraListId = Get-ListId $cfg.KameraListId
+$KameraRolleListId = Get-ListId $cfg.KameraRolleListId
 
 # ---------------------------------------------------------------------------
 # Vorhandene Spalten feststellen (nur lesen)
@@ -1449,7 +1817,7 @@ function Get-AdBenutzerAlle {
     return $alle
 }
 
-if (-not $OnlyClients -and -not $OnlyTelefone) {
+if (-not $OnlyClients -and -not $OnlyTelefone -and -not $nurKameras) {
   $fehlerVorher = $fehler
   try {
     if (-not $BenutzerListId) { throw 'BenutzerListId fehlt in der Konfiguration.' }
@@ -1648,7 +2016,7 @@ if (-not $OnlyClients -and -not $OnlyTelefone) {
 # ===========================================================================
 # Phase 3: Telefonnummern (AD-Attribut telephoneNumber)
 # ===========================================================================
-if (-not $OnlyClients -and -not $OnlyBenutzer) {
+if (-not $OnlyClients -and -not $OnlyBenutzer -and -not $nurKameras) {
     if (-not $TelefonListId) {
         Log 'TelefonListId fehlt in der Konfiguration – Telefon-Phase übersprungen (ID steht in den Listeneinstellungen und in frontend\konfig.js).' 'WARN'
     } else {
@@ -1727,6 +2095,322 @@ if (-not $OnlyClients -and -not $OnlyBenutzer) {
         $fehler++
       }
       $script:PhasenStatus['Telefonnummern'] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
+    }
+}
+
+# ===========================================================================
+# Phase 4: Kameras (Milestone XProtect)
+# ===========================================================================
+$kGeraete = @()
+$milestoneOk = $false
+if ($mitKameras) {
+    if (-not $KameraListId) {
+        Log 'KameraListId fehlt in der Konfiguration – Kamera-Phasen übersprungen (ID steht in den Listeneinstellungen und in frontend\konfig.js).' 'WARN'
+    } elseif (-not $cfg.MilestoneServer -or [string]$cfg.MilestoneServer -match '^<') {
+        Log 'MilestoneServer fehlt in der Konfiguration – Kamera-Phasen übersprungen. Sobald das Lesekonto in Milestone eingerichtet ist: Installiere-Sync.ps1 -MilestoneServer http://adminsrv347 (README Abschnitt 7.5).' 'WARN'
+    } else {
+      $fehlerVorher = $fehler
+      try {
+        $kameraBase = "/sites/$SiteId/lists/$KameraListId/items"
+        Set-MilestoneVerbindung $cfg
+        $kGeraete = @(Get-MilestoneGeraete)
+        $milestoneOk = $true
+        Log "Milestone ($($cfg.MilestoneServer), Anmeldung $(if ($cfg.MilestoneAnmeldung) { $cfg.MilestoneAnmeldung } else { 'Windows' })): $($kGeraete.Count) Kamera-Hardware"
+
+        $kErwartet = @('Gebaeude', 'Raum', 'Status', 'Verlauf') + @((ConvertTo-KameraFelder ([pscustomobject]@{ Kanaele = @() })).Keys)
+        $kVorhanden = Get-ListenSpalten $KameraListId 'Kameraliste' $kErwartet
+        $kItems = Get-GraphAlle "$kameraBase`?`$expand=fields&`$top=500"
+        Log "Kameraliste: $($kItems.Count) Zeilen"
+        $kZeilen = New-Object System.Collections.ArrayList
+        foreach ($it in $kItems) {
+            [void]$kZeilen.Add([pscustomobject]@{
+                    Id              = [string]$it.id
+                    Title           = [string]$it.fields.Title
+                    Status          = [string]$it.fields.Status
+                    Gebaeude        = [string]$it.fields.Gebaeude
+                    Raum            = [string]$it.fields.Raum
+                    MS_HardwareId   = [string]$it.fields.MS_HardwareId
+                    MS_Mac          = [string]$it.fields.MS_Mac
+                    MS_Seriennummer = [string]$it.fields.MS_Seriennummer
+                    MS_Adresse      = [string]$it.fields.MS_Adresse
+                    Item            = $it
+                })
+        }
+
+        $kPlan = Get-KameraZuordnung $kGeraete $kZeilen
+        foreach ($w in $kPlan.Warnungen) { Log "Kameras: $w" 'WARN' }
+        $kstats = @{ updated = 0; created = 0; unchanged = 0; archiviert = 0; reaktiviert = 0; umbenannt = 0; uebersprungen = 0 }
+
+        foreach ($zu in $kPlan.Zuordnungen) {
+            $it = $zu.Zeile.Item
+            $felder = ConvertTo-KameraFelder $zu.Geraet $now
+            $delta = [ordered]@{}
+            foreach ($k in $felder.Keys) {
+                if ($k -eq 'MS_LetzterSync') { continue }
+                if ((Norm $felder[$k]) -ne (Norm $it.fields.$k)) { $delta[$k] = $felder[$k] }
+            }
+            foreach ($k in $zu.Felder.Keys) { $delta[$k] = $zu.Felder[$k] }
+            if ($zu.VerlaufTexte.Count -gt 0) {
+                try { $delta['Verlauf'] = Add-VerlaufEintraege -Verlauf ([string]$it.fields.Verlauf) -Texte $zu.VerlaufTexte -Datum $now -Quelle 'sync' -Zeitpunkt $now }
+                catch {
+                    Log "Verlauf der Kamera '$($zu.Titel)' (ID $($zu.ZeileId)) ist unbrauchbar – Zeile übersprungen, damit nichts verloren geht: $_" 'ERROR'
+                    $fehler++; $kstats.uebersprungen++; continue
+                }
+            }
+            if ($delta.Count -eq 0) { $kstats.unchanged++; continue }
+            if ($zu.Felder.Contains('Title') -and $zu.Titel) { $kstats.umbenannt++ }
+            if ($zu.StatusAlt -eq 'Archiviert') { $kstats.reaktiviert++ }
+            $delta['MS_LetzterSync'] = $felder['MS_LetzterSync']
+            $delta = Select-VorhandeneFelder $kVorhanden $delta
+            if ($WhatIf) { Log "WHATIF Kamera-Update $($zu.Titel) (ID $($zu.ZeileId), Treffer über $($zu.Grund)): $($delta.Keys -join ', ')"; $kstats.updated++; continue }
+            try { Invoke-Graph -Method PATCH -Uri "$kameraBase/$($zu.ZeileId)/fields" -Body $delta | Out-Null; $kstats.updated++; Log "Kamera-Update $($zu.Titel) (ID $($zu.ZeileId)): $($delta.Count) Felder" }
+            catch { Log "Kamera-Update-Fehler $($zu.Titel): $_" 'ERROR'; $fehler++ }
+        }
+
+        foreach ($n in $kPlan.Neu) {
+            $felder = ConvertTo-KameraFelder $n.Geraet $now
+            $body = [ordered]@{ Title = $n.Name; Status = $n.Status }
+            if ($n.Gebaeude) { $body['Gebaeude'] = $n.Gebaeude }
+            if ($n.Raum) { $body['Raum'] = $n.Raum }
+            foreach ($k in $felder.Keys) { if ($null -ne $felder[$k]) { $body[$k] = $felder[$k] } }
+            $body['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text $n.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now
+            $body = Select-VorhandeneFelder $kVorhanden $body
+            if ($WhatIf) { Log "WHATIF Kamera neu: $($n.Name) ($($felder['MS_Adresse']))"; $kstats.created++; continue }
+            try { $r = Invoke-Graph -Method POST -Uri $kameraBase -Body @{ fields = $body }; $kstats.created++; Log "Kamera neu: $($n.Name) (ID $($r.id))" }
+            catch { Log "Kamera-Anlage-Fehler $($n.Name): $_" 'ERROR'; $fehler++ }
+        }
+
+        # Verschwundene Hardware: archivieren, nie löschen (Archivschutz wie bei den Clients).
+        $schutz = Test-ArchivSchutz $kGeraete.Count $kPlan.AktiveZeilen $kPlan.Archivieren.Count $LoeschSchutzProzent
+        if (-not $schutz.Erlaubt) {
+            Log "Kameras: Archivschutz greift: $($schutz.Grund -replace 'SCCM', 'Milestone')" 'ERROR'
+            $fehler++
+        } else {
+            foreach ($a in $kPlan.Archivieren) {
+                $it = $a.Zeile.Item
+                $body = [ordered]@{ Status = 'Archiviert'; MS_Gefunden = 'Nein'; MS_SyncStatus = 'Nicht mehr in Milestone'; MS_LetzterSync = (ToIso $now) }
+                try { $body['Verlauf'] = Add-VerlaufEintrag -Verlauf ([string]$it.fields.Verlauf) -Text $a.Verlauf -Datum $now -Quelle 'sync' -Zeitpunkt $now }
+                catch {
+                    Log "Verlauf der Kamera '$($a.Titel)' (ID $($a.ZeileId)) ist unbrauchbar – Zeile übersprungen: $_" 'ERROR'
+                    $fehler++; $kstats.uebersprungen++; continue
+                }
+                $body = Select-VorhandeneFelder $kVorhanden $body
+                if ($WhatIf) { Log "WHATIF Kamera archivieren $($a.Titel) (ID $($a.ZeileId)): $($a.Verlauf)"; $kstats.archiviert++; continue }
+                try { Invoke-Graph -Method PATCH -Uri "$kameraBase/$($a.ZeileId)/fields" -Body $body | Out-Null; $kstats.archiviert++; Log "Kamera archiviert $($a.Titel) (ID $($a.ZeileId)): $($a.Verlauf)" }
+                catch { Log "Fehler beim Archivieren der Kamera $($a.Titel): $_" 'ERROR'; $fehler++ }
+            }
+        }
+        Log ('Kameras fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} archiviert, {4} reaktiviert, {5} umbenannt, {6} übersprungen' -f $kstats.updated, $kstats.created, $kstats.unchanged, $kstats.archiviert, $kstats.reaktiviert, $kstats.umbenannt, $kstats.uebersprungen)
+      } catch {
+        Log "Kameras: Phase abgebrochen – die übrigen Phasen laufen weiter: $_" 'ERROR'
+        $fehler++
+      }
+      $script:PhasenStatus['Kameras'] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
+    }
+}
+
+# ===========================================================================
+# Phase 5: Kamera-Rollen (Rechte aus Milestone, nur lesen)
+# ===========================================================================
+if ($mitKameras -and $milestoneOk -and -not $KameraRolleListId) {
+    Log 'KameraRolleListId fehlt in der Konfiguration – die Rechte der Milestone-Rollen werden nicht abgeglichen.' 'WARN'
+}
+if ($mitKameras -and $milestoneOk -and $KameraRolleListId) {
+    $rechteStunden = 6
+    if ($null -ne $cfg.MilestoneRechteStunden) { $rechteStunden = [double]$cfg.MilestoneRechteStunden }
+    $zustandDatei = Join-Path (Split-Path -Parent $LogPath) 'Sync-Inventar.kamerarechte.json'
+    $letzter = $null
+    if (Test-Path $zustandDatei) { try { $letzter = (Read-JsonDatei $zustandDatei).zeit } catch { } }
+    if (-not $KameraRechteJetzt -and -not (Test-RollenAbgleichFaellig $letzter $rechteStunden $now)) {
+        Log "Kamera-Rollen: letzter Abgleich $letzter – nächster nach $rechteStunden Stunden (sofort mit -KameraRechteJetzt)."
+    } else {
+      $fehlerVorher = $fehler
+      try {
+        $rolleBase = "/sites/$SiteId/lists/$KameraRolleListId/items"
+        $kameraBase = "/sites/$SiteId/lists/$KameraListId/items"
+        $diagnose = [ordered]@{}
+        $rollen = @()
+        try { $rollen = @(Get-MilestoneListe 'roles') }
+        catch {
+            if ($_.Exception.Data['Status'] -eq 403) {
+                throw "Das Konto des Syncs darf die Rollen in Milestone nicht lesen (403). Es braucht eine Rolle mit Leserecht auf «Rollen» bzw. Sicherheit (README Abschnitt 7.5)."
+            }
+            throw
+        }
+        if ($MilestoneDiagnose) { $diagnose['rollen'] = $rollen }
+        Log "Milestone: $($rollen.Count) Rollen"
+
+        # Kanal-ID -> Hardware-ID und Hardware-ID -> Name (aus Phase 4)
+        $hwVonKanal = @{}; $hwName = @{}
+        foreach ($g in $kGeraete) {
+            $hwName[[string]$g.HardwareId] = Get-KameraName $g
+            foreach ($k in @($g.Kanaele)) { $hwVonKanal[[string]$k.Id] = [string]$g.HardwareId }
+        }
+
+        # AD für die Auflösung der Gruppen
+        $mitModul = Test-AdModul
+        if ($mitModul) { Import-Module ActiveDirectory -ErrorAction SilentlyContinue }
+        $domainDn = ''
+        foreach ($ou in @($cfg.AdUserOUs)) { $domainDn = Get-DomainDnAusOu ([string]$ou); if ($domainDn) { break } }
+
+        $rechteLesbar = $true
+        $ergebnisse = New-Object System.Collections.ArrayList
+        foreach ($r in $rollen) {
+            $rid = [string]$r.id
+            $istAdmin = ([string]$r.roleType) -match '(?i)admin'
+            # Mitglieder
+            $mitglieder = @()
+            try {
+                $roh = @(Get-MilestoneListe "roles/$rid/users")
+                if ($MilestoneDiagnose -and -not $diagnose.Contains('mitglieder')) { $diagnose['mitglieder'] = $roh }
+                $mitglieder = @($roh | ForEach-Object { ConvertTo-RollenMitglied $_ })
+            } catch { Log "Rolle «$($r.name)»: Mitglieder nicht lesbar: $($_.Exception.Message)" 'WARN' }
+            # Personen auflösen: direkte AD-Benutzer und rekursive Mitglieder der AD-Gruppen
+            $logins = New-Object System.Collections.Generic.SortedSet[string]([StringComparer]::OrdinalIgnoreCase)
+            $sicher = $true
+            foreach ($m in $mitglieder) {
+                if ($m.Art -eq 'AD-Benutzer' -and $m.Konto) { [void]$logins.Add($m.Konto) }
+                elseif ($m.Art -eq 'AD-Gruppe' -and $m.Konto -and $domainDn) {
+                    $erg = Get-GruppenMitgliederRekursiv $m.Konto $domainDn ([string]$cfg.AdServer) $mitModul
+                    if (-not $erg.Sicher) { $sicher = $false }
+                    foreach ($l in $erg.Logins) { [void]$logins.Add([string]$l) }
+                }
+            }
+            # Rechte je Kamera (Hardware); Administratoren sehen alles
+            $kameras = @{}
+            if ($istAdmin) {
+                foreach ($g in $kGeraete) { $kameras[[string]$g.HardwareId] = @('Vollzugriff') }
+            } elseif ($rechteLesbar) {
+                foreach ($kanalId in @($hwVonKanal.Keys)) {
+                    try {
+                        $antwort = Invoke-Milestone -Pfad "cameras/$kanalId`?task=ChangeSecurityPermissions" -Methode 'POST' -Body @{ userPath = @{ type = 'roles'; id = $rid } } -Versuche 1
+                        if ($MilestoneDiagnose -and -not $diagnose.Contains('rechte')) { $diagnose['rechte'] = $antwort }
+                        $rechte = @(ConvertFrom-MilestoneRechte $antwort)
+                        if ($rechte.Count -eq 0) { continue }
+                        $hw = $hwVonKanal[$kanalId]
+                        $bisher = @(); if ($kameras.ContainsKey($hw)) { $bisher = @($kameras[$hw]) }
+                        $kameras[$hw] = @(Sort-KameraRechte (@($bisher) + @($rechte)))
+                    } catch {
+                        if ($_.Exception.Data['Status'] -eq 403) {
+                            Log "Das Konto des Syncs darf die Rechte der Kameras nicht lesen (403) – nur Rollen und Mitglieder werden abgeglichen. In Milestone braucht die Rolle des Syncs das Recht, die Sicherheit der Kameras zu sehen (README Abschnitt 7.5)." 'ERROR'
+                            $fehler++
+                            $rechteLesbar = $false
+                            break
+                        }
+                        Log "Rolle «$($r.name)», Kamera $($hwName[$hwVonKanal[$kanalId]]): Rechte nicht lesbar: $($_.Exception.Message)" 'WARN'
+                    }
+                }
+            }
+            [void]$ergebnisse.Add([pscustomobject]@{ Rolle = $r; Id = $rid; Admin = $istAdmin; Mitglieder = $mitglieder; Logins = @($logins); Sicher = $sicher; Kameras = $kameras })
+        }
+        if ($MilestoneDiagnose) {
+            try { Write-JsonDatei $diagnose (Join-Path (Split-Path -Parent $LogPath) 'Milestone-Diagnose.json') 10; Log 'Milestone-Diagnose.json geschrieben.' } catch { Log "Milestone-Diagnose.json nicht geschrieben: $_" 'WARN' }
+        }
+
+        # Liste «Kamera-Rollen» schreiben
+        $rVorhanden = Get-ListenSpalten $KameraRolleListId 'Liste «Kamera-Rollen»' @('Verlauf', 'MS_RolleId', 'MS_Gefunden', 'MS_Mitglieder', 'MS_AdGruppen', 'MS_Benutzer', 'MS_Rechte', 'MS_Kameras', 'MS_KameraAnzahl')
+        $rItems = @(Get-GraphAlle "$rolleBase`?`$expand=fields&`$top=500")
+        $rNachId = @{}; $rNachName = @{}
+        foreach ($it in $rItems) {
+            $i = [string]$it.fields.MS_RolleId; if ($i) { $rNachId[$i] = $it }
+            $t = ([string]$it.fields.Title).Trim().ToLowerInvariant(); if ($t -and -not $rNachName.ContainsKey($t)) { $rNachName[$t] = $it }
+        }
+        $rstats = @{ updated = 0; created = 0; unchanged = 0; fehlend = 0 }
+        $gesehen = New-Object System.Collections.Generic.HashSet[string]
+        $kameraRollen = @{}   # Hardware-ID -> Liste {Rolle, Rechte}
+        foreach ($e in $ergebnisse) {
+            $name = [string]$e.Rolle.name
+            foreach ($hw in $e.Kameras.Keys) {
+                if (-not $kameraRollen.ContainsKey($hw)) { $kameraRollen[$hw] = New-Object System.Collections.ArrayList }
+                [void]$kameraRollen[$hw].Add([pscustomobject]@{ Rolle = $name; Rechte = @($e.Kameras[$hw]) })
+            }
+            $alleRechte = @(Sort-KameraRechte (@($e.Kameras.Values | ForEach-Object { $_ })))
+            $felder = [ordered]@{
+                Title           = $name
+                MS_RolleId      = $e.Id
+                MS_Gefunden     = 'Ja'
+                MS_RollenTyp    = $(if ($e.Admin) { 'Administratoren' } else { 'Benutzerdefiniert' })
+                MS_Beschreibung = [string]$e.Rolle.description
+                MS_Mitglieder   = ((@($e.Mitglieder | Sort-Object Art, Name | ForEach-Object { "$($_.Art) | $($_.Name)" })) -join "`n")
+                MS_AdGruppen    = ((@($e.Mitglieder | Where-Object { $_.Art -eq 'AD-Gruppe' } | ForEach-Object { $_.Konto } | Sort-Object -Unique)) -join "`n")
+                MS_Benutzer     = ((@($e.Logins)) -join "`n")
+                MS_Rechte       = ($alleRechte -join "`n")
+                MS_Kameras      = (ConvertTo-RollenKameras $e.Kameras)
+                MS_KameraAnzahl = $e.Kameras.Count
+                MS_SyncStatus   = $(if (-not $rechteLesbar -and -not $e.Admin) { 'Rechte nicht lesbar (Berechtigung des Sync-Kontos in Milestone)' } elseif (-not $e.Sicher) { 'AD-Gruppe nicht vollständig lesbar' } else { 'OK' })
+            }
+            # Ohne lesbare Rechte bleiben Kameras und Rechte der Zeile, wie sie sind.
+            if (-not $rechteLesbar -and -not $e.Admin) { $felder.Remove('MS_Rechte'); $felder.Remove('MS_Kameras'); $felder.Remove('MS_KameraAnzahl') }
+            # Ist eine AD-Gruppe nicht lesbar, bleibt die Personenliste stehen.
+            if (-not $e.Sicher) { $felder.Remove('MS_Benutzer') }
+            $it = $null
+            if ($rNachId.ContainsKey($e.Id)) { $it = $rNachId[$e.Id] } elseif ($rNachName.ContainsKey($name.ToLowerInvariant())) { $it = $rNachName[$name.ToLowerInvariant()] }
+            if ($it) {
+                [void]$gesehen.Add([string]$it.id)
+                $delta = [ordered]@{}
+                foreach ($k in $felder.Keys) { if ((Norm $felder[$k]) -ne (Norm $it.fields.$k)) { $delta[$k] = $felder[$k] } }
+                $texte = @()
+                if ($delta.Contains('Title') -and [string]$it.fields.Title) { $texte += "Umbenannt in Milestone: $($it.fields.Title) → $name" }
+                if ([string]$it.fields.MS_Gefunden -eq 'Nein') { $texte += 'Wieder in Milestone vorhanden' }
+                $texte += @(Get-RollenVerlauf ([string]$it.fields.MS_Mitglieder) ([string]$felder['MS_Mitglieder']) `
+                        ([string]$it.fields.MS_Kameras) $(if ($felder.Contains('MS_Kameras')) { [string]$felder['MS_Kameras'] } else { [string]$it.fields.MS_Kameras }) $hwName)
+                if ($texte.Count) {
+                    try { $delta['Verlauf'] = Add-VerlaufEintraege -Verlauf ([string]$it.fields.Verlauf) -Texte $texte -Datum $now -Quelle 'sync' -Zeitpunkt $now }
+                    catch { Log "Verlauf der Rolle '$name' ist unbrauchbar – Zeile übersprungen: $_" 'ERROR'; $fehler++; continue }
+                }
+                if ($delta.Count -eq 0) { $rstats.unchanged++; continue }
+                $delta['MS_LetzterSync'] = (ToIso $now)
+                $delta = Select-VorhandeneFelder $rVorhanden $delta
+                if ($WhatIf) { Log "WHATIF Rolle-Update ${name}: $($delta.Keys -join ', ')"; $rstats.updated++; continue }
+                try { Invoke-Graph -Method PATCH -Uri "$rolleBase/$($it.id)/fields" -Body $delta | Out-Null; $rstats.updated++; Log "Rolle-Update ${name}: $($delta.Count) Felder" }
+                catch { Log "Rolle-Update-Fehler ${name}: $_" 'ERROR'; $fehler++ }
+            } else {
+                $body = [ordered]@{}
+                foreach ($k in $felder.Keys) { if ($null -ne $felder[$k] -and [string]$felder[$k] -ne '') { $body[$k] = $felder[$k] } }
+                $body['MS_LetzterSync'] = (ToIso $now)
+                $body['Verlauf'] = Add-VerlaufEintrag -Verlauf '' -Text 'Aus Milestone neu angelegt' -Datum $now -Quelle 'sync' -Zeitpunkt $now
+                $body = Select-VorhandeneFelder $rVorhanden $body
+                if ($WhatIf) { Log "WHATIF Rolle neu: $name"; $rstats.created++; continue }
+                try { Invoke-Graph -Method POST -Uri $rolleBase -Body @{ fields = $body } | Out-Null; $rstats.created++; Log "Rolle neu: $name" }
+                catch { Log "Rolle-Anlage-Fehler ${name}: $_" 'ERROR'; $fehler++ }
+            }
+        }
+        # Rollen, die es in Milestone nicht mehr gibt: festhalten, nie löschen.
+        foreach ($it in $rItems) {
+            if ($gesehen.Contains([string]$it.id) -or [string]$it.fields.MS_Gefunden -eq 'Nein' -or -not [string]$it.fields.MS_RolleId) { continue }
+            $body = [ordered]@{ MS_Gefunden = 'Nein'; MS_SyncStatus = 'Nicht mehr in Milestone'; MS_LetzterSync = (ToIso $now) }
+            try { $body['Verlauf'] = Add-VerlaufEintrag -Verlauf ([string]$it.fields.Verlauf) -Text 'In Milestone nicht mehr vorhanden' -Datum $now -Quelle 'sync' -Zeitpunkt $now } catch { }
+            $body = Select-VorhandeneFelder $rVorhanden $body
+            if ($WhatIf) { Log "WHATIF Rolle fehlt in Milestone: $($it.fields.Title)"; $rstats.fehlend++; continue }
+            try { Invoke-Graph -Method PATCH -Uri "$rolleBase/$($it.id)/fields" -Body $body | Out-Null; $rstats.fehlend++; Log "Rolle fehlt in Milestone: $($it.fields.Title)" }
+            catch { Log "Fehler bei der Rolle $($it.fields.Title): $_" 'ERROR'; $fehler++ }
+        }
+
+        # Je Kamera: «Sichtbar für» (nur wenn die Rechte gelesen werden konnten)
+        $kStats2 = 0
+        if ($rechteLesbar) {
+            $kItems2 = @(Get-GraphAlle "$kameraBase`?`$expand=fields(`$select=Title,MS_HardwareId,MS_Rollen)&`$top=500")
+            foreach ($it in $kItems2) {
+                $hw = [string]$it.fields.MS_HardwareId
+                if (-not $hw) { continue }
+                $text = ''
+                if ($kameraRollen.ContainsKey($hw)) { $text = Get-KameraRollenText $kameraRollen[$hw] }
+                if ((Norm $text) -eq (Norm ([string]$it.fields.MS_Rollen))) { continue }
+                $wert = $(if ($text) { $text } else { $null })
+                if ($WhatIf) { $kStats2++; continue }
+                try { Invoke-Graph -Method PATCH -Uri "$kameraBase/$($it.id)/fields" -Body @{ MS_Rollen = $wert } | Out-Null; $kStats2++ }
+                catch { Log "Kamera $($it.fields.Title): «Sichtbar für» nicht geschrieben: $_" 'ERROR'; $fehler++ }
+            }
+        }
+        Log ('Kamera-Rollen fertig: {0} aktualisiert, {1} neu, {2} unverändert, {3} fehlen in Milestone; {4} Kameras mit geänderter Sichtbarkeit' -f $rstats.updated, $rstats.created, $rstats.unchanged, $rstats.fehlend, $kStats2)
+        if (-not $WhatIf -and $fehler -eq $fehlerVorher) {
+            try { Write-JsonDatei ([ordered]@{ zeit = (ToIso $now) }) $zustandDatei } catch { Log "Zustand der Kamera-Rollen nicht geschrieben: $_" 'WARN' }
+        }
+      } catch {
+        Log "Kamera-Rollen: Phase abgebrochen: $_" 'ERROR'
+        $fehler++
+      }
+      $script:PhasenStatus['Kamera-Rollen'] = $(if ($fehler -gt $fehlerVorher) { 'Fehler' } else { 'OK' })
     }
 }
 

@@ -12,6 +12,14 @@
     3. Sync-Inventar.ps1 und Inventar-Gemeinsam.ps1 kopieren und per Prüfsumme kontrollieren.
        Die Konfiguration auf dem Server wird NIE überschrieben: sie ist dort die führende Fassung
        (ClientId, Thumbprint, Listen-IDs). Fehlt sie, bricht das Skript mit einem Hinweis ab.
+       Schlüssel, die es auf dem Server noch nicht gibt, ergänzt das Skript aus
+       Sync-Inventar.config.example.json (nur Werte ohne Platzhalter «<…>»; bestehende Werte
+       bleiben unberührt) – so kommen neue Einstellungen wie KameraListId auf den Server.
+       -MilestoneServer setzt die Adresse des Milestone Management Servers und schaltet damit die
+       Kamera-Phasen ein – erst, wenn das Lesekonto in Milestone eingerichtet ist (README 7.5).
+       Mit -MilestoneBenutzer und -MilestoneKennwort legt es zusätzlich die Anmeldung als
+       Basisbenutzer von Milestone ab: das Kennwort mit DPAPI (LocalMachine) verschlüsselt in
+       <Ziel>\Milestone.kennwort, lesbar nur auf dem Server, und MilestoneAnmeldung = Basis.
     4. Probelauf auf dem Server mit -WhatIf (schreibt nichts). Scheitert er mit einem Abbruch,
        werden die gesicherten Skripte zurückgespielt.
     5. Geplante Aufgabe «Computer Inventar Sync» anlegen oder angleichen: als SYSTEM, alle
@@ -27,6 +35,10 @@
 .EXAMPLE
   # nur prüfen, was auf dem Server liegt und wie die Aufgabe eingestellt ist:
   & .\code\Installiere-Sync.ps1 -Credential $Cred -NurAnzeigen
+
+.EXAMPLE
+  # Anmeldung an Milestone als Basisbenutzer statt mit dem Computerkonto (Kennwort wird abgefragt):
+  & .\code\Installiere-Sync.ps1 -Credential $Cred -MilestoneBenutzer 'inventar-sync' -MilestoneKennwort (Read-Host -AsSecureString 'Kennwort')
 #>
 [CmdletBinding()]
 param(
@@ -37,7 +49,10 @@ param(
     [int]$IntervallMinuten = 30,
     [switch]$OhneTests,
     [switch]$JetztStarten,
-    [switch]$NurAnzeigen
+    [switch]$NurAnzeigen,
+    [string]$MilestoneServer,
+    [string]$MilestoneBenutzer,
+    [securestring]$MilestoneKennwort
 )
 
 $ErrorActionPreference = 'Stop'
@@ -110,6 +125,57 @@ try {
         Write-Host "  $d  $($lokal.Substring(0, 12))"
     }
 
+    # --- 3b) Konfiguration ergänzen (nie überschreiben) ---------------------------
+    Schritt 'Konfiguration auf dem Server ergänzen'
+    $vorlage = Get-Content (Join-Path $ServerDir 'Sync-Inventar.config.example.json') -Raw -Encoding UTF8
+    $kennwortText = $null
+    if ($MilestoneKennwort) {
+        if (-not $MilestoneBenutzer) { throw '-MilestoneKennwort braucht auch -MilestoneBenutzer.' }
+        # Klartext nur für die Übergabe in die verschlüsselte Sitzung; auf dem Server sofort mit DPAPI geschützt.
+        $kennwortText = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($MilestoneKennwort))
+    }
+    $ergaenzt = Invoke-Command -Session $s -ArgumentList $Ziel, $vorlage, $MilestoneBenutzer, $kennwortText, $MilestoneServer {
+        param($Ziel, $VorlageText, $Benutzer, $Kennwort, $Server)
+        $pfad = Join-Path $Ziel 'Sync-Inventar.config.json'
+        $cfg = Get-Content $pfad -Raw -Encoding UTF8 | ConvertFrom-Json
+        $vorlage = $VorlageText | ConvertFrom-Json
+        $neu = @()
+        foreach ($p in $vorlage.PSObject.Properties) {
+            if ($cfg.PSObject.Properties[$p.Name]) { continue }
+            if ($p.Value -is [string] -and $p.Value -match '^<') { continue }
+            $cfg | Add-Member -NotePropertyName $p.Name -NotePropertyValue $p.Value
+            $neu += $p.Name
+        }
+        if ($Kennwort) {
+            Add-Type -AssemblyName System.Security
+            $geschuetzt = [Security.Cryptography.ProtectedData]::Protect([Text.Encoding]::UTF8.GetBytes($Kennwort), [Text.Encoding]::UTF8.GetBytes('ICT-Inventar Milestone'), [Security.Cryptography.DataProtectionScope]::LocalMachine)
+            $datei = Join-Path $Ziel 'Milestone.kennwort'
+            Set-Content -Path $datei -Value ([Convert]::ToBase64String($geschuetzt)) -Encoding ASCII
+            # Nur SYSTEM und Administratoren dürfen die Datei lesen.
+            $acl = New-Object Security.AccessControl.FileSecurity
+            $acl.SetAccessRuleProtection($true, $false)
+            foreach ($wer in 'NT AUTHORITY\SYSTEM', 'BUILTIN\Administrators') {
+                $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($wer, 'FullControl', 'Allow')))
+            }
+            Set-Acl -Path $datei -AclObject $acl
+            foreach ($paar in @(@('MilestoneAnmeldung', 'Basis'), @('MilestoneBenutzer', $Benutzer), @('MilestoneKennwortDatei', $datei))) {
+                if ($cfg.PSObject.Properties[$paar[0]]) { $cfg.($paar[0]) = $paar[1] } else { $cfg | Add-Member -NotePropertyName $paar[0] -NotePropertyValue $paar[1] }
+            }
+            $neu += 'Milestone-Anmeldung (Basis)'
+        }
+        # -MilestoneServer schaltet die Kamera-Phasen ein (überschreibt einen Platzhalter oder alten Wert).
+        if ($Server) {
+            if ($cfg.PSObject.Properties['MilestoneServer']) { $cfg.MilestoneServer = $Server } else { $cfg | Add-Member -NotePropertyName MilestoneServer -NotePropertyValue $Server }
+            $neu += "MilestoneServer = $Server"
+        }
+        if ($neu.Count) {
+            [IO.File]::WriteAllText($pfad, ($cfg | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding($false)))
+        }
+        $neu
+    }
+    $kennwortText = $null
+    if (@($ergaenzt).Count) { Write-Host "  ergänzt: $(@($ergaenzt) -join ', ')" } else { Write-Host '  nichts zu ergänzen' }
+
     # --- 4) Probelauf -------------------------------------------------------------
     # Der Probelauf läuft als SYSTEM über eine einmalige Aufgabe – genau wie der echte Sync. In der
     # Remote-Sitzung selbst erreichte er das AD nicht (zweiter Sprung ohne Anmeldedaten).
@@ -137,7 +203,7 @@ try {
         if (Test-Path $log) { $zeilen = @(Get-Content $log -Encoding UTF8) }
         [pscustomobject]@{ Exit = $exit; Zeilen = $zeilen }
     }
-    $probe.Zeilen | Where-Object { $_ -match '\[(ERROR|WARN)\]|fertig:|Fertig:|WHATIF (Neu|Archiv)' } | ForEach-Object { Write-Host "  $_" }
+    $probe.Zeilen | Where-Object { $_ -match '\[(ERROR|WARN)\]|fertig:|Fertig:|WHATIF (Neu|Archiv)|WHATIF Kamera (neu|archiv)|Milestone' } | ForEach-Object { Write-Host "  $_" }
     $abbruch = @($probe.Zeilen | Where-Object { $_ -match 'Unerwarteter Abbruch|Lauf abgebrochen|Konfiguration .* nicht lesbar' })
     if ($abbruch.Count -gt 0) {
         Write-Host '  Probelauf abgebrochen – die gesicherten Skripte werden zurückgespielt.' -ForegroundColor Red
@@ -163,7 +229,7 @@ try {
         $einstellungen = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 25) -MultipleInstances IgnoreNew `
             -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5)
         $konto = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-        $beschreibung = "ICT-Inventar: SCCM und AD nach SharePoint (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern). Eingerichtet mit Installiere-Sync.ps1 am $(Get-Date -Format 'dd.MM.yyyy HH:mm'). Log: $Ziel\Sync-Inventar.log"
+        $beschreibung = "ICT-Inventar: SCCM, AD und Milestone nach SharePoint (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern, Kameras, Kamera-Rollen). Eingerichtet mit Installiere-Sync.ps1 am $(Get-Date -Format 'dd.MM.yyyy HH:mm'). Log: $Ziel\Sync-Inventar.log"
         Register-ScheduledTask -TaskName $TaskName -Action $aktion -Trigger $ausloeser -Settings $einstellungen -Principal $konto -Description $beschreibung -Force | Out-Null
         $t = Get-ScheduledTask -TaskName $TaskName
         $i = $t | Get-ScheduledTaskInfo
@@ -184,7 +250,7 @@ try {
                 $i = $t | Get-ScheduledTaskInfo
             } while (((Get-Date) -lt $bis) -and ($t.State -eq 'Running' -or $i.LastRunTime -eq $vorher))
             "Ergebnis: $($i.LastTaskResult) (0 = ohne Fehler), gestartet $($i.LastRunTime)"
-            Get-Content (Join-Path $Ziel 'Sync-Inventar.log') -Tail 400 | Where-Object { $_ -match '\[(ERROR|WARN)\]|fertig:|Fertig:|Sync-Start|Neu angelegt|Archiviert|reaktiviert|neu aufgesetzt|Inventar' } | Select-Object -Last 40
+            Get-Content (Join-Path $Ziel 'Sync-Inventar.log') -Tail 600 | Where-Object { $_ -match '\[(ERROR|WARN)\]|fertig:|Fertig:|Sync-Start|Neu angelegt|Archiviert|reaktiviert|neu aufgesetzt|Inventar|Milestone|Kamera neu|Rolle neu' } | Select-Object -Last 50
             $st = Join-Path $Ziel 'Sync-Inventar.status.json'
             if (Test-Path $st) { 'Status:'; Get-Content $st -Raw }
         }

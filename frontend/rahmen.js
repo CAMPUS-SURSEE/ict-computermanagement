@@ -9,7 +9,7 @@
    Ladereihenfolge: konfig.js, bewegung.js, bausteine.js, rahmen.js, MSAL …
    rahmen.js baut den Rahmen SOFORT beim Laden aus dem HTML-Gerüst:
 
-     <body class="app" data-seite="index|client|benutzer|telefon|software|styleguide">
+     <body class="app" data-seite="index|client|benutzer|telefon|software|kamera|kamerarolle|styleguide">
        <a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
        <header class="kopf" id="kopf"></header>
        <nav class="schublade" id="schublade" aria-label="…"></nav>
@@ -116,7 +116,8 @@
        und .setzen({…}) (dieselben Schlüssel; ersetzt nur, was übergeben wird).
        element: einen vorhandenen <header> füllen statt einen neuen zu bauen.
    UI.adresse.client(liste, id, {neu, vorlage, bereich}|bereich) · benutzer(id, …) ·
-     telefon(id, {neu, benutzer, vorlage, bereich}) · software(id, …) ·
+     telefon(id, {neu, benutzer, vorlage, bereich}) · software(id, …) · kamera(id, {neu, bereich}) ·
+     kamerarolle(id, {bereich}) ·
      liste(tab, filter?) (filter: {suche, programm, stufe} → q/pg/ps, andere Schlüssel
      unverändert, oder URLSearchParams/Text) · listeMerken(adresse?) ·
      zurueckZurListe(tab) (gemerkt im Tab, sonst – neuer Tab – höchstens 12 h alt aus
@@ -315,6 +316,14 @@ const Rahmen = (function () {
       const o = adressOptionen(optionen);
       return adresseBauen("software.html", [["id", o.neu ? null : id], ["neu", !!o.neu]], o.bereich);
     },
+    kamera: function (id, optionen) {
+      const o = adressOptionen(optionen);
+      return adresseBauen("kamera.html", [["id", o.neu ? null : id], ["neu", !!o.neu]], o.bereich);
+    },
+    kamerarolle: function (id, optionen) {
+      const o = adressOptionen(optionen);
+      return adresseBauen("kamerarolle.html", [["id", id]], o.bereich);
+    },
     liste: function (tab, filter) {
       const f = filterText(filter);
       return adresseBauen("index.html", [], (tab || "uebersicht") + (f ? "?" + f : ""));
@@ -372,6 +381,10 @@ const Rahmen = (function () {
       { schluessel: "benutzer", text: "Benutzer", sinnbild: "benutzer" },
       { schluessel: "telefone", text: "Telefonnummern", sinnbild: "telefon" },
       { schluessel: "software", text: "Software", sinnbild: "software" }
+    ] },
+    { titel: "Videoüberwachung", eintraege: [
+      { schluessel: "kameras", text: "Kameras", sinnbild: "kamera" },
+      { schluessel: "kamerarechte", text: "Kamerarechte", sinnbild: "schild" }
     ] }
   ];
   for (const g of HAUPTZIELE) for (const e of g.eintraege) e.href = adresse.liste(e.schluessel);

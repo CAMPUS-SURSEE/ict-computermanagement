@@ -10,6 +10,7 @@
      4. Verlauf (Note-Spalte mit JSON-Array in allen Listen)
      5. Anreicherung und Verknüpfung ADMIN-Clients ↔ Benutzer
      6. Telefonnummern: Normalisierung, Kurzwahl, Status, Verknüpfung mit Benutzern
+     7. Kameras und Kamera-Rollen: Kanäle, Rechte, Verknüpfung mit Benutzern
 
    Setzt spalten.js und graph.js (Hilfe) voraus. Keine Abhängigkeit zu einer
    bestimmten Seite: alles sind reine Funktionen über den übergebenen Daten.
@@ -868,6 +869,159 @@ const Modell = (function () {
     return { telefone: nummern, benutzer: leute };
   }
 
+
+  /* ==================================================================
+     7. Kameras und Kamera-Rollen (Milestone XProtect)
+
+     Eine Zeile der Liste «Kameras» steht für eine Hardware; ihre Kanäle
+     stehen als Text in «MS_Kanaele» (eine Zeile je Kanal: «Nr | Name |
+     Aktiv | Aufzeichnung ein»). Die Liste «Kamera-Rollen» trägt je Rolle
+     die Rechte auf die Kameras als JSON «Hardware-ID → Rechte» (MS_Kameras)
+     und die aufgelösten Logins (MS_Benutzer). Dieselben Regeln stehen in
+     Inventar-Gemeinsam.ps1 (Get-KameraOrt) und Sync-Inventar.ps1.
+     ================================================================== */
+
+  const KAMERA_BEWERTUNG = ["Gut", "Genügend", "Schlecht"];
+
+  /** Gebäude und Raum aus einem Kameranamen («10.300 Treppe» → 10 / 10.300). */
+  function kameraOrt(name) {
+    const m = /^([A-Za-z]?\d{1,3})\.([0-9A-Za-z][0-9A-Za-z.\-]*)(\s|$)/.exec(String(name || "").trim());
+    if (!m) return { gebaeude: "", raum: "" };
+    return { gebaeude: m[1].toUpperCase(), raum: (m[1].toUpperCase() + "." + m[2]).replace(/\.$/, "") };
+  }
+
+  /** Kanäle aus «MS_Kanaele». «unbenannt»: Milestone hat dem Kanal keinen
+      eigenen Namen gegeben (Vorgabe «Modell (IP) - Kamera 2»). */
+  function kanaeleLesen(text) {
+    return Hilfe.zeilen(text).map(function (zeile) {
+      const f = Hilfe.felder(zeile);
+      const name = f[1] || "";
+      return {
+        nr: Number(f[0]) || 0,
+        name: name,
+        aktiv: !/deaktiv/i.test(f[2] || ""),
+        aufzeichnung: /ein$/i.test(f[3] || ""),
+        unbenannt: !name || /\(\d{1,3}(\.\d{1,3}){3}\)/.test(name)
+      };
+    });
+  }
+
+  /** «MS_Kameras» einer Rolle: { Hardware-ID: [Rechte] }; Unlesbares → {}. */
+  function rollenKameras(roh) {
+    const t = String(roh || "").trim();
+    if (!t) return {};
+    try {
+      const o = JSON.parse(t);
+      if (!o || typeof o !== "object" || Array.isArray(o)) return {};
+      const r = {};
+      for (const k of Object.keys(o)) r[k] = (Array.isArray(o[k]) ? o[k] : [o[k]]).map(String).filter(Boolean);
+      return r;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /** Mitglieder einer Rolle aus «MS_Mitglieder» («Art | Name» je Zeile). */
+  function rollenMitglieder(text) {
+    return Hilfe.zeilen(text).map(function (zeile) {
+      const f = Hilfe.felder(zeile);
+      return f.length > 1 ? { art: f[0], name: f.slice(1).join(" | ") } : { art: "", name: f[0] };
+    });
+  }
+
+  /** Fehlt der Nachweis (Zweck oder Bewilligung) einer Rolle? */
+  function rolleOhneNachweis(rolle) {
+    return !String(rolle.Zweck || "").trim() || !String(rolle.BewilligtDurch || "").trim();
+  }
+
+  /**
+   * Verknüpft Kameras, Rollen und Benutzer. Verändert die Objekte in place.
+   *
+   * Kameras bekommen: __status, __archiviert, __inMilestone, __aktiv,
+   *   __aufzeichnung, __kanaele, __unbenannt (Zahl der Kanäle ohne Namen),
+   *   __rollen [{rolle, rechte}], __rollenNamen, __ersatzStatus, __such.
+   * Rollen bekommen: __inMilestone, __admin, __mitglieder, __adGruppen,
+   *   __rechte, __kameras [{kamera, rechte}], __kameraIds, __logins,
+   *   __personen (Benutzerzeilen), __unbekannt (Logins ohne Benutzerzeile),
+   *   __ohneNachweis, __such.
+   * Benutzer bekommen: __kameraRollen (Rollen), __kameraAnzahl.
+   *
+   * @param {Array} kameras  Zeilen der Liste «Kameras»
+   * @param {Array} rollen   Zeilen der Liste «Kamera-Rollen»
+   * @param {Array} benutzer Zeilen der Benutzer-Liste (optional)
+   */
+  function kamerasAnreichern(kameras, rollen, benutzer) {
+    const kListe = kameras || [];
+    const rListe = rollen || [];
+    const leute = benutzer || [];
+    const nachHw = new Map();
+    for (const k of kListe) {
+      k.__status = status(k.Status);
+      k.__archiviert = k.__status === "Archiviert";
+      k.__inMilestone = Hilfe.istJa(k.MS_Gefunden);
+      k.__aktiv = Hilfe.istJa(k.MS_Aktiv);
+      k.__aufzeichnung = Hilfe.istJa(k.MS_Aufzeichnung);
+      k.__kanaele = kanaeleLesen(k.MS_Kanaele);
+      k.__unbenannt = k.__kanaele.filter(c => c.unbenannt && c.aktiv).length;
+      k.__rollen = [];
+      /* Nur ein geplantes Ersatzjahr zählt: der Vorschlag «Beschaffung + 5»
+         der Clients passt nicht zu Kameras, die meist länger halten. */
+      k.__ersatzStatus = ersatzStatus(k.ErsatzGeplant, "");
+      const hw = String(k.MS_HardwareId || "").trim();
+      if (hw) nachHw.set(hw, k);
+    }
+    const nachLogin = new Map();
+    for (const b of leute) {
+      b.__kameraRollen = [];
+      b.__kameraAnzahl = 0;
+      const l = schluessel(b.Title);
+      if (l && !nachLogin.has(l)) nachLogin.set(l, b);
+    }
+    for (const r of rListe) {
+      r.__inMilestone = Hilfe.istJa(r.MS_Gefunden);
+      r.__admin = /admin/i.test(String(r.MS_RollenTyp || ""));
+      r.__mitglieder = rollenMitglieder(r.MS_Mitglieder);
+      r.__adGruppen = Hilfe.zeilen(r.MS_AdGruppen);
+      r.__rechte = Hilfe.zeilen(r.MS_Rechte);
+      r.__kameras = [];
+      r.__kameraIds = [];
+      const zuordnung = rollenKameras(r.MS_Kameras);
+      for (const hw of Object.keys(zuordnung)) {
+        const k = nachHw.get(hw);
+        if (!k) continue;
+        r.__kameras.push({ kamera: k, rechte: zuordnung[hw] });
+        r.__kameraIds.push(String(k.id));
+        if (r.__inMilestone) k.__rollen.push({ rolle: r, rechte: zuordnung[hw] });
+      }
+      r.__kameras.sort((a, b) => Hilfe.vergleiche(a.kamera.Title, b.kamera.Title));
+      r.__logins = Hilfe.zeilen(r.MS_Benutzer);
+      r.__personen = [];
+      r.__unbekannt = [];
+      for (const l of r.__logins) {
+        const b = nachLogin.get(schluessel(l));
+        if (b) {
+          r.__personen.push(b);
+          if (r.__inMilestone) b.__kameraRollen.push(r);
+        } else r.__unbekannt.push(l);
+      }
+      r.__personen.sort((a, b) => Hilfe.vergleiche(a.__name || a.Anzeigename || a.Title, b.__name || b.Anzeigename || b.Title));
+      r.__ohneNachweis = rolleOhneNachweis(r);
+      r.__such = (suchtext(r, SPALTEN_KAMERAROLLE) + "  " + r.__adGruppen.join(" ")).toLowerCase();
+    }
+    for (const k of kListe) {
+      k.__rollen.sort((a, b) => Hilfe.vergleiche(a.rolle.Title, b.rolle.Title));
+      k.__rollenNamen = k.__rollen.map(e => String(e.rolle.Title || "").trim()).filter(Boolean);
+      k.__such = (suchtext(k, SPALTEN_KAMERA) + "  " + k.__rollenNamen.join(" ")).toLowerCase();
+    }
+    for (const b of leute) {
+      const ids = new Set();
+      for (const r of b.__kameraRollen) for (const id of r.__kameraIds) ids.add(id);
+      b.__kameraAnzahl = ids.size;
+      b.__kameraRollen.sort((x, y) => Hilfe.vergleiche(x.Title, y.Title));
+    }
+    return { kameras: kListe, rollen: rListe, benutzer: leute };
+  }
+
   return {
     // Geschäftsjahr
     gjVonDatum: gjVonDatum,
@@ -926,6 +1080,14 @@ const Modell = (function () {
     TELEFON_STATUS_WERTE: TELEFON_STATUS_WERTE,
     TELEFON_TYPEN: TELEFON_TYPEN,
     telefonStatus: telefonStatus,
-    telefoneAnreichern: telefoneAnreichern
+    telefoneAnreichern: telefoneAnreichern,
+    // Kameras und Kamera-Rollen
+    KAMERA_BEWERTUNG: KAMERA_BEWERTUNG,
+    kameraOrt: kameraOrt,
+    kanaeleLesen: kanaeleLesen,
+    rollenKameras: rollenKameras,
+    rollenMitglieder: rollenMitglieder,
+    rolleOhneNachweis: rolleOhneNachweis,
+    kamerasAnreichern: kamerasAnreichern
   };
 })();

@@ -60,7 +60,7 @@ if (-not (Test-Path -LiteralPath $Ordner -PathType Container)) {
 }
 $Ordner = (Resolve-Path -LiteralPath $Ordner).Path
 
-$SeitenCss = @('styles.css', 'client.css', 'benutzer.css', 'telefon.css', 'software.css', 'verlauf.css')
+$SeitenCss = @('styles.css', 'client.css', 'benutzer.css', 'telefon.css', 'software.css', 'kamera.css', 'kamerarolle.css', 'verlauf.css')
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 # ---------------------------------------------------------------------------

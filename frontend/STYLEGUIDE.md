@@ -276,10 +276,10 @@ Keine Kurve verlässt [0, 1]: nichts schwingt über, nichts federt.
   · Verteilungen. Jede Zahl öffnet die passende Liste, schon gefiltert.
 - **Software:** Suche + «Neues Programm», eine Karte je Programm.
 
-### 3.3 Detailseiten (`client`, `benutzer`, `telefon`, `software`)
+### 3.3 Detailseiten (`client`, `benutzer`, `telefon`, `software`, `kamera`, `kamerarolle`)
 
 In der Bahn stehen nur `header.seitenkopf#<p>-kopf` und `div.fenster-bereich#<p>-bereich` (Präfix `g`, `b`, `tf`,
-`sw`); alles andere baut das Gerüst `F` aus `fenster.js`.
+`sw`, `km`, `kr`); alles andere baut das Gerüst `F` aus `fenster.js`.
 
 | Teil | Regeln |
 |---|---|
@@ -813,7 +813,7 @@ Bewusst **nicht**: Pfeiltasten-Bedienung der Listen.
 
 1. **HTML-Gerüst** übernehmen: `body.app[data-seite="…"]` mit Sprungmarke, `header.kopf#kopf`, `nav.schublade#schublade`, `.tafel-rahmen > main.tafel#tafel[tabindex=-1]` mit `.ladebalken#ladebalken[hidden]` und `.bahn#inhalt[data-zustand="laden"]`. Detailseite: in der Bahn nur `header.seitenkopf#<p>-kopf` und `div.fenster-bereich#<p>-bereich`. Kein statisches Markup für Dialog, Meldung, Speicherleiste, Laden oder Fehler.
 2. **Kopf:** Google Fonts, `design.css`, `bewegung.css`, `rahmen.css`, die Zeile `<style>@view-transition { navigation: auto; }</style>` (inline, alle Seiten gleich), dann die eigene Seiten-CSS. **Skripte** in der Reihenfolge aus §10, klassisch, ohne `defer`, keine Inline-Skripte (CSP).
-3. **Seiten-CSS** mit eigenem Präfix (`g-`, `b-`, `tf-`, `sw-`, `vl-`; die Hauptseite benennt nach Ansichten) – nur Raster, Breiten, Reihenfolge, Positionen, alle Werte als Tokens. Keine Farben, Radien, Schatten, Schriftgrössen oder -gewichte, Dauern, Kurven, keine `@keyframes`; `:hover` nur in `@media (hover: hover)`.
+3. **Seiten-CSS** mit eigenem Präfix (`g-`, `b-`, `tf-`, `sw-`, `km-`, `kr-`, `vl-`; die Hauptseite benennt nach Ansichten) – nur Raster, Breiten, Reihenfolge, Positionen, alle Werte als Tokens. Keine Farben, Radien, Schatten, Schriftgrössen oder -gewichte, Dauern, Kurven, keine `@keyframes`; `:hover` nur in `@media (hover: hover)`.
 4. **Bauen nur über** `UI.*`, `Rahmen.*`, `Bewegung.*` und – auf Detailseiten – `F.*` (`const F = Fenster.erstellen(p, { liste, neuLaden, nachladen })`). Keine eigenen Kopien von `el`, `knopf`, `sinnbild`, `karte`, `dialog`, `meldung`; kein `innerHTML` mit Daten; kein `title` (→ `titel`, `UI.tipp`); kein `window.confirm`/`alert` (→ `UI.bestaetigen`, `UI.meldung`); Adressen nur über `UI.adresse.*` (hängt `mock=1` selbst an).
 5. **Ablauf:** `Rahmen.zustand('laden', { text, fortschritt })` → Daten holen → zeichnen → `await Rahmen.zustand('inhalt')`; Fehler über `Rahmen.zustand('fehler', …)` bzw. `F.ladefehler`. Kopf: `Rahmen.konto`, `Rahmen.abmelden` (Detailseiten `F.kontoZeigen`); Vorführmodus `Rahmen.vorfuehrung` bzw. `F.bandZeichnen`.
 6. **Jede Ansicht** bekommt Seitenkopf (h1, ohne Lead), Karten, Leerzustand und Fehlerzustand; **genau eine** gefüllte Hauptaktion je Bereich.
@@ -847,7 +847,7 @@ Ordnung. Kommentare zählen nicht mit.
 |---|---|
 | 1. Tokens | jedes `var(--x)` in den CSS-Dateien und in `<style>` ist definiert (CSS, `<style>` oder `setProperty("--x")` in JS); `var(--x, Ersatz)` gilt als Schalter |
 | 2. Keyframes | `@keyframes` nur in `bewegung.css` |
-| 3. Seiten-CSS | `styles.css`, `client.css`, `benutzer.css`, `telefon.css`, `software.css`, `verlauf.css`: keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale |
+| 3. Seiten-CSS | `styles.css`, `client.css`, `benutzer.css`, `telefon.css`, `software.css`, `kamera.css`, `kamerarolle.css`, `verlauf.css`: keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale |
 | 4. JavaScript | kein `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval`, `new Function`, kein `(window.)confirm/alert/prompt`, kein Browser-`title` (→ `titel`, `UI.tipp`) |
 | 5. HTML | kein Inline-`<script>`, keine `on*`-Attribute, keine `javascript:`-Adressen (die `<style>`-Zeile für `@view-transition` ist erlaubt) |
 | 6. MSAL | gleiche `integrity` und `crossorigin="anonymous"` auf allen Seiten, die MSAL laden |

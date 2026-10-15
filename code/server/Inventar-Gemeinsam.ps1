@@ -536,6 +536,8 @@ function Get-InventarKonfiguration {
         BenutzerListId    = (& $wert 'benutzerListId')
         TelefonListId     = (& $wert 'telefonListId')
         SoftwareListId    = (& $wert 'softwareListId')
+        KameraListId      = (& $wert 'kameraListId')
+        KameraRolleListId = (& $wert 'kameraRolleListId')
         LogPath           = $null
     }
     foreach ($n in 'TenantId', 'SiteId') {
@@ -931,4 +933,379 @@ function Test-ProgrammId {
     #>
     param([string]$Id)
     return [bool](([string]$Id) -match '^[A-Za-z][A-Za-z0-9]{0,29}$')
+}
+
+# ---------------------------------------------------------------------------
+# 7) Kameras: reine Helfer (Name, MAC, Hersteller, Rechte)
+# ---------------------------------------------------------------------------
+# Die Kameras kommen aus Milestone XProtect (Management Server adminsrv347, REST-API).
+# Eine Zeile der Liste «Kameras» steht für eine Hardware (ein Gerät); ihre Kanäle (eine
+# 360°-Kamera hat zwei) stehen in der Zeile als Text. Dieselben Regeln für Ort, Hersteller und
+# Rechte stehen gespiegelt in frontend/modell.js.
+
+function Get-KameraOrt {
+    <#
+      Gebäude und Raum aus dem Kameranamen in Milestone. Die Namen folgen dem Muster
+      «<Raum> <Bezeichnung>», der Raum beginnt mit dem Gebäude:
+        «10.300 Treppe Trakt 1»   -> Gebaeude 10, Raum 10.300
+        «33.A20 P3 Kasse A»       -> Gebaeude 33, Raum 33.A20
+        «P1.A03 Kasse»            -> Gebaeude P1, Raum P1.A03
+        «17.101.5 Anlieferung»    -> Gebaeude 17, Raum 17.101.5
+      Ein Name ohne dieses Muster («AXIS M3086-V (10.11.15.176) - Kamera 2») ergibt leere Werte.
+    #>
+    param([string]$Name)
+    $n = ([string]$Name).Trim()
+    if ($n -match '^(?<g>[A-Za-z]?\d{1,3})\.(?<r>[0-9A-Za-z][0-9A-Za-z.\-]*)(\s|$)') {
+        $g = $Matches['g'].ToUpperInvariant()
+        $r = ($Matches['g'].ToUpperInvariant() + '.' + $Matches['r']).TrimEnd('.')
+        return [pscustomobject]@{ Gebaeude = $g; Raum = $r }
+    }
+    return [pscustomobject]@{ Gebaeude = ''; Raum = '' }
+}
+
+function NormMac {
+    <# MAC-Adresse für Abgleich und Anzeige: 988B0A43B99D, 98-8b-0a-43-b9-9d -> 98:8B:0A:43:B9:9D; Unbrauchbares -> ''. #>
+    param([string]$Mac)
+    $h = (([string]$Mac) -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+    if ($h.Length -ne 12 -or $h -match '^0+$' -or $h -match '^F+$') { return '' }
+    return (($h -split '(..)' | Where-Object { $_ }) -join ':')
+}
+
+function Get-KameraAdresse {
+    <# IP-Adresse oder Hostname aus der Adresse der Hardware in Milestone («http://10.11.15.151/» -> 10.11.15.151). #>
+    param([string]$Adresse)
+    $a = ([string]$Adresse).Trim()
+    if ($a -eq '') { return '' }
+    try { $u = [uri]$a; if ($u.IsAbsoluteUri -and $u.Host) { return $u.Host } } catch { }
+    return ($a -replace '^[a-z]+://', '' -replace '[:/].*$', '')
+}
+
+function Get-KameraModell {
+    <#
+      Hersteller und Modell aus dem Modelltext von Milestone:
+        «HikVision DS-2CD2745FWD-IZS»            -> Hikvision | DS-2CD2745FWD-IZS
+        «AXIS M3086-V Network Camera»            -> Axis | M3086-V
+        «AXIS P3285-LV Dome Camera»              -> Axis | P3285-LV
+        «Axis225FD»                              -> Axis | 225FD
+        «Interlogix DS-2DE3204W-DE»              -> Interlogix | DS-2DE3204W-DE
+    #>
+    param([string]$Text)
+    $t = ([string]$Text).Trim()
+    if ($t -eq '') { return [pscustomobject]@{ Hersteller = ''; Modell = '' } }
+    $bekannt = @{ 'hikvision' = 'Hikvision'; 'axis' = 'Axis'; 'interlogix' = 'Interlogix'; 'bosch' = 'Bosch'; 'dahua' = 'Dahua'; 'hanwha' = 'Hanwha'; 'mobotix' = 'Mobotix'; 'sony' = 'Sony'; 'panasonic' = 'Panasonic'; 'vivotek' = 'Vivotek'; 'uniview' = 'Uniview' }
+    $hersteller = ''
+    $rest = $t
+    foreach ($k in $bekannt.Keys) {
+        if ($t.ToLowerInvariant().StartsWith($k)) {
+            $hersteller = $bekannt[$k]
+            $rest = $t.Substring($k.Length).Trim()
+            break
+        }
+    }
+    if ($hersteller -eq '') {
+        $teile = $t -split '\s+', 2
+        $hersteller = $teile[0]
+        $rest = $(if ($teile.Count -gt 1) { $teile[1] } else { '' })
+    }
+    $rest = ($rest -replace '\s+(Fixed\s+)?(Bullet\s+)?(Dome\s+)?(Network\s+)?Camera$', '').Trim()
+    if ($rest -eq '') { $rest = $t }
+    return [pscustomobject]@{ Hersteller = $hersteller; Modell = $rest }
+}
+
+# Rechte einer Rolle auf eine Kamera. Milestone liefert sie als Ja/Nein-Werte mit Namen wie
+# VIEW_LIVE oder PLAYBACK (je nach Schnittstelle auch viewLive). Verglichen wird ohne
+# Unterstriche und ohne Gross-/Kleinschreibung. GENERIC_READ ist Voraussetzung für alles und
+# wird nicht eigens genannt; Unbekanntes bleibt mit seinem Namen stehen.
+$script:KameraRechtNamen = [ordered]@{
+    'viewlive'               = 'Live'
+    'playback'               = 'Wiedergabe'
+    'export'                 = 'Export'
+    'sequences'              = 'Sequenzen'
+    'smartsearch'            = 'Intelligente Suche'
+    'ptzcontrol'             = 'PTZ'
+    'ptz'                    = 'PTZ'
+    'ptzpresetcontrol'       = 'PTZ-Positionen'
+    'startrecording'         = 'Manuelle Aufzeichnung'
+    'manualrecording'        = 'Manuelle Aufzeichnung'
+    'bookmarkview'           = 'Lesezeichen ansehen'
+    'bookmarkadd'            = 'Lesezeichen erstellen'
+    'bookmarkedit'           = 'Lesezeichen bearbeiten'
+    'bookmarkdelete'         = 'Lesezeichen löschen'
+    'evidencelockview'       = 'Beweissicherung ansehen'
+    'evidencelockcreate'     = 'Beweissicherung erstellen'
+    'evidencelockedit'       = 'Beweissicherung bearbeiten'
+    'evidencelockdelete'     = 'Beweissicherung löschen'
+    'retrieveedgerecordings' = 'Edge-Aufnahmen abrufen'
+    'audiolive'              = 'Audio live'
+    'audioplayback'          = 'Audio Wiedergabe'
+}
+$script:KameraRechtIgnorieren = @('genericread', 'genericwrite', 'genericdelete', 'managesecurity', 'readsecurity', 'fullcontrol', 'enabled')
+
+function Get-KameraRechtName {
+    <# Anzeigename eines Rechts aus Milestone; '' für Rechte, die nicht genannt werden. #>
+    param([string]$Schluessel)
+    $k = (([string]$Schluessel) -replace '[_\s-]', '').ToLowerInvariant()
+    if ($k -eq '' -or $script:KameraRechtIgnorieren -contains $k) { return '' }
+    if ($script:KameraRechtNamen.Contains($k)) { return $script:KameraRechtNamen[$k] }
+    return [string]$Schluessel
+}
+
+function Test-MilestoneWahr {
+    <# Ja/Nein-Wert aus Milestone: $true, 'True', 'true', 'Allow' -> $true. #>
+    param($Wert)
+    if ($Wert -is [bool]) { return $Wert }
+    $s = ([string]$Wert).Trim().ToLowerInvariant()
+    return ($s -eq 'true' -or $s -eq 'allow' -or $s -eq 'ja' -or $s -eq 'yes')
+}
+
+function Find-MilestoneRechte {
+    <#
+      Sammelt rekursiv die Namen der Eigenschaften mit wahrem Ja/Nein-Wert, die nach einem Recht
+      aussehen: GROSS_MIT_UNTERSTRICH (VIEW_LIVE) oder ein bekannter Name (viewLive). Andere
+      Ja/Nein-Felder der Antwort (etwa «enabled» einer Hülle) zählen so nicht.
+    #>
+    param($Objekt, [System.Collections.ArrayList]$Gefunden, [int]$Tiefe)
+    if ($null -eq $Objekt -or $Tiefe -gt 6 -or $Objekt -is [string] -or $Objekt -is [valuetype]) { return }
+    if ($Objekt -is [System.Collections.IEnumerable] -and -not ($Objekt -is [System.Collections.IDictionary])) {
+        foreach ($e in $Objekt) { Find-MilestoneRechte $e $Gefunden ($Tiefe + 1) }
+        return
+    }
+    $paare = @()
+    if ($Objekt -is [System.Collections.IDictionary]) { $paare = @($Objekt.Keys | ForEach-Object { [pscustomobject]@{ Name = [string]$_; Value = $Objekt[$_] } }) }
+    else { $paare = @($Objekt.PSObject.Properties | ForEach-Object { [pscustomobject]@{ Name = $_.Name; Value = $_.Value } }) }
+    foreach ($p in $paare) {
+        $v = $p.Value
+        if ($v -is [bool] -or ($v -is [string] -and $v -match '^(?i)(true|false|allow|deny)$')) {
+            $norm = ($p.Name -replace '[_\s-]', '').ToLowerInvariant()
+            $wieRecht = ($p.Name -cmatch '^[A-Z][A-Z0-9_]+$') -or $script:KameraRechtNamen.Contains($norm)
+            if ($wieRecht -and (Test-MilestoneWahr $v) -and -not $Gefunden.Contains($p.Name)) { [void]$Gefunden.Add($p.Name) }
+        } elseif ($null -ne $v -and -not ($v -is [string])) {
+            Find-MilestoneRechte $v $Gefunden ($Tiefe + 1)
+        }
+    }
+}
+
+function ConvertFrom-MilestoneRechte {
+    <#
+      Antwort der Aufgabe «ChangeSecurityPermissions» einer Kamera -> Liste der gewährten Rechte
+      (Anzeigenamen, sortiert wie $KameraRechtNamen, Unbekanntes danach). Gesucht wird rekursiv
+      nach Eigenschaften mit Ja/Nein-Wert, deren Name nach einem Recht aussieht (VIEW_LIVE,
+      viewLive …); verschachtelte Hüllen («data», «properties») sind egal. Ohne Live und ohne
+      Wiedergabe sieht die Rolle keine Bilder: dann ist die Liste leer.
+    #>
+    param($Antwort)
+    $gefunden = New-Object System.Collections.ArrayList
+    Find-MilestoneRechte $Antwort $gefunden 0
+    $namen = New-Object System.Collections.ArrayList
+    foreach ($k in $gefunden) {
+        $n = Get-KameraRechtName $k
+        if ($n -ne '' -and -not $namen.Contains($n)) { [void]$namen.Add($n) }
+    }
+    if (-not ($namen.Contains('Live') -or $namen.Contains('Wiedergabe'))) { return @() }
+    return @(Sort-KameraRechte $namen)
+}
+
+function Sort-KameraRechte {
+    <# Rechte in fester Reihenfolge (Live, Wiedergabe, Export …), Unbekanntes alphabetisch danach, ohne Doppel. #>
+    param($Rechte)
+    $reihe = @($script:KameraRechtNamen.Values | Select-Object -Unique)
+    $liste = @(@($Rechte) | Where-Object { $_ } | Select-Object -Unique)
+    $bekannt = @($reihe | Where-Object { $liste -contains $_ })
+    $rest = @($liste | Where-Object { $reihe -notcontains $_ } | Sort-Object)
+    return @($bekannt + $rest)
+}
+
+# ---------------------------------------------------------------------------
+# 8) Milestone XProtect: Anmeldung und REST-Zugriff
+# ---------------------------------------------------------------------------
+# Anmeldung am Identity Provider des Management Servers (http://<server>/idp/connect/token):
+#   Windows - mit dem Konto, unter dem das Skript läuft (Sync: SYSTEM = Computerkonto des
+#             Servers). Kein Kennwort; Kerberos/NTLM schützen die Anmeldung auch über HTTP.
+#   Basis   - mit einem Basisbenutzer von Milestone (Benutzername und Kennwort). Das Kennwort
+#             liegt mit DPAPI (LocalMachine) verschlüsselt in einer Datei neben dem Sync und
+#             geht bei jeder Anmeldung im Klartext zum Server, solange nur HTTP geht.
+# Das Token gilt eine Stunde; Invoke-Milestone holt nach 50 Minuten oder bei 401 ein neues.
+
+$script:MilestoneBasis = $null
+$script:MilestoneToken = $null
+$script:MilestoneTokenZeit = Get-Date
+$script:MilestoneTokenProvider = $null
+
+function Protect-MilestoneKennwort {
+    <# Kennwort (SecureString) -> Base64 mit DPAPI LocalMachine: nur auf diesem Rechner lesbar. #>
+    param([Parameter(Mandatory = $true)][securestring]$Kennwort)
+    Add-Type -AssemblyName System.Security
+    $klar = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($Kennwort))
+    $bytes = [Text.Encoding]::UTF8.GetBytes($klar)
+    $geschuetzt = [Security.Cryptography.ProtectedData]::Protect($bytes, [Text.Encoding]::UTF8.GetBytes('ICT-Inventar Milestone'), [Security.Cryptography.DataProtectionScope]::LocalMachine)
+    return [Convert]::ToBase64String($geschuetzt)
+}
+
+function Unprotect-MilestoneKennwort {
+    <# Gegenstück zu Protect-MilestoneKennwort; liefert den Klartext nur für die Anmeldung. #>
+    param([Parameter(Mandatory = $true)][string]$Base64)
+    Add-Type -AssemblyName System.Security
+    $bytes = [Security.Cryptography.ProtectedData]::Unprotect([Convert]::FromBase64String($Base64.Trim()), [Text.Encoding]::UTF8.GetBytes('ICT-Inventar Milestone'), [Security.Cryptography.DataProtectionScope]::LocalMachine)
+    return [Text.Encoding]::UTF8.GetString($bytes)
+}
+
+function Get-MilestoneTokenAnfrage {
+    <#
+      Holt ein Access-Token beim Identity Provider. $Cfg braucht MilestoneServer und optional
+      MilestoneAnmeldung (Windows | Basis), MilestoneBenutzer, MilestoneKennwortDatei.
+      $Credential: Windows-Anmeldung mit einem anderen Konto (Werkzeuge vom Arbeitsplatz).
+    #>
+    param($Cfg, [pscredential]$Credential)
+    $basis = ([string]$Cfg.MilestoneServer).TrimEnd('/')
+    if (-not $basis) { throw 'MilestoneServer fehlt in der Konfiguration (z. B. http://adminsrv347).' }
+    $art = [string]$Cfg.MilestoneAnmeldung
+    if (-not $art) { $art = 'Windows' }
+    $p = @{ Method = 'Post'; Uri = "$basis/idp/connect/token"; ContentType = 'application/x-www-form-urlencoded'; TimeoutSec = 60 }
+    # PowerShell 7 verweigert Negotiate über HTTP ohne ausdrückliche Erlaubnis; Kerberos/NTLM
+    # schicken dabei kein Kennwort im Klartext.
+    if ($PSVersionTable.PSVersion.Major -ge 6 -and $basis -like 'http:*') { $p['AllowUnencryptedAuthentication'] = $true }
+    if ($art -eq 'Basis') {
+        $datei = [string]$Cfg.MilestoneKennwortDatei
+        if (-not $Cfg.MilestoneBenutzer -or -not $datei -or -not (Test-Path $datei)) {
+            throw 'Für die Anmeldung «Basis» fehlen MilestoneBenutzer oder die Kennwortdatei (Installiere-Sync.ps1 -MilestoneKennwort).'
+        }
+        $kennwort = Unprotect-MilestoneKennwort (Get-Content $datei -Raw)
+        $p['Body'] = @{ grant_type = 'password'; username = [string]$Cfg.MilestoneBenutzer; password = $kennwort; client_id = 'GrantValidatorClient' }
+    } else {
+        $p['Body'] = @{ grant_type = 'windows_credentials'; client_id = 'GrantValidatorClient' }
+        if ($Credential) { $p['Credential'] = $Credential } else { $p['UseDefaultCredentials'] = $true }
+    }
+    for ($versuch = 1; $versuch -le 3; $versuch++) {
+        try {
+            $antwort = Invoke-RestMethod @p
+            if (-not $antwort.access_token) { throw 'Der Identity Provider hat kein Token geliefert.' }
+            return [string]$antwort.access_token
+        } catch {
+            $status = Get-HttpStatus $_
+            if ($versuch -ge 3 -or ($status -ge 400 -and $status -lt 500)) {
+                $hinweis = ''
+                if ($status -eq 400 -or $status -eq 401) { $hinweis = ' – das Konto ist in Milestone keiner Rolle zugeordnet oder das Kennwort stimmt nicht (README Abschnitt 7.5).' }
+                throw "Anmeldung an Milestone ($basis, $art) fehlgeschlagen: $($_.Exception.Message) $($_.ErrorDetails.Message)$hinweis"
+            }
+            Start-Sleep -Seconds (10 * $versuch)
+        }
+    }
+}
+
+function Set-MilestoneVerbindung {
+    <# Legt Server und Anmeldung für Invoke-Milestone fest. #>
+    param($Cfg, [pscredential]$Credential)
+    $script:MilestoneBasis = ([string]$Cfg.MilestoneServer).TrimEnd('/')
+    $script:MilestoneCfg = $Cfg
+    $script:MilestoneCredential = $Credential
+    $script:MilestoneTokenProvider = { Get-MilestoneTokenAnfrage $script:MilestoneCfg $script:MilestoneCredential }
+    $script:MilestoneToken = $null
+}
+
+function Invoke-Milestone {
+    <#
+      Aufruf der REST-Schnittstelle von Milestone (Pfad relativ zu /API/rest/v1, z. B. 'hardware').
+      Wiederholt wie Invoke-Graph (Get-GraphWiederholung): 401 -> neu anmelden, 429/503 und
+      Netzfehler bei lesenden Aufrufen -> warten. Ein POST einer Aufgabe ändert hier nie etwas
+      (ChangeSecurityPermissions ohne Rechte liest nur), wird aber trotzdem nicht wiederholt.
+    #>
+    param([string]$Pfad, [string]$Methode = 'GET', $Body, [int]$Versuche = 4)
+    if (-not $script:MilestoneTokenProvider) { throw 'Set-MilestoneVerbindung wurde nicht aufgerufen.' }
+    $uri = $Pfad
+    if ($uri -notmatch '^https?://') { $uri = $script:MilestoneBasis + '/API/rest/v1/' + $Pfad.TrimStart('/') }
+    $neuAngemeldet = $false
+    for ($try = 1; $try -le $Versuche; $try++) {
+        if (-not $script:MilestoneToken -or ((Get-Date) - $script:MilestoneTokenZeit).TotalMinutes -gt 50) {
+            $script:MilestoneToken = & $script:MilestoneTokenProvider
+            $script:MilestoneTokenZeit = Get-Date
+        }
+        $p = @{ Method = $Methode; Uri = $uri; Headers = @{ Authorization = "Bearer $script:MilestoneToken"; Accept = 'application/json' }; TimeoutSec = 120 }
+        if ($null -ne $Body) {
+            $p['Body'] = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 8 -Compress))
+            $p['ContentType'] = 'application/json; charset=utf-8'
+        }
+        try {
+            return Invoke-RestMethod @p
+        } catch {
+            $f = $_
+            $status = Get-HttpStatus $f
+            $plan = Get-GraphWiederholung -Status $status -Methode $Methode -Versuch $try -SchonNeuAngemeldet $neuAngemeldet
+            if ($plan.Wiederholen -and $try -lt $Versuche) {
+                if ($plan.NeuAnmelden) { $neuAngemeldet = $true; $script:MilestoneToken = $null; continue }
+                Start-Sleep -Seconds ([int][math]::Min(30, $plan.Warten))
+                continue
+            }
+            $e = New-Object Exception("Milestone $Methode $Pfad fehlgeschlagen: $($f.Exception.Message) $($f.ErrorDetails.Message)")
+            $e.Data['Status'] = $status
+            throw $e
+        }
+    }
+}
+
+function Get-MilestoneListe {
+    <# Eine Sammlung der REST-Schnittstelle als Array (die Antwort trägt sie in «array»). #>
+    param([string]$Pfad)
+    $r = Invoke-Milestone -Pfad $Pfad
+    if ($null -eq $r) { return @() }
+    if ($r.PSObject.Properties['array']) { return @($r.array) }
+    return @($r)
+}
+
+function Get-MilestoneGeraete {
+    <#
+      Liest alle Kamera-Hardware aus Milestone: Hardware, ihre Kanäle (Kameras) und die
+      Treiber-Einstellungen (MAC, Seriennummer, Firmware) – ein Objekt je Hardware.
+      Hardware ohne Kamera-Kanal (reine E/A-Module) zählt nicht.
+    #>
+    $server = @{}
+    foreach ($rs in (Get-MilestoneListe 'recordingServers')) { $server[[string]$rs.id] = [string]$rs.displayName }
+    $kanaeleVon = @{}
+    foreach ($c in (Get-MilestoneListe 'cameras')) {
+        $hw = [string]$c.relations.parent.id
+        if (-not $kanaeleVon.ContainsKey($hw)) { $kanaeleVon[$hw] = New-Object System.Collections.ArrayList }
+        [void]$kanaeleVon[$hw].Add([pscustomobject]@{
+                Id           = [string]$c.id
+                Name         = [string]$c.name
+                Kanal        = [int]$c.channel
+                Aktiv        = [bool]$c.enabled
+                Aufzeichnung = [bool]$c.recordingEnabled
+                Geaendert    = [string]$c.lastModified
+            })
+    }
+    $liste = New-Object System.Collections.ArrayList
+    foreach ($h in (Get-MilestoneListe 'hardware')) {
+        $id = [string]$h.id
+        if (-not $kanaeleVon.ContainsKey($id)) { continue }
+        $mac = ''; $serie = ''; $firmware = ''; $treiberModell = ''
+        try {
+            $s = Invoke-Milestone -Pfad "hardware/$id/hardwareDriverSettings"
+            $einst = @(@($s.array) + @($s.data) | Where-Object { $_ })
+            foreach ($e in $einst) {
+                $d = $e.hardwareDriverSettings
+                if (-not $d) { continue }
+                if ($d.macAddress) { $mac = [string]$d.macAddress }
+                if ($d.serialNumber) { $serie = [string]$d.serialNumber }
+                if ($d.firmwareVersion) { $firmware = [string]$d.firmwareVersion }
+                if ($d.detectedModelName) { $treiberModell = [string]$d.detectedModelName }
+            }
+        } catch {
+            # Ohne Treiberdaten bleibt die Hardware trotzdem zuordenbar (über ihre ID).
+            Log "Milestone: Treiberdaten von $($h.name) nicht lesbar: $($_.Exception.Message)" 'WARN'
+        }
+        $kanaele = @($kanaeleVon[$id] | Sort-Object Kanal)
+        [void]$liste.Add([pscustomobject]@{
+                HardwareId      = $id
+                HardwareName    = [string]$h.name
+                Adresse         = Get-KameraAdresse ([string]$h.address)
+                Modell          = $(if ($h.model) { [string]$h.model } else { $treiberModell })
+                HardwareAktiv   = [bool]$h.enabled
+                Geaendert       = [string]$h.lastModified
+                RecordingServer = [string]$server[[string]$h.relations.parent.id]
+                Mac             = $mac
+                Seriennummer    = $serie
+                Firmware        = $firmware
+                Kanaele         = $kanaele
+            })
+    }
+    return @($liste.ToArray())
 }

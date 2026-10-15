@@ -1,0 +1,164 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "Rolle",
+        "type":  "Title",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Name der Rolle in Milestone. Der Abgleich legt die Zeile an und führt den Namen nach"
+    },
+    {
+        "internal":  "Zweck",
+        "display":  "Zweck",
+        "type":  "Note",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Wozu diese Rolle Kamerabilder sehen darf (Datenschutz-Nachweis)"
+    },
+    {
+        "internal":  "BewilligtDurch",
+        "display":  "Bewilligt durch",
+        "type":  "Text",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Wer den Zugriff bewilligt hat"
+    },
+    {
+        "internal":  "BewilligtAm",
+        "display":  "Bewilligt am",
+        "type":  "Text",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Datum der Bewilligung, Schreibweise 2026-10-13"
+    },
+    {
+        "internal":  "Bemerkung",
+        "display":  "Bemerkung",
+        "type":  "Note",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Freitext"
+    },
+    {
+        "internal":  "Verlauf",
+        "display":  "Verlauf",
+        "type":  "Note",
+        "group":  "Nachweis",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; der Abgleich hält dort Änderungen an Mitgliedern und Kameras fest"
+    },
+    {
+        "internal":  "MS_RolleId",
+        "display":  "Rollen-ID (Milestone)",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "ID der Rolle in Milestone; damit findet der Abgleich die Zeile wieder"
+    },
+    {
+        "internal":  "MS_Gefunden",
+        "display":  "In Milestone",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ja, solange die Rolle in Milestone steht"
+    },
+    {
+        "internal":  "MS_RollenTyp",
+        "display":  "Rollentyp",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Administratoren oder Benutzerdefiniert"
+    },
+    {
+        "internal":  "MS_Beschreibung",
+        "display":  "Beschreibung (Milestone)",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Beschreibung der Rolle in Milestone"
+    },
+    {
+        "internal":  "MS_Mitglieder",
+        "display":  "Mitglieder",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ein Mitglied je Zeile: Art | Name, z. B. «AD-Gruppe | Hot_NachtD» oder «Basisbenutzer | admin»"
+    },
+    {
+        "internal":  "MS_AdGruppen",
+        "display":  "AD-Gruppen",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  true,
+        "description":  "sAMAccountNames der AD-Gruppen unter den Mitgliedern, eine je Zeile"
+    },
+    {
+        "internal":  "MS_Benutzer",
+        "display":  "Personen (aufgelöst)",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Logins aller Personen mit dieser Rolle, eine je Zeile: direkte Mitglieder und die rekursiven Mitglieder der AD-Gruppen"
+    },
+    {
+        "internal":  "MS_Rechte",
+        "display":  "Rechte",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  true,
+        "description":  "Rechte, die die Rolle auf mindestens einer Kamera hat, eines je Zeile (Live, Wiedergabe, Export …)"
+    },
+    {
+        "internal":  "MS_Kameras",
+        "display":  "Kameras (Rechte je Kamera)",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "JSON-Objekt Hardware-ID -> Liste der Rechte, z. B. {\"012a…\":[\"Live\",\"Wiedergabe\"]}; daraus zeigt das Frontend die Kameras der Rolle"
+    },
+    {
+        "internal":  "MS_KameraAnzahl",
+        "display":  "Anzahl Kameras",
+        "type":  "Number",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  true,
+        "description":  "Kameras (Hardware), auf die die Rolle mindestens ein Recht hat"
+    },
+    {
+        "internal":  "MS_LetzterSync",
+        "display":  "Letzter Milestone-Abgleich",
+        "type":  "DateTime",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Zeitpunkt des letzten Laufs, der diese Zeile abgeglichen hat"
+    },
+    {
+        "internal":  "MS_SyncStatus",
+        "display":  "Abgleich-Status",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ergebnis des letzten Abgleichs dieser Zeile"
+    }
+]

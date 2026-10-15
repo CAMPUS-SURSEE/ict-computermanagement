@@ -5,8 +5,9 @@
    Anmeldung an Entra ID und aus den SharePoint-Berechtigungen der
    angemeldeten Person.
 
-   Es gibt fünf Listen: «adminClientListId», «eduClientListId»,
-   «benutzerListId», «telefonListId» und «softwareListId». Alle IDs stehen in
+   Es gibt sieben Listen: «adminClientListId», «eduClientListId»,
+   «benutzerListId», «telefonListId», «softwareListId», «kameraListId» und
+   «kameraRolleListId». Alle IDs stehen in
    den Listeneinstellungen in SharePoint. Solange ein Platzhalter steht,
    zeigt das Frontend eine verständliche Meldung statt einer Fehlerkaskade. */
 
@@ -41,6 +42,14 @@ const KONFIG = {
      Softwarefenster software.html). */
   softwareListId: "047562f5-2646-48e4-a03a-51b5c3a7a5fd",
 
+  /* Videoüberwachung: «Kameras» (eine Zeile je Hardware in Milestone) und
+     «Kamera-Rollen» (die Rollen aus Milestone mit ihren Rechten auf die
+     Kameras). Beide füllt der Sync aus Milestone XProtect (adminsrv347);
+     von Hand gepflegt werden nur Ort, Bewertung, Beschaffung, Zweck und
+     Bewilligung. */
+  kameraListId: "a85c5d97-3599-4c02-9bfc-96a31109f40e",
+  kameraRolleListId: "128dcae0-04a9-4115-bf3b-2634b6f51a82",
+
   /* Nummernblock des Hauses ohne Kurzwahl: aus der Kurzwahl 373 wird
      +41 41 926 23 73. Muss mit «TelefonPraefix» in Sync-Inventar.config.json
      übereinstimmen. */
@@ -72,6 +81,8 @@ KONFIG.listId = function (liste) {
   if (liste === "benutzer") return KONFIG.benutzerListId;
   if (liste === "telefon") return KONFIG.telefonListId;
   if (liste === "software") return KONFIG.softwareListId;
+  if (liste === "kamera") return KONFIG.kameraListId;
+  if (liste === "kamerarolle") return KONFIG.kameraRolleListId;
   return KONFIG.adminClientListId;
 };
 

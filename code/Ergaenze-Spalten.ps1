@@ -1,7 +1,8 @@
 ﻿<#
 .SYNOPSIS
-  Legt in den Listen «ADMIN-Clients», «EDU-Clients», «Benutzer», «Telefonnummern» und «Software»
-  alle Spalten an, die laut den Schemadateien und der Liste «Software» fehlen.
+  Legt in den Listen «ADMIN-Clients», «EDU-Clients», «Benutzer», «Telefonnummern», «Software»,
+  «Kameras» und «Kamera-Rollen» alle Spalten an, die laut den Schemadateien und der Liste
+  «Software» fehlen.
 
 .DESCRIPTION
   Der Sync ändert die Struktur der Listen bewusst nie – er füllt nur Daten und meldet fehlende
@@ -26,7 +27,8 @@
   (lokal\graph-sitzung.xml, siehe Graph-Sitzung.ps1).
 
 .PARAMETER Listen
-  Welche Listen geprüft werden: Admin, Edu, Benutzer, Telefon, Software oder Alle (Vorgabe).
+  Welche Listen geprüft werden: Admin, Edu, Benutzer, Telefon, Software, Kamera, KameraRolle oder
+  Alle (Vorgabe).
   Die Programmspalten der Benutzer-Liste kommen aus der Liste «Software»; sie muss dafür
   schon bestehen (Migriere-Clients.ps1 legt sie an).
 
@@ -43,7 +45,7 @@ param(
     [ValidateSet('DeviceCode', 'Certificate')]
     [string]$Auth = 'DeviceCode',
     [string]$ClientId = '14d82eec-204b-4c2f-b7e8-296a70dab67e',
-    [ValidateSet('Alle', 'Admin', 'Edu', 'Benutzer', 'Telefon', 'Software')]
+    [ValidateSet('Alle', 'Admin', 'Edu', 'Benutzer', 'Telefon', 'Software', 'Kamera', 'KameraRolle')]
     [string[]]$Listen = @('Alle'),
     [switch]$NeuAnmelden,
     [switch]$WhatIf
@@ -176,6 +178,14 @@ if ($alle -or $Listen -contains 'Benutzer') {
 
 if ($alle -or $Listen -contains 'Telefon') {
     Sync-Spalten 'Telefonnummern' (Get-ListId $cfg.TelefonListId) (Get-SchemaSpalten 'schema-telefon.json')
+}
+
+if ($alle -or $Listen -contains 'Kamera') {
+    Sync-Spalten 'Kameras' (Get-ListId $cfg.KameraListId) (Get-SchemaSpalten 'schema-kamera.json')
+}
+
+if ($alle -or $Listen -contains 'KameraRolle') {
+    Sync-Spalten 'Kamera-Rollen' (Get-ListId $cfg.KameraRolleListId) (Get-SchemaSpalten 'schema-kamerarolle.json')
 }
 
 if ($WhatIf) {

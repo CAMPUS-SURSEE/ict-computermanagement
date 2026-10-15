@@ -1,13 +1,13 @@
 ﻿<#
 .SYNOPSIS
-  Erzeugt frontend\spalten.js aus schema-client.json, schema-benutzer.json, schema-telefon.json
-  und schema-software.json.
+  Erzeugt frontend\spalten.js aus schema-client.json, schema-benutzer.json, schema-telefon.json,
+  schema-software.json, schema-kamera.json und schema-kamerarolle.json.
 
 .DESCRIPTION
-  Die vier Schemadateien sind die Quelle der Wahrheit für die Spalten der Listen «ADMIN-Clients»,
-  «EDU-Clients», «Benutzer», «Telefonnummern» und «Software». Dieses Skript schreibt daraus die
-  JavaScript-Datei frontend\spalten.js mit den Konstanten SPALTEN_CLIENT, SPALTEN_BENUTZER,
-  SPALTEN_TELEFON und SPALTEN_SOFTWARE.
+  Die sechs Schemadateien sind die Quelle der Wahrheit für die Spalten der Listen «ADMIN-Clients»,
+  «EDU-Clients», «Benutzer», «Telefonnummern», «Software», «Kameras» und «Kamera-Rollen». Dieses
+  Skript schreibt daraus die JavaScript-Datei frontend\spalten.js mit den Konstanten SPALTEN_CLIENT,
+  SPALTEN_BENUTZER, SPALTEN_TELEFON, SPALTEN_SOFTWARE, SPALTEN_KAMERA und SPALTEN_KAMERAROLLE.
 
   «ADMIN-Clients» und «EDU-Clients» haben dieselben Spalten und teilen sich deshalb
   schema-client.json und SPALTEN_CLIENT.
@@ -24,6 +24,8 @@ param(
     [string]$BenutzerSchema,
     [string]$TelefonSchema,
     [string]$SoftwareSchema,
+    [string]$KameraSchema,
+    [string]$KameraRolleSchema,
     [string]$Ziel
 )
 $ErrorActionPreference = 'Stop'
@@ -37,6 +39,8 @@ if (-not $ClientSchema) { $ClientSchema = Join-Path $ScriptDir 'schema-client.js
 if (-not $BenutzerSchema) { $BenutzerSchema = Join-Path $ScriptDir 'schema-benutzer.json' }
 if (-not $TelefonSchema) { $TelefonSchema = Join-Path $ScriptDir 'schema-telefon.json' }
 if (-not $SoftwareSchema) { $SoftwareSchema = Join-Path $ScriptDir 'schema-software.json' }
+if (-not $KameraSchema) { $KameraSchema = Join-Path $ScriptDir 'schema-kamera.json' }
+if (-not $KameraRolleSchema) { $KameraRolleSchema = Join-Path $ScriptDir 'schema-kamerarolle.json' }
 if (-not $Ziel) { $Ziel = Join-Path $ScriptDir '..\frontend\spalten.js' }
 
 function JsText([string]$s) {
@@ -60,31 +64,36 @@ $client = @(Read-JsonDatei $ClientSchema)
 $benutzer = @(Read-JsonDatei $BenutzerSchema)
 $telefon = @(Read-JsonDatei $TelefonSchema)
 $software = @(Read-JsonDatei $SoftwareSchema)
+$kamera = @(Read-JsonDatei $KameraSchema)
+$kameraRolle = @(Read-JsonDatei $KameraRolleSchema)
 
-foreach ($s in ($client + $benutzer + $telefon + $software)) {
-    if ($s.source -notin @('manuell', 'sccm', 'ad')) {
-        throw "Unerlaubte Quelle '$($s.source)' bei Spalte '$($s.internal)' (erlaubt: manuell, sccm, ad)"
+foreach ($s in ($client + $benutzer + $telefon + $software + $kamera + $kameraRolle)) {
+    if ($s.source -notin @('manuell', 'sccm', 'ad', 'milestone')) {
+        throw "Unerlaubte Quelle '$($s.source)' bei Spalte '$($s.internal)' (erlaubt: manuell, sccm, ad, milestone)"
     }
 }
 
 $kopf = @'
 /* spalten.js — Spaltendefinition der SharePoint-Listen «ADMIN-Clients», «EDU-Clients»,
-   «Benutzer», «Telefonnummern» und «Software». Erzeugt aus code/schema-client.json,
-   code/schema-benutzer.json, code/schema-telefon.json und code/schema-software.json
+   «Benutzer», «Telefonnummern», «Software», «Kameras» und «Kamera-Rollen». Erzeugt aus
+   code/schema-client.json, code/schema-benutzer.json, code/schema-telefon.json,
+   code/schema-software.json, code/schema-kamera.json und code/schema-kamerarolle.json
    durch code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
 
    i = interner Name in Graph, d = Anzeigename, t = Typ
    (Title|Text|Note|Boolean|Number|DateTime), g = Gruppe,
-   q = Quelle: manuell = im Frontend bearbeitbar,
-               sccm    = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
-               ad      = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt).
+   q = Quelle: manuell   = im Frontend bearbeitbar,
+               sccm      = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
+               ad        = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt),
+               milestone = wird vom Sync aus Milestone XProtect überschrieben (schreibgeschützt).
 
    Die beiden Client-Listen «ADMIN-Clients» und «EDU-Clients» haben dieselben Spalten und
    teilen sich SPALTEN_CLIENT.
 
    Die Titelspalte heisst in Graph «Title»; sie wird in den Client-Listen als «PC-Name»,
-   in der Benutzer-Liste als «Login», in der Telefonliste als «Kurzwahl» und in der
-   Software-Liste als «Programm-ID» angezeigt.
+   in der Benutzer-Liste als «Login», in der Telefonliste als «Kurzwahl», in der
+   Software-Liste als «Programm-ID», in der Kameraliste als «Name» und in der Liste
+   «Kamera-Rollen» als «Rolle» angezeigt.
 
    Die Programmspalten der Benutzer-Liste stehen NICHT hier, sondern in der Liste «Software»;
    modell.js ergänzt sie zur Laufzeit.
@@ -93,7 +102,8 @@ $kopf = @'
 '@
 
 $inhalt = $kopf + (Build-Block $client 'SPALTEN_CLIENT') + "`n" + (Build-Block $benutzer 'SPALTEN_BENUTZER') `
-    + "`n" + (Build-Block $telefon 'SPALTEN_TELEFON') + "`n" + (Build-Block $software 'SPALTEN_SOFTWARE')
+    + "`n" + (Build-Block $telefon 'SPALTEN_TELEFON') + "`n" + (Build-Block $software 'SPALTEN_SOFTWARE') `
+    + "`n" + (Build-Block $kamera 'SPALTEN_KAMERA') + "`n" + (Build-Block $kameraRolle 'SPALTEN_KAMERAROLLE')
 $zielVoll = [IO.Path]::GetFullPath($Ziel)
 $ordner = Split-Path -Parent $zielVoll
 if (-not (Test-Path $ordner)) { throw "Zielordner fehlt: $ordner" }
@@ -104,3 +114,5 @@ Write-Host ("  SPALTEN_CLIENT:   {0} Spalten" -f $client.Count)
 Write-Host ("  SPALTEN_BENUTZER: {0} Spalten" -f $benutzer.Count)
 Write-Host ("  SPALTEN_TELEFON:  {0} Spalten" -f $telefon.Count)
 Write-Host ("  SPALTEN_SOFTWARE: {0} Spalten" -f $software.Count)
+Write-Host ("  SPALTEN_KAMERA:   {0} Spalten" -f $kamera.Count)
+Write-Host ("  SPALTEN_KAMERAROLLE: {0} Spalten" -f $kameraRolle.Count)

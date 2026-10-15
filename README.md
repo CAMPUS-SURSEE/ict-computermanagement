@@ -1,7 +1,7 @@
 # ICT-Inventar
 
-Fünf SharePoint-Listen (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern, Software) mit
-SCCM- und AD-Synchronisation.
+Sieben SharePoint-Listen (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern, Software, Kameras,
+Kamera-Rollen) mit SCCM-, AD- und Milestone-Synchronisation.
 Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 
 > **Umbau vom 08.09.2026.** Die Liste «Computer» heisst neu **«ADMIN-Clients»**. Alle SCCM-Geräte,
@@ -25,6 +25,12 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 > **Produktivstart vom 13.10.2026.** Die Excel-Listen sind abgelöst: Der Stand vom 13.10.2026 ist in die
 > Listen übernommen, und die Blätter «Computer und User», «EDU-Geräte» (Inventar) und «Telefonnummer»
 > (S4B) tragen ein Overlay «Abgelöst» mit Link auf das Tool. Gepflegt wird nur noch im Tool (Abschnitt 12).
+>
+> **Videoüberwachung vom 13.10.2026.** Neu die Listen **«Kameras»** (eine Zeile je Hardware in Milestone
+> XProtect) und **«Kamera-Rollen»** (die Rollen aus Milestone mit ihren Rechten auf die Kameras, dazu
+> Zweck und Bewilligung). Der Sync liest beides aus dem Management Server `adminsrv347` (Abschnitt 2.9);
+> die Excel «Zugriffsberechtigung Inventar Videokameras Milestone» ist damit abgelöst (Abschnitt 13).
+> Im Frontend: Navigation «Videoüberwachung» mit «Kameras» und «Kamerarechte».
 
 ---
 
@@ -39,7 +45,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `352 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `428 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -57,6 +63,10 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **einen Client von Hand anlegen** | meist **nicht nötig**: Geräte in SCCM legt der Sync selbst an. «Neuer ADMIN-Client» (bzw. «Neuer EDU-Client») nur für Geräte, die nicht in SCCM stehen; das Formular der ADMIN-Clients sagt das zuoberst |
 | **ein Gerät, eine Nummer oder ein Programm löschen** | auf der Detailseite **«Löschen …»** rechts im Seitenkopf; zur Bestätigung den PC-Namen, die Kurzwahl bzw. die Programm-ID eingeben, dann **«Löschen»**. Die Zeile kommt in den Papierkorb der SharePoint-Site und lässt sich dort 93 Tage lang zurückholen. Danach führt «Zur Liste» (bzw. «Zur Software-Liste») zurück. Benutzer haben keinen Löschknopf: ihre Liste pflegt der Sync aus dem AD |
 | **mich abmelden** | **«Abmelden»** oben rechts in der Kopfzeile – auf jeder Seite, auch auf den Detailseiten. Es steht mit Initiale, Name und E-Mail des Kontos in einer umrandeten Kapsel (in schmalen Fenstern nur die Initiale) |
+| **wissen, wer eine Kamera sehen darf** | Kameraseite → Bereich **«Berechtigungen»**; umgekehrt Navigation **«Kamerarechte»** (eine Karte je Rolle) und auf der Benutzerseite die Karte **«Videoüberwachung»**. Die Rechte kommen aus Milestone und werden dort im Management Client geändert, nie im Tool (Abschnitt 2.9) |
+| **den Zweck einer Kamera-Rolle festhalten** | Kamerarechte → Rolle öffnen → Bereich «Rolle», Karte **«Nachweis»** (Zweck, Bewilligt durch, Bewilligt am). Rollen ohne Nachweis stehen unter «Handlungsbedarf» |
+| **eine Kamera erfassen** | meist **nicht nötig**: Kameras in Milestone legt der Sync selbst an. «Neue Kamera» nur für Kameras ausserhalb von Milestone (z. B. Reserve im Lager) |
+| **eine Kamera bewerten** | Kameraseite → Bereich **«Bewertung»** (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) |
 | **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln, Tokens, Bausteine) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
@@ -78,6 +88,8 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 | Liste **Benutzer** | Titel = Login (sAMAccountName), AD-Felder, Primärgerät (SCCM), **AdminClientId** (die Inhaberschaft: Listen-ID des ADMIN-Clients, im Frontend als «ADMIN-Client» mit seinem Namen angezeigt, Abschnitt 2.8), Bemerkung, **Verlauf**, dazu **eine Textspalte je Programm** | Sync (AD-Felder, Programmstufe 2) + Menschen (AdminClientId, Bemerkung, Verlauf, Programmstufe 0/1) |
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Software-Liste) + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
+| Liste **Kameras** | Titel = Name der Kamera in Milestone, dazu Gebäude, Raum, **Status**, Bemerkung, **Verlauf**, Beschaffung, Bewertung (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) und 18 `MS_*`-Spalten aus Milestone. Eine Zeile je Hardware (Abschnitt 2.9) | Menschen + Sync (`MS_*`, `Status`, `Title` bei Umbenennung in Milestone, leere Gebäude/Raum, an `Verlauf` angehängt) |
+| Liste **Kamera-Rollen** | Titel = Rolle in Milestone, dazu Zweck, Bewilligt durch, Bewilligt am, Bemerkung, **Verlauf** und die `MS_*`-Spalten (Mitglieder, AD-Gruppen, aufgelöste Personen, Rechte, Kameras als JSON) | Menschen (Nachweis) + Sync (alles aus Milestone, Verlauf der Änderungen) |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
@@ -160,7 +172,7 @@ dass irgendetwas besser würde.
 
 | `code/server/` – gehört auf den SCCM-Server | Zweck |
 |---|---|
-| `Sync-Inventar.ps1` | der laufende Sync (SCCM → ADMIN-/EDU-Clients, AD → Benutzer, AD → Telefonnummern) |
+| `Sync-Inventar.ps1` | der laufende Sync (SCCM → ADMIN-/EDU-Clients, AD → Benutzer, AD → Telefonnummern, Milestone → Kameras und Kamera-Rollen) |
 | `Inventar-Gemeinsam.ps1` | gemeinsame Funktionen: Log, Geschäftsjahr, Graph, Spaltendefinitionen |
 | `Sync-Inventar.config.json` | Konfiguration mit den echten Werten. **Führend ist die Fassung auf dem Server**; `Installiere-Sync.ps1` überschreibt sie nie. Die Kopie im Arbeitsverzeichnis ist in `.gitignore` und kommt nie nach GitHub – sie enthält ClientId und Zertifikat-Thumbprint. Vorlage ohne Geheimnisse: `Sync-Inventar.config.example.json` |
 
@@ -172,7 +184,8 @@ ausserdem als `Inventar/sync-status.json` in die Dokumentbibliothek der Site; de
 
 | `code/` – läuft vom Arbeitsplatz | Zweck |
 |---|---|
-| `schema-client.json` / `schema-benutzer.json` / `schema-telefon.json` / `schema-software.json` | Spalten der Listen (Quelle der Wahrheit). `schema-client.json` gilt für **beide** Client-Listen – sie haben dieselben Spalten |
+| `schema-client.json` / `schema-benutzer.json` / `schema-telefon.json` / `schema-software.json` / `schema-kamera.json` / `schema-kamerarolle.json` | Spalten der Listen (Quelle der Wahrheit). `schema-client.json` gilt für **beide** Client-Listen – sie haben dieselben Spalten |
+| `Migriere-Kameras.ps1` | einmalig: legt «Kameras» und «Kamera-Rollen» an, übernimmt die Hardware aus Milestone und ergänzt Zuständig und Bewertung aus der Excel (Abschnitt 13) |
 | `Build-Spalten.ps1` | erzeugt `frontend/spalten.js` aus den Schemadateien |
 | `Ergaenze-Spalten.ps1` | legt in SharePoint die Spalten an, die laut Schemadateien und Liste «Software» fehlen – der Reparaturweg, wenn eine Spalte fehlt (Abschnitt 4) |
 | `Entferne-Spalte.ps1` | löscht eine benannte Spalte nach Sicherung ihrer Werte (Gegenstück zu `Ergaenze-Spalten.ps1`) |
@@ -219,7 +232,7 @@ Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas 
 | `fenster.js` | gemeinsames Gerüst der vier Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
 | `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer- und Telefonseite (`Verlauf`) |
 | `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software |
-| `client.*`, `benutzer.*`, `telefon.*`, `software.*` | die Detailseiten eines Datensatzes (die `.css` nur mit Seitenlayout) |
+| `client.*`, `benutzer.*`, `telefon.*`, `software.*`, `kamera.*`, `kamerarolle.*` | die Detailseiten eines Datensatzes (die `.css` nur mit Seitenlayout) |
 | `styleguide.html`, `styleguide.js` | lebende Übersicht aller Bausteine in allen Zuständen |
 | `STYLEGUIDE.md` | Regeln des Design-Systems |
 | `konfig.js` | Mandant, Client-ID, Listen-IDs, Takt des Nachladens – keine Geheimnisse (Abschnitt 7.4) |
@@ -418,7 +431,8 @@ zu archivieren.
 ```
 Sync-Inventar.ps1 [-ConfigPath <json>] [-WhatIf] [-IncludeServers]
                   [-OnlyClients] [-ClientListen Alle|Admin|Edu]
-                  [-OnlyBenutzer] [-OnlyTelefone]
+                  [-OnlyBenutzer] [-OnlyTelefone] [-OnlyKameras]
+                  [-KameraRechteJetzt] [-MilestoneDiagnose]
                   [-DumpOnly] [-OnlyDevices <Name,Name>] [-LogPath <Datei>]
 ```
 
@@ -426,6 +440,9 @@ Sync-Inventar.ps1 [-ConfigPath <json>] [-WhatIf] [-IncludeServers]
 |---|---|
 | `-WhatIf` | zeigt nur, was geschrieben/gelöscht würde; darf neben einem laufenden Sync laufen |
 | `-OnlyClients` / `-OnlyBenutzer` / `-OnlyTelefone` | nur eine Phase (`-OnlyTelefone` liest kein SCCM) |
+| `-OnlyKameras` | nur die Kamera-Phasen (Milestone → Kameras und Kamera-Rollen), kein SCCM |
+| `-KameraRechteJetzt` | die Rechte der Milestone-Rollen jetzt abgleichen, auch wenn der letzte Abgleich jünger ist als `MilestoneRechteStunden` |
+| `-MilestoneDiagnose` | schreibt die ersten Antworten von Milestone zu Rollen, Mitgliedern und Rechten roh nach `Milestone-Diagnose.json` neben dem Log |
 | `-ClientListen` | nur eine der beiden Client-Listen abgleichen: `Admin` oder `Edu` (Vorgabe `Alle`) |
 | `-DumpOnly` | nur SCCM lesen und die aufbereiteten Felder ausgeben |
 | `-IncludeServers` | Server-Betriebssysteme mitnehmen |
@@ -578,6 +595,56 @@ sagt der Hinweis unter dem PC-Namen beim Tippen.
 | Die Listen-ID zeigt auf keine Zeile (Gerät gelöscht) | Benutzerseite und Benutzertabelle melden «Gerät fehlt»; auf der Benutzerseite ein Gerät zuweisen oder die Inhaberschaft aufheben |
 | Der Inhaber hängt an einem archivierten Gerät | Geräteseite: «Status «Archiviert», aber ein Inhaber ist eingetragen»; Benutzerseite: «… ist archiviert» |
 
+### 2.9 Kameras und Kamera-Rollen (Milestone XProtect)
+
+Die Videoüberwachung läuft auf **Milestone XProtect 2024 R1**: Management Server `adminsrv347`,
+Recording Server `adminsrv346`. Der Sync liest über die REST-Schnittstelle des Management Servers
+(`http://adminsrv347/API/rest/v1/…`); angemeldet wird am Identity Provider (`/idp/connect/token`), mit
+dem Computerkonto des Sync-Servers oder einem Basisbenutzer von Milestone (Abschnitt 7.5).
+**Milestone ist führend.** Das Tool ändert in Milestone nie etwas – auch die Rechte werden nur gelesen.
+
+**Phase Kameras** (bei jedem Lauf, braucht `KameraListId` und `MilestoneServer`):
+
+| Regel | Folge |
+|---|---|
+| Eine Zeile je **Hardware** | Kanäle (eine 360°-Kamera hat zwei) stehen als Text in `MS_Kanaele`; der Titel ist der Name des ersten Kanals |
+| Zuordnung über Hardware-ID, dann MAC, dann Seriennummer, dann IP | eine Kamera, die in Milestone entfernt und neu hinzugefügt wurde (neue ID), behält ihre Zeile; die IP gilt nur für Zeilen, die nie verknüpft waren |
+| Umbenennung in Milestone | Titel wird nachgeführt, Verlauf «Umbenannt in Milestone: alt → neu». Der Name ist im Frontend gesperrt, solange die Kamera in Milestone steht |
+| Leeres Gebäude oder leerer Raum | wird aus dem Namen gefüllt («10.300 Treppe» → 10 / 10.300); von Hand gesetzte Werte bleiben |
+| Neue Hardware | neue Zeile, Status «Aktiv», Verlauf «Aus Milestone neu angelegt» |
+| Hardware verschwunden | Status «Archiviert», `MS_Gefunden` = Nein, Verlauf – ausser die Zeile steht auf **«Lager»** (ausgebaut) oder war nie mit Milestone verknüpft. Archivschutz wie bei den Clients (Abschnitt 2.3). Gelöscht wird nie |
+| Neue IP, ersetzte Hardware (gleiche ID, andere Seriennummer) | Verlaufseintrag |
+
+**Phase Kamera-Rollen** (höchstens alle `MilestoneRechteStunden` Stunden, Vorgabe 6, sofort mit
+`-KameraRechteJetzt`; der Zeitpunkt steht in `Sync-Inventar.kamerarechte.json` neben dem Log):
+
+1. Rollen und ihre Mitglieder lesen (`roles`, `roles/<id>/users`).
+2. Je Rolle und Kamera die Rechte lesen (Aufgabe «ChangeSecurityPermissions» mit der Rolle – nur
+   lesend, ohne Werte ändert sie nichts). Gezählt wird eine Kamera, wenn die Rolle **Live** oder
+   **Wiedergabe** hat; dazu stehen die übrigen Rechte (Export, PTZ, Lesezeichen …). Die Rolle der
+   Administratoren sieht alles («Vollzugriff»).
+3. AD-Gruppen unter den Mitgliedern rekursiv in Logins auflösen (wie bei den Programmen, Abschnitt 3).
+4. Liste «Kamera-Rollen» schreiben: Mitglieder, AD-Gruppen, Personen, Rechte, Kameras als JSON
+   (Hardware-ID → Rechte). Änderungen an Mitgliedern und Kameras kommen in den Verlauf («Mitglied
+   hinzugefügt», «Zugriff auf 3 Kameras erhalten: …») – das ist der Nachweis, wer wann was sehen durfte.
+   Eine Rolle, die es in Milestone nicht mehr gibt, bekommt `MS_Gefunden` = Nein und bleibt stehen.
+5. Je Kamera die Spalte «Sichtbar für» (`MS_Rollen`) schreiben.
+
+Darf das Sync-Konto die Rechte nicht lesen (403), bleiben Kameras und Rechte der Rollen unverändert,
+Mitglieder und Personen werden trotzdem abgeglichen; im Log steht ein ERROR mit dem Hinweis auf
+Abschnitt 7.5. Bleiben die Rechte leer, obwohl kein Fehler kommt: einmal mit `-OnlyKameras
+-KameraRechteJetzt -MilestoneDiagnose` laufen lassen und `Milestone-Diagnose.json` ansehen – dort steht,
+wie Milestone die Rechte nennt (die Namen liest `ConvertFrom-MilestoneRechte`).
+
+**Von Hand gepflegt** wird nur, was Milestone nicht kennt: Gebäude, Raum, Status, Bemerkung,
+Beschaffung, Bewertung, Verlauf (Kameras) und der Nachweis Zweck, Bewilligt durch, Bewilligt am
+(Rollen). Im Frontend zählt die Übersicht unter «Handlungsbedarf»: Kameras im Status «Aktiv», die nicht
+in Milestone stehen, in Milestone deaktivierte, Kameras ohne Aufzeichnung, Kanäle ohne eigenen Namen
+(Milestone-Vorgabe «Modell (IP) - Kamera 2»), überfälligen Ersatz und Rollen ohne Nachweis.
+
+**Verwandt:** Die Liste «Software» hat ein Programm «Milestone». Wer dort die AD-Gruppen der Rollen
+einträgt, sieht die Berechtigung auch in der Benutzerliste als Stufe 2.
+
 ---
 
 ## 3. Software pflegen
@@ -690,9 +757,13 @@ umgestellt, Konflikt), **neu aufgesetzte Geräte** ohne Hardware-Inventar (festh
 Wartezeit, Vorrang des inventarisierten Geräts) und **Dubletten**, unvollständige AD-Telefonnummern, die
 **Betriebsregeln** (Wiederholung von Graph-Aufrufen samt nachgebautem `Invoke-RestMethod`, Zertifikatswarnung,
 Status-Kurztext, Log-Rotation und -Zähler), Anzahl und Form der Schemaeinträge sowie die Syntax aller
-`*.ps1` in `code/` und `code/server/`.
+`*.ps1` in `code/` und `code/server/`. Dazu die **Kameras**: Gebäude und Raum aus dem Namen, MAC,
+Hersteller und Modell, das Lesen der Rechte (VIEW_LIVE wie viewLive, ohne Live/Wiedergabe leer), die
+Zuordnung Milestone-Hardware ↔ Kamerazeile (Hardware-ID, MAC, Seriennummer, IP, Umbenennung, ersetzte
+Hardware, Lager wird nie archiviert), Rollen-Mitglieder, Rollen-Verlauf, die Verschlüsselung des
+Milestone-Kennworts und die Zuordnung der Excel-Bewertungen (`Migriere-Kameras.ps1`).
 
-Erwartete Ausgabe: `Ergebnis: 352 bestanden, 0 fehlgeschlagen`.
+Erwartete Ausgabe: `Ergebnis: 428 bestanden, 0 fehlgeschlagen`.
 
 ---
 
@@ -930,6 +1001,49 @@ ist dasselbe wie zuvor bei Netlify; geändert wird ausschliesslich dort, nie im 
 Verweise im Frontend dürfen weiter `client.html` heissen. Die Anmeldung ist davon nicht betroffen:
 `auth.js` benutzt als Umleitungsadresse immer die Wurzel, nie einen Dateinamen.
 
+### 7.5 Lesekonto für Milestone (Kameras und Rechte)
+
+Der Sync läuft als SYSTEM auf `adminsrv319` und meldet sich bei Milestone standardmässig mit dem
+**Computerkonto `SASADMIN\ADMINSRV319$`** an (`MilestoneAnmeldung` = `Windows`, kein Kennwort). Das
+funktioniert, sobald das Konto in Milestone einer Rolle angehört – ohne Rolle antwortet Milestone mit
+403 (Stand 13.10.2026: Anmeldung klappt, Rolle fehlt noch).
+
+1. **AD-Gruppe** anlegen, z. B. `Milestone_InventarSync`, Mitglied: Computerkonto `ADMINSRV319$`.
+   Danach `adminsrv319` neu starten oder `klist -li 0x3e7 purge` als Administrator ausführen, damit
+   das Computerkonto die neue Gruppe im Kerberos-Ticket trägt.
+2. **Rolle in Milestone** (Management Client → Sicherheit → Rollen → Rolle hinzufügen), z. B.
+   «Inventar-Sync (nur lesen)»: Mitglied die AD-Gruppe aus Schritt 1; im Register «Gesamtsicherheit»
+   Leserecht auf Management Server, Hardware, Kameras, Recording Server und **Rollen**. Für die Rechte
+   je Kamera braucht die Rolle zusätzlich das Recht, die Sicherheit der Kameras zu sehen («Sicherheit
+   verwalten» bzw. «Manage security» bei Kameras) – der Sync ändert damit nichts, er liest nur.
+   Ohne Live-, Wiedergabe- oder Exportrecht sieht das Konto keine Bilder.
+3. **Einschalten und prüfen:** Bis hierhin überspringt der Sync die Kamera-Phasen mit einer Warnung
+   («MilestoneServer fehlt»), damit die Übersicht keinen Fehler meldet. Eingeschaltet werden sie aus
+   der AdminShell mit
+
+   ```powershell
+   & .\code\Installiere-Sync.ps1 -Credential $Cred -MilestoneServer 'http://adminsrv347' -JetztStarten
+   ```
+
+   Im Probelauf und im Log erscheinen «Milestone (…): 112 Kamera-Hardware» und «Milestone: n Rollen».
+   Bei «403» fehlt der Rolle ein Recht (Schritt 2).
+
+**Alternative: Basisbenutzer von Milestone** (lokales Konto ohne AD) – geht ebenso, mit zwei Nachteilen:
+das Kennwort muss auf dem Server liegen (mit DPAPI LocalMachine verschlüsselt in
+`C:\ComputerInventar\Milestone.kennwort`, lesbar nur für SYSTEM und Administratoren), und solange der
+Management Server nur über HTTP erreichbar ist, geht es bei jeder Anmeldung im Klartext durchs Netz.
+Einrichten: Basisbenutzer in Milestone anlegen, der Rolle aus Schritt 2 hinzufügen, dann aus der AdminShell
+
+```powershell
+& .\code\Installiere-Sync.ps1 -Credential $Cred -MilestoneBenutzer 'inventar-sync' -MilestoneKennwort (Read-Host -AsSecureString 'Kennwort')
+```
+
+Das setzt `MilestoneAnmeldung` = `Basis`. Zurück zum Computerkonto: in der Server-Konfiguration
+`MilestoneAnmeldung` auf `Windows` setzen.
+
+**HTTPS:** `https://adminsrv347` scheitert am Zertifikat (Stand 13.10.2026). Ist es repariert,
+`MilestoneServer` in der Server-Konfiguration auf `https://adminsrv347.sasadmin.local` umstellen.
+
 ---
 
 ## 8. Entfernen
@@ -1150,8 +1264,37 @@ Seminarsupport, TechD, FRW). Die Tablets «Mercato» und «Piazza» haben keinen
 darum in keiner Client-Liste; ihre Benutzerzeilen sind übernommen.
 
 Sicherung vorher: `lokal\Ablösung-Excel-Sicherung-20261013-155353.json`, Protokoll:
-`lokal\Ablösung-Excel-Protokoll-20261013-161529.txt`. Danach wurden über die Blätter «Computer und User»,
-«EDU-Geräte» und «Telefonnummer» ein weisses, halbtransparentes Feld und eine Karte «Abgelöst» mit Link
-auf https://campussursee-ictinventar.pages.dev/ gelegt (Formen `Abgeloest-Overlay` und `Abgeloest-Karte`;
-zum Entfernen beide löschen). Die übrigen Blätter («Tel-Mitarbeiter», «TV Gebäude 1», «Budget 2025_26»)
-sind unberührt. Die Fassungen ohne Overlay liegen in der Versionshistorie der Dateien.
+`lokal\Ablösung-Excel-Protokoll-20261013-161529.txt`. Danach wurden die Blätter «Computer und User»,
+«EDU-Geräte» und «Telefonnummer» unbenutzbar gemacht: ein weisses, halbtransparentes Feld über das ganze
+Blatt (Form `Abgeloest-Overlay`), darauf im Raster das Wasserzeichen «Abgelöst» mit Link auf
+https://campussursee-ictinventar.pages.dev/ (Formen `Abgeloest-Text-n`), Fixierung aufgehoben, Blatt
+geschützt ohne Passwort. Die übrigen Blätter («Tel-Mitarbeiter», «TV Gebäude 1», «Budget 2025_26») sind
+unberührt. Die Fassungen ohne Overlay liegen in der Versionshistorie der Dateien.
+
+## 13. Die Ablösung der Kamera-Excel vom 13.10.2026
+
+Bis Oktober 2026 führte die ICT Kameras und Zugriffsrechte in der Excel «Zugriffsberechtigung Inventar
+Videokameras Milestone.xlsx» (OneDrive von Janis Zesiger, «Microsoft Teams-Chatdateien», Stand 10.10.2024).
+Seit dem 13.10.2026 stehen sie in den Listen «Kameras» und «Kamera-Rollen» (Abschnitt 2.9).
+`Migriere-Kameras.ps1` hat dazu einmalig
+
+- die beiden Listen angelegt (IDs in `frontend/konfig.js` und `Sync-Inventar.config.example.json`),
+- je Hardware in Milestone eine Zeile angelegt (112 Kameras),
+- aus der Excel ergänzt: Zuständig, Bildqualität, Positionierung, Verbesserungen und «Bewertet am»
+  (15.07.2021) aus den Blättern «Bewertung 15.07.21» und «Inventar OLD» (82 Kameras), dazu je Kamera
+  einen Verlaufseintrag mit der früheren Kamera-Nummer (C001 …) und dem Ort aus «Inventar 2024.04».
+
+| Blatt | Was damit geschah |
+|---|---|
+| Berechtigungen, Berechtigungen OLD | nicht übernommen – die Rechte liest der Sync aus Milestone, das ist die führende Quelle |
+| Inventar 2024.04 | über die IP-Adresse der Hardware zugeordnet; Kamera-Nummer und Ort als Verlaufseintrag. Die C-Nummern werden nicht weitergeführt: der Name in Milestone ist der Titel |
+| InventarORG | nicht übernommen, auch die Kamera-Passwörter nicht (gehören nicht in SharePoint) |
+| Inventar OLD, Bewertung 15.07.21, ERFA 2021 Kamerabewertung | Zuständig und Bewertung, nur bei eindeutigem Treffer |
+| ERFA 2021 Pendenzen, Kamerabewertung Vorlage | nicht übernommen (Sitzungsnotizen 2021, leere Vorlage) |
+
+Nicht zugeordnet (Protokoll `lokal\Kamera-Uebernahme-Protokoll-20261013-172117.txt`): die Bewertungen
+von «Freizeitraum» (19) und «Indentifikation Aussen» (31) – beide Kameras gibt es in Milestone nicht mehr –
+und die Excel-Kameras C015, C057, C117, C119, C120 und C121 ohne Hardware in Milestone.
+
+Die Bewertung stammt von 2021; seither wurden viele Kameras ersetzt (etwa die Gänge in Gebäude 10, 2024).
+Sie dient als Ausgangspunkt, nicht als aktueller Befund – «Bewertet am» zeigt ihr Alter.

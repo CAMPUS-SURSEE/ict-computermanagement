@@ -1,20 +1,23 @@
 /* spalten.js — Spaltendefinition der SharePoint-Listen «ADMIN-Clients», «EDU-Clients»,
-   «Benutzer», «Telefonnummern» und «Software». Erzeugt aus code/schema-client.json,
-   code/schema-benutzer.json, code/schema-telefon.json und code/schema-software.json
+   «Benutzer», «Telefonnummern», «Software», «Kameras» und «Kamera-Rollen». Erzeugt aus
+   code/schema-client.json, code/schema-benutzer.json, code/schema-telefon.json,
+   code/schema-software.json, code/schema-kamera.json und code/schema-kamerarolle.json
    durch code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
 
    i = interner Name in Graph, d = Anzeigename, t = Typ
    (Title|Text|Note|Boolean|Number|DateTime), g = Gruppe,
-   q = Quelle: manuell = im Frontend bearbeitbar,
-               sccm    = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
-               ad      = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt).
+   q = Quelle: manuell   = im Frontend bearbeitbar,
+               sccm      = wird vom Sync aus SCCM überschrieben (schreibgeschützt),
+               ad        = wird vom Sync aus dem Active Directory überschrieben (schreibgeschützt),
+               milestone = wird vom Sync aus Milestone XProtect überschrieben (schreibgeschützt).
 
    Die beiden Client-Listen «ADMIN-Clients» und «EDU-Clients» haben dieselben Spalten und
    teilen sich SPALTEN_CLIENT.
 
    Die Titelspalte heisst in Graph «Title»; sie wird in den Client-Listen als «PC-Name»,
-   in der Benutzer-Liste als «Login», in der Telefonliste als «Kurzwahl» und in der
-   Software-Liste als «Programm-ID» angezeigt.
+   in der Benutzer-Liste als «Login», in der Telefonliste als «Kurzwahl», in der
+   Software-Liste als «Programm-ID», in der Kameraliste als «Name» und in der Liste
+   «Kamera-Rollen» als «Rolle» angezeigt.
 
    Die Programmspalten der Benutzer-Liste stehen NICHT hier, sondern in der Liste «Software»;
    modell.js ergänzt sie zur Laufzeit.
@@ -147,4 +150,59 @@ const SPALTEN_SOFTWARE = [
   { i: "AdGruppen", d: "AD-Gruppen", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "Reihenfolge", d: "Reihenfolge", t: "Number", g: "Stammdaten", q: "manuell" },
   { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" }
+];
+
+const SPALTEN_KAMERA = [
+  { i: "Title", d: "Name", t: "Title", g: "Stammdaten", q: "manuell" },
+  { i: "Gebaeude", d: "Gebäude", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Raum", d: "Raum", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Status", d: "Status", t: "Text", g: "Stammdaten", q: "manuell" },
+  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Stammdaten", q: "manuell" },
+  { i: "Beschaffungsjahr", d: "Beschaffungsjahr", t: "Text", g: "Beschaffung", q: "manuell" },
+  { i: "ErsatzGeplant", d: "Ersatz geplant", t: "Text", g: "Beschaffung", q: "manuell" },
+  { i: "Zustaendig", d: "Zuständig", t: "Text", g: "Bewertung", q: "manuell" },
+  { i: "Qualitaet", d: "Bildqualität", t: "Text", g: "Bewertung", q: "manuell" },
+  { i: "Positionierung", d: "Positionierung", t: "Text", g: "Bewertung", q: "manuell" },
+  { i: "Verbesserungen", d: "Verbesserungen", t: "Note", g: "Bewertung", q: "manuell" },
+  { i: "BewertetAm", d: "Bewertet am", t: "Text", g: "Bewertung", q: "manuell" },
+  { i: "MS_HardwareId", d: "Hardware-ID (Milestone)", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Gefunden", d: "In Milestone", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_HardwareName", d: "Hardware-Name (Milestone)", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Adresse", d: "IP-Adresse", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Mac", d: "MAC-Adresse", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Seriennummer", d: "Seriennummer", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Hersteller", d: "Hersteller", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Modell", d: "Modell", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Firmware", d: "Firmware", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Aktiv", d: "In Milestone aktiv", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Aufzeichnung", d: "Aufzeichnung", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_KanalAnzahl", d: "Anzahl Kanäle", t: "Number", g: "Milestone", q: "milestone" },
+  { i: "MS_Kanaele", d: "Kanäle", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_RecordingServer", d: "Recording Server", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Geaendert", d: "In Milestone geändert", t: "DateTime", g: "Milestone", q: "milestone" },
+  { i: "MS_LetzterSync", d: "Letzter Milestone-Abgleich", t: "DateTime", g: "Milestone", q: "milestone" },
+  { i: "MS_SyncStatus", d: "Abgleich-Status", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Rollen", d: "Sichtbar für (Milestone-Rollen)", t: "Note", g: "Berechtigungen", q: "milestone" }
+];
+
+const SPALTEN_KAMERAROLLE = [
+  { i: "Title", d: "Rolle", t: "Title", g: "Nachweis", q: "manuell" },
+  { i: "Zweck", d: "Zweck", t: "Note", g: "Nachweis", q: "manuell" },
+  { i: "BewilligtDurch", d: "Bewilligt durch", t: "Text", g: "Nachweis", q: "manuell" },
+  { i: "BewilligtAm", d: "Bewilligt am", t: "Text", g: "Nachweis", q: "manuell" },
+  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Nachweis", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Nachweis", q: "manuell" },
+  { i: "MS_RolleId", d: "Rollen-ID (Milestone)", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Gefunden", d: "In Milestone", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_RollenTyp", d: "Rollentyp", t: "Text", g: "Milestone", q: "milestone" },
+  { i: "MS_Beschreibung", d: "Beschreibung (Milestone)", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_Mitglieder", d: "Mitglieder", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_AdGruppen", d: "AD-Gruppen", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_Benutzer", d: "Personen (aufgelöst)", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_Rechte", d: "Rechte", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_Kameras", d: "Kameras (Rechte je Kamera)", t: "Note", g: "Milestone", q: "milestone" },
+  { i: "MS_KameraAnzahl", d: "Anzahl Kameras", t: "Number", g: "Milestone", q: "milestone" },
+  { i: "MS_LetzterSync", d: "Letzter Milestone-Abgleich", t: "DateTime", g: "Milestone", q: "milestone" },
+  { i: "MS_SyncStatus", d: "Abgleich-Status", t: "Text", g: "Milestone", q: "milestone" }
 ];

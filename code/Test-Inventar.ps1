@@ -14,6 +14,7 @@
      (Seriennummer, Namensfallback, Umbenennung,
      Archivieren/Reaktivieren),
    - Telefonnummern: Normalisierung, Kurzwahl, Abgleich mit dem AD,
+   - Kameras: Ort, MAC, Modell, Rechte, Zuordnung Milestone <-> Kameraliste, Rollen-Verlauf,
    - Verhalten bei fehlenden Spalten,
    - Syntax aller PowerShell-Skripte in code\ und code\server\ (Parser).
 
@@ -56,6 +57,7 @@ $InventarNurFunktionen = $true
 . (Join-Path $ServerDir 'Sync-Inventar.ps1')
 . (Join-Path $TestDir 'Migriere-FruehererEintrag.ps1')
 . (Join-Path $TestDir 'Migriere-Inhaberschaft.ps1')
+. (Join-Path $TestDir 'Migriere-Kameras.ps1')
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Geschäftsjahr'
@@ -668,6 +670,140 @@ Pruefe 'Log merkt Fehlertext'              'eins' $zl.FehlerTexte[0]
 Pruefe 'Log schreibt in die Datei'         3 @(Get-Content $logDatei).Count
 Set-InventarLog $null
 Remove-Item -LiteralPath $logOrdner -Recurse -Force
+
+# ---------------------------------------------------------------------------
+Abschnitt 'Kameras: Schema und Helfer'
+$schemaK = @(Read-JsonDatei (Join-Path $TestDir 'schema-kamera.json'))
+$schemaR = @(Read-JsonDatei (Join-Path $TestDir 'schema-kamerarolle.json'))
+Pruefe 'Kamera-Schema: Titel heisst Name'     'Name' (@($schemaK | Where-Object { $_.internal -eq 'Title' })[0].display)
+Pruefe 'Kamera-Schema: Verlauf ist Note'      'Note' (@($schemaK | Where-Object { $_.internal -eq 'Verlauf' })[0].type)
+Pruefe 'Kamera-Schema: MS_* nur aus Milestone' 0 (@($schemaK | Where-Object { $_.internal -like 'MS_*' -and $_.source -ne 'milestone' }).Count)
+Pruefe 'Kamera-Schema: deckt die Sync-Felder ab' '' ((@((ConvertTo-KameraFelder ([pscustomobject]@{ Kanaele = @() })).Keys) | Where-Object { $k = $_; -not ($schemaK | Where-Object { $_.internal -eq $k }) }) -join ',')
+Pruefe 'Rollen-Schema: Titel heisst Rolle'    'Rolle' (@($schemaR | Where-Object { $_.internal -eq 'Title' })[0].display)
+Pruefe 'Rollen-Schema: Zweck von Hand'        'manuell' (@($schemaR | Where-Object { $_.internal -eq 'Zweck' })[0].source)
+
+Pruefe 'Ort: 10.300 Treppe'          '10|10.300'     ((Get-KameraOrt '10.300 Treppe Trakt 1') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
+Pruefe 'Ort: 33.A20 P3 Kasse'        '33|33.A20'     ((Get-KameraOrt '33.A20 P3 Kasse A') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
+Pruefe 'Ort: P1.A03'                 'P1|P1.A03'     ((Get-KameraOrt 'P1.A03 Kasse') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
+Pruefe 'Ort: 17.101.5'               '17|17.101.5'   ((Get-KameraOrt '17.101.5 Anlieferung Eventhalle') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
+Pruefe 'Ort: Name ohne Raum'         '|'             ((Get-KameraOrt 'AXIS M3086-V Network Camera (10.11.15.176) - Kamera 2') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
+Pruefe 'MAC: ohne Trenner'           '98:8B:0A:43:B9:9D' (NormMac '988B0A43B99D')
+Pruefe 'MAC: mit Bindestrich, klein' '98:8B:0A:43:B9:9D' (NormMac '98-8b-0a-43-b9-9d')
+Pruefe 'MAC: unbrauchbar'            ''              (NormMac '000000000000')
+Pruefe 'Adresse: aus URL'            '10.11.15.151'  (Get-KameraAdresse 'http://10.11.15.151/')
+Pruefe 'Modell: Hikvision'           'Hikvision|DS-2CD2745FWD-IZS' ((Get-KameraModell 'HikVision DS-2CD2745FWD-IZS') | ForEach-Object { "$($_.Hersteller)|$($_.Modell)" })
+Pruefe 'Modell: Axis Network Camera' 'Axis|M3086-V'  ((Get-KameraModell 'AXIS M3086-V Network Camera') | ForEach-Object { "$($_.Hersteller)|$($_.Modell)" })
+Pruefe 'Modell: Axis Fixed Dome'     'Axis|M3204'    ((Get-KameraModell 'AXIS M3204 Fixed Dome Network Camera') | ForEach-Object { "$($_.Hersteller)|$($_.Modell)" })
+Pruefe 'Modell: Axis225FD'           'Axis|225FD'    ((Get-KameraModell 'Axis225FD') | ForEach-Object { "$($_.Hersteller)|$($_.Modell)" })
+
+# Rechte: Antwort wie VIEW_LIVE … und wie viewLive …
+$antwortGross = [pscustomobject]@{ data = [pscustomobject]@{ GENERIC_READ = 'True'; VIEW_LIVE = 'True'; PLAYBACK = 'True'; EXPORT = 'False'; displayName = 'x'; enabled = $true } }
+Pruefe 'Rechte: Live und Wiedergabe'        'Live,Wiedergabe' ((ConvertFrom-MilestoneRechte $antwortGross) -join ',')
+$antwortKlein = [pscustomobject]@{ viewLive = $true; playback = $false; export = $true }
+Pruefe 'Rechte: camelCase'                  'Live,Export'     ((ConvertFrom-MilestoneRechte $antwortKlein) -join ',')
+$antwortOhneBild = [pscustomobject]@{ GENERIC_READ = 'True'; EXPORT = 'True' }
+Pruefe 'Rechte: ohne Live/Wiedergabe leer'  0 (@(ConvertFrom-MilestoneRechte $antwortOhneBild).Count)
+Pruefe 'Rechte: unbekanntes Recht bleibt'   'Live,SPECIAL_THING' ((ConvertFrom-MilestoneRechte ([pscustomobject]@{ VIEW_LIVE = 'True'; SPECIAL_THING = 'True' })) -join ',')
+Pruefe 'Rechte: Sortierung'                 'Live,Wiedergabe,Export' ((Sort-KameraRechte @('Export', 'Live', 'Wiedergabe', 'Live')) -join ',')
+
+# Zuordnung Milestone-Hardware <-> Kamerazeilen
+function KHw($id, $name, $ip, $mac, $serie) {
+    [pscustomobject]@{ HardwareId = $id; HardwareName = "HW $ip"; Adresse = $ip; Modell = 'HikVision DS-1'; HardwareAktiv = $true; Geaendert = '2026-10-01T10:00:00Z'; RecordingServer = 'rec'; Mac = $mac; Seriennummer = $serie; Firmware = 'V1'
+        Kanaele = @([pscustomobject]@{ Id = "$id-k0"; Name = $name; Kanal = 0; Aktiv = $true; Aufzeichnung = $true; Geaendert = '0001-01-01T00:00:00Z' }) }
+}
+function KZeile($id, $titel, $status, $hw, $mac, $serie, $ip, $geb, $raum) {
+    [pscustomobject]@{ Id = $id; Title = $titel; Status = $status; MS_HardwareId = $hw; MS_Mac = $mac; MS_Seriennummer = $serie; MS_Adresse = $ip; Gebaeude = $geb; Raum = $raum }
+}
+$kg = @(
+    (KHw 'h1' '10.300 Treppe' '10.0.0.1' '0011223344A1' 'SERIE-A1'),
+    (KHw 'h2' '17.102 Reception' '10.0.0.2' '0011223344A2' 'SERIE-A2'),
+    (KHw 'h3' '31.121 Becken' '10.0.0.3' '0011223344A3' 'SERIE-A3'),
+    (KHw 'h4' '33.A20 Kasse' '10.0.0.4' '0011223344A4' 'SERIE-A4'),
+    (KHw 'h5' 'Neu 5' '10.0.0.5' '0011223344A5' 'SERIE-A5')
+)
+$kz = @(
+    (KZeile '1' '10.300 Treppe alt' 'Aktiv' 'h1' '' 'SERIE-A1' '10.0.0.9' '' ''),
+    (KZeile '2' '17.102 Reception' 'Archiviert' 'h2-alt' '00:11:22:33:44:A2' '' '10.0.0.2' '17' '17.102'),
+    (KZeile '3' 'Becken' '' '' '' '' '10.0.0.3' '' ''),
+    (KZeile '4' '33.A20 Kasse' 'Aktiv' 'h4' '' 'SERIE-ALT' '10.0.0.4' '33' '33.A20'),
+    (KZeile '6' 'Verschwunden' 'Aktiv' 'h6' '' '' '10.0.0.6' '' ''),
+    (KZeile '7' 'Im Lager' 'Lager' 'h7' '' '' '10.0.0.7' '' ''),
+    (KZeile '8' 'Nie verknüpft' 'Aktiv' '' '' '' '' '' '')
+)
+$kp = Get-KameraZuordnung $kg $kz
+$kVon = @{}; foreach ($zu in $kp.Zuordnungen) { $kVon[[string]$zu.ZeileId] = $zu }
+Pruefe 'Kamera: 4 Zuordnungen'                 4 $kp.Zuordnungen.Count
+Pruefe 'Kamera: h1 über Hardware-ID'           'Hardware-ID' $kVon['1'].Grund
+Pruefe 'Kamera: Umbenennung'                   '10.300 Treppe' $kVon['1'].Felder['Title']
+Pruefe 'Kamera: Gebäude aus Name gefüllt'      '10' $kVon['1'].Felder['Gebaeude']
+Pruefe 'Kamera: IP-Wechsel im Verlauf'         'True' ([bool]($kVon['1'].VerlaufTexte | Where-Object { $_ -like 'IP-Adresse geändert*' }))
+Pruefe 'Kamera: h2 über MAC, reaktiviert'      'MAC-Adresse|Aktiv' ("$($kVon['2'].Grund)|$($kVon['2'].Felder['Status'])")
+Pruefe 'Kamera: h3 über IP (nie verknüpft)'    'IP-Adresse' $kVon['3'].Grund
+Pruefe 'Kamera: leerer Status wird Aktiv'      'Aktiv' $kVon['3'].Felder['Status']
+Pruefe 'Kamera: Hardware ersetzt im Verlauf'   'True' ([bool]($kVon['4'].VerlaufTexte | Where-Object { $_ -like 'Hardware in Milestone ersetzt*' }))
+Pruefe 'Kamera: h5 neu'                        'Neu 5' (@($kp.Neu)[0].Name)
+Pruefe 'Kamera: nur verknüpfte werden archiviert' '6' ((@($kp.Archivieren | ForEach-Object { $_.ZeileId })) -join ',')
+Pruefe 'Kamera: aktive verknüpfte Zeilen'      4 $kp.AktiveZeilen
+$kf = ConvertTo-KameraFelder $kg[0] ([datetime]'2026-10-13T10:00:00Z')
+Pruefe 'Kamera-Felder: MAC normalisiert'       '00:11:22:33:44:A1' $kf['MS_Mac']
+Pruefe 'Kamera-Felder: aktiv und Aufzeichnung' 'Ja|Ja' ("$($kf['MS_Aktiv'])|$($kf['MS_Aufzeichnung'])")
+Pruefe 'Kamera-Felder: Kanaltext'              '1 | 10.300 Treppe | Aktiv | Aufzeichnung ein' $kf['MS_Kanaele']
+Pruefe 'Kamera-Felder: 0001-Datum ignoriert'   '2026-10-01T10:00:00Z' $kf['MS_Geaendert']
+
+# Rollen
+Pruefe 'Mitglied: AD-Gruppe'   'AD-Gruppe|Hot_NachtD' ((ConvertTo-RollenMitglied ([pscustomobject]@{ accountName = 'SASADMIN\Hot_NachtD'; identityType = 'WindowsGroup' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
+Pruefe 'Mitglied: Domäne ergänzt' 'AD-Benutzer|SASADMIN\anna|anna' ((ConvertTo-RollenMitglied ([pscustomobject]@{ name = 'anna'; domain = 'SASADMIN'; identityType = 'WindowsUser' })) | ForEach-Object { "$($_.Art)|$($_.Name)|$($_.Konto)" })
+Pruefe 'Mitglied: Basisbenutzer' 'Basisbenutzer|' ((ConvertTo-RollenMitglied ([pscustomobject]@{ displayName = 'admin'; identityType = 'BasicUser' })) | ForEach-Object { "$($_.Art)|$($_.Konto)" })
+$tab = @{ 'h2' = @('Live'); 'h1' = @('Live', 'Wiedergabe') }
+$json = ConvertTo-RollenKameras $tab
+Pruefe 'Rollen-Kameras: JSON stabil'      '{"h1":["Live","Wiedergabe"],"h2":["Live"]}' $json
+Pruefe 'Rollen-Kameras: zurückgelesen'    'Live' ((ConvertFrom-RollenKameras $json)['h2'] -join ',')
+Pruefe 'Rollen-Kameras: leer'             '{}' (ConvertTo-RollenKameras @{})
+$rv = Get-RollenVerlauf "AD-Gruppe | A`nAD-Gruppe | B" "AD-Gruppe | B`nAD-Gruppe | C" '{"h1":["Live"],"h2":["Live"]}' '{"h1":["Live","Export"],"h3":["Live"]}' @{ h1 = 'Eins'; h2 = 'Zwei'; h3 = 'Drei' }
+Pruefe 'Rollen-Verlauf: Mitglied dazu'    'Mitglied hinzugefügt: AD-Gruppe | C' $rv[0]
+Pruefe 'Rollen-Verlauf: Mitglied weg'     'Mitglied entfernt: AD-Gruppe | A' $rv[1]
+Pruefe 'Rollen-Verlauf: Kamera dazu'      'Zugriff auf 1 Kamera erhalten: Drei' $rv[2]
+Pruefe 'Rollen-Verlauf: Kamera weg'       'Zugriff auf 1 Kamera verloren: Zwei' $rv[3]
+Pruefe 'Rollen-Verlauf: Rechte geändert'  'Rechte geändert bei Eins' $rv[4]
+Pruefe 'Kamera-Rollen-Text'               "A: Live`nB: Live, Export" (Get-KameraRollenText @([pscustomobject]@{ Rolle = 'B'; Rechte = @('Live', 'Export') }, [pscustomobject]@{ Rolle = 'A'; Rechte = @('Live') }))
+Pruefe 'Rechte-Abgleich fällig ohne Lauf'  'True'  (Test-RollenAbgleichFaellig $null 6)
+Pruefe 'Rechte-Abgleich nicht fällig'      'False' (Test-RollenAbgleichFaellig '2026-10-13T08:00:00Z' 6 ([datetime]'2026-10-13T10:00:00Z'))
+Pruefe 'Rechte-Abgleich fällig nach 6 h'   'True'  (Test-RollenAbgleichFaellig '2026-10-13T03:00:00Z' 6 ([datetime]'2026-10-13T10:00:00Z'))
+Pruefe 'Excel-Raum: Zahl gerundet'   '10.210' (Get-ExcelRaum '10.210000000000001')
+Pruefe 'Excel-Raum: 10.2 wird 10.200' '10.200' (Get-ExcelRaum '10.199999999999999')
+Pruefe 'Excel-Raum: Text bleibt'     '31.1.100.u102' (Get-ExcelRaum '31.1.100.U102')
+Pruefe 'Excel-Gebäude: G17.3'        '17' (Get-ExcelGebaeude 'G17.3')
+Pruefe 'Excel-Gebäude: Parkplatz'    'P' (Get-ExcelGebaeude 'Parkplatz')
+Pruefe 'Excel-Gebäude: P passt zu 33' 'True' (Test-GleichesGebaeude 'P' '33')
+Pruefe 'Excel-Gebäude: P3 ist 33'     'True' (Test-GleichesGebaeude 'P3' '33')
+Pruefe 'Excel-Gebäude: P1 nicht P3'   'False' (Test-GleichesGebaeude 'P1' 'P3')
+Pruefe 'Excel-Stock: 17.100'          '17.1' (Get-ExcelStock '17.100000000000001')
+Pruefe 'Excel-Stock: G17.3'           '17.3' (Get-ExcelStock 'G17.3')
+Pruefe 'Ort passt umgekehrt'          'True' (Test-OrtPasst 'G18.1 Ladestation' 'Ladestation Eingang')
+Pruefe 'Ort passt nicht bei Kurzem'   'False' (Test-OrtPasst 'Bar' 'Bistro Theke')
+$exGeraete = @(
+    [pscustomobject]@{ HardwareId = 'a'; Adresse = '10.11.15.102'; Name = '31.121 Schwimmbecken Start'; Gebaeude = '31' },
+    [pscustomobject]@{ HardwareId = 'b'; Adresse = '10.11.15.189'; Name = '10.210 Bistro'; Gebaeude = '10' },
+    [pscustomobject]@{ HardwareId = 'c'; Adresse = '10.11.15.90'; Name = '17.102 Reception'; Gebaeude = '17' }
+)
+$exInv = @(@{ _Zeile = 1; A = 'Kamera-Nr' }, @{ _Zeile = 2; A = 'C002'; B = '31'; C = '31.1.100.U102'; D = 'Schwimmbecken Start'; K = '10.11.15.102' },
+    @{ _Zeile = 3; A = 'C065'; B = 'G10.210'; D = 'Bistro'; K = '10.11.15.189' }, @{ _Zeile = 4; A = 'C096'; B = '17'; D = 'G17.1 Reception'; K = '10.11.15.90' },
+    @{ _Zeile = 5; A = 'C067'; B = 'G10.234'; D = 'Reception'; K = '10.11.15.188' })
+$exAlt = @(@{ _Zeile = 1; A = 'Kamera' }, @{ _Zeile = 2; A = 'C065'; B = '10'; C = '10.210000000000001'; D = 'Bistro'; J = 'Nachtdienst' })
+$exBew = @(@{ _Zeile = 1; A = 'Gebäude' },
+    @{ _Zeile = 2; A = 'G31'; B = '31.1.100.U102'; C = 'Schwimmbecken Start'; D = 'CSSZ_TeamLBad'; E = 'Gut'; F = 'Genügend'; G = 'PTZ deaktivieren'; H = 'X' },
+    @{ _Zeile = 3; A = '10'; B = '10.210000000000001'; C = 'Bistro'; D = 'Nachtdienst' },
+    @{ _Zeile = 4; A = '17'; B = '17.100000000000001'; C = 'Reception'; D = 'Nachtdienst' },
+    @{ _Zeile = 5; A = '18'; B = '18'; C = 'Lounge'; D = 'Nachtdienst' })
+$exPlan = Get-KameraExcelPlan $exGeraete $exInv $exAlt $exBew
+Pruefe 'Excel: Kamera-Nr über IP'          'C002' $exPlan.Zuordnung['a'].KameraNr
+Pruefe 'Excel: Sportarena über Bezeichnung' 'Gut|Genügend|Bezeichnung' ("$($exPlan.Zuordnung['a'].Qualitaet)|$($exPlan.Zuordnung['a'].Positionierung)|$($exPlan.Zuordnung['a'].Weg)")
+Pruefe 'Excel: umgesetzt markiert'         'True' ($exPlan.Zuordnung['a'].Verbesserungen -like '*umgesetzt*')
+Pruefe 'Excel: G10 über Inventar OLD'      'Inventar OLD (C065)' $exPlan.Zuordnung['b'].Weg
+Pruefe 'Excel: G17 über Ort im Gebäude'    'Ort (C096)' $exPlan.Zuordnung['c'].Weg
+Pruefe 'Excel: Unbekanntes bleibt offen'   1 $exPlan.Offen.Count
+Pruefe 'Excel: Inventar ohne Hardware'     'C067 10.11.15.188 Reception' ($exPlan.OhneHardware -join ';')
+Pruefe 'Kennwort: Verschlüsselung hin und zurück' 'geheim-123' (Unprotect-MilestoneKennwort (Protect-MilestoneKennwort (ConvertTo-SecureString 'geheim-123' -AsPlainText -Force)))
 
 # ---------------------------------------------------------------------------
 Abschnitt 'Syntaxprüfung aller Skripte'

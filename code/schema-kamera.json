@@ -1,0 +1,281 @@
+[
+    {
+        "internal":  "Title",
+        "display":  "Name",
+        "type":  "Title",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Name der Kamera in Milestone (erster Kanal), z. B. «10.300 Treppe Trakt 1». Der Abgleich führt ihn nach, wenn die Kamera in Milestone umbenannt wird; von Hand nur für Kameras, die nicht in Milestone stehen"
+    },
+    {
+        "internal":  "Gebaeude",
+        "display":  "Gebäude",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Gebäude, z. B. 10, 17, 31, P1. Ist das Feld leer, setzt der Abgleich den Teil des Namens vor dem ersten Punkt"
+    },
+    {
+        "internal":  "Raum",
+        "display":  "Raum",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Raum oder Standort, z. B. 10.300. Ist das Feld leer, setzt der Abgleich die Raumnummer aus dem Namen"
+    },
+    {
+        "internal":  "Status",
+        "display":  "Status",
+        "type":  "Text",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  true,
+        "description":  "Aktiv, Lager oder Archiviert. Leer gilt als Aktiv. Der Abgleich archiviert eine Kamera, die aus Milestone verschwunden ist, und reaktiviert sie, wenn sie wieder auftaucht"
+    },
+    {
+        "internal":  "Bemerkung",
+        "display":  "Bemerkung",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Freitext"
+    },
+    {
+        "internal":  "Verlauf",
+        "display":  "Verlauf",
+        "type":  "Note",
+        "group":  "Stammdaten",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; Pflege im Frontend als Timeline"
+    },
+    {
+        "internal":  "Beschaffungsjahr",
+        "display":  "Beschaffungsjahr",
+        "type":  "Text",
+        "group":  "Beschaffung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Geschäftsjahr der Beschaffung, Schreibweise 2026/2027"
+    },
+    {
+        "internal":  "ErsatzGeplant",
+        "display":  "Ersatz geplant",
+        "type":  "Text",
+        "group":  "Beschaffung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Geschäftsjahr, in dem die Kamera ersetzt werden soll, Schreibweise 2030/2031"
+    },
+    {
+        "internal":  "Zustaendig",
+        "display":  "Zuständig",
+        "type":  "Text",
+        "group":  "Bewertung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Wer die Kamera im Alltag nutzt und Mängel meldet, z. B. Nachtdienst, TechD, Team Bad"
+    },
+    {
+        "internal":  "Qualitaet",
+        "display":  "Bildqualität",
+        "type":  "Text",
+        "group":  "Bewertung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Gut, Genügend oder Schlecht"
+    },
+    {
+        "internal":  "Positionierung",
+        "display":  "Positionierung",
+        "type":  "Text",
+        "group":  "Bewertung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Gut, Genügend oder Schlecht"
+    },
+    {
+        "internal":  "Verbesserungen",
+        "display":  "Verbesserungen",
+        "type":  "Note",
+        "group":  "Bewertung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Was an Bild oder Ausrichtung zu verbessern ist und was schon umgesetzt wurde"
+    },
+    {
+        "internal":  "BewertetAm",
+        "display":  "Bewertet am",
+        "type":  "Text",
+        "group":  "Bewertung",
+        "source":  "manuell",
+        "inDefaultView":  false,
+        "description":  "Datum der letzten Bewertung, Schreibweise 2026-10-13"
+    },
+    {
+        "internal":  "MS_HardwareId",
+        "display":  "Hardware-ID (Milestone)",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "ID der Hardware in Milestone; damit findet der Abgleich die Zeile wieder"
+    },
+    {
+        "internal":  "MS_Gefunden",
+        "display":  "In Milestone",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ja, solange die Hardware in Milestone steht"
+    },
+    {
+        "internal":  "MS_HardwareName",
+        "display":  "Hardware-Name (Milestone)",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Name der Hardware in Milestone, meist Modell und IP-Adresse"
+    },
+    {
+        "internal":  "MS_Adresse",
+        "display":  "IP-Adresse",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  true,
+        "description":  "Adresse, unter der Milestone die Kamera anspricht"
+    },
+    {
+        "internal":  "MS_Mac",
+        "display":  "MAC-Adresse",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "MAC-Adresse laut Treiber, Schreibweise 98:8B:0A:43:B9:9D"
+    },
+    {
+        "internal":  "MS_Seriennummer",
+        "display":  "Seriennummer",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Seriennummer laut Treiber"
+    },
+    {
+        "internal":  "MS_Hersteller",
+        "display":  "Hersteller",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Hersteller, aus dem Modell in Milestone abgeleitet"
+    },
+    {
+        "internal":  "MS_Modell",
+        "display":  "Modell",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  true,
+        "description":  "Modell laut Milestone"
+    },
+    {
+        "internal":  "MS_Firmware",
+        "display":  "Firmware",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Firmware-Version laut Treiber"
+    },
+    {
+        "internal":  "MS_Aktiv",
+        "display":  "In Milestone aktiv",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ja, wenn die Hardware und mindestens ein Kanal in Milestone aktiviert sind"
+    },
+    {
+        "internal":  "MS_Aufzeichnung",
+        "display":  "Aufzeichnung",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ja, wenn mindestens ein aktiver Kanal aufzeichnet"
+    },
+    {
+        "internal":  "MS_KanalAnzahl",
+        "display":  "Anzahl Kanäle",
+        "type":  "Number",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Kameras (Kanäle) dieser Hardware in Milestone, etwa zwei bei einer 360°-Kamera"
+    },
+    {
+        "internal":  "MS_Kanaele",
+        "display":  "Kanäle",
+        "type":  "Note",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ein Kanal je Zeile: Nummer | Name | Aktiv oder Deaktiviert | Aufzeichnung ein oder aus"
+    },
+    {
+        "internal":  "MS_RecordingServer",
+        "display":  "Recording Server",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Server, der die Kamera aufzeichnet"
+    },
+    {
+        "internal":  "MS_Geaendert",
+        "display":  "In Milestone geändert",
+        "type":  "DateTime",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Letzte Änderung an Hardware oder Kanälen in Milestone"
+    },
+    {
+        "internal":  "MS_LetzterSync",
+        "display":  "Letzter Milestone-Abgleich",
+        "type":  "DateTime",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Zeitpunkt des letzten Laufs, der diese Zeile abgeglichen hat"
+    },
+    {
+        "internal":  "MS_SyncStatus",
+        "display":  "Abgleich-Status",
+        "type":  "Text",
+        "group":  "Milestone",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Ergebnis des letzten Abgleichs dieser Zeile"
+    },
+    {
+        "internal":  "MS_Rollen",
+        "display":  "Sichtbar für (Milestone-Rollen)",
+        "type":  "Note",
+        "group":  "Berechtigungen",
+        "source":  "milestone",
+        "inDefaultView":  false,
+        "description":  "Eine Rolle je Zeile mit ihren Rechten auf diese Kamera, z. B. «Hot_NachtD: Live, Wiedergabe, Export». Schreibt der Abgleich der Rollen"
+    }
+]

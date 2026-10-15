@@ -299,6 +299,8 @@ function bereichUebersicht(ziel) {
   const raster = UI.el("div", "karten");
   raster.appendChild(geraetKarteKurz());
   raster.appendChild(telefonKarte());
+  const kamera = kameraKarte();
+  if (kamera) raster.appendChild(kamera);
   stapel.appendChild(raster);
 
   /* AD-Felder, alle schreibgeschützt. Das sagt die Karte einmal in ihrem
@@ -386,6 +388,34 @@ function telefonKarte() {
       fokus: "telefon-" + t.id
     });
     return z;
+  })));
+  return k;
+}
+
+
+/* Videoüberwachung: die Rollen aus Milestone, die diese Person über ihre
+   AD-Gruppen hat (der Abgleich löst sie rekursiv auf, Modell.kamerasAnreichern).
+   Ohne Liste «Kamera-Rollen» keine Karte; ohne Rolle ein leiser Leerzustand. */
+let kameraRollenDa = false;
+
+function kameraKarte() {
+  if (!kameraRollenDa) return null;
+  const rollen = zeile.__kameraRollen || [];
+  const k = UI.karte({ titel: "Videoüberwachung",
+    unter: rollen.length ? "Sieht " + UI.zahlText(zeile.__kameraAnzahl) + (zeile.__kameraAnzahl === 1 ? " Kamera" : " Kameras") + " in Milestone." : "" });
+  if (!rollen.length) {
+    k.inhalt.appendChild(UI.leerzustand({ sinnbild: "kamera", titel: "Kein Zugriff auf Kameras",
+      text: "Die Person hat in Milestone keine Rolle." }));
+    return k;
+  }
+  k.inhalt.appendChild(UI.zeilenliste(rollen.map(function (r) {
+    return UI.listenZeile({
+      titel: String(r.Title || "").trim() || "(ohne Namen)",
+      unter: [r.__rechte.join(", "), UI.zahlText(r.__kameras.length) + (r.__kameras.length === 1 ? " Kamera" : " Kameras")],
+      href: UI.adresse.kamerarolle(r.id),
+      sinnbild: "schild",
+      fokus: "kamerarolle-" + r.id
+    });
   })));
   return k;
 }
@@ -838,11 +868,13 @@ async function datenLaden(still) {
   /* Alles gleichzeitig. Telefon- und Software-Liste sind Beigabe: fehlt
      eine, bleibt die jeweilige Karte leer, statt die Seite scheitern zu
      lassen. Nur ADMIN-Clients: die Inhaberschaft zeigt nie auf EDU. */
-  const [rohBenutzer, rohClients, rohSoftware, rohTelefone] = await Promise.all([
+  const [rohBenutzer, rohClients, rohSoftware, rohTelefone, rohKameras, rohRollen] = await Promise.all([
     Daten.benutzer(function (n) { anzahlBenutzer = n; fortschritt(); }),
     Daten.clients("admin", function (n) { anzahlClients = n; fortschritt(); }),
     Daten.software().catch(function () { return []; }),
-    Daten.telefone().catch(function () { return []; })
+    Daten.telefone().catch(function () { return []; }),
+    Daten.kameras().catch(function () { return []; }),
+    Daten.kameraRollen().catch(function () { return null; })
   ]);
 
   const ergebnis = Modell.anreichern(rohClients, rohBenutzer, rohSoftware || []);
@@ -852,6 +884,11 @@ async function datenLaden(still) {
      jeder Person); die Rückgabe { telefone, benutzer } wird nicht mehr
      fälschlich als Liste abgelegt. */
   Modell.telefoneAnreichern(rohTelefone || [], alleBenutzer);
+  /* Kamera-Rollen: nur die Nebenwirkung __kameraRollen an jeder Person.
+     Fehlt die Liste oder hat der Abgleich noch keine Rolle geschrieben,
+     gibt es keine Karte – «Kein Zugriff» wäre dann eine falsche Aussage. */
+  kameraRollenDa = !!rohRollen && rohRollen.length > 0;
+  Modell.kamerasAnreichern(rohKameras || [], rohRollen || [], alleBenutzer);
   pSpalten = ergebnis.programmSpalten;
 
   pSpalte = {};

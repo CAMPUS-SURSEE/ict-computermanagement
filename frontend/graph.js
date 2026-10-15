@@ -13,6 +13,8 @@
      await Daten.benutzer(fortschritt)     → Array flacher Zeilen
      await Daten.telefone(fortschritt)     → Array flacher Zeilen
      await Daten.software(fortschritt)     → Array flacher Zeilen der Liste «Software»
+     await Daten.kameras(fortschritt)      → Array flacher Zeilen der Liste «Kameras»
+     await Daten.kameraRollen(fortschritt) → Array flacher Zeilen der Liste «Kamera-Rollen»
        (jede flache Zeile trägt ihr eTag als «__etag»)
      await Daten.zeile(liste, id)          → eine Zeile
      await Daten.speichern(liste, id, felder, etagErwartet?)
@@ -27,7 +29,8 @@
      await Daten.syncStatus()              → { zeit, text } des letzten Sync-Laufs
                                              oder null
      Daten.mockModus                       → true im Vorführmodus (?mock=1)
-   «liste» ist "admin", "edu", "benutzer", "telefon" oder "software".
+   «liste» ist "admin", "edu", "benutzer", "telefon", "software", "kamera" oder
+   "kamerarolle".
    «fortschritt» ist eine Rückrufe-Funktion, die nach jeder geladenen Seite die
    bisherige Anzahl bekommt.
 
@@ -152,7 +155,8 @@ const Daten = (function () {
 
   const LISTEN_TITEL = {
     admin: "ADMIN-Clients", edu: "EDU-Clients", benutzer: "Benutzer",
-    telefon: "Telefonnummern", software: "Software"
+    telefon: "Telefonnummern", software: "Software",
+    kamera: "Kameras", kamerarolle: "Kamera-Rollen"
   };
 
   function listenPfad(liste) {
@@ -272,6 +276,12 @@ const Daten = (function () {
 
   /** Alle Zeilen der Liste «Software» (eine je Programm). */
   async function software(fortschritt) { return alleZeilen("software", fortschritt); }
+
+  /** Alle Kameras (eine Zeile je Hardware in Milestone). */
+  async function kameras(fortschritt) { return alleZeilen("kamera", fortschritt); }
+
+  /** Alle Rollen aus Milestone samt Rechten auf die Kameras. */
+  async function kameraRollen(fortschritt) { return alleZeilen("kamerarolle", fortschritt); }
 
   /** Legt die Spalte eines neuen Programms in der Benutzer-Liste an.
 
@@ -418,6 +428,8 @@ const Daten = (function () {
     benutzer: benutzer,
     telefone: telefone,
     software: software,
+    kameras: kameras,
+    kameraRollen: kameraRollen,
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,
@@ -711,6 +723,160 @@ const Mock = (function () {
     liste.push(telefonZeile(r, nr++, "398", "", "Person", "", "", "", ""));
     liste.push(telefonZeile(r, nr++, "399", "", "", "", "", "Apparat im Lager", ""));
     return liste;
+  }
+
+  /* ---------- Kameras und Kamera-Rollen ----------
+
+     Erfundene Räume in den Häusern A, B und C, dazu ein Parkhaus P. Die
+     Sonderfälle sind absichtlich dabei: eine Kamera mit zwei Kanälen
+     (360°), eine mit einem Kanal ohne Namen, eine deaktivierte, eine ohne
+     Aufzeichnung, eine im Lager, eine archivierte, eine, die nur von Hand
+     erfasst ist, und eine Rolle ohne Zweck und Bewilligung. Ein eigener
+     Würfel, damit die übrigen Vorführdaten bleiben, wie sie sind. */
+
+  const KAMERA_ORTE = [
+    ["A.010", "Eingang Nord"], ["A.010", "Eingang Süd"], ["A.120", "Empfang"], ["A.205", "Gang Ost"],
+    ["A.305", "Gang West"], ["A.U01", "Anlieferung"], ["B.100", "Foyer"], ["B.140", "Treppe Nord"],
+    ["B.240", "Treppe Süd"], ["B.310", "Lounge"], ["B.A02", "Innenhof"], ["C.020", "Halle Mitte"],
+    ["C.020", "Halle Tribüne"], ["C.110", "Garderobe Korridor"], ["C.A01", "Aussen Nord"], ["C.A01", "Aussen Süd"],
+    ["P.001", "Einfahrt"], ["P.001", "Ausfahrt"], ["P.101", "Sektor A"], ["P.101", "Sektor B"],
+    ["P.201", "Sektor C"], ["P.A10", "Kasse 1"], ["P.A10", "Kasse 2"], ["A.050", "Gepäckraum"],
+    ["B.020", "Ladestation"], ["C.300", "Fitness"]
+  ];
+  const KAMERA_MODELLE = [
+    ["Hikvision", "DS-2CD2743G1-IZS"], ["Hikvision", "DS-2CD2146G2-I"], ["Hikvision", "DS-2DE3204W-DE"],
+    ["Axis", "M3086-V"], ["Axis", "P3285-LV"], ["Axis", "M4338-PLVE"]
+  ];
+  const ZUSTAENDIG = ["Nachtdienst", "Technischer Dienst", "Team Halle", "Empfang"];
+
+  function kameraZeilen(r) {
+    const liste = [];
+    KAMERA_ORTE.forEach(function ([raum, bezeichnung], i) {
+      const nr = i + 1;
+      const z = leereZeile(SPALTEN_KAMERA);
+      const [hersteller, modell] = waehle(r, KAMERA_MODELLE);
+      const name = raum + " " + bezeichnung;
+      const ip = "10.99.15." + (100 + nr);
+      const mac = (hersteller === "Axis" ? "AC:CC:8E" : "24:28:FD") + ":" + ["1A", "2B", "3C"][nr % 3] + ":"
+        + String(10 + nr).padStart(2, "0") + ":" + String(40 + nr).padStart(2, "0");
+      z.id = String(700 + nr);
+      z.Title = name;
+      z.Gebaeude = raum.split(".")[0];
+      z.Raum = raum;
+      z.Status = nr === 5 ? "Lager" : (nr === 9 ? "Archiviert" : (r() < 0.5 ? "Aktiv" : ""));
+      z.Beschaffungsjahr = r() < 0.75 ? waehle(r, BESCHAFFUNG) : "";
+      z.ErsatzGeplant = z.Beschaffungsjahr && r() < 0.7 ? Modell.gjPlus(z.Beschaffungsjahr, 8) : "";
+      if (r() < 0.6) {
+        z.Zustaendig = waehle(r, ZUSTAENDIG);
+        if (r() < 0.5) {
+          z.Qualitaet = r() < 0.8 ? "Gut" : "Genügend";
+          z.Positionierung = r() < 0.7 ? "Gut" : (r() < 0.5 ? "Genügend" : "Schlecht");
+          z.Verbesserungen = z.Positionierung === "Schlecht" ? "Blickwinkel nach links drehen, Eingang ist nur halb sichtbar." : "";
+          z.BewertetAm = tagIso(120 + Math.floor(r() * 400));
+        }
+      }
+      z.MS_HardwareId = "mock-hw-" + nr;
+      z.MS_Gefunden = nr === 9 ? "Nein" : "Ja";
+      z.MS_HardwareName = (hersteller === "Axis" ? "AXIS " : "HikVision ") + modell + " (" + ip + ")";
+      z.MS_Adresse = ip;
+      z.MS_Mac = mac;
+      z.MS_Seriennummer = hersteller === "Axis" ? mac.replace(/:/g, "") : modell + "2023" + String(100000 + nr * 37);
+      z.MS_Hersteller = hersteller;
+      z.MS_Modell = modell;
+      z.MS_Firmware = hersteller === "Axis" ? "11.11." + (50 + nr) : "V5.7." + (nr % 9);
+      z.MS_Aktiv = nr === 14 ? "Nein" : "Ja";
+      z.MS_Aufzeichnung = nr === 14 || nr === 18 ? "Nein" : "Ja";
+      const kanaele = [[1, name, z.MS_Aktiv === "Ja", z.MS_Aufzeichnung === "Ja"]];
+      if (nr === 12) kanaele.push([2, raum + " " + bezeichnung + " (zweite Linse)", true, true]);
+      if (nr === 7) kanaele.push([2, "AXIS P3285-LV Dome Camera (" + ip + ") - Kamera 2", true, true]);
+      z.MS_KanalAnzahl = kanaele.length;
+      z.MS_Kanaele = kanaele.map(k => k[0] + " | " + k[1] + " | " + (k[2] ? "Aktiv" : "Deaktiviert") + " | Aufzeichnung " + (k[3] ? "ein" : "aus")).join("\n");
+      z.MS_RecordingServer = "rec01.beispiel.local";
+      z.MS_Geaendert = vorTagen(20 + Math.floor(r() * 300), 10);
+      z.MS_LetzterSync = nr === 9 ? vorTagen(30, 5) : vorTagen(0, 5);
+      z.MS_SyncStatus = nr === 9 ? "Nicht mehr in Milestone" : "OK";
+      const verlauf = [{ id: "mock-k-" + nr, datum: tagIso(40), text: "Aus Milestone neu angelegt", quelle: "sync", erstellt: vorTagen(40, 3) }];
+      if (nr === 9) verlauf.push({ id: "mock-ka-" + nr, datum: tagIso(30), text: "In Milestone nicht mehr vorhanden, archiviert", quelle: "sync", erstellt: vorTagen(30, 3) });
+      if (nr === 3) verlauf.push({ id: "mock-ku-" + nr, datum: tagIso(12), text: "Umbenannt in Milestone: A.120 Reception → A.120 Empfang", quelle: "sync", erstellt: vorTagen(12, 3) });
+      z.Verlauf = JSON.stringify(verlauf);
+      liste.push(z);
+    });
+    // Nur von Hand erfasst: liegt im Lager, steht in keinem Milestone.
+    const hand = leereZeile(SPALTEN_KAMERA);
+    hand.id = "799";
+    hand.Title = "Ersatzkamera Dome";
+    hand.Status = "Lager";
+    hand.Bemerkung = "Reserve für den Ausfall einer Dome-Kamera im Haus A.";
+    hand.Beschaffungsjahr = "2025/2026";
+    hand.Verlauf = JSON.stringify([{ id: "mock-kh", datum: tagIso(60), text: "Im Frontend neu erfasst", quelle: "manuell", erstellt: vorTagen(60, 9) }]);
+    liste.push(hand);
+    return liste;
+  }
+
+  /* Rollen: Mitglieder sind AD-Gruppen; die Personen dahinter sind
+     Benutzer der Vorführdaten (nach Abteilung). Rechte je Kamera als JSON
+     Hardware-ID → Rechte, wie der Sync sie schreibt. */
+  function kameraRollenZeilen(r, benutzer, kameras) {
+    const imMilestone = kameras.filter(k => k.MS_HardwareId && k.MS_Gefunden === "Ja");
+    const logins = function (abteilungen) {
+      return benutzer.filter(b => abteilungen.indexOf(b.Abteilung) > -1).map(b => b.Title).sort().join("\n");
+    };
+    const rechteFuer = function (filter, rechte) {
+      const o = {};
+      for (const k of imMilestone.filter(filter)) o[k.MS_HardwareId] = rechte.slice();
+      return o;
+    };
+    const definitionen = [
+      { id: "1", name: "Administratoren", typ: "Administratoren", gruppen: [], mitglieder: ["Basisbenutzer | admin", "AD-Gruppe | BEISPIEL\\ICT_Admins"],
+        abt: ["ICT"], kameras: rechteFuer(() => true, ["Vollzugriff"]), zweck: "Betrieb und Wartung des Videosystems.", durch: "Leitung ICT", am: "2025-03-01" },
+      { id: "2", name: "Nachtdienst", typ: "Benutzerdefiniert", gruppen: ["Hot_Nachtdienst"], mitglieder: ["AD-Gruppe | BEISPIEL\\Hot_Nachtdienst"],
+        abt: ["Empfang"], kameras: rechteFuer(k => k.Gebaeude !== "P", ["Live", "Wiedergabe", "Export"]),
+        zweck: "Kontrollgänge ersetzen und Vorfälle in der Nacht nachvollziehen.", durch: "Direktion", am: "2024-10-10" },
+      { id: "3", name: "Technischer Dienst", typ: "Benutzerdefiniert", gruppen: ["TD_Alle"], mitglieder: ["AD-Gruppe | BEISPIEL\\TD_Alle"],
+        abt: ["Technischer Dienst"], kameras: rechteFuer(k => k.Gebaeude === "P", ["Live", "Wiedergabe"]),
+        zweck: "Störungen an Barrieren und Kassen im Parkhaus beheben.", durch: "Direktion", am: "2024-10-10" },
+      { id: "4", name: "Team Halle", typ: "Benutzerdefiniert", gruppen: ["Sport_Halle"], mitglieder: ["AD-Gruppe | BEISPIEL\\Sport_Halle", "AD-Benutzer | BEISPIEL\\muster.anna"],
+        abt: ["Gastronomie"], kameras: rechteFuer(k => k.Gebaeude === "C", ["Live"]), zweck: "", durch: "", am: "" },
+      { id: "5", name: "Empfang (alt)", typ: "Benutzerdefiniert", gruppen: ["Hot_Empfang_alt"], mitglieder: ["AD-Gruppe | BEISPIEL\\Hot_Empfang_alt"],
+        abt: [], kameras: {}, zweck: "Abgelöst durch «Nachtdienst».", durch: "Leitung Hotellerie", am: "2023-05-01", fehlt: true }
+    ];
+    return definitionen.map(function (d) {
+      const z = leereZeile(SPALTEN_KAMERAROLLE);
+      const anzahl = Object.keys(d.kameras).length;
+      const rechte = [];
+      for (const k of Object.keys(d.kameras)) for (const x of d.kameras[k]) if (rechte.indexOf(x) === -1) rechte.push(x);
+      z.id = String(900 + Number(d.id));
+      z.Title = d.name;
+      z.Zweck = d.zweck;
+      z.BewilligtDurch = d.durch;
+      z.BewilligtAm = d.am;
+      z.MS_RolleId = "mock-rolle-" + d.id;
+      z.MS_Gefunden = d.fehlt ? "Nein" : "Ja";
+      z.MS_RollenTyp = d.typ;
+      z.MS_Mitglieder = d.mitglieder.join("\n");
+      z.MS_AdGruppen = d.gruppen.join("\n");
+      z.MS_Benutzer = logins(d.abt);
+      z.MS_Rechte = rechte.join("\n");
+      z.MS_Kameras = JSON.stringify(d.kameras);
+      z.MS_KameraAnzahl = anzahl;
+      z.MS_LetzterSync = vorTagen(0, 5);
+      z.MS_SyncStatus = d.fehlt ? "Nicht mehr in Milestone" : "OK";
+      z.Verlauf = JSON.stringify([{ id: "mock-r-" + d.id, datum: tagIso(40), text: "Aus Milestone neu angelegt", quelle: "sync", erstellt: vorTagen(40, 3) }]);
+      return z;
+    });
+  }
+
+  /* «Sichtbar für» je Kamera, wie es der Sync aus den Rollen schreibt. */
+  function kameraSichtbarkeit(kameras, rollen) {
+    for (const k of kameras) {
+      const zeilen = [];
+      for (const rolle of rollen) {
+        let o = {};
+        try { o = JSON.parse(rolle.MS_Kameras || "{}"); } catch (e) { o = {}; }
+        if (o[k.MS_HardwareId]) zeilen.push(rolle.Title + ": " + o[k.MS_HardwareId].join(", "));
+      }
+      k.MS_Rollen = zeilen.sort().join("\n");
+    }
   }
 
   /* ---------- Grunddaten ---------- */
@@ -1165,9 +1331,16 @@ const Mock = (function () {
 
     neuaufsetzungZeigen(admin, benutzer);
 
+    // Kameras mit eigenem Würfel: die übrigen Vorführdaten bleiben unverändert.
+    const rk = wuerfel(20261013);
+    const kamera = kameraZeilen(rk);
+    const kamerarolle = kameraRollenZeilen(rk, benutzer, kamera);
+    kameraSichtbarkeit(kamera, kamerarolle);
+
     zwischenspeicher = {
       admin: admin, edu: edu, benutzer: benutzer,
-      telefon: telefon, software: softwareZeilen()
+      telefon: telefon, software: softwareZeilen(),
+      kamera: kamera, kamerarolle: kamerarolle
     };
     return zwischenspeicher;
   }
@@ -1185,9 +1358,9 @@ const Mock = (function () {
      Mock.zuruecksetzen() räumt alles wieder weg. */
 
   const SCHLUESSEL = "ictinventar.mock.aenderungen.v3";
-  const LISTEN = ["admin", "edu", "benutzer", "telefon", "software"];
+  const LISTEN = ["admin", "edu", "benutzer", "telefon", "software", "kamera", "kamerarolle"];
 
-  /* Listenname auf die fünf bekannten bringen; Unbekanntes gilt als ADMIN-Clients. */
+  /* Listenname auf die bekannten bringen; Unbekanntes gilt als ADMIN-Clients. */
   function listenName(liste) {
     return LISTEN.indexOf(liste) > -1 ? liste : "admin";
   }
@@ -1196,6 +1369,8 @@ const Mock = (function () {
     if (liste === "benutzer") return SPALTEN_BENUTZER;
     if (liste === "telefon") return SPALTEN_TELEFON;
     if (liste === "software") return SPALTEN_SOFTWARE;
+    if (liste === "kamera") return SPALTEN_KAMERA;
+    if (liste === "kamerarolle") return SPALTEN_KAMERAROLLE;
     return SPALTEN_CLIENT;
   }
 
@@ -1336,6 +1511,8 @@ const Mock = (function () {
     benutzer: function () { return zeilen("benutzer"); },
     telefone: function () { return zeilen("telefon"); },
     software: function () { return zeilen("software"); },
+    kameras: function () { return zeilen("kamera"); },
+    kameraRollen: function () { return zeilen("kamerarolle"); },
     zeile: zeile,
     speichern: speichern,
     anlegen: anlegen,

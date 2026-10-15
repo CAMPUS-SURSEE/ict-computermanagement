@@ -17,6 +17,13 @@
     "OU=Windows 11,OU=Users,OU=Staff,DC=sasadmin,DC=local",
     "OU=Windows 10,OU=Users,OU=Staff,DC=sasadmin,DC=local"
   ],
+  "KameraListId": "a85c5d97-3599-4c02-9bfc-96a31109f40e",
+  "KameraRolleListId": "128dcae0-04a9-4115-bf3b-2634b6f51a82",
+  "MilestoneServer": "<http://adminsrv347 – erst setzen, wenn das Lesekonto in Milestone eingerichtet ist (README 7.5)>",
+  "MilestoneAnmeldung": "Windows",
+  "MilestoneBenutzer": "",
+  "MilestoneKennwortDatei": "C:\\ComputerInventar\\Milestone.kennwort",
+  "MilestoneRechteStunden": 6,
   "LoeschSchutzProzent": 50,
   "InventarWartezeitTage": 7,
   "LogPath": "C:\\ComputerInventar\\Sync-Inventar.log"
