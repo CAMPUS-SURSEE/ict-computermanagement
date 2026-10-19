@@ -1,8 +1,9 @@
 /* app.js — Oberfläche der Hauptseite des ICT-Inventars.
 
-   Sechs Ansichten im gemeinsamen Rahmen (rahmen.js):
-     Übersicht       Handlungsbedarf, Bestand je Liste, Ersatzplanung als
-                     Zeitstrahl je Client-Liste, Verteilungen.
+   Zehn Ansichten im gemeinsamen Rahmen (rahmen.js):
+     Übersichten     Je Modul eine (Geräte, Verzeichnis, Videoüberwachung):
+                     Handlungsbedarf, Bestand je Liste, Ersatzplanung als
+                     Zeitstrahl (Clients, Kameras), Verteilungen.
      ADMIN-Clients   Tabelle der Liste «ADMIN-Clients» mit Suche, Filtern,
                      Spaltenwahl. Diese Geräte haben einen Inhaber.
      EDU-Clients     Dieselbe Tabelle für die Liste «EDU-Clients» —
@@ -418,7 +419,11 @@ function spaltenOrdnen(tab, liste) {
    2. Zustand und Adresse
    ================================================================== */
 
-const ANSICHTEN = ["uebersicht", "admin", "edu", "benutzer", "telefone", "software", "kameras", "kamerarechte"];
+/* Je Modul eine Übersicht (Rahmen.HAUPTZIELE). «#uebersicht» aus alten
+   Links führt zur ersten. */
+const UEBERSICHTEN = ["geraete", "verzeichnis", "videoueberwachung"];
+const ANSICHTEN = UEBERSICHTEN.concat(["admin", "edu", "benutzer", "telefone", "software", "kameras", "kamerarechte"]);
+function istUebersicht(name) { return UEBERSICHTEN.indexOf(name) > -1; }
 const SPEICHER_SPALTEN = "ictinventar.spalten.";   // + Ansicht
 const SPEICHER_DICHTE  = "ictinventar.dichte";     // alle Listen
 const SPEICHER_ARCHIV  = "ictinventar.archiv.";    // + Client-Ansicht
@@ -449,7 +454,7 @@ function leererTabZustand(tab) {
 }
 
 const zustand = {
-  ansicht: "uebersicht",
+  ansicht: Rahmen.STARTZIEL,
   admin: leererTabZustand("admin"),
   edu: leererTabZustand("edu"),
   benutzer: leererTabZustand("benutzer"),
@@ -559,10 +564,10 @@ function hashSchreiben(alsVerlaufseintrag) {
 function hashLesen() {
   const roh = location.hash.replace(/^#/, "");
   const trenn = roh.indexOf("?");
-  const name = (trenn === -1 ? roh : roh.slice(0, trenn)) || "uebersicht";
+  const name = (trenn === -1 ? roh : roh.slice(0, trenn)) || Rahmen.STARTZIEL;
   const p = new URLSearchParams(trenn === -1 ? "" : roh.slice(trenn + 1));
 
-  zustand.ansicht = ANSICHTEN.indexOf(name) > -1 ? name : "uebersicht";
+  zustand.ansicht = ANSICHTEN.indexOf(name) > -1 ? name : Rahmen.STARTZIEL;
   const a = zustand.ansicht;
 
   /* Dichte gilt für alle Listen (Fehler B7): ein geteilter Link mit
@@ -1052,8 +1057,8 @@ function aktiveClients(tab) { return zeilenVon(tab).filter(z => !z.__archiviert)
    (UI.adresse.liste). Damit sind alle Sprünge echte Links (Mittel-/
    Ctrl-Klick: neuer Tab). */
 function sprungAdresse(tab, setzen) {
-  if (tab === "uebersicht") return UI.adresse.liste(tab);
-  const z = tab === "kamerarechte" ? leererRechteZustand() : leererTabZustand(tab);
+  if (istUebersicht(tab)) return UI.adresse.liste(tab);
+  const z = tab === "kamerarechte" || tab === "software" ? leererRechteZustand() : leererTabZustand(tab);
   if (setzen) setzen(z);
   return UI.adresse.liste(tab, parameterVon(tab, z, true));
 }
@@ -1076,7 +1081,7 @@ function sprungKlick(tab, setzen) {
    Geräte sind danach ausgeblendet — genau wie die Kennzahl, die den Sprung
    ausgelöst hat, sie nicht mitzählt (Fehler B1). */
 function springeMitFilter(tab, setzen) {
-  if (tab === "uebersicht" || tab === "software") return ansichtWechseln(tab);
+  if (istUebersicht(tab) || tab === "software") return ansichtWechseln(tab);
   if (tab === "kamerarechte") {
     zustand.kamerarechte = leererRechteZustand();
     if (setzen) setzen(zustand.kamerarechte);
@@ -2276,6 +2281,65 @@ function kameraKennzahlen() {
   ];
 }
 
+/* Je Programm die Benutzer mit Stufe 1 (von Hand) und Stufe 2 (aus AD). */
+function programmZaehler() {
+  const zaehler = new Map();
+  for (const p of programmSpalten) zaehler.set(p.i, { eins: 0, zwei: 0 });
+  for (const b of benutzer) {
+    for (const p of programmSpalten) {
+      const s = Modell.stufe(b[p.i]);
+      if (s === 1) zaehler.get(p.i).eins++;
+      else if (s === 2) zaehler.get(p.i).zwei++;
+    }
+  }
+  return zaehler;
+}
+
+/* Software: die Ansicht kennt nur die Suche, darum springen nur die
+   Hauptzahl und die Berechtigungen (in die Benutzerliste) – die übrigen
+   Kennzahlen sind reine Statistik. */
+function softwareKennzahlen() {
+  const zaehler = programmZaehler();
+  let eins = 0, zwei = 0, ohne = 0;
+  for (const p of programmSpalten) {
+    const e = zaehler.get(p.i);
+    eins += e.eins;
+    zwei += e.zwei;
+    if (!e.eins && !e.zwei) ohne++;
+  }
+  const kategorien = Modell.programmKategorien(programmSpalten).length;
+  return [
+    { t: "Programme", w: programmSpalten.length, setzen: nichts,
+      unter: UI.zahlText(kategorien) + (kategorien === 1 ? " Kategorie" : " Kategorien") },
+    { t: "Mit AD-Gruppe", w: zaehle(programmSpalten, p => p.adGruppen.length > 0),
+      unter: "Berechtigung kommt aus dem AD" },
+    { t: "Nur von Hand vergeben", w: zaehle(programmSpalten, p => !p.adGruppen.length) },
+    { t: "Ohne Berechtigte", w: ohne, unter: "kein Benutzer hat das Programm" },
+    { t: "Berechtigungen von Hand", w: eins, unter: "Benutzer × Programm, Stufe 1" },
+    { t: "Berechtigungen aus AD", w: zwei, unter: "Benutzer × Programm, Stufe 2" }
+  ];
+}
+
+/* Kamerarechte: Rollen aus Milestone und wer darüber Kameras sieht. Die
+   Ansicht kennt nur die Suche; die Kennzahlen sind reine Statistik. */
+function rollenKennzahlen() {
+  const inMs = kameraRollen.filter(r => r.__inMilestone);
+  const unbekannt = new Set();
+  for (const r of inMs) for (const l of r.__unbekannt) unbekannt.add(String(l).toLowerCase());
+  return [
+    { t: "Rollen", w: kameraRollen.length, setzen: nichts,
+      unter: UI.zahlText(inMs.length) + " davon in Milestone" },
+    { t: "Personen mit Kamerazugriff", w: zaehle(benutzer, b => (b.__kameraRollen || []).length > 0),
+      unter: "über mindestens eine Rolle in Milestone" },
+    { t: "Logins ohne Benutzer", w: unbekannt.size,
+      unter: "in einer Rolle, aber nicht in der Benutzerliste" },
+    { t: "Rollen ohne Mitglieder", w: zaehle(inMs, r => !r.__mitglieder.length) },
+    { t: "Rollen ohne Kameras", w: zaehle(inMs, r => !r.__admin && !r.__kameras.length),
+      unter: "ohne die Rolle der Administratoren" },
+    { t: "Nicht mehr in Milestone", w: kameraRollen.length - inMs.length, unter: "Zeile bleibt in der Liste stehen" }
+  ];
+}
+
 /* Ein Abschnitt der Übersicht: Titel (h2) mit optionaler Meta-Zeile rechts. */
 function abschnitt(id, titel, meta, inhalt) {
   const s = el("section", "uebersicht-abschnitt");
@@ -2317,13 +2381,13 @@ function syncHinweis() {
 }
 
 /* Handlungsbedarf (Mapping 7.2 #14): eine Zeile je offener Kennzahl aus
-   allen Listen, Gefahr vor Warnung. Leer: Erfolgshinweis. Der Sync-Zustand
-   (syncHinweis) steht zuoberst. */
-function handlungsbedarf(punkte) {
+   den Listen des Moduls, Gefahr vor Warnung. Leer: Erfolgshinweis. Der
+   Sync-Zustand (syncHinweis) steht zuoberst. */
+function handlungsbedarf(modul, punkte) {
   punkte.sort((a, b) => (TON_RANG[a.ton] ?? 9) - (TON_RANG[b.ton] ?? 9));
   const sync = syncHinweis();
   if (!punkte.length) {
-    return abschnitt("uebersicht-handlungsbedarf", "Handlungsbedarf", null, [
+    return abschnitt(modul + "-handlungsbedarf", "Handlungsbedarf", null, [
       sync,
       UI.banner({ ton: "erfolg", text: "Keine offenen Punkte." })
     ]);
@@ -2339,7 +2403,7 @@ function handlungsbedarf(punkte) {
   const liste = UI.zeilenliste(zeilen);
   liste.classList.add("aufgaben");
   const n = punkte.length;
-  return abschnitt("uebersicht-handlungsbedarf", "Handlungsbedarf",
+  return abschnitt(modul + "-handlungsbedarf", "Handlungsbedarf",
     n === 1 ? "1 offener Punkt" : n + " offene Punkte", [sync, liste]);
 }
 
@@ -2496,7 +2560,7 @@ function planungKarte(tab) {
    dass es in der Mitte steht – vergangene und kommende Jahre gleich weit.
    Nur, solange niemand selbst gerollt hat. */
 function zeitstrahlAusrichten() {
-  for (const r of document.querySelectorAll("#ansicht-uebersicht .zeitstrahl")) {
+  for (const r of document.querySelectorAll(UEBERSICHTEN.map(m => "#ansicht-" + m + " .zeitstrahl").join(", "))) {
     const aktuell = r.querySelector(".zeitstrahl-jahr.aktuell");
     if (aktuell && r.scrollLeft === 0 && r.scrollWidth > r.clientWidth) {
       const rechts = aktuell.offsetLeft + aktuell.offsetWidth;
@@ -2515,73 +2579,164 @@ function zeitstrahlAusrichten() {
 const VERTEILUNG_ZEILEN = 8;
 
 function verteilungsKarte(tab, schluessel, titel) {
-  const eintraege = werteZaehlen(tab, schluessel, true);
+  const eintraege = werteZaehlen(tab, schluessel, true).map(([wert, n]) => ({ wert: wert, zahl: n }));
+  return verteilungsKarteAus(titel, eintraege, function (e) {
+    const setzen = z => facetteSetzen(z, schluessel, e.wert);
+    return { text: e.wert === "" ? LEER_WERT : e.wert, zahl: e.zahl, fokus: "vt-" + tab + "-" + schluessel + "-" + e.wert,
+      href: sprungAdresse(tab, setzen), beiKlick: sprungKlick(tab, setzen) };
+  }, n => anzahlText(tab, n));
+}
+
+/* Eine Verteilung aus fertig gezählten Einträgen ({zahl, …}, absteigend):
+   «zeile» macht aus einem Eintrag die Zeile für UI.verteilung (nur für die
+   gezeigten), «summeText» nennt die Summe der weggelassenen. */
+function verteilungsKarteAus(titel, eintraege, zeile, summeText) {
   const karte = UI.karte({ titel: titel, ebene: 3 });
   if (!eintraege.length) {
     karte.inhalt.appendChild(UI.hinweis("Keine Werte vorhanden."));
     return karte;
   }
   const gezeigt = eintraege.slice(0, VERTEILUNG_ZEILEN);
-  const liste = UI.verteilung(gezeigt.map(function ([wert, n]) {
-    const setzen = z => facetteSetzen(z, schluessel, wert);
-    return { text: wert === "" ? LEER_WERT : wert, zahl: n, fokus: "vt-" + tab + "-" + schluessel + "-" + wert,
-      href: sprungAdresse(tab, setzen), beiKlick: sprungKlick(tab, setzen) };
-  }), { max: eintraege[0][1] });
-  karte.inhalt.appendChild(liste);
+  karte.inhalt.appendChild(UI.verteilung(gezeigt.map(zeile), { max: eintraege[0].zahl }));
   if (eintraege.length > VERTEILUNG_ZEILEN) {
     const rest = eintraege.slice(VERTEILUNG_ZEILEN);
-    const summe = rest.reduce((s, e) => s + e[1], 0);
+    const summe = rest.reduce((s, e) => s + e.zahl, 0);
     karte.inhalt.appendChild(UI.hinweis("und " + (rest.length === 1 ? "1 weiterer Wert" : rest.length + " weitere Werte")
-      + " (zusammen " + anzahlText(tab, summe) + ")"));
+      + " (zusammen " + summeText(summe) + ")"));
   }
   return karte;
 }
 
-/* Die ganze Übersicht: alles nach dem Seitenkopf wird neu gebaut, ohne
+function absteigend(a, b) { return b.zahl - a.zahl || Hilfe.vergleiche(a.text, b.text); }
+
+/* Programme nach Zahl der Berechtigten: Sprung in die Benutzerliste,
+   gefiltert auf das Programm (beide Stufen). */
+function programmVerteilung() {
+  const zaehler = programmZaehler();
+  const eintraege = programmSpalten.map(function (p) {
+    const e = zaehler.get(p.i);
+    return { p: p, text: p.d, eins: e.eins, zwei: e.zwei, zahl: e.eins + e.zwei };
+  }).filter(e => e.zahl > 0).sort(absteigend);
+  return verteilungsKarteAus("Programme nach Berechtigten", eintraege, function (e) {
+    const setzen = function (z) { z.programm = e.p.i; };
+    return { text: e.text, zahl: e.zahl, fokus: "vt-software-" + e.p.i,
+      titel: e.text + ": " + UI.zahlText(e.eins) + " von Hand, " + UI.zahlText(e.zwei) + " aus AD",
+      href: sprungAdresse("benutzer", setzen), beiKlick: sprungKlick("benutzer", setzen) };
+  }, n => UI.zahlText(n) + " Berechtigungen");
+}
+
+function kategorieVerteilung() {
+  const eintraege = Modell.programmKategorien(programmSpalten).map(k => ({
+    text: k, zahl: zaehle(programmSpalten, p => p.g === k)
+  })).sort(absteigend);
+  return verteilungsKarteAus("Programme nach Kategorie", eintraege, e => ({ text: e.text, zahl: e.zahl }),
+    n => anzahlText("software", n));
+}
+
+/* Rollen nach Zahl ihrer Kameras: Sprung in die Kameraliste, gefiltert auf
+   die Rolle (dieselbe Zahl wie auf der Rollenkarte). */
+function rollenVerteilung() {
+  const eintraege = kameraRollen.filter(r => r.__inMilestone && r.__kameras.length).map(r => ({
+    r: r, text: String(r.Title || "").trim() || "(ohne Namen)", zahl: r.__kameras.length
+  })).sort(absteigend);
+  return verteilungsKarteAus("Rollen nach Kameras", eintraege, function (e) {
+    const setzen = function (z) { z.rolle = String(e.r.id); };
+    return { text: e.text, zahl: e.zahl, fokus: "vt-rolle-" + e.r.id,
+      href: sprungAdresse("kameras", setzen), beiKlick: sprungKlick("kameras", setzen) };
+  }, n => UI.zahlText(n) + " Zuordnungen");
+}
+
+/* Hinweis einer Bestandskarte, wenn ihre Liste fehlt (listenHinweis). */
+function fehltHinweis(schluessel, zeilen) { return listenHinweis[schluessel] && !zeilen.length ? listenHinweis[schluessel] : null; }
+
+/* Die Übersicht je Modul (Rahmen.HAUPTZIELE): welche Bestandskarten,
+   welche Zeitstrahlen und welche Verteilungen dazugehören. «bauen» füllt
+   «offen» mit den offenen Kennzahlen für den Handlungsbedarf. */
+const MODUL = {
+  geraete: {
+    lead: "ADMIN- und EDU-Clients auf einen Blick.",
+    ersteListe: "admin",
+    bestand: offen => [
+      bestandKarte("admin", clientKennzahlen("admin"), null, offen),
+      bestandKarte("edu", clientKennzahlen("edu"), fehltHinweis("edu", eduClients), offen)
+    ],
+    planung: ["admin", "edu"],
+    verteilungsMeta: "ohne archivierte Geräte",
+    verteilungen: () => [
+      verteilungsKarte("admin", "SCCM_Model", "ADMIN-Clients nach Modell"),
+      verteilungsKarte("admin", "SCCM_OSVersion", "ADMIN-Clients nach OS-Version"),
+      verteilungsKarte("edu", "SCCM_Model", "EDU-Clients nach Modell"),
+      verteilungsKarte("edu", "SCCM_OSVersion", "EDU-Clients nach OS-Version"),
+      verteilungsKarte("admin", "GebaeudeStock", "ADMIN-Clients nach Gebäude / Stock"),
+      verteilungsKarte("edu", "GebaeudeStock", "EDU-Clients nach Gebäude / Stock")
+    ]
+  },
+  verzeichnis: {
+    lead: "Benutzer, Telefonnummern und Software auf einen Blick.",
+    ersteListe: "benutzer",
+    bestand: offen => [
+      bestandKarte("benutzer", benutzerKennzahlen(), null, offen),
+      bestandKarte("telefone", telefonKennzahlen(), fehltHinweis("telefon", telefone), offen),
+      bestandKarte("software", softwareKennzahlen(), fehltHinweis("software", software), offen)
+    ],
+    planung: [],
+    verteilungsMeta: null,
+    verteilungen: () => [
+      verteilungsKarte("benutzer", "Abteilung", "Benutzer nach Abteilung"),
+      verteilungsKarte("telefone", "__abteilung", "Telefonnummern nach Abteilung"),
+      verteilungsKarte("telefone", "__statusText", "Telefonnummern nach Status"),
+      programmVerteilung(),
+      kategorieVerteilung()
+    ]
+  },
+  videoueberwachung: {
+    lead: "Kameras und Kamerarechte aus Milestone auf einen Blick.",
+    ersteListe: "kameras",
+    bestand: offen => [
+      bestandKarte("kameras", kameraKennzahlen(), fehltHinweis("kamera", kameras), offen),
+      bestandKarte("kamerarechte", rollenKennzahlen(), fehltHinweis("kamerarolle", kameraRollen), offen)
+    ],
+    planung: ["kameras"],
+    verteilungsMeta: "ohne archivierte Kameras",
+    verteilungen: () => [
+      verteilungsKarte("kameras", "MS_Modell", "Kameras nach Modell"),
+      verteilungsKarte("kameras", "Gebaeude", "Kameras nach Gebäude"),
+      verteilungsKarte("kameras", "__statusText", "Kameras nach Status"),
+      rollenVerteilung()
+    ]
+  }
+};
+
+/* Eine Modul-Übersicht: alles nach dem Seitenkopf wird neu gebaut, ohne
    Bewegung (die macht nur Rahmen.wechseln bzw. Rahmen.zustand). */
-function zeichneUebersicht() {
-  const ansicht = $("ansicht-uebersicht");
-  const kopf = knoten.uebersicht.kopf;
+function zeichneUebersicht(modul) {
+  const m = MODUL[modul];
+  const ansicht = knoten[modul].ansicht;
+  const kopf = knoten[modul].kopf;
   while (kopf.nextSibling) kopf.nextSibling.remove();
 
   const offen = [];
-  const bestand = el("div", "karten");
-  anhaengen(bestand, [
-    bestandKarte("admin", clientKennzahlen("admin"), null, offen),
-    bestandKarte("edu", clientKennzahlen("edu"), listenHinweis.edu && !eduClients.length ? listenHinweis.edu : null, offen),
-    bestandKarte("benutzer", benutzerKennzahlen(), null, offen),
-    bestandKarte("telefone", telefonKennzahlen(), listenHinweis.telefon && !telefone.length ? listenHinweis.telefon : null, offen),
-    bestandKarte("kameras", kameraKennzahlen(), listenHinweis.kamera && !kameras.length ? listenHinweis.kamera : null, offen)
-  ]);
-
-  const planung = anhaengen(el("div", "karten planung"), [planungKarte("admin"), planungKarte("edu"), planungKarte("kameras")]);
-
-  const verteilungen = anhaengen(el("div", "karten"), [
-    verteilungsKarte("admin", "SCCM_Model", "ADMIN-Clients nach Modell"),
-    verteilungsKarte("admin", "SCCM_OSVersion", "ADMIN-Clients nach OS-Version"),
-    verteilungsKarte("edu", "SCCM_Model", "EDU-Clients nach Modell"),
-    verteilungsKarte("edu", "SCCM_OSVersion", "EDU-Clients nach OS-Version"),
-    verteilungsKarte("admin", "GebaeudeStock", "ADMIN-Clients nach Gebäude / Stock"),
-    verteilungsKarte("benutzer", "Abteilung", "Benutzer nach Abteilung"),
-    verteilungsKarte("kameras", "MS_Modell", "Kameras nach Modell"),
-    verteilungsKarte("kameras", "Gebaeude", "Kameras nach Gebäude")
-  ]);
+  const bestand = anhaengen(el("div", "karten"), m.bestand(offen));
+  const planung = m.planung.length
+    ? abschnitt(modul + "-planung", "Ersatzplanung",
+        "Laufendes Geschäftsjahr " + Modell.gjAktuell() + " · " + m.verteilungsMeta,
+        [anhaengen(el("div", "karten planung"), m.planung.map(planungKarte))])
+    : null;
 
   anhaengen(ansicht, [
-    handlungsbedarf(offen),
-    abschnitt("uebersicht-bestand", "Bestand", null, [bestand]),
-    abschnitt("uebersicht-planung", "Ersatzplanung",
-      "Laufendes Geschäftsjahr " + Modell.gjAktuell() + " · ohne archivierte Geräte", [planung]),
-    abschnitt("uebersicht-verteilungen", "Verteilungen", "ohne archivierte Geräte", [verteilungen])
+    handlungsbedarf(modul, offen),
+    abschnitt(modul + "-bestand", "Bestand", null, [bestand]),
+    planung,
+    abschnitt(modul + "-verteilungen", "Verteilungen", m.verteilungsMeta, [anhaengen(el("div", "karten"), m.verteilungen())])
   ]);
   if (!ansicht.hidden) zeitstrahlAusrichten();
 }
 
-function uebersichtGeruest() {
-  const ansicht = $("ansicht-uebersicht");
-  const kopf = UI.seitenkopf({ titel: "Übersicht", titelId: "uebersicht-titel" });
+function uebersichtGeruest(modul) {
+  const ansicht = $("ansicht-" + modul);
+  const kopf = UI.seitenkopf({ titel: Rahmen.zielText(modul), lead: MODUL[modul].lead, titelId: modul + "-titel" });
   ansicht.appendChild(kopf);
-  knoten.uebersicht = { ansicht: ansicht, kopf: kopf };
+  knoten[modul] = { ansicht: ansicht, kopf: kopf };
 }
 
 
@@ -2664,16 +2819,7 @@ function zeichneSoftware() {
     return;
   }
 
-  /* Je Programm die Benutzer mit Stufe 1 und mit Stufe 2. */
-  const zaehler = new Map();
-  for (const p of programmSpalten) zaehler.set(p.i, { eins: 0, zwei: 0 });
-  for (const b of benutzer) {
-    for (const p of programmSpalten) {
-      const s = Modell.stufe(b[p.i]);
-      if (s === 1) zaehler.get(p.i).eins++;
-      else if (s === 2) zaehler.get(p.i).zwei++;
-    }
-  }
+  const zaehler = programmZaehler();
 
   let gezeigt = 0;
   for (const kategorie of Modell.programmKategorien(programmSpalten)) {
@@ -2869,7 +3015,7 @@ function ansichtZeigen(name) {
 
 function zeichneAnsicht() {
   const a = zustand.ansicht;
-  if (a === "uebersicht") zeichneUebersicht();
+  if (istUebersicht(a)) zeichneUebersicht(a);
   else if (a === "software") zeichneSoftwareAnsicht();
   else if (a === "kamerarechte") zeichneKamerarechteAnsicht();
   else zeichneTabellenAnsicht(a);
@@ -2897,7 +3043,7 @@ function ansichtWechseln(name, ausVerlauf) {
     zeichneAnsicht();
     return $("ansicht-" + name);
   }).then(function (ok) {
-    if (ok && name === "uebersicht") zeitstrahlAusrichten();
+    if (ok && istUebersicht(name)) zeitstrahlAusrichten();
     return ok;
   });
 }
@@ -3037,7 +3183,7 @@ async function laden() {
     await Rahmen.zustand("inhalt");
     stelleWiederherstellen(gemerkteStelle);
     gemerkteStelle = null;
-    if (zustand.ansicht === "uebersicht") zeitstrahlAusrichten();
+    if (istUebersicht(zustand.ansicht)) zeitstrahlAusrichten();
   } catch (fehler) {
     const meldung = fehler && fehler.message ? fehler.message : String(fehler);
     Rahmen.zustand("fehler", {
@@ -3054,7 +3200,7 @@ function start() {
   hashLesen();
   spaltenIndexAufbauen();
 
-  uebersichtGeruest();
+  for (const modul of UEBERSICHTEN) uebersichtGeruest(modul);
   for (const tab of TABELLEN) tabellenGeruest(tab);
   softwareGeruest();
   rechteGeruest();
@@ -3097,26 +3243,26 @@ function suchfeldAngleichen(name) {
 }
 
 function ereignisseVerbinden() {
-  /* Die Wortmarke führt zur Übersicht. Ein schlichter Klick bleibt auf der
-     Seite (kein Neuladen aller Listen); modifizierte Klicks gehören dem
-     Browser. */
+  /* Die Wortmarke führt zur ersten Übersicht. Ein schlichter Klick bleibt
+     auf der Seite (kein Neuladen aller Listen); modifizierte Klicks gehören
+     dem Browser. */
   const marke = Rahmen.elemente().kopf && Rahmen.elemente().kopf.querySelector(".kopf-marke");
   if (marke) {
     marke.addEventListener("click", function (ev) {
       if (modifiziert(ev)) return;
       ev.preventDefault();
-      ansichtWechseln("uebersicht");
+      ansichtWechseln(Rahmen.STARTZIEL);
     });
   }
 
-  /* «/» springt in die Suche der aktuellen Liste; aus der Übersicht erst in
-     die ADMIN-Clients. Nie beim Tippen und nie hinter einer offenen Ebene. */
+  /* «/» springt in die Suche der aktuellen Liste; aus einer Übersicht erst
+     in die erste Liste des Moduls. Nie beim Tippen und nie hinter einer
+     offenen Ebene. */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
     if (tippt(e.target) || UI.ebeneOffen()) return;
     e.preventDefault();
-    const name = TABELLEN.indexOf(zustand.ansicht) > -1 || zustand.ansicht === "software"
-      || zustand.ansicht === "kamerarechte" ? zustand.ansicht : "admin";
+    const name = istUebersicht(zustand.ansicht) ? MODUL[zustand.ansicht].ersteListe : zustand.ansicht;
     const fokussieren = function () {
       const feld = suchfeldVon(name);
       if (feld) { feld.focus(); feld.select(); }

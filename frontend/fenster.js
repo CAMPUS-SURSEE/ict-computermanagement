@@ -262,8 +262,8 @@ const Fenster = (function () {
       let ziel = wert;
       if (typeof ziel === "string") ziel = { text: Rahmen.zielText(ziel), href: UI.adresse.zurueckZurListe(ziel) };
       if (!ziel) { k.pfad.hidden = true; return; }
-      UI.textSetzen(k.pfadText, ziel.text || (listeSchluessel ? Rahmen.zielText(listeSchluessel) : "Übersicht"));
-      const href = ziel.href || UI.adresse.zurueckZurListe(listeSchluessel || "uebersicht");
+      UI.textSetzen(k.pfadText, ziel.text || Rahmen.zielText(listeSchluessel || Rahmen.STARTZIEL));
+      const href = ziel.href || UI.adresse.zurueckZurListe(listeSchluessel || Rahmen.STARTZIEL);
       if (k.pfad.getAttribute("href") !== href) k.pfad.setAttribute("href", href);
       k.pfad.hidden = false;
     }
@@ -383,7 +383,7 @@ const Fenster = (function () {
     };
 
     F.zurListe = function () {
-      location.href = UI.adresse.zurueckZurListe(listeSchluessel || "uebersicht");
+      location.href = UI.adresse.zurueckZurListe(listeSchluessel || Rahmen.STARTZIEL);
     };
 
     /* ==================================================================

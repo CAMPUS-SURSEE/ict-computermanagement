@@ -330,7 +330,7 @@ const Rahmen = (function () {
     },
     liste: function (tab, filter) {
       const f = filterText(filter);
-      return adresseBauen("index.html", [], (tab || "uebersicht") + (f ? "?" + f : ""));
+      return adresseBauen("index.html", [], (tab || STARTZIEL) + (f ? "?" + f : ""));
     },
 
     /* Die Hauptseite merkt sich beim Öffnen eines Detailfensters die volle
@@ -344,7 +344,7 @@ const Rahmen = (function () {
         url = datei + location.search + location.hash;
       }
       const hash = url.indexOf("#") === -1 ? "" : url.slice(url.indexOf("#") + 1);
-      const tab = hash.split("?")[0] || "uebersicht";
+      const tab = hash.split("?")[0] || STARTZIEL;
       const karte = gemerkteListen();
       karte[tab] = url;
       try { sessionStorage.setItem(LISTE_SPEICHER, JSON.stringify(karte)); } catch (e) { /* privat */ }
@@ -357,7 +357,7 @@ const Rahmen = (function () {
     },
 
     zurueckZurListe: function (tab) {
-      const ziel = tab || "uebersicht";
+      const ziel = tab || STARTZIEL;
       const url = gemerkteListen()[ziel];
       if (eigeneListenAdresse(url)) return url;
       let dauer = null;
@@ -373,20 +373,23 @@ const Rahmen = (function () {
      Hauptziele (Schublade der Hauptseite) — einzige Quelle
      ================================================================== */
 
+  /* Jedes Modul beginnt mit seiner eigenen Übersicht. In der Schublade heisst
+     sie schlicht «Übersicht» (der Gruppentitel sagt, wovon); Seitentitel und
+     Zurück-Links nennen das Modul (titel). */
   const HAUPTZIELE = [
-    { eintraege: [
-      { schluessel: "uebersicht", text: "Übersicht", sinnbild: "uebersicht" }
-    ] },
     { titel: "Geräte", eintraege: [
+      { schluessel: "geraete", text: "Übersicht", titel: "Geräte", sinnbild: "uebersicht" },
       { schluessel: "admin", text: "ADMIN-Clients", sinnbild: "admin" },
       { schluessel: "edu", text: "EDU-Clients", sinnbild: "edu" }
     ] },
     { titel: "Verzeichnis", eintraege: [
+      { schluessel: "verzeichnis", text: "Übersicht", titel: "Verzeichnis", sinnbild: "uebersicht" },
       { schluessel: "benutzer", text: "Benutzer", sinnbild: "benutzer" },
       { schluessel: "telefone", text: "Telefonnummern", sinnbild: "telefon" },
       { schluessel: "software", text: "Software", sinnbild: "software" }
     ] },
     { titel: "Videoüberwachung", eintraege: [
+      { schluessel: "videoueberwachung", text: "Übersicht", titel: "Videoüberwachung", sinnbild: "uebersicht" },
       { schluessel: "kameras", text: "Kameras", sinnbild: "kamera" },
       { schluessel: "kamerarechte", text: "Kamerarechte", sinnbild: "schild" }
     ] }
@@ -394,8 +397,8 @@ const Rahmen = (function () {
   for (const g of HAUPTZIELE) for (const e of g.eintraege) e.href = adresse.liste(e.schluessel);
 
   function zielText(schluessel) {
-    for (const g of HAUPTZIELE) for (const e of g.eintraege) if (e.schluessel === schluessel) return e.text;
-    return "Übersicht";
+    for (const g of HAUPTZIELE) for (const e of g.eintraege) if (e.schluessel === schluessel) return e.titel || e.text;
+    return zielText(STARTZIEL);
   }
 
   /* ==================================================================
@@ -538,7 +541,7 @@ const Rahmen = (function () {
     menueKnopf.addEventListener("click", function () { schubladeSetzen(true); });
 
     const marke = el("a", "kopf-marke");
-    marke.href = adresse.liste("uebersicht");
+    marke.href = adresse.liste(STARTZIEL);
     marke.setAttribute("aria-label", "ICT-Inventar, zur Übersicht");
     marke.appendChild(wortmarke());
 
@@ -652,7 +655,7 @@ const Rahmen = (function () {
   function indexAktiv() {
     const h = (location.hash || "").replace(/^#/, "").split("?")[0];
     for (const g of HAUPTZIELE) for (const e of g.eintraege) if (e.schluessel === h) return h;
-    return "uebersicht";
+    return STARTZIEL;
   }
 
   /* ==================================================================
@@ -2579,6 +2582,7 @@ const Rahmen = (function () {
 
   return {
     HAUPTZIELE: HAUPTZIELE,
+    STARTZIEL: STARTZIEL,
     zielText: zielText,
     navigation: navigation,
     aktiv: aktivSetzen,

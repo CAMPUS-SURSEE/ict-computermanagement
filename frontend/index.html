@@ -36,14 +36,17 @@
 <div class="tafel-rahmen">
   <main class="tafel" id="tafel" tabindex="-1">
     <div class="ladebalken" id="ladebalken" hidden></div>
-    <!-- Acht Ansichten, jede mit eigenem Seitenkopf; app.js baut ihren
+    <!-- Zehn Ansichten (je Modul eine Übersicht, dazu die Listen), jede mit
+         eigenem Seitenkopf; app.js baut ihren
          Inhalt einmal beim Start und zeichnet danach nur nach. Sichtbar ist
          genau eine, die übrigen tragen hidden. Bis zum ersten Inhalt
          (Rahmen.zustand('inhalt')) blendet data-zustand="laden" alle aus;
          nach 200 ms erscheint das Skelett. Tabellenansichten füllen die
          Tafel (Rahmen.fest), ihr Tabellenrahmen rollt selbst. -->
     <div class="bahn" id="inhalt" data-zustand="laden">
-      <section class="ansicht stapel" id="ansicht-uebersicht" aria-labelledby="uebersicht-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-geraete" aria-labelledby="geraete-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-verzeichnis" aria-labelledby="verzeichnis-titel" hidden></section>
+      <section class="ansicht stapel" id="ansicht-videoueberwachung" aria-labelledby="videoueberwachung-titel" hidden></section>
       <section class="ansicht stapel" id="ansicht-admin" aria-labelledby="admin-titel" hidden></section>
       <section class="ansicht stapel" id="ansicht-edu" aria-labelledby="edu-titel" hidden></section>
       <section class="ansicht stapel" id="ansicht-benutzer" aria-labelledby="benutzer-titel" hidden></section>
