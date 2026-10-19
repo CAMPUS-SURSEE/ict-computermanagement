@@ -1316,10 +1316,33 @@ Nicht zugeordnet (Protokoll `lokal\Kamera-Uebernahme-Protokoll-20261013-172117.t
 von «Freizeitraum» (19) und «Indentifikation Aussen» (31) – beide Kameras gibt es in Milestone nicht mehr –
 und die Excel-Kameras C015, C057, C117, C119, C120 und C121 ohne Hardware in Milestone.
 
-Die Bewertung stammt von 2021; seither wurden viele Kameras ersetzt (etwa die Gänge in Gebäude 10, 2024).
-Sie dient als Ausgangspunkt, nicht als aktueller Befund – «Bewertet am» zeigt ihr Alter.
+Die so übernommene Bewertung stammte von 2021. Am 19.10.2026 wurde sie aus der gepflegten Fassung der Excel
+nachgeführt (siehe unten).
 
 Am 15.10.2026 wurde die Excel wie die übrigen (Abschnitt 12) unbenutzbar gemacht: auf allen neun Blättern ein
 weisses, halbtransparentes Feld (Form `Abgeloest-Overlay`), darauf im Raster «Abgelöst – seit 13.10.2026 im
 ICT-Inventar» mit Link auf die Kameraliste (Formen `Abgeloest-Text-n`), Fixierung aufgehoben, Blatt geschützt
 ohne Passwort. Die Fassung ohne Overlay liegt in der Versionshistorie der Datei.
+
+### Nachtrag 19.10.2026: die gepflegte Fassung auf der Site
+
+`Migriere-Kameras.ps1` las die Kopie im OneDrive (Stand 10.10.2024). Das Team pflegte aber eine zweite Datei
+gleichen Namens weiter: Site mgmts-ict-s, «Freigegebene Dokumente» (Wurzel), mit den Blättern «Übersicht»
+(Modell, Markteinführung, Herstelldatum aus der Seriennummer, Lebenszyklus, Zuständig) und «Kamerabewertung
+2024.11», «2025.01», «2026.01», «2027.01» (Bewertung, Massnahme, Austauschjahr, Ersatzmodell mit Preis).
+Diese Datei trägt kein Overlay. Daraus wurde am 19.10.2026 in alle 112 Kameras nachgetragen, je mit
+Verlaufseintrag (Sicherungen vorher: `lokal\Kamera-Ersatzplanung-Sicherung-20261019.json`,
+`lokal\Kamera-Bewertung-Sicherung-20261019.json`):
+
+| Feld | Regel |
+|---|---|
+| Zuständig | verantwortliche Stelle aus «Kamerabewertung 2027.01», sonst «Übersicht»; ersetzt die Werte von 2021 (Leitung Réception, Leitung Sport, MLS Jugendarbeit, Technischer Dienst) |
+| Bildqualität, Positionierung, Bewertet am | die neueste Bewertung je Kamera: 2026.01 (Datum 2026-01-01), sonst 2025.01 (2025-01-01), sonst 2021. Die zehn 2026 neu montierten Kameras (10.200–10.430, 10.A01, 17.007) «Gut»/«Gut» mit Datum 19.10.2026 – die alte Bewertung galt der ersetzten Kamera. Das Parkhaus P3/P1/P7 und 17.161 sind nie bewertet worden und bleiben leer |
+| Verbesserungen | die Notizen aller Bewertungen, älteste zuerst, «Bewertung 2025.01 (Kürzel): Befund → umgesetzt: Massnahme» |
+| Bemerkung | technische Hinweise aus der «Übersicht» und die Ersatzplanung aus 2027.01 (heutiges Modell, Ersatzmodell, Preis) |
+| Beschaffungsjahr | geschätzt: Hikvision aus dem Herstelldatum der Seriennummer + 2 Monate, Axis ab Markteinführung des Modells, Austausch/Neu laut 2025.01 und 2026.01 genau |
+| Ersatz geplant | «Austausch 2027» = GJ 2026/2027, «Austausch 2028» = 2027/2028; die übrigen Kameras älteste zuerst auf 2027/2028 bis 2035/2036 verteilt, je etwa 11 |
+
+Offen: C015 «31.A01 Drehtüre Haupteingang» ist nicht in Milestone eingebunden und steht deshalb nicht in der
+Liste; Milestone führt zwei Hardware mit dem Namen «33.020 P3 Sektor B Nord»; die Excel nennt für
+«17.102 Foyer Nord Treppe» den Standort 17.100 und meldet bei «31.A07 Allwetterplatz» «fehlt meines Wissens».
