@@ -244,8 +244,10 @@ const TAB = {
   },
   kameras: {
     namensSpalte: "Title",
-    standard: ["Title", "__statusText", "Gebaeude", "Raum", "MS_Modell", "MS_Adresse",
-               "__aufzeichnungText", "__rollenText", "Zustaendig"],
+    standard: ["Title", "ErsatzGeplant", "Gebaeude", "Raum", "Zustaendig", "MS_Modell", "MS_Adresse"],
+    /* Erhöht, wenn sich die Standardspalten ändern: eine früher im Browser
+       gemerkte Auswahl gilt dann nicht mehr (spaltenSpeicher). */
+    spaltenStand: 2,
     sortSpalte: "Title",
     facetten: [
       { k: "__statusText",       d: "Status" },
@@ -633,13 +635,19 @@ function hashLesen() {
 }
 
 /* Gemerkte Spalten, Dichte und Archivschalter aus dem Browser holen. */
+/* Schlüssel der gemerkten Spaltenwahl; mit TAB[tab].spaltenStand ein neuer,
+   damit geänderte Standardspalten auch bei bisherigen Nutzern ankommen. */
+function spaltenSpeicher(tab) {
+  return SPEICHER_SPALTEN + tab + (TAB[tab].spaltenStand ? "." + TAB[tab].spaltenStand : "");
+}
+
 function einstellungenLaden() {
   let dicht = false;
   try { dicht = localStorage.getItem(SPEICHER_DICHTE) === "kompakt"; } catch (e) { /* ohne Speicher */ }
   for (const tab of TABELLEN) {
     zustand[tab].dicht = dicht;
     try {
-      const roh = localStorage.getItem(SPEICHER_SPALTEN + tab);
+      const roh = localStorage.getItem(spaltenSpeicher(tab));
       if (roh) {
         const liste = JSON.parse(roh);
         if (Array.isArray(liste) && liste.length) zustand[tab].spalten = spaltenUebernehmen(tab, liste);
@@ -651,7 +659,7 @@ function einstellungenLaden() {
 
 function einstellungenMerken(tab) {
   try {
-    localStorage.setItem(SPEICHER_SPALTEN + tab, JSON.stringify(zustand[tab].spalten));
+    localStorage.setItem(spaltenSpeicher(tab), JSON.stringify(zustand[tab].spalten));
     localStorage.setItem(SPEICHER_DICHTE, zustand[tab].dicht ? "kompakt" : "normal");
     if (hatArchiv(tab)) localStorage.setItem(SPEICHER_ARCHIV + tab, zustand[tab].archiv ? "1" : "0");
   } catch (e) { /* Privater Modus: dann eben nur für diese Sitzung. */ }
@@ -1374,6 +1382,26 @@ function onlineZeichen(zeile) {
   return z;
 }
 
+/* Bildqualität vor dem Kameranamen: bei «Genügend» eine gelbe, bei
+   «Schlecht» eine rote Kamera; Tooltip und unsichtbares Wort sagen es
+   auch ohne Farbe. Sonst bleibt der Platz leer (die Namen fluchten). */
+const QUALITAET_TON = { "Genügend": "t-warnung", "Schlecht": "t-gefahr" };
+
+function qualitaetZeichen(zeile) {
+  const z = el("span", "name-zustand");
+  const wert = String(zeile.Qualitaet || "").trim();
+  const ton = QUALITAET_TON[wert];
+  if (!ton) {
+    z.setAttribute("aria-hidden", "true");
+    return z;
+  }
+  z.classList.add(ton);
+  z.appendChild(UI.sinnbild("kamera", 16));
+  z.appendChild(el("span", "nur-sr", "Bildqualität " + wert.toLowerCase() + ": "));
+  UI.tipp(z, "Bildqualität " + wert.toLowerCase());
+  return z;
+}
+
 function personLink(b, text) {
   const link = el("a", "name-link", text);
   link.href = UI.adresse.benutzer(b.id);
@@ -1389,6 +1417,7 @@ function zelle(tab, zeile, schluessel) {
   if (schluessel === TAB[tab].namensSpalte) {
     td.className = "ohne-umbruch";
     if (istClientTab(tab)) td.appendChild(onlineZeichen(zeile));
+    else if (tab === "kameras") td.appendChild(qualitaetZeichen(zeile));
     const text = String(wert || "").trim()
       || (tab === "benutzer" ? String(zeile.Title || "(ohne Namen)")
         : (tab === "telefone" ? (zeile.__kurzwahl || "(ohne Kurzwahl)") : "(ohne Namen)"));
@@ -1540,6 +1569,17 @@ function zelle(tab, zeile, schluessel) {
     const ad = Modell.adStatus(zeile);
     if (ad.aktiv) td.textContent = "Ja";
     else td.appendChild(UI.status(ad.kurz, ad.ton));
+    return td;
+  }
+
+  /* Das geplante Ersatzjahr in der Farbe seines Ersatzstatus: überfällig
+     rot, im laufenden Geschäftsjahr gelb, später grün. */
+  if (schluessel === "ErsatzGeplant" && String(wert || "").trim()) {
+    const st = zeile.__ersatzStatus;
+    const ton = st === "ueberfaellig" ? "gefahr" : (st === "bald" ? "warnung" : (st === "ok" ? "erfolg" : "neutral"));
+    const marke = UI.status(String(wert).trim(), ton, st === "bald" ? { sinnbild: "kalender" } : undefined);
+    UI.tipp(marke, ERSATZ_TEXT[st] || ERSATZ_TEXT.unbekannt);
+    td.appendChild(marke);
     return td;
   }
 
@@ -2633,19 +2673,6 @@ function kategorieVerteilung() {
     n => anzahlText("software", n));
 }
 
-/* Rollen nach Zahl ihrer Kameras: Sprung in die Kameraliste, gefiltert auf
-   die Rolle (dieselbe Zahl wie auf der Rollenkarte). */
-function rollenVerteilung() {
-  const eintraege = kameraRollen.filter(r => r.__inMilestone && r.__kameras.length).map(r => ({
-    r: r, text: String(r.Title || "").trim() || "(ohne Namen)", zahl: r.__kameras.length
-  })).sort(absteigend);
-  return verteilungsKarteAus("Rollen nach Kameras", eintraege, function (e) {
-    const setzen = function (z) { z.rolle = String(e.r.id); };
-    return { text: e.text, zahl: e.zahl, fokus: "vt-rolle-" + e.r.id,
-      href: sprungAdresse("kameras", setzen), beiKlick: sprungKlick("kameras", setzen) };
-  }, n => UI.zahlText(n) + " Zuordnungen");
-}
-
 /* Hinweis einer Bestandskarte, wenn ihre Liste fehlt (listenHinweis). */
 function fehltHinweis(schluessel, zeilen) { return listenHinweis[schluessel] && !zeilen.length ? listenHinweis[schluessel] : null; }
 
@@ -2700,9 +2727,7 @@ const MODUL = {
     verteilungsMeta: "ohne archivierte Kameras",
     verteilungen: () => [
       verteilungsKarte("kameras", "MS_Modell", "Kameras nach Modell"),
-      verteilungsKarte("kameras", "Gebaeude", "Kameras nach Gebäude"),
-      verteilungsKarte("kameras", "__statusText", "Kameras nach Status"),
-      rollenVerteilung()
+      verteilungsKarte("kameras", "Gebaeude", "Kameras nach Gebäude")
     ]
   }
 };

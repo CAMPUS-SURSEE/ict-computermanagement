@@ -95,28 +95,31 @@
 
 /* ==================================================================
    3. Handlungsbedarf (Mapping 7.2 #14)
-   Eine umrandete Zeilenliste mit Zahlmarken (UI.listenZeile({ marke:
-   UI.zahlmarke(…) })); ab 2 × 360 px Platz in zwei Spalten. Die
-   Haarlinien zwischen den Zellen entstehen aus je einer Linie rechts und
-   unten, die um 1 px in den Nachbarn ragt (negativer Aussenabstand); am
-   Rand schneidet die Liste sie ab (overflow: hidden in .zeilenliste), dort
-   steht ihr eigener Rahmen. Bleibt die letzte Reihe unvollständig, hat
-   die leere Restzelle so trotzdem oben und links ihre Linie – der Umriss
-   bleibt ein geschlossenes Raster statt einer Treppe. Seitenlayout dieser
-   einen Liste, darum hier und nicht im Fundament.
+   Jeder Punkt ist eine eigene umrandete Karte mit Zahlmarke
+   (UI.listenZeile({ marke: UI.zahlmarke(…) })); ab 2 × 360 px Platz in
+   zwei Spalten. Die Liste selbst trägt keinen Rahmen und keine Fläche –
+   ein Rahmen um die Karten herum sähe aus wie eine Karte in der Karte.
+   Seitenlayout dieser einen Liste, darum hier und nicht im Fundament.
    ================================================================== */
 
 .zeilenliste.aufgaben {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: var(--a3);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .zeilenliste.aufgaben > .listen-zeile {
   width: auto;
-  margin: 0 -1px -1px 0;
-  border: 0;
-  border-right: 1px solid var(--linie);
-  border-bottom: 1px solid var(--linie);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-karte);
+  background: var(--flaeche);
 }
+
+/* Die Hover- und Druckebene folgt der Rundung der Karte. */
+.zeilenliste.aufgaben > .listen-zeile::before { border-radius: inherit; }
 
 /* ==================================================================
    4. Ersatzplanung: Zeitstrahl je Client-Liste (Mapping 7.2 #11)
