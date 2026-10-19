@@ -23,7 +23,14 @@
 
    Ablage: localStorage. Detailseiten öffnen im selben Tab, mit Ctrl- oder
    Mittelklick in einem neuen; beide übernehmen so die bestehende Anmeldung,
-   statt eine zweite Umleitung auszulösen. Abmelden räumt den Speicher auf. */
+   statt eine zweite Umleitung auszulösen. Abmelden räumt den Speicher auf.
+
+   Keine halbe Anmeldung: Lässt sich kein Token mehr holen, oder lehnt Graph
+   ein Token mit 401 ab (Sitzung widerrufen, Passwort geändert, Richtlinie für
+   bedingten Zugriff), verwirft neuAnmelden() das Konto im Speicher und zeigt
+   die Anmeldeseite von Microsoft. Damit das nicht im Kreis läuft, falls Graph
+   auch das frische Token ablehnt, geschieht es höchstens einmal in zwei
+   Minuten pro Tab; danach erscheint der Fehler auf der Seite. */
 
 const Auth = (function () {
 
@@ -88,14 +95,70 @@ const Auth = (function () {
     return konto;
   }
 
+  const NEUANMELDUNG_SCHLUESSEL = "inventar.neuanmeldung";
+  const NEUANMELDUNG_SPERRE_MS = 2 * 60 * 1000;
+  let neuAnmeldungLaeuft = null;
+
+  function kuerzlichNeuAngemeldet() {
+    try {
+      const zeit = Number(sessionStorage.getItem(NEUANMELDUNG_SCHLUESSEL));
+      return zeit > 0 && Date.now() - zeit < NEUANMELDUNG_SPERRE_MS;
+    } catch (e) { return false; }
+  }
+
+  /* Verwirft die Anmeldung im Speicher (nur lokal, die Microsoft-Sitzung
+     bleibt) und leitet auf die Anmeldeseite. Löst nie auf. «claims» ist die
+     Forderung aus dem Kopf WWW-Authenticate einer 401-Antwort, falls Graph
+     eine mitschickt; Entra stellt das neue Token dann passend dazu aus.
+     Wirft, wenn schon vor weniger als zwei Minuten neu angemeldet wurde. */
+  async function neuAnmelden(grund, claims) {
+    if (neuAnmeldungLaeuft) return neuAnmeldungLaeuft;
+    if (kuerzlichNeuAngemeldet()) {
+      throw new Error("Microsoft Graph lehnt die Anmeldung auch nach einer neuen Anmeldung ab"
+        + (grund ? " (" + grund + ")" : "") + ". Bitte abmelden und in ein paar Minuten "
+        + "nochmals versuchen; bleibt es dabei, die ICT-Administration verständigen.");
+    }
+    neuAnmeldungLaeuft = (async function () {
+      const app = await anwendung();
+      try { sessionStorage.setItem(NEUANMELDUNG_SCHLUESSEL, String(Date.now())); } catch (e) { /* egal */ }
+      const vorher = app.getActiveAccount() || app.getAllAccounts()[0] || null;
+      try {
+        await app.clearCache(vorher ? { account: vorher } : undefined);
+      } catch (e) { /* weiter, die Anmeldeseite ersetzt das Konto ohnehin */ }
+      app.setActiveAccount(null);
+      merken(null);
+      const anfrage = { scopes: BEREICHE, prompt: "select_account" };
+      if (vorher && vorher.username) anfrage.loginHint = vorher.username;
+      if (claims) anfrage.claims = claims;
+      await app.loginRedirect(anfrage);
+      // Danach passiert auf dieser Seite nichts mehr.
+      return new Promise(function () {});
+    })();
+    return neuAnmeldungLaeuft;
+  }
+
   /* Stellt sicher, dass eine gültige Anmeldung vorliegt. Löst mit den
-     Kontodaten auf, oder leitet weiter und löst nie auf. */
+     Kontodaten auf, oder leitet weiter und löst nie auf. Ein Konto im
+     Speicher genügt nicht: erst wenn sich dazu ein Token holen lässt, gilt
+     die Person als angemeldet. */
   async function anmeldungSicherstellen() {
     const app = await anwendung();
 
-    // Wirft bei einer Fehlerantwort von Entra, etwa wenn die Person der
-    // Unternehmensanwendung nicht zugewiesen ist.
-    const antwort = await app.handleRedirectPromise();
+    let antwort = null;
+    try {
+      antwort = await app.handleRedirectPromise();
+    } catch (e) {
+      // Ein verdorbener Zwischenstand im Speicher (nicht abgeschlossene
+      // Umleitung, Token-Cache) oder eine Forderung nach erneuter Anmeldung
+      // wird mit einer neuen Anmeldung bereinigt. Alles andere gehört auf
+      // die Seite: eine Fehlerantwort von Entra (AADSTS…, etwa wenn die
+      // Person der Unternehmensanwendung nicht zugewiesen ist), ein
+      // Netzwerkfehler, eine falsche Konfiguration.
+      const bereinigbar = ["BrowserAuthError", "ClientAuthError", "CacheError",
+        "InteractionRequiredAuthError"];
+      if (!e || bereinigbar.indexOf(e.name) < 0) throw e;
+      return neuAnmelden(e.errorCode || e.message);
+    }
 
     let gefunden = antwort ? antwort.account : null;
     if (!gefunden) gefunden = app.getActiveAccount() || app.getAllAccounts()[0] || null;
@@ -107,27 +170,36 @@ const Auth = (function () {
     }
 
     app.setActiveAccount(gefunden);
+    await token();
     return merken(gefunden);
   }
 
   /* Liefert ein gültiges Zugriffstoken. MSAL erneuert es still, solange das
-     möglich ist; sonst wird neu angemeldet. */
+     möglich ist; sonst wird abgemeldet und neu angemeldet. */
   async function token() {
     const app = await anwendung();
     const vorhanden = app.getActiveAccount() || app.getAllAccounts()[0];
 
-    if (!vorhanden) {
-      await app.loginRedirect({ scopes: BEREICHE });
-      return new Promise(function () {});
-    }
+    if (!vorhanden) return neuAnmelden();
     try {
       const ergebnis = await app.acquireTokenSilent({ account: vorhanden, scopes: BEREICHE });
       return ergebnis.accessToken;
     } catch (e) {
-      // Stille Erneuerung nicht möglich, etwa weil die Sitzung abgelaufen ist.
-      await app.acquireTokenRedirect({ account: vorhanden, scopes: BEREICHE });
-      return new Promise(function () {});
+      // Stille Erneuerung nicht möglich, etwa weil die Sitzung abgelaufen
+      // oder widerrufen ist.
+      return neuAnmelden(e && (e.errorCode || e.message));
     }
+  }
+
+  /* Graph hat ein Token mit 401 abgelehnt. Die Forderung «claims» aus dem
+     Kopf WWW-Authenticate (bei widerrufenen Sitzungen) geht an Entra mit. */
+  function abgelehnt(wwwAuthenticate) {
+    let claims = null;
+    const treffer = /claims="([^"]+)"/.exec(wwwAuthenticate || "");
+    if (treffer) {
+      try { claims = atob(treffer[1]); } catch (e) { claims = null; }
+    }
+    return neuAnmelden("HTTP 401", claims);
   }
 
   function angemeldetesKonto() {
@@ -142,6 +214,7 @@ const Auth = (function () {
   return {
     anmeldungSicherstellen: anmeldungSicherstellen,
     token: token,
+    abgelehnt: abgelehnt,
     konto: angemeldetesKonto,
     abmelden: abmelden,
     umleitungsadresse: zielUrl

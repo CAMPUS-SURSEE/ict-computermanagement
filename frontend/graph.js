@@ -200,6 +200,11 @@ const Daten = (function () {
       const daten = antwort.status === 204 ? null : await antwort.json().catch(() => null);
       if (antwort.ok) return daten;
 
+      // Token abgelehnt: nicht halb angemeldet weiterlaufen, sondern
+      // abmelden und die Anmeldeseite zeigen (Auth.abgelehnt löst nie auf,
+      // oder wirft, wenn auch die frische Anmeldung abgelehnt wurde).
+      if (antwort.status === 401) await Auth.abgelehnt(antwort.headers.get("WWW-Authenticate"));
+
       const wiederholbar = (antwort.status === 429 || antwort.status === 503 || antwort.status === 504)
         && methode !== "POST" && versuch < 4;
       if (wiederholbar) {
@@ -219,7 +224,7 @@ const Daten = (function () {
     const ziel = was || "die Liste";
     if (status === 400) return "Microsoft Graph hat die Änderung abgelehnt ("
       + (meldung || "ungültiger Wert") + "). Bitte die Eingaben prüfen.";
-    if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
+    if (status === 401) return "Die Anmeldung wurde abgelehnt. Bitte abmelden und neu anmelden.";
     if (status === 403 && schreibend) return "Keine Schreibberechtigung für " + ziel
       + ". Entweder darf das Konto in SharePoint nur lesen, oder der App-Registrierung "
       + "«Computer Inventar Frontend» fehlt die Berechtigung Sites.ReadWrite.All.";
