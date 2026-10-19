@@ -68,7 +68,9 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine Kamera erfassen** | **nicht nötig** und im Frontend nicht möglich: Kameras in Milestone legt der Sync selbst an. Eine ausgebaute Kamera bleibt erhalten, wenn ihr Status vor dem Entfernen aus Milestone auf **`Lager`** steht |
 | **eine Kamera bewerten** | Kameraseite → Bereich **«Bewertung»** (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) |
 | **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln auf Dashboard-Style: Campus-Thema, eigene Bausteine, Abweichungen) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
-| **das Design-System (Dashboard-Style) aktualisieren** | im Wurzelordner dieses Repositorys `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` (holt den neusten Stand von `main`; läuft jede Nacht automatisch über `.github/workflows/update-dashboard-style.yml`) (Dashboard-Style als Checkout daneben; `-From ..\Dashboard-Style` für den lokalen Stand), nie von Hand ändern; danach `Pruefe-Frontend.ps1` und `styleguide.html` ansehen (`frontend/STYLEGUIDE.md`, Abschnitt 11) |
+| **das Design-System (Dashboard-Style) aktualisieren** | meist **nicht nötig**: `.github/workflows/update-dashboard-style.yml` holt jede Nacht den neusten Stand von `main`, prüft ihn mit `Pruefe-Frontend.ps1` und veröffentlicht. Von Hand im Wurzelordner dieses Repositorys `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` (Dashboard-Style als Checkout daneben; `-From ..\Dashboard-Style` für den lokalen Stand), danach `Pruefe-Frontend.ps1` und `styleguide.html` ansehen. Die Kopie nie von Hand ändern (`frontend/STYLEGUIDE.md`, Abschnitt 11) |
+| **wissen, was zu tun ist, wenn die nächtliche Aktualisierung scheitert** | `frontend/STYLEGUIDE.md`, Abschnitt 11.1: Bis zur Behebung bleibt die Seite auf dem alten Stand |
+| **als Agent oder neu im Repository die Regeln kennen** | `AGENTS.md` im Wurzelordner: Befehle, Konventionen, sensible Daten und Design-Regeln in Kurzform (`CLAUDE.md` verweist darauf) |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
 | **das abgelaufene Zertifikat erneuern** | neues Zertifikat erzeugen und an der App hinterlegen (Abschnitt 7.1) |
@@ -257,11 +259,12 @@ auf den Detailseiten `verlauf.js` und `fenster.js` → das Skript der Seite. Daz
 steht in `STYLEGUIDE.md`, Abschnitt 12. Ausser MSAL und dem Favicon lädt das Frontend nichts von fremden Servern,
 auch keine Schriften.
 
-Lokal ansehen: `.\serve.ps1` im Ordner `code`, dann `http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen
+Lokal ansehen: `.\serve.ps1` im Ordner `code` (läuft auch mit PowerShell 7, `pwsh`), dann `http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen
 Daten; `&fehler=1` zeigt den Fehlerzustand) oder `http://localhost:8123/styleguide.html`.
 
 **Nach jeder Änderung prüfen:** `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` im Ordner `code`
-(Windows PowerShell 5.1, ohne Browser und ohne Netz). Es prüft statisch, ob jedes Token definiert ist (auch die von
+(Windows PowerShell 5.1 oder PowerShell 7, ohne Browser und ohne Netz; mit `pwsh` läuft es auch in der nächtlichen
+Aktualisierung von Dashboard-Style auf GitHub und muss darum unter beiden laufen). Es prüft statisch, ob jedes Token definiert ist (auch die von
 Dashboard-Style), `@keyframes` nur in Dashboard-Style stehen, das eigene CSS nur Tokens liest, kein `innerHTML`, `eval`
 oder `window.confirm` vorkommt, keine Seite ein Inline-Skript trägt (sonst blockiert die Inhaltsrichtlinie es auf
 Cloudflare), MSAL überall mit derselben Prüfsumme geladen wird, keine Altlasten (alte Klassen und Tokens, Google
@@ -994,7 +997,7 @@ führt ihn in `wrangler.toml` nach.
 | Build output directory | `frontend` (kommt aus `wrangler.toml` und ist deshalb nur lesbar) |
 | Root directory | `/` |
 
-Es gibt keine Umgebungsvariablen. Client-ID, Mandant und die fünf Listen-IDs stehen offen in
+Es gibt keine Umgebungsvariablen. Client-ID, Mandant und die sieben Listen-IDs stehen offen in
 `frontend/konfig.js` – das ist bei einer SPA so vorgesehen, der Schutz kommt aus der Anmeldung und
 aus den SharePoint-Berechtigungen (Abschnitt 7.2).
 

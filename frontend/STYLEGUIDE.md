@@ -21,7 +21,8 @@ Tokens, Bausteine, Bewegung und Sinnbilder mit. Seine Dokumentation (Englisch) g
 Dieses Dokument nennt nur, was ICT-Inventar **darüber hinaus** festlegt: das Campus-Thema, die Bausteine, die es nur
 hier gibt, die deutschen Bauer (`UI.*`, `Rahmen.*`, `Bewegung.*`, `F.*`), die bewussten Abweichungen und die Regeln
 für Inhalte. Die vollständigen Signaturen stehen in den Kopfkommentaren von `bausteine.js` (`UI`, `Bewegung`),
-`rahmen.js` (`Rahmen` und Ebenen) und `fenster.js` (`F`); bei einem Widerspruch gilt der Code.
+`rahmen.js` (`Rahmen` und Ebenen) und `fenster.js` (`F`); bei einem Widerspruch gilt der Code. Die Kurzfassung für
+Agenten und neue Mitarbeitende (Befehle, Konventionen, welcher Bauer wofür) steht in [`AGENTS.md`](../AGENTS.md).
 
 Lebende Übersicht: **[styleguide.html](styleguide.html)** – jeder Baustein in allen Zuständen, so wie ICT-Inventar
 ihn über `UI.*` baut (gemeinsame im Campus-Thema und die eigenen), ohne Anmeldung und ohne Daten. Lokal:
@@ -133,17 +134,18 @@ Häkchen, das Gewicht 500 oder ein `aria-*`-Attribut.
 
 ### 3.2 Hauptseite (`index.html`)
 
-- Ansichten `section.ansicht.ds-stack#ansicht-<n>` (`uebersicht`, `admin`, `edu`, `benutzer`, `telefone`, `software`,
-  `kameras`, `kamerarechte`), genau eine sichtbar. Der Hash trägt Ansicht und Zustand (`#admin?q=…`):
+- Ansichten `section.ansicht.ds-stack#ansicht-<n>` (Übersichten `geraete`, `verzeichnis`, `videoueberwachung`;
+  Listen `admin`, `edu`, `benutzer`, `telefone`, `software`, `kameras`, `kamerarechte`), genau eine sichtbar. Der Hash trägt Ansicht und Zustand (`#admin?q=…`):
   Ansichtswechsel mit `pushState`, Filter, Sortierung und Spalten mit `replaceState`.
 - Jede Ansicht beginnt mit einem Seitenkopf (h1 24/32, ohne Lead).
 - **Tabellenansichten:** Werkzeugleiste `.ds-action-bar` (Suche · «Filter» · «Spalten» mit Zahl · «CSV» · rechts
   Trefferzahl und «Neuer …» – bei «Benutzer» keiner, die Liste pflegt der Abgleich), darunter die Chips aktiver Filter,
   darunter der Tabellenrahmen `.tabelle-rahmen`. `Rahmen.fest(true)`: ab 601 × 720 px rollt die Tafel nicht, die
   Liste füllt den Rest und rollt selbst (Kopf und erste Spalte kleben).
-- **Übersicht:** Handlungsbedarf (Zeilenliste mit Zahlmarken, Gefahr vor Warnung; leer: Erfolgsbanner) · Bestand (eine
-  Karte je Liste: Hauptzahl als Kachel, darunter klickbare Kennwerte) · Ersatzplanung (Zeitstrahl je Client-Liste) ·
-  Verteilungen. Jede Zahl öffnet die passende Liste, schon gefiltert.
+- **Übersicht**, je Modul eine (Geräte, Verzeichnis, Videoüberwachung; Inhalt aus `MODUL` in `app.js`):
+  Handlungsbedarf (Zeilenliste mit Zahlmarken, Gefahr vor Warnung; leer: Erfolgsbanner) · Bestand (eine Karte je
+  Liste: Hauptzahl als Kachel, darunter klickbare Kennwerte) · Ersatzplanung (Zeitstrahl je Geräte- bzw. Kameraliste,
+  wo das Modul eine hat) · Verteilungen. Jede Zahl öffnet die passende Liste, schon gefiltert.
 - **Software:** Suche + «Neues Programm», eine Karte je Programm.
 
 ### 3.3 Detailseiten (`client`, `benutzer`, `telefon`, `software`, `kamera`, `kamerarolle`)
@@ -534,13 +536,23 @@ Dashboard-Style mit. ICT-Inventar ergänzt:
    `F.loeschenDialog`, `F.ereignisse`; Fachregeln aus `modell.js`.
 8. **Prüfen** (§10.3).
 
+**Neue Ansicht der Hauptseite** statt einer neuen Seite: `section.ansicht#ansicht-<n>` in `index.html`, Eintrag in
+`ANSICHTEN` (`app.js`) und in `Rahmen.HAUPTZIELE` (`rahmen.js`). Eine Tabellenansicht zusätzlich in `TAB` (Spalten,
+Facetten) und `TABELLEN`; eine neue SharePoint-Liste braucht ihre Listen-ID in `konfig.js` (und, solange sie fehlen
+darf, einen Eintrag in `LISTEN_KONFIG`). Werkzeugleiste, Filterblatt, Filter-Chips und Tabelle bringt `app.js` mit
+(Abschnitte 6 und 7: `blattKnopf`, `filterOeffnen`, `aktiveFilter`) – nicht mit `UI.blatt` und `UI.chip` neu bauen.
+
 ### 10.2 Neuer Baustein oder neue Animation
 
 1. Gibt es ihn schon? Erst in Dashboard-Style ([docs/components.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/components.md),
    sein Styleguide), dann in `styleguide.html`, `bausteine.js` und `rahmen.js` nachsehen.
-2. **Gilt er für jedes Dashboard** (nichts Campus- oder ICT-Spezifisches), gehört er nach Dashboard-Style: dort mit
-   Doku, Tests und CHANGELOG ergänzen, eine neue Fassung bauen und hier übernehmen (§11). Nie die Kopie in `vendor/`
-   ändern.
+2. **Gilt er für jedes Dashboard** (nichts Campus- oder ICT-Spezifisches), gehört er nach Dashboard-Style: dort nach
+   dessen `AGENTS.md`, Abschnitt «Making a change», projektneutral und auf Englisch mit Doku, Tests und CHANGELOG
+   ergänzen und auf dessen `main` bringen. Die nächtliche Aktualisierung übernimmt ihn hier (§11), sofort geht es von
+   Hand mit `vendor.ps1`; danach den Bauer in `bausteine.js` ergänzen und ein Muster in `styleguide.js`. Nie die Kopie
+   in `vendor/` ändern. Weil jeder Stand von `main` innert etwa 24 Stunden hier live ist (sofern «Verify» besteht), vor
+   dem Push mit `vendor.ps1 -From ..\Dashboard-Style …` lokal übernehmen und `Pruefe-Frontend.ps1` sowie
+   `styleguide.html` ansehen.
 3. **Nur für ICT:** Klasse in `bausteine.css` (Rahmen und Ebenen in `rahmen.css`), Bauer in `bausteine.js` bzw.
    `rahmen.js` mit Kopfkommentar-Eintrag, nur Tokens (`--ds-*`, ICT-Tokens aus `thema.css`). Ein neuer Wert wird ein
    Token in `thema.css`. Keyframes gibt es nur in Dashboard-Style; Sinnbilder nur über `DS.icons` + `UI.SINNBILDER`.
@@ -549,14 +561,15 @@ Dashboard-Style mit. ICT-Inventar ergänzt:
 
 ### 10.3 Prüfen
 
-**Statisch** – nach jeder Änderung im Ordner `code`:
+**Statisch** – nach jeder Änderung in `frontend/`, im Ordner `code`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1
 ```
 
-[`code/Pruefe-Frontend.ps1`](../code/Pruefe-Frontend.ps1) (Windows PowerShell 5.1, ohne Zusatzmodul, ohne Browser,
-ohne Netz) prüft neun Regeln und meldet je Prüfung «OK» oder die Fundstellen mit Datei und Zeile; Exit-Code 0 heisst
+[`code/Pruefe-Frontend.ps1`](../code/Pruefe-Frontend.ps1) (Windows PowerShell 5.1 oder PowerShell 7, ohne
+Zusatzmodul, ohne Browser, ohne Netz; die nächtliche Aktualisierung (§11) ruft es mit `pwsh` unter Linux auf, es muss
+darum unter beiden laufen) prüft neun Regeln und meldet je Prüfung «OK» oder die Fundstellen mit Datei und Zeile; Exit-Code 0 heisst
 in Ordnung. Geprüft wird der eigene Code (alle `.css`, `.js`, `.html` direkt in `frontend/`); Kommentare zählen nicht.
 
 | Prüfung | Regel |
@@ -594,8 +607,9 @@ vergleicht jede Nacht um 02.30 Uhr UTC den Commit in `VERSION` mit `main`; ist e
 `Pruefe-Frontend.ps1` laufen und committet auf `main`, worauf Cloudflare Pages neu baut. Sonst endet der Lauf ohne
 Build. Von Hand geht es so:
 
-1. **Änderungen lesen:** `CHANGELOG.md` von Dashboard-Style. Eine neue Hauptversion (z. B. 1.x → 2.0) benennt oder
-   entfernt Tokens, Klassen oder JS-Exporte: dann `bausteine.css`, `rahmen.css`, `thema.css` und die Bauer nachführen.
+1. **Änderungen lesen:** `CHANGELOG.md` von Dashboard-Style. Benennt der neue Stand Tokens, Klassen oder JS-Exporte
+   um oder entfernt er sie (dort eine neue Hauptversion), dann `bausteine.css`, `rahmen.css`, `thema.css` und die
+   Bauer nachführen.
 2. **Kopie ersetzen** mit dem Werkzeug von Dashboard-Style (`scripts/` in dessen Repository; hier liegt es als
    Checkout neben diesem Repository), im Wurzelordner dieses Repositorys:
 
@@ -617,6 +631,22 @@ Build. Von Hand geht es so:
 
 Fehlt Dashboard-Style etwas, das jedes Projekt brauchen kann, wird es **dort** ergänzt (mit Doku, Tests und CHANGELOG)
 und dann wie oben übernommen – nie in der Kopie.
+
+### 11.1 Wenn die nächtliche Aktualisierung scheitert
+
+GitHub meldet den gescheiterten Lauf «Update Dashboard-Style» (Actions). Die Seite bleibt bis zur Behebung auf dem
+alten Stand; jede Nacht versucht es der Lauf von Neuem.
+
+| Schritt scheitert | Bedeutung | Vorgehen |
+|---|---|---|
+| «Verify» | `Pruefe-Frontend.ps1` findet Fehler mit dem neuen Stand; nichts ist committet | lokal nachstellen (Schritte 2 und 3 oben), im `CHANGELOG.md` nachsehen, was umbenannt oder entfernt wurde, den eigenen Code nachführen und Kopie und Anpassung **zusammen** committen. Liegt der Fehler in Dashboard-Style selbst, wird er dort behoben; der nächste Lauf übernimmt ihn |
+| «Compare with main of Dashboard-Style» | die GitHub-API oder das Netz war nicht erreichbar | Lauf später erneut starten |
+| «Vendor main» | Dashboard-Style war nicht erreichbar oder sein `main` ist unvollständig | Lauf später erneut starten; bleibt der Fehler, in Dashboard-Style beheben |
+| «Commit and push» | der Push auf `main` wurde abgelehnt, meist durch einen Zweigschutz | den Zweigschutz für den Bot freigeben oder die Kopie von Hand aktualisieren (oben) |
+
+Danach in GitHub unter Actions → «Update Dashboard-Style» → *Run workflow* neu starten oder die nächste Nacht
+abwarten. **Nie die Kopie in `vendor/` flicken und keine Prüfung in `Pruefe-Frontend.ps1` abschwächen, damit das
+Update durchgeht.**
 
 ---
 

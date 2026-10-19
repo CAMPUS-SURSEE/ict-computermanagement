@@ -1,0 +1,81 @@
+# AGENTS.md
+
+Hinweise für KI-Agenten (Claude Code, Codex, opencode …) und Menschen, die am ICT-Inventar arbeiten. Ausführliche Dokumentation: [README.md](README.md) (Listen, Sync, Einrichtung, Fehlerbehebung; Einstieg über die «Kurzanleitung»), Regeln des Frontends: [frontend/STYLEGUIDE.md](frontend/STYLEGUIDE.md), lebende Übersicht aller Bausteine: `frontend/styleguide.html`.
+
+## Projekt in Kürze
+
+- **Daten** in sieben SharePoint-Listen (ADMIN-Clients, EDU-Clients, Benutzer, Telefonnummern, Software, Kameras, Kamera-Rollen). Ihre Spalten stehen in `code/schema-*.json` (Quelle der Wahrheit); `code/Build-Spalten.ps1` erzeugt daraus `frontend/spalten.js` (generiert, nie von Hand ändern). Neue Spalten legt `code/Ergaenze-Spalten.ps1` an (README 4).
+- **Sync** `code/server/` (`Sync-Inventar.ps1`, `Inventar-Gemeinsam.ps1`): geplante Aufgabe auf dem SCCM-Server, füllt die Listen aus SCCM, AD und Milestone über Microsoft Graph (Entra-App mit Zertifikat). Er füllt nur Daten und ändert nie die Struktur einer Liste. Auf den Server kommt er nur über `code/Installiere-Sync.ps1` (README 2.5). Die übrigen Skripte in `code/` laufen vom Arbeitsplatz (Spalten, einmalige Migrationen, Tests).
+- **Frontend** `frontend/`: reines HTML, CSS und JavaScript **ohne Bauschritt**, Byte für Byte ausgeliefert von Cloudflare Pages (`wrangler.toml`; ein Push auf `main` veröffentlicht). Anmeldung über MSAL (`auth.js`), Lesen und Schreiben über Microsoft Graph (`graph.js`), Fachlogik in `modell.js`, Mandant, Client-ID und Listen-IDs in `konfig.js` (keine Geheimnisse). Hauptseite `index.html` + `app.js`; Detailseiten `client`, `benutzer`, `telefon`, `software`, `kamera`, `kamerarolle` (je `.html`, `.js`, `.css`) auf dem Gerüst `fenster.js` (`Fenster.erstellen()` → `F`), Verlauf in `verlauf.js`.
+- **Vorführmodus** `?mock=1`: erfundene Daten aus `graph.js` (`Mock`), ohne Anmeldung; `&fehler=1` zeigt den Fehlerzustand, `?neu=1` auf einer Detailseite das Neu-Formular. So lassen sich auch Vorschau-Deploys auf `pages.dev` ansehen.
+- **Designsystem** [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style), eingecheckt als Kopie in `frontend/vendor/dashboard-style/` (`ds.css`, `ds.js` → `window.DS`, Google Sans, `VERSION`, `SHA256SUMS`). Darüber liegen nur das Campus-Thema `thema.css` und die ICT-eigenen Bausteine in `bausteine.css`/`rahmen.css`, gebaut von den deutschen Bauern in `bausteine.js` (`UI`, `Bewegung`) und `rahmen.js` (`Rahmen`, Ebenen).
+
+## Befehle
+
+Im Wurzelordner, mit Windows PowerShell 5.1 als `powershell -ExecutionPolicy Bypass -File <Skript>`; wo vermerkt, auch mit PowerShell 7 (`pwsh -NoProfile -File <Skript>`, Linux/macOS).
+
+| Befehl | Zweck |
+|--------|-------|
+| `code\Pruefe-Frontend.ps1` | statische Prüfung des Frontends (9 Prüfungen, erwartet «alle 9 Prüfungen OK», Exit 0/1) – nach jeder Änderung in `frontend/`. Auch mit `pwsh`: so läuft es in der nächtlichen Aktualisierung auf GitHub, es muss darum unter beiden laufen |
+| `code\Test-Inventar.ps1` | Selbsttests und Syntaxprüfung aller Skripte in `code/` und `code/server/` – nach jeder Änderung an PowerShell-Code; nur Windows PowerShell 5.1 |
+| `code\serve.ps1 [-Port 8765]` | Vorschau von `frontend/` auf `http://localhost:8123/`, dann `/?mock=1` oder `/styleguide.html`; auch mit `pwsh`. `.claude/launch.json` startet sie auf 8765–8767 |
+| `code\Build-Spalten.ps1` | `frontend/spalten.js` nach einer Änderung an `code/schema-*.json` neu erzeugen |
+| `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` | Kopie von Dashboard-Style durch den neusten Stand von `main` ersetzen (`-From ..\Dashboard-Style` für die lokale Arbeitskopie, `<ref>` vor dem Ziel für einen bestimmten Stand; `sh ../Dashboard-Style/scripts/vendor.sh …` mit `--from`). Braucht einen Checkout von Dashboard-Style neben diesem Repository |
+
+Frontend fertig heisst: `Pruefe-Frontend.ps1` grün **und** im Browser angesehen (`?mock=1`, 1440/900/390 px, Konsole ohne Fehler; Liste in STYLEGUIDE.md, Abschnitt 10.3).
+
+## Konventionen
+
+- Alles auf Deutsch, auch Code: Namensräume und Funktionen (`UI.knopf`, `Rahmen.zustand`, `Bewegung.aufdecken`, `F.feld`, `Modell.adStatus`), Kommentare, Commit-Messages und Doku. Schweizer Schreibweise: immer «ss», nie das Eszett; «Guillemets»; Halbgeviertstrich «–» statt Geviertstrich; Uhrzeit mit Punkt («14.05»), Zahlen de-CH über `UI.zahlText`, Datum über `UI.zeitText`; leerer Wert «–». Weitere Textregeln: STYLEGUIDE.md, Abschnitt 8.5.
+- Kommentare erklären das *Warum*. Bestehenden Stil und Kommentardichte übernehmen; jede Datei beginnt mit einem Kopfkommentar (Zweck, bei `bausteine.js`, `rahmen.js`, `fenster.js` & Co. die API), der mit dem Code nachgeführt wird.
+- `.ps1` als UTF-8 **mit** BOM (sonst zerlegt PowerShell 5.1 die Umlaute), JSON **ohne** BOM. Skripte laufen ohne Zusatzmodule. Neue reine Funktionen bekommen einen Test in `Test-Inventar.ps1` (Muster `$InventarNurFunktionen = $true`, README 1). Werkzeuge, die in SharePoint oder auf dem Server schreiben, kennen `-WhatIf` (immer zuerst so laufen lassen).
+- Frontend: klassische `<script>`-Dateien mit je einem Namensraum, ohne `defer`, ohne Module, in der festen Ladereihenfolge (STYLEGUIDE.md, Abschnitt 12). **Kein Inline-Skript, keine `on*`-Attribute** (die Inhaltsrichtlinie in `frontend/_headers` verbietet sie). DOM nur über `createElement`/`textContent`: kein `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval`, `new Function`, kein `window.confirm`/`alert`/`prompt`, kein Browser-`title` (Tooltip über `titel` bzw. `UI.tipp`). `Pruefe-Frontend.ps1` prüft das.
+- Sicherheitsheader und Inhaltsrichtlinie stehen nur in `frontend/_headers` (mit einer Erklärung je Regel), nicht in `wrangler.toml`. Eine neue fremde Adresse dort nur mit Grund nachtragen; das Frontend lädt ausser MSAL und dem Favicon nichts von fremden Servern, auch keine Schriften.
+- MSAL ist in allen sieben Seiten mit Anmeldung mit fester Version und derselben Prüfsumme (`integrity="sha384-…"`, `crossorigin="anonymous"`) eingebunden. Wer die Version anhebt, ändert Adresse und Prüfsumme in allen sieben (Prüfung 6).
+- Fachregeln (Geschäftsjahr, Status, Programmstufen, AD-Zustand) nur in `modell.js` bzw. `Inventar-Gemeinsam.ps1`, nie in einer Seite nachbauen.
+
+## Sensible Daten (das Repository ist öffentlich)
+
+- Nie einchecken: `Sync-Inventar.config.json` (ClientId, Zertifikat-Thumbprint; Vorlage `code/server/Sync-Inventar.config.example.json`), `lokal/` (Sicherungen, Graph-Sitzung), `*.xlsx`, Logs und `*.status.json`. `.gitignore` deckt das ab, nicht umgehen.
+- Keine echten Personendaten (Namen, Logins, Telefonnummern, Seriennummern) in Code, Vorführdaten, Tests, Doku oder Commit-Messages; Vorführdaten sind erfunden.
+- Die README nennt die internen Server und die SharePoint-Site, weil der Betrieb sie braucht. Keine weiteren internen Hostnamen, IP-Adressen oder Konten dazuschreiben und nie Kennwörter, Zertifikate oder Token, auch nicht als Beispiel.
+
+## Design-Regeln (Frontend)
+
+**Dashboard-Style ist die Grundlage.** Seine Dokumentation (`docs/components.md`, `docs/rules.md`, `docs/motion.md` im Repository Dashboard-Style) gilt hier ohne Abstriche; STYLEGUIDE.md nennt nur, was ICT-Inventar darüber hinaus festlegt. Seiten bauen **nur** über `UI.*`, `Rahmen.*`, `Bewegung.*` und `F.*`, nie mit eigenem Markup für etwas, das ein Bauer schon kann.
+
+| Bedarf | Bauer | Markup |
+|---|---|---|
+| Aktion | `UI.knopf({ variante: 'primaer'\|'tonal'\|'leise'\|'still'\|'sinnbild' })`; gesperrt mit Grund über `gesperrt: 'Grund'` bzw. `UI.knopfSperren`; beschäftigt über `UI.beschaeftigt` | `.ds-btn` |
+| Abweichung eines Datensatzes | `UI.status(text, ton)` (der Normalfall bekommt keinen Chip) | `.ds-status` |
+| Hinweis oder Warnung mit Handlung | `UI.banner({ titel, text, ton, knopf })` (`info` ist neutral, nie blau) | `.ds-alert` |
+| Nichts da, keine Treffer | `UI.leerzustand` | `.ds-empty` |
+| Inhaltsblock, Kennzahlen | `UI.karte`; `UI.kachel`/`UI.kacheln` | `.ds-card`; `.ds-tiles` |
+| Werte lesen | `UI.fakten`, `UI.kennwerte`; Name/Wert-Zeilen `UI.datenzeilen` (ICT) | `.ds-facts`, `.ds-kv-list`; `.datenzeilen` |
+| Werte bearbeiten | Detailseite: `F.feld`; sonst `UI.feld`, `UI.eingabe`, `UI.ankreuzen`, `UI.feldFehler` | `.ds-field`, `.ds-input`, `.ds-check` |
+| Suche, Tabelle | `UI.suchfeld`; in einer Karte `UI.tabelle`; Liste über die ganze Seite `UI.tabellenRahmen` (ICT) | `.ds-search`; `.ds-table`; `.tabelle-rahmen` |
+| Laden | `UI.ladezeile`, `UI.skelettSeite`, `UI.spinner`, `UI.fortschritt`; Seitenzustand `Rahmen.zustand` | `.ds-loading`, `.ds-skeleton`, `.ds-spinner`, `.ds-progress` |
+| Seitenkopf | `UI.seitenkopf`, auf Detailseiten `F.seitenkopf` | `.ds-page-head` |
+| Rückfrage, Formular, Filter, Meldung, Tooltip | `UI.bestaetigen`/`UI.dialog`, `UI.blatt`, `UI.meldung`, `UI.tipp` | `.ds-dialog`, `.ds-sheet`, `.ds-toast`, `.ds-tooltip` |
+| Datensatz löschen | Detailseite: `F.loeschenDialog` (Namenseingabe, fester Papierkorb-Text, STYLEGUIDE.md, Abschnitt 7.1); `F.*` gibt es nur auf Detailseiten (`fenster.js`), auf der Hauptseite `UI.bestaetigen` | `.ds-dialog` |
+| Sinnbild | `UI.sinnbild(name)` (deutsche Namen in `UI.SINNBILDER`, Glyphen aus `DS.icons`) | `<svg class="icon">` |
+| Bewegung | `Bewegung.*` über `DS.motion`, nur zu den Anlässen in STYLEGUIDE.md, Abschnitt 6.2 | `.ds-enter`, `.ds-leave` |
+| nur ICT | Filter-Chips `UI.chip`, Schalter mit Sperre `UI.schalter`, Zeilenliste `UI.listenZeile`, Zeitachse `UI.zeitachse`/`Verlauf.zeichnen`, Diagramme `UI.balken`/`UI.saeulen`/`UI.verteilung`, Speicherleiste `F.speicherleisteZeichnen` | `bausteine.css`, `rahmen.css`, `verlauf.css` |
+
+Die vollständige Liste mit allen Optionen steht in STYLEGUIDE.md, Abschnitt 4, die Signaturen in den Kopfkommentaren von `bausteine.js`, `rahmen.js` und `fenster.js` (bei einem Widerspruch gilt der Code).
+
+- **Nie `frontend/vendor/dashboard-style/` von Hand ändern**, nur mit `vendor.ps1`/`vendor.sh` ersetzen (Prüfung 8 vergleicht jede Datei mit `SHA256SUMS`; `.gitattributes` hält die Zeilenenden fest).
+- **Thema** `thema.css`: nur Token-Werte auf `.ds-theme` (Rollen von Dashboard-Style wie `--ds-primary`, `--ds-accent`, `--ds-backdrop`, `--ds-surface-*`, `--ds-line`, Komponenten-Hooks wie `--ds-input-font`), die ICT-Tokens `--campus-gruen`, `--schrift-marke`, `--gewicht-marke`, `--konto-breit`, `--diagramm-*` und `@font-face` für Archivo. Nie Bewegungs-Tokens (`--ds-dur-*`, `--ds-ease-*`, `--ds-distance-*` …, daran hängt die reduzierte Bewegung), nie Bausteine.
+- **Eigenes CSS** (`bausteine.css`, `rahmen.css`, Seiten-CSS) liest nur Tokens: keine Farben, Radien, Schriftgrössen, Dauern oder Kurven als Literal (Prüfung 3), keine `@keyframes` (die gibt es nur in Dashboard-Style, Prüfung 2), Hover nur in `@media (hover: hover)`. Seiten-CSS mit eigenem Präfix (`g-`, `b-`, `tf-`, `sw-`, `km-`, `kr-`, `vl-`) enthält nur Layout; `styles.css` der Hauptseite hat keine Präfixe und trägt dazu den Zeitstrahl (`.zeitstrahl-*`).
+- Bewusste Abweichungen von Dashboard-Style stehen mit Grund in STYLEGUIDE.md, Abschnitt 5, und am Ort im CSS; neue nur mit Grund. Status nie nur über Farbe, kein Blau, eine einzige Tönung (das Pastell `--ds-accent`), Links unterstrichen, Überschriften in Satzschreibung.
+
+## Oberfläche bauen (Frontend)
+
+1. **Neue Seite:** Schritt für Schritt nach STYLEGUIDE.md, Abschnitt 10.1.
+2. **Neue Ansicht der Hauptseite:** `section.ansicht#ansicht-<n>` in `index.html`, Eintrag in `ANSICHTEN` (`app.js`) und in `Rahmen.HAUPTZIELE` (`rahmen.js`, einzige Quelle der Navigation). Eine Tabellenansicht zusätzlich in `TAB` (Spalten, Facetten) und `TABELLEN`; eine neue SharePoint-Liste braucht ihre Listen-ID in `konfig.js` (und, solange sie fehlen darf, einen Eintrag in `LISTEN_KONFIG`). Werkzeugleiste, Filterblatt, Filter-Chips und Tabelle bringt `app.js` mit (Abschnitte 6 und 7: `blattKnopf`, `filterOeffnen`, `aktiveFilter`), nicht neu bauen.
+3. **Neuer Baustein:** erst in Dashboard-Style und in `styleguide.html` nachsehen, ob es ihn gibt.
+   - *Für jedes Dashboard brauchbar* (nichts Campus- oder ICT-Eigenes): im Repository Dashboard-Style nach dessen `AGENTS.md`, Abschnitt «Making a change», ergänzen (Englisch, projektneutral, mit Doku, Tests und CHANGELOG) und auf dessen `main` bringen; die nächtliche Aktualisierung übernimmt ihn, sofort geht es mit `vendor.ps1`. Danach hier den Bauer in `bausteine.js` ergänzen bzw. auf das neue Markup umstellen.
+   - *Nur für ICT:* Klasse in `bausteine.css` (Rahmen und Ebenen in `rahmen.css`), Bauer in `bausteine.js` bzw. `rahmen.js` mit Eintrag im Kopfkommentar, ein neuer Wert als Token in `thema.css`, ein Muster in allen Zuständen in `styleguide.js` und eine Zeile in STYLEGUIDE.md, Abschnitt 4.2. Ein neues Sinnbild kommt zuerst nach Dashboard-Style, dann hier ein deutscher Name in `UI.SINNBILDER`.
+4. **Nächtliche Aktualisierung** `.github/workflows/update-dashboard-style.yml` (Vorlage aus Dashboard-Style): täglich 02.30 Uhr UTC vergleicht sie den Commit in `frontend/vendor/dashboard-style/VERSION` mit `main` von Dashboard-Style; ist er neu, ersetzt sie die Kopie, lässt `code/Pruefe-Frontend.ps1` mit `pwsh` laufen, committet auf `main`, und Cloudflare Pages veröffentlicht. Jeder Push auf `main` von Dashboard-Style ist damit innert etwa 24 Stunden hier live, sofern «Verify» besteht.
+5. **Wenn sie scheitert** (STYLEGUIDE.md, Abschnitt 11.1), ist nichts committet und die Seite bleibt auf dem alten Stand. «Compare with main of Dashboard-Style» oder «Vendor main»: meist GitHub oder das Netz, später neu starten. «Verify»: lokal nachstellen (`vendor.ps1` wie oben, dann `Pruefe-Frontend.ps1`), im CHANGELOG von Dashboard-Style nachsehen, was umbenannt oder entfernt wurde, und den eigenen Code (`thema.css`, `bausteine.css`, `rahmen.css`, Bauer) nachführen; Kopie und Anpassung zusammen committen. Liegt der Fehler in Dashboard-Style, wird er dort behoben, und der nächste Lauf übernimmt ihn. «Commit and push»: meist blockiert ein Zweigschutz auf `main`. Danach in GitHub unter Actions → «Update Dashboard-Style» → *Run workflow* neu starten oder die nächste Nacht abwarten. **Nie die Kopie flicken und keine Prüfung in `Pruefe-Frontend.ps1` abschwächen, damit das Update durchgeht.**
+6. **Umgekehrt:** Wer Dashboard-Style ändert, übernimmt den Stand vorher lokal (`vendor.ps1 -From ..\Dashboard-Style …`) und prüft hier `Pruefe-Frontend.ps1` und `styleguide.html`, denn der Push auf dessen `main` geht ohne weitere Freigabe live.
