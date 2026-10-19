@@ -1,0 +1,38 @@
+/*
+ * Sliding indicator (js/indicator.js). The component that uses it gives it
+ * a look (background, radius); this file only moves it. Position and size
+ * glide together on the standard curve, so the pill never stretches past
+ * its target (no spring).
+ *
+ *   <nav class="ds-has-indicator"> <span class="ds-indicator ..."> ... </nav>
+ *   (createIndicator() inserts the span and the class.)
+ */
+
+.ds-has-indicator {
+  position: relative;
+  isolation: isolate;
+}
+
+.ds-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: var(--ds-indicator-w, 0);
+  height: var(--ds-indicator-h, 0);
+  transform: translate3d(var(--ds-indicator-x, 0), var(--ds-indicator-y, 0), 0);
+  pointer-events: none;
+  transition:
+    transform var(--ds-dur-medium) var(--ds-ease-in-out),
+    width var(--ds-dur-medium) var(--ds-ease-in-out),
+    height var(--ds-dur-medium) var(--ds-ease-in-out),
+    opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-indicator--instant {
+  transition: none;
+}
+
+.ds-indicator[data-empty] {
+  opacity: 0;
+}

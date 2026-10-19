@@ -1,0 +1,172 @@
+/*
+ * Lists inside cards: key-value rows, a plain list, a definition grid of
+ * facts and a line of parts separated by «·».
+ *
+ *   <ul class="ds-kv-list"><li><span>Name</span><strong>Value</strong></li></ul>
+ *   <ul class="ds-plain-list"><li>...</li></ul>
+ *   <dl class="ds-facts"><div><dt>Label</dt><dd>Value</dd></div></dl>
+ *   <span class="ds-parts"><span class="ds-parts__list"><span>3 new</span><span>1 updated</span></span></span>
+ *
+ * Progressive: "exactly four facts" layouts use :has() and container
+ * queries; elsewhere the facts take as many 220px columns as fit.
+ */
+
+.ds-kv-list,
+.ds-plain-list {
+  list-style: none;
+  /* No top margin of their own: inside a card the card's rhythm spaces them. */
+  margin-inline: 0;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.ds-kv-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) 0;
+  border-top: 1px solid var(--ds-line);
+  font: var(--ds-font-body);
+}
+
+.ds-kv-list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ds-kv-list li > span {
+  color: var(--ds-text-2);
+}
+
+.ds-kv-list strong {
+  font-weight: var(--ds-weight-label);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-plain-list li + li {
+  margin-top: var(--ds-space-2);
+}
+
+/* ── Facts: label above value, as many columns as fit ── */
+
+.ds-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ds-space-4) var(--ds-space-8);
+  margin: 0;
+}
+
+.ds-facts:empty {
+  display: none;
+}
+
+.ds-card > .ds-facts {
+  margin-top: var(--ds-space-5);
+}
+
+/* Exactly four facts on a page never split three and one: four in a row,
+   two and two on a narrower content area, one column on phones. Only
+   inside the content area: a side sheet lives outside it and keeps the
+   auto-fit columns above. */
+@container ds-content (min-width: 1041px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container ds-content (max-width: 1040px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container ds-content (max-width: 520px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Facts above key figures follow the tiles' grid: the second fact starts
+   where the third tile does, or (two tiles per row) where the second one
+   does; phones stack them. */
+.ds-card:has(.ds-tiles) > .ds-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--ds-space-3);
+}
+
+.ds-card:has(.ds-tiles) > .ds-facts > :nth-child(2) {
+  grid-column: 3 / -1;
+}
+
+@media (max-width: 1100px) {
+  .ds-card:has(.ds-tiles) > .ds-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ds-card:has(.ds-tiles) > .ds-facts > :nth-child(2) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-card:has(.ds-tiles) > .ds-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ds-facts dt {
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+}
+
+.ds-facts dd {
+  margin: var(--ds-space-1) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* A trailing icon in a link (an external target) keeps a little air. */
+.ds-facts a svg {
+  margin-left: var(--ds-space-1);
+  vertical-align: -2px;
+}
+
+/*
+ * Parts: a line of parts that wraps between the parts. A part moves to the
+ * next line whole; only a part longer than a whole line wraps inside. Each
+ * part brings its «·» in front, in a padding of its own; the list is
+ * shifted left by one separator and clipped, so the separator of a part
+ * that starts a line is never seen: nothing dangles at a line end, nothing
+ * leads the next line.
+ */
+.ds-parts {
+  display: block;
+  overflow: hidden;
+}
+
+.ds-parts__list {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+.ds-parts__list > span {
+  position: relative;
+  min-width: 0;
+  padding-left: var(--ds-space-3);
+  overflow-wrap: anywhere;
+}
+
+.ds-parts__list > span::before {
+  content: '·';
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* As wide as « · » in running text. */
+  width: var(--ds-space-3);
+  text-align: center;
+}

@@ -24,7 +24,7 @@ while ($listener.IsListening) {
     if (Test-Path $file -PathType Leaf) {
         $bytes = [IO.File]::ReadAllBytes($file)
         $ext = [IO.Path]::GetExtension($file).ToLower()
-        $mime = @{'.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json'; '.png'='image/png'; '.svg'='image/svg+xml'; '.webp'='image/webp'}[$ext]
+        $mime = @{'.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json'; '.png'='image/png'; '.svg'='image/svg+xml'; '.webp'='image/webp'; '.woff2'='font/woff2'; '.txt'='text/plain; charset=utf-8'}[$ext]
         if (-not $mime) { $mime = 'application/octet-stream' }
         $ctx.Response.ContentType = $mime
         # Kein Zwischenspeichern: sonst zeigt der Browser beim Entwickeln

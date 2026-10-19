@@ -1,0 +1,166 @@
+/*
+ * Modal side sheet (Material 3): white, rounded on its leading corners, on
+ * the overlay elevation, over a plain scrim (never blurred). It fades in
+ * from the side on the emphasized curve and leaves faster than it came:
+ * add .ds-sheet--closing, wait for the panel's animationend (or
+ * DS.motion.settled), then remove or hide the sheet.
+ *
+ *   <div class="ds-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+ *     <div class="ds-sheet__backdrop" data-close></div>
+ *     <section class="ds-sheet__panel [ds-sheet__panel--wide]">
+ *       <div class="ds-sheet__head">
+ *         <h2 class="ds-sheet__title" id="sheet-title">Details</h2>
+ *         <button class="ds-btn ds-btn--quiet ds-btn--icon" type="button" aria-label="Close">(close)</button>
+ *       </div>
+ *       <div class="ds-sheet__body" tabindex="0"> ... </div>
+ *
+ * Set data-scrolled on the panel while its body is scrolled: the head's
+ * hairline shows then. Do not use <header> in the head: outside main
+ * content it would be a second banner landmark.
+ *
+ * Hook: --ds-sheet-width (560px), --ds-sheet-width-wide (720px).
+ */
+
+.ds-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--ds-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ds-sheet__backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-scrim);
+  animation: ds-fade-in var(--ds-dur-base) var(--ds-ease-in-out) backwards;
+}
+
+/* With viewport-fit=cover the sheet keeps clear of the notch, the status
+   bar and the home indicator, like the app frame (shell.css). */
+.ds-sheet__panel {
+  position: relative;
+  width: min(100%, var(--ds-sheet-width, 560px));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  border-radius: var(--ds-radius-dialog) 0 0 var(--ds-radius-dialog);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-overlay);
+  /* Invisible; forced colors paint it, so the sheet keeps its edge. */
+  outline: 1px solid transparent;
+  animation:
+    ds-fade-in var(--ds-dur-slow) var(--ds-ease-in-out) backwards,
+    ds-shift-in var(--ds-dur-slow) var(--ds-ease-emphasized) backwards;
+}
+
+.ds-sheet__panel--wide {
+  width: min(100%, var(--ds-sheet-width-wide, 720px));
+}
+
+.ds-sheet--closing {
+  pointer-events: none;
+}
+
+.ds-sheet--closing .ds-sheet__backdrop {
+  animation: ds-fade-out var(--ds-dur-base) var(--ds-ease-in) forwards;
+}
+
+.ds-sheet--closing .ds-sheet__panel {
+  animation: ds-slide-out var(--ds-dur-base) var(--ds-ease-in) forwards;
+}
+
+/* Header: 64px; its hairline shows only while the body scrolls under it. */
+.ds-sheet__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: var(--ds-space-3) max(var(--ds-space-3), env(safe-area-inset-right)) var(--ds-space-3) var(--ds-space-6);
+}
+
+.ds-sheet__head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ds-line);
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-sheet__panel[data-scrolled] .ds-sheet__head::after {
+  opacity: 1;
+}
+
+.ds-sheet__title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text);
+  font: var(--ds-font-title);
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding:
+    var(--ds-space-2)
+    max(var(--ds-space-6), env(safe-area-inset-right))
+    calc(var(--ds-space-8) + env(safe-area-inset-bottom))
+    var(--ds-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+/* A snackbar shown inside the sheet (toast.css) that stays until closed:
+   the body keeps room for it at its end on top of its own padding
+   (data-toast-reserve and --ds-toast-reserve, set by the page), so the
+   sheet's actions can scroll clear of it. */
+.ds-sheet__body[data-toast-reserve] {
+  padding-bottom: calc(var(--ds-space-8) + env(safe-area-inset-bottom) + var(--ds-toast-reserve, 0px));
+  scroll-padding-bottom: var(--ds-toast-reserve, 0px);
+}
+
+/* A tab stop for scrolling: the ring only for the keyboard, inside the
+   edge so the panel does not clip it. */
+.ds-sheet__body:focus {
+  outline: none;
+}
+
+.ds-sheet__body:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: calc(-1 * var(--ds-focus-width));
+}
+
+@media (max-width: 600px) {
+  .ds-sheet__panel,
+  .ds-sheet__panel--wide {
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .ds-sheet__head {
+    padding-left: max(var(--ds-space-4), env(safe-area-inset-left));
+  }
+
+  .ds-sheet__body {
+    padding-inline: max(var(--ds-space-4), env(safe-area-inset-left)) max(var(--ds-space-4), env(safe-area-inset-right));
+  }
+}

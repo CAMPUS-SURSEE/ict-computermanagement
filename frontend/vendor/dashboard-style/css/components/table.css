@@ -1,0 +1,272 @@
+/*
+ * Data tables (Material 3): a 48px header in the label style, 52px rows
+ * divided by the passive hairline, a quiet hover, no zebra. Numbers
+ * right-aligned and tabular. Inside a card the table runs to the card's
+ * edges, so the row hover spans the whole width and the first column lines
+ * up with the card text. The wrapper scrolls sideways on narrow screens,
+ * which rules out a sticky header (it would stick to the wrapper).
+ *
+ *   <div class="ds-table-wrap">
+ *     <table class="ds-table [ds-table--wide]">
+ *       <thead><tr><th>Name</th><th class="ds-num">Count</th><th class="ds-col--secondary">Owner</th></tr></thead>
+ *       <tbody><tr><td class="ds-col--text">...</td><td class="ds-num">12</td><td class="ds-col--secondary">...</td></tr></tbody>
+ *
+ *   .ds-col--text       a text column that keeps a readable width
+ *   .ds-col--secondary  dropped on phones (and in .ds-table--wide when the
+ *                       content area is narrow)
+ *   .ds-link-btn        a button that reads like a link (opens a detail)
+ *   .ds-table--dense    40px rows (long lists)
+ *   <th aria-sort="ascending"><button class="ds-table__sort">Name (arrow)</button></th>
+ *                       a sortable column; the arrow at the sorted column
+ *                       says it, not the colour
+ *
+ * Progressive: .ds-table--wide narrows by container query and the edge
+ * fade of a wide table uses :has(); older browsers scroll sideways.
+ */
+
+/* Positioned, so absolutely placed descendants (the visually hidden header
+   text .ds-sr) are clipped by the scroller instead of widening the page. */
+.ds-table-wrap {
+  position: relative;
+  overflow-x: auto;
+}
+
+.ds-card .ds-table-wrap {
+  margin-inline: calc(-1 * var(--ds-card-pad));
+}
+
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--ds-font-dense);
+  /* Dates, times and counts line up from row to row. */
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-table th,
+.ds-table td {
+  padding: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ds-card .ds-table-wrap :is(th, td):first-child {
+  padding-left: var(--ds-card-pad);
+}
+
+.ds-card .ds-table-wrap :is(th, td):last-child {
+  padding-right: var(--ds-card-pad);
+}
+
+.ds-table caption {
+  text-align: left;
+}
+
+.ds-table th {
+  height: 48px;
+  padding-block: var(--ds-space-3);
+  color: var(--ds-text-2);
+  font: var(--ds-font-label);
+  white-space: nowrap;
+}
+
+.ds-table td {
+  height: 52px;
+  padding-block: var(--ds-space-3);
+}
+
+.ds-table tbody tr {
+  transition: background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-table tbody tr:hover {
+    background: var(--ds-backdrop);
+  }
+}
+
+.ds-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Dense rows: 40px, the text stays 14/20. The hairline counts: 7 + 24 (a
+   status chip) + 7 + 1 = 40. */
+.ds-table--dense :is(th, td) {
+  height: 40px;
+  padding-block: calc(var(--ds-space-2) - 1px);
+}
+
+/* Sort button in a header cell. Its 4px padding (the room of its state
+   layer) hangs into the cell's padding, so the header keeps its height
+   and the label lines up with the cells below. */
+.ds-table__sort {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  margin: calc(-1 * var(--ds-space-1));
+  padding: var(--ds-space-1);
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ds-table__sort::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-table__sort:hover::before {
+    opacity: var(--ds-state-hover);
+  }
+}
+
+.ds-table__sort:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+.ds-table__sort:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-table__sort:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ds-table__sort > svg {
+  flex-shrink: 0;
+}
+
+/* A number column sorts with the arrow in front, so the figures keep
+   their right edge. */
+.ds-table th.ds-num .ds-table__sort {
+  flex-direction: row-reverse;
+}
+
+.ds-table th:is([aria-sort="ascending"], [aria-sort="descending"]) {
+  color: var(--ds-text);
+}
+
+/*
+ * Short cells (numbers, status chips, dates with .ds-nowrap) stay on one
+ * line, and text cells keep a readable width instead of breaking word by
+ * word. A wide table (.ds-table--wide) drops its secondary columns
+ * whenever the content area is narrow, also next to the persistent drawer;
+ * on phones every table does. A table that still does not fit scrolls
+ * sideways, and a fade at the right edge of its card tells that more
+ * columns follow (it covers only the card's padding when nothing does).
+ */
+.ds-table td.ds-num,
+.ds-table .ds-status {
+  white-space: nowrap;
+}
+
+.ds-table .ds-col--text {
+  min-width: 168px;
+}
+
+@container ds-content (max-width: 1040px) {
+  .ds-table--wide th {
+    white-space: normal;
+  }
+
+  .ds-table--wide .ds-col--secondary {
+    display: none;
+  }
+
+  .ds-card .ds-table-wrap:has(> .ds-table--wide) {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+    mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-table th {
+    white-space: normal;
+  }
+
+  .ds-table .ds-col--secondary {
+    display: none;
+  }
+
+  /* A 360px phone has no room for a 168px text column next to three
+     others: it takes what is left, and the cells keep closer together. */
+  .ds-table .ds-col--text {
+    min-width: 0;
+  }
+
+  .ds-table :is(th, td) {
+    padding-inline: var(--ds-space-3);
+  }
+
+  .ds-card .ds-table-wrap {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+    mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+  }
+}
+
+/* 320px (400% zoom): closer still, so three columns fit without a sideways
+   scroll. */
+@media (max-width: 359px) {
+  .ds-table :is(th, td) {
+    padding-inline: var(--ds-space-2);
+  }
+}
+
+/* A link that leaves the app carries the external icon. */
+.ds-table a > svg {
+  margin-left: var(--ds-space-1);
+  vertical-align: -2px;
+}
+
+/* Small notes inside a cell ("(default)", "was: ...") stay in one piece:
+   a note broken over two lines reads as two notes. */
+.ds-table small {
+  font: var(--ds-font-meta);
+  white-space: nowrap;
+}
+
+/* A button that reads like a link (the subject that opens the detail). */
+.ds-link-btn {
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: none;
+  color: var(--ds-link);
+  font: inherit;
+  font-weight: var(--ds-weight-label);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: var(--ds-link-underline-thickness);
+  text-decoration-color: var(--ds-link-underline);
+  text-underline-offset: var(--ds-link-underline-offset);
+  cursor: pointer;
+  transition: text-decoration-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-link-btn:hover {
+    text-decoration-color: var(--ds-link-underline-hover);
+  }
+}

@@ -1,0 +1,123 @@
+/*
+ * Switch (Material 3, 52 x 32) with its name and a state word next to it,
+ * so the state never shows through the handle position and colour alone.
+ * The word is hidden from screen readers, which announce the switch state
+ * itself; the page keeps it in step.
+ *
+ *   <label class="ds-switch">
+ *     <input type="checkbox" role="switch" name="sync" checked>
+ *     <span class="ds-switch__track" aria-hidden="true"></span>
+ *     <span class="ds-switch__label">Nightly sync</span>
+ *     <span class="ds-switch__state" aria-hidden="true">On</span>
+ *   </label>
+ */
+
+.ds-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 40px;
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  cursor: pointer;
+}
+
+.ds-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.ds-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 32px;
+  border: 2px solid var(--ds-outline);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-highest);
+  transition:
+    background-color var(--ds-dur-base) var(--ds-ease-in-out),
+    border-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+/* The handle is 24px; off it shows at 16px (scaled), on it glides across
+   at full size. Transform only, no overshoot, no stretching. */
+.ds-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-outline);
+  transform: scale(calc(2 / 3));
+  transition:
+    transform var(--ds-dur-base) var(--ds-ease-in-out),
+    background-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+/* Hover darkens the resting handle (Material 3: on-surface-variant). */
+@media (hover: hover) {
+  .ds-switch:hover input:not(:checked) + .ds-switch__track::after {
+    background: var(--ds-text-2);
+  }
+}
+
+.ds-switch input:checked + .ds-switch__track {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary);
+}
+
+.ds-switch input:checked + .ds-switch__track::after {
+  background: var(--ds-on-primary);
+  transform: translateX(20px);
+}
+
+/* Ring on :focus, off again on :focus:not(:focus-visible); browsers
+   without :focus-visible drop only the second rule (button.css). */
+.ds-switch input:focus + .ds-switch__track {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-switch input:focus:not(:focus-visible) + .ds-switch__track {
+  outline: none;
+}
+
+.ds-switch input:disabled + .ds-switch__track {
+  opacity: var(--ds-state-disabled);
+}
+
+/* The state in words next to the name ("On" / "Off"). It keeps the width
+   of the longer word, so the switch does not move when it flips. */
+.ds-switch__state {
+  min-width: 3.5em;
+  margin-left: calc(-1 * var(--ds-space-1));
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+}
+
+/* Forced colors: the handle and the on state are fills only; in system
+   colours, so on and off still differ. */
+@media (forced-colors: active) {
+  .ds-switch__track::after,
+  .ds-switch:hover input:not(:checked) + .ds-switch__track::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .ds-switch input:checked + .ds-switch__track {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+  }
+
+  .ds-switch input:checked + .ds-switch__track::after {
+    background: Canvas;
+  }
+}

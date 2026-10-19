@@ -290,7 +290,7 @@ function kanaeleKarte() {
 }
 
 function bereichStammdaten(ziel) {
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
   const raster = UI.el("div", "karten");
   raster.appendChild(stammdatenKarte());
   raster.appendChild(milestoneKarte());
@@ -326,7 +326,7 @@ function bereichBewertung(ziel) {
    ================================================================== */
 
 function bereichBerechtigungen(ziel) {
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
   const rollen = zeile.__rollen || [];
   const k = UI.karte({ titel: "Sichtbar für",
     unter: "Rollen aus Milestone mit Rechten auf diese Kamera. Geändert wird im Management Client von Milestone." });

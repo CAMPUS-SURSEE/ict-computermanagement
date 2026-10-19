@@ -1,0 +1,113 @@
+/*
+ * Loading states. Nothing shows for fast loads: every indicator fades in
+ * only after --ds-delay-loader (the same delay as LOADER_DELAY_MS in
+ * js/motion.js, whose settleLoader() keeps a visible one up long enough).
+ * Indicators are not decoration: with reduced motion they keep running,
+ * slower (the loop tokens in tokens.css).
+ *
+ *   <div class="ds-boot"> ... </div>                 app start, after --ds-delay-boot
+ *   <div class="ds-loading" role="status"><span class="ds-spinner"></span>Loading ...</div>
+ *   <div class="ds-skeleton" role="status"> <span class="ds-sr">Loading ...</span>
+ *     <span class="ds-loadbar"><span class="ds-loadbar__bar"></span></span>
+ *     <span class="ds-skeleton__line ds-skeleton__line--heading"></span> ...
+ *     <div class="ds-skeleton__card"> <span class="ds-skeleton__line ds-skeleton__line--title"></span> ...
+ *
+ * Progressive: the boot screen fills the small viewport (svh) where
+ * supported, the classic viewport height elsewhere.
+ */
+
+/* App start: appears only when the start takes a moment. */
+.ds-boot {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--ds-space-5);
+  animation: ds-fade-in var(--ds-dur-slow) var(--ds-ease-in-out) var(--ds-delay-boot) backwards;
+}
+
+/* Small loading line (side sheets, "load more"). */
+.ds-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4) 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
+}
+
+/* Page placeholder: the outline of the page, pulsing slowly. */
+.ds-skeleton {
+  display: grid;
+  gap: var(--ds-space-4);
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
+}
+
+.ds-skeleton__card {
+  display: grid;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-6);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+}
+
+.ds-skeleton__line {
+  display: block;
+  width: 100%;
+  height: 12px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-highest);
+  animation: ds-pulse var(--ds-loop-pulse) var(--ds-ease-in-out) infinite;
+}
+
+.ds-skeleton__line--heading { width: 28%; height: 28px; border-radius: var(--ds-radius-sm); }
+.ds-skeleton__line--lead { width: 56%; margin-bottom: var(--ds-space-2); }
+.ds-skeleton__line--title { width: 24%; height: 16px; }
+.ds-skeleton__line--short { width: 44%; }
+.ds-skeleton__line--mid { width: 70%; }
+
+/*
+ * Page loading bar: 4px at the top edge of the content panel. It sits in
+ * the skeleton (so it shares its delay) and reaches the panel edges by the
+ * page padding of .ds-content (page.css), sticky while the panel scrolls.
+ */
+.ds-loadbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--ds-z-raised);
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  margin: calc(-1 * var(--ds-space-6)) calc(-1 * var(--ds-space-8)) var(--ds-space-5);
+  background: var(--ds-accent);
+}
+
+@media (max-width: 720px) {
+  .ds-loadbar {
+    margin: calc(-1 * var(--ds-space-5)) calc(-1 * var(--ds-space-4)) var(--ds-space-4);
+  }
+}
+
+.ds-loadbar__bar {
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-primary);
+  animation: ds-indeterminate var(--ds-loop-indeterminate) var(--ds-ease-in-out) infinite;
+}
+
+/* Forced colors turn both fills into Canvas, which would hide the bar: an
+   edge for the track and the system highlight for the moving part. */
+@media (forced-colors: active) {
+  .ds-loadbar {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-loadbar__bar {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}

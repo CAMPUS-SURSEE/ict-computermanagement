@@ -1,10 +1,11 @@
 /* benutzer.css — Seitenlayout des Benutzerfensters.
 
-   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   Wird NACH Dashboard-Style (ds.css), thema.css,
+   bausteine.css und rahmen.css geladen. Alles, was
    dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Kacheln,
    Karten, Datenzeilen, Banner, Suchfeld, Listenzeilen, Schalterzeilen,
-   Leerzustände. Raster und Abstände kommen aus .stapel, .karten und
-   .werkzeugleiste (design.css), der Bereich aus .fenster-bereich
+   Leerzustände. Raster und Abstände kommen aus .ds-stack, .karten und
+   .ds-action-bar, der Bereich aus .fenster-bereich
    (rahmen.css). Hier steht nur Raster – keine Farben, Radien, Schatten,
    Schriften oder Dauern. Klassen dieser Seite beginnen mit «b-».
 
@@ -17,16 +18,16 @@
 /* Die drei Kennzahlen der Übersicht füllen die Zeile, statt drei von vier
    Spalten zu belegen. Auf dem Handy zwei Spalten wie überall; die dritte
    Kachel nimmt dann die ganze Breite, statt allein halb zu stehen. */
-.kacheln.b-kennzahlen {
+.ds-tiles.b-kennzahlen {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @media (max-width: 600px) {
-  .kacheln.b-kennzahlen {
+  .ds-tiles.b-kennzahlen {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .kacheln.b-kennzahlen > :last-child:nth-child(odd) {
+  .ds-tiles.b-kennzahlen > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 }
@@ -35,8 +36,8 @@
    darunter «Nur aktive» und die Zahl – sonst schnitte der Platzhalter
    «Programm oder AD-Gruppe» ab (wie die Werkzeugleiste der Hauptseite,
    styles.css). */
-@container bahn (max-width: 600px) {
-  .werkzeugleiste.b-rechte-leiste > .suchfeld {
+@container ds-content (max-width: 600px) {
+  .ds-action-bar.b-rechte-leiste > .ds-search {
     flex-basis: 100%;
     max-width: none;
   }

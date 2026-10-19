@@ -321,7 +321,7 @@ const Verlauf = (function () {
     UI.anhaengen(block.inhalt, [
       UI.feld("Datum", datum),
       UI.feld("Text", text),
-      UI.anhaengen(el("div", "aktionszeile"), [ok, ab, UI.meta("Gespeichert wird erst mit «Speichern».")])
+      UI.anhaengen(el("div", "ds-form-actions"), [ok, ab, UI.meta("Gespeichert wird erst mit «Speichern».")])
     ]);
     block.addEventListener("keydown", function (ev) { tasten(aktuell(ausgabe), neu, ev); });
     return block;

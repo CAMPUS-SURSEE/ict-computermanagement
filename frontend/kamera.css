@@ -1,10 +1,11 @@
 /* kamera.css — Seitenlayout des Kamerafensters.
 
-   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   Wird NACH Dashboard-Style (ds.css), thema.css,
+   bausteine.css und rahmen.css geladen. Alles, was
    dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Karten,
    Datenzeilen mit Formularfeldern, Banner, Tabelle der Kanäle,
    Listenzeilen der Rollen, Leerzustände. Raster und Abstände kommen aus
-   .karten und .stapel (design.css), der Bereich aus .fenster-bereich
+   .karten und .ds-stack, der Bereich aus .fenster-bereich
    (rahmen.css).
 
    Bewusst leer gelassen: die Datei bleibt der Ort für ein künftiges

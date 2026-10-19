@@ -1,0 +1,630 @@
+/*
+ * Forms (Material 3, dense): 40px outlined fields with the label above,
+ * filled toolbar fields (search pill, select), checkboxes and radio cards.
+ * Focus shows as a 2px ring drawn inside the field, so nothing shifts; it
+ * appears at once, never animated. Chips and the switch have files of
+ * their own.
+ *
+ *   <form class="ds-form">
+ *     <div class="ds-form-grid">  (3 columns, the first wider; --2: two; --3: three equal)
+ *       <div class="ds-field">
+ *         <label class="ds-field__label" for="name">Name</label>
+ *         <input class="ds-input" id="name" aria-describedby="name-hint">
+ *         <small class="ds-field__hint" id="name-hint">Shown on the label.</small>
+ *     <div class="ds-form-actions"> <button class="ds-btn ds-btn--primary">Save</button> ...
+ *
+ * Field text is --ds-font-body and switches to --ds-font-input (16px) on
+ * screens up to 600px, where iOS would zoom into smaller text. A theme
+ * that wants one size everywhere sets --ds-input-font.
+ *
+ * Progressive: grids narrow by container queries on "ds-content" (and by
+ * the window width everywhere, also in sheets and dialogs); the disabled
+ * checkbox label and the selected radio card use :has(); older browsers
+ * keep the native control's own state.
+ */
+
+.ds-form {
+  display: grid;
+  gap: var(--ds-space-5);
+}
+
+.ds-card.ds-form {
+  gap: var(--ds-space-4);
+}
+
+.ds-card.ds-form > * + * {
+  margin-top: 0;
+}
+
+.ds-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--ds-space-4);
+}
+
+.ds-form-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ds-form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* By the content area's width (page.css): next to the persistent drawer
+   three fields per row would put their labels on two lines. Side sheets
+   and dialogs lie outside that container: they follow the window. */
+@container ds-content (max-width: 760px) {
+  .ds-form-grid,
+  .ds-form-grid--2,
+  .ds-form-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .ds-form-grid,
+  .ds-form-grid--2,
+  .ds-form-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ds-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+/* Fields next to each other that wrap (filters, a lookup). */
+.ds-inline-form,
+.ds-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-space-3);
+}
+
+.ds-inline-form .ds-field {
+  width: min(100%, 220px);
+}
+
+/* The button is lower than the 40px field: centred on it, while flex-end
+   keeps both under the label. */
+.ds-inline-form > .ds-btn {
+  margin-bottom: calc((var(--ds-space-10) - var(--ds-btn-height, 36px)) / 2);
+}
+
+.ds-filters .ds-field:not(.ds-field--grow) {
+  width: 160px;
+}
+
+@media (max-width: 720px) {
+  .ds-filters .ds-field:not(.ds-field--grow) {
+    width: calc(50% - var(--ds-space-2));
+  }
+
+  /* Two dates side by side at 320px: less padding, so the value is not
+     cut off early. */
+  .ds-input[type="date"] {
+    padding-inline: var(--ds-space-2);
+  }
+}
+
+/* A toolbar of filters: the fields in one row, the chips in the next. */
+.ds-toolbar {
+  display: grid;
+  gap: var(--ds-space-3);
+}
+
+/* An action bar above a list: search, buttons and a count in one row that
+   wraps; the search takes the room that is left, up to a readable width. */
+.ds-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  min-width: 0;
+}
+
+.ds-action-bar > .ds-search {
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+
+/* ── Field: label, control, hint ──────────────── */
+
+.ds-field {
+  display: grid;
+  gap: var(--ds-space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.ds-field--full {
+  grid-column: 1 / -1;
+}
+
+.ds-field--grow {
+  flex: 1 1 240px;
+}
+
+/* The search keeps room for a placeholder of about 224px between the icon
+   and the end padding. When the row cannot hold that and the 160px
+   filters, it takes a row of its own and the filters follow together,
+   instead of a lone field wrapping under them. */
+.ds-filters .ds-field--grow {
+  flex-basis: calc(224px + var(--ds-space-4) * 2 + 20px + var(--ds-space-3) + 2px);
+}
+
+@container ds-content (max-width: 980px) {
+  .ds-filters .ds-field--grow {
+    flex-basis: 100%;
+  }
+}
+
+.ds-field__label {
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+}
+
+/* A group of checkboxes or radio cards is a fieldset whose legend is the
+   label: without the browser's frame and indent. */
+fieldset.ds-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend.ds-field__label {
+  padding: 0;
+}
+
+.ds-field__hint {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  text-wrap: pretty;
+}
+
+.ds-field__hint:empty {
+  display: none;
+}
+
+/* ── Text input, select, textarea ─────────────── */
+
+.ds-input {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border: 1px solid var(--ds-outline);
+  border-radius: var(--ds-radius-field);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: var(--ds-input-font, var(--ds-font-body));
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* A multi-line field: about three lines tall, taller only by hand. */
+textarea.ds-input {
+  display: block;
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* 16px on phones: iOS Safari zooms the page into any smaller field. */
+@media (max-width: 600px) {
+  .ds-input {
+    font: var(--ds-input-font, var(--ds-font-input));
+  }
+}
+
+/* Zero specificity beyond .ds-input itself: the filled toolbar fields
+   (search pill, selects, dates) keep their own hover without an outline. */
+@media (hover: hover) {
+  .ds-input:where(:hover:not(:focus-within, :disabled, [readonly], [aria-invalid="true"])) {
+    border-color: var(--ds-text);
+  }
+}
+
+.ds-input::placeholder {
+  color: var(--ds-text-3);
+  opacity: 1;
+}
+
+/* The ring is the field's own 1px border plus 1px inside: 2px, no shift.
+   It appears at once: the hover fade of the border must not carry over.
+   In Chromium the calendar button of a date field is a tab stop of its
+   own inside the field: the field is not :focus then, but keeps the ring. */
+.ds-input:focus,
+.ds-input[type="date"]:focus-within {
+  outline: none;
+  border-color: var(--ds-primary);
+  box-shadow: inset 0 0 0 1px var(--ds-primary);
+  transition-duration: 0s;
+}
+
+/* Error: the 1px border in the error colour at rest and the 2px ring when
+   focused (Material 3), so the focused field still stands out; the
+   message sits under the field (.ds-field__hint--error), never the colour
+   alone. */
+.ds-input[aria-invalid="true"] {
+  border-color: var(--ds-error);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .ds-input[aria-invalid="true"]:hover:not(:focus-within) {
+    border-color: var(--ds-on-error-container);
+  }
+}
+
+.ds-input[aria-invalid="true"]:focus,
+.ds-input[aria-invalid="true"]:focus-within {
+  border-color: var(--ds-error);
+  box-shadow: inset 0 0 0 1px var(--ds-error);
+}
+
+.ds-field__hint--error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-1);
+  color: var(--ds-on-error-container);
+}
+
+.ds-field__hint--error > svg {
+  flex-shrink: 0;
+  color: var(--ds-error);
+}
+
+/* Under an inline form the message follows the row closely. */
+.ds-card > .ds-inline-form + .ds-field__hint--error {
+  margin-top: var(--ds-space-1);
+}
+
+/* Disabled and read-only: the quiet surface and the quieter text. */
+.ds-input:disabled,
+.ds-input[readonly] {
+  border-color: var(--ds-line);
+  background: var(--ds-surface-low);
+  color: var(--ds-text-2);
+}
+
+.ds-input:disabled {
+  cursor: not-allowed;
+}
+
+.ds-input:disabled::placeholder {
+  color: var(--ds-text-2);
+}
+
+/*
+ * Select: the native control without its arrow, and M3's drop-down triangle
+ * drawn by two gradients in the quieter text colour (no image file). A
+ * field with suggestions (datalist) shows the same triangle at
+ * rest; Chromium's own arrow, which only appears on hover, stays on top of
+ * it invisibly, so a click there still opens the list.
+ */
+select.ds-input,
+input.ds-input[list] {
+  padding-right: var(--ds-space-8);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ds-text-2) 50%),
+    linear-gradient(-45deg, transparent 50%, var(--ds-text-2) 50%);
+  background-repeat: no-repeat;
+  background-position:
+    right 17px top 50%,
+    right 12px top 50%;
+  background-size: 5px 5px;
+}
+
+select.ds-input {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+/* Laid over the triangle (in the field's right padding), so a click on
+   the triangle opens the list. */
+input.ds-input[list]::-webkit-calendar-picker-indicator {
+  width: var(--ds-space-8);
+  margin: 0 calc(-1 * var(--ds-space-8)) 0 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Date fields: the native picker button, drawn as the line set's calendar
+   in the quieter text colour (like the select's triangle and the search
+   icon) instead of Chromium's black filled glyph. Without a minimum width
+   of its own, the field fits its filter column (two per row at 320px). */
+.ds-input[type="date"] {
+  min-width: 0;
+}
+
+.ds-input[type="date"]::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: var(--ds-text-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E") center / 20px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E") center / 20px no-repeat;
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Firefox: no dotted inner focus line. */
+select.ds-input:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 var(--ds-text);
+}
+
+/* Filled toolbar variant: the select sits on the tonal fill, no outline. */
+.ds-input--filled {
+  border-color: transparent;
+  background-color: var(--ds-surface-high);
+}
+
+/* On the tonal fill text-3 falls short of 4.5:1; text-2 keeps it. */
+.ds-input--filled::placeholder,
+.ds-search .ds-input::placeholder {
+  color: var(--ds-text-2);
+}
+
+@media (hover: hover) {
+  .ds-input--filled:hover:not(:focus-within):not(:disabled) {
+    border-color: transparent;
+    background-color: var(--ds-surface-highest);
+  }
+}
+
+/* Search: a filled pill with a leading icon (toolbars). */
+.ds-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ds-search > svg {
+  position: absolute;
+  left: var(--ds-space-4);
+  color: var(--ds-text-2);
+  pointer-events: none;
+}
+
+.ds-search .ds-input {
+  padding-left: calc(var(--ds-space-4) + 20px + var(--ds-space-3));
+  padding-right: var(--ds-space-4);
+  border-color: transparent;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-high);
+}
+
+@media (hover: hover) {
+  .ds-search .ds-input:hover:not(:focus) {
+    border-color: transparent;
+    background: var(--ds-surface-highest);
+  }
+}
+
+.ds-search .ds-input:focus {
+  border-color: var(--ds-primary);
+  background: var(--ds-surface);
+}
+
+/* Chromium's clear button is a blue glyph of its own: the icon set's close icon in the quieter text colour instead, a
+   mask like the date fields' calendar. A click still clears the field. */
+.ds-search .ds-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+.ds-search .ds-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 var(--ds-space-2);
+  background: var(--ds-text-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / 20px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / 20px no-repeat;
+  cursor: pointer;
+}
+
+/* Number fields are typed in like every other
+   field: no native spinner showing up on hover. Arrow keys still step. */
+input.ds-input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input.ds-input[type="number"]::-webkit-inner-spin-button,
+input.ds-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Checkbox and radio cards ─────────────────── */
+
+.ds-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 40px;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  cursor: pointer;
+}
+
+.ds-check input,
+.ds-radio input,
+.ds-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ds-primary);
+  cursor: pointer;
+}
+
+/* Not the table's box: table cells place it themselves. */
+.ds-check input,
+.ds-radio input {
+  margin: 0;
+}
+
+
+.ds-check input:disabled {
+  cursor: not-allowed;
+}
+
+.ds-check:has(input:disabled) {
+  color: var(--ds-text-2);
+  cursor: not-allowed;
+}
+
+/* A hint under a checkbox lines up with the label text, not the box
+   (18px box plus the gap). */
+.ds-check + .ds-field__hint {
+  padding-left: calc(18px + var(--ds-space-3));
+}
+
+.ds-check--sm {
+  min-height: 32px;
+  color: var(--ds-text-2);
+}
+
+.ds-radios {
+  display: grid;
+  gap: var(--ds-space-2);
+}
+
+/* The selected card takes a 2px primary outline (its border plus 1px
+   inside, no shift) besides the filled radio: never the tint alone. */
+.ds-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  cursor: pointer;
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    box-shadow var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-radio:hover {
+    border-color: var(--ds-outline);
+  }
+}
+
+.ds-radio:has(input:checked) {
+  border-color: var(--ds-primary);
+  background: var(--ds-surface-low);
+  box-shadow: inset 0 0 0 1px var(--ds-primary);
+}
+
+.ds-radio input {
+  margin-top: 1px;
+}
+
+/* Keyboard focus rings the whole card, not a
+   square around the round control: Chromium keeps the native radio's box
+   square for the outline, whatever its border-radius. */
+.ds-radio input:focus-visible {
+  outline: none;
+}
+
+.ds-radio:has(input:focus-visible) {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-radio span {
+  display: grid;
+  gap: var(--ds-space-1);
+}
+
+.ds-radio strong {
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+}
+
+.ds-radio small {
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-wrap: pretty;
+}
+
+/* An option that cannot be chosen says why (icon and text, not only greyed out). */
+.ds-radio--disabled {
+  border-color: var(--ds-line);
+  background: var(--ds-surface-low);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .ds-radio--disabled:hover {
+    border-color: var(--ds-line);
+  }
+}
+
+.ds-radio--disabled strong {
+  color: var(--ds-text-2);
+}
+
+.ds-radio small.ds-radio__note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-1);
+  color: var(--ds-on-warning-container);
+  font: var(--ds-font-meta);
+}
+
+.ds-radio__note svg {
+  flex-shrink: 0;
+  color: var(--ds-warning);
+}
+
+/* "Add a row" under an editable table: a text button whose padding hangs
+   into the gutter, so its icon lines up with the table's first column. */
+.ds-add-row {
+  justify-self: start;
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+/*
+ * Forced colors drop background images and fills: the select's triangle is
+ * gone there, so the native controls come back. The date field's calendar
+ * and the search's clear button are masks over a fill, which forced colors
+ * would paint in the field's own background: they keep the mask, filled in
+ * the system text colour.
+ */
+@media (forced-colors: active) {
+  select.ds-input {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    background-image: none;
+  }
+
+  input.ds-input[list] {
+    background-image: none;
+  }
+
+  input.ds-input[list]::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  .ds-input[type="date"]::-webkit-calendar-picker-indicator,
+  .ds-search .ds-input::-webkit-search-cancel-button {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}

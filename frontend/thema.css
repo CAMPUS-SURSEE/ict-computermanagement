@@ -1,0 +1,95 @@
+/* thema.css — das Campus-Thema von ICT-Inventar auf Dashboard-Style.
+
+   Dashboard-Style (vendor/dashboard-style/, siehe STYLEGUIDE.md) bringt
+   Tokens, Bausteine, Bewegung und Sinnbilder mit einem neutralen
+   Standardthema. Diese Datei setzt darauf NUR die Werte von Campus Sursee
+   (dieselben wie die ChatBob-Admin-Oberfläche) und die wenigen Tokens, die
+   es nur hier gibt. Sie wird direkt nach ds.css geladen und überschreibt
+   Rollen auf demselben Selektor .ds-theme (steht auf <html>).
+
+   Regeln:
+     - Hier stehen nur Tokens und die Schrift der Wortmarke, keine
+       Bausteine (die stehen in bausteine.css und rahmen.css).
+     - Bewegungs-Tokens (--ds-dur-*, --ds-ease-*, --ds-distance-* …)
+       überschreibt kein Thema: der Schalter für reduzierte Bewegung in
+       Dashboard-Style hängt daran.
+     - Was Dashboard-Style schon richtig hat (Text #1f1f1f/#444746/#747775,
+       Statusfarben, Radien, Schatten, Google Sans, Typo-Rollen, Masse),
+       steht hier nicht noch einmal. */
+
+
+/* ==================================================================
+   Schrift der Wortmarke «ICT.INVENTAR»
+   Das Logo von Campus Sursee ist in «Trade Gothic Next» gesetzt
+   (Adobe-Lizenz); Archivo in 112 % Breite kommt ihm am nächsten.
+   Selbst gehostet aus @fontsource-variable/archivo 5.3.0 (variable
+   Achsen Breite und Gewicht), Lizenz SIL OFL 1.1: schriften/OFL.txt.
+   Google Sans kommt aus vendor/dashboard-style/fonts/fonts.css.
+   ================================================================== */
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url('schriften/archivo-latin-ext-wdth-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url('schriften/archivo-latin-wdth-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+/* ==================================================================
+   Campus-Thema
+   ================================================================== */
+
+.ds-theme {
+  /* Flächen: ein getönter, leicht grünlicher Grund statt Google-Grau;
+     darauf EINE weisse Tafel. */
+  --ds-backdrop:         #f3f4f2;   /* Grund, Kopf, Schublade; Zeilen-Hover */
+  --ds-surface-low:      #f9f9f7;   /* Kacheln, gefüllte Karten, neutrale Hinweise */
+  --ds-surface-high:     #edeeec;   /* gefüllte Felder, Suche, neutrale Chips */
+  --ds-surface-highest:  #e2e3e1;   /* Schalter-Spur aus, Skelett, Spinner-Spur */
+  --ds-line:             #e2e3e1;   /* passive Haarlinie: Karten, Trenner */
+
+  /* Primär Campus-Grün; das Pastell ist DIE einzige Tönung (Auswahl,
+     aktive Navigation, gewählte Chips, Tonal-Knopf, Leerzustand). */
+  --ds-primary:          #1a3c25;
+  --ds-primary-hover:    #2c4c36;   /* Referenzwert: Primär + 8 % Weiss */
+  --ds-primary-pressed:  #153220;
+  --ds-accent:           #cfdfad;
+  --ds-on-accent:        #1a3c25;
+  --ds-inverse-primary:  #a1d73b;   /* Erfolgs-Sinnbild in der Meldung */
+  --ds-link-underline:   rgba(26, 60, 37, .4);
+
+  /* Spur des Spinners wie die Skelette, nicht die Haarlinie. */
+  --ds-spinner-track:    var(--ds-surface-highest);
+
+  /* Felder bleiben auch auf dem Telefon 14 px (Dashboard-Style schaltet
+     sonst unter 600 px auf 16 px, damit iOS nicht hineinzoomt). */
+  --ds-input-font:       var(--ds-font-body);
+
+  /* --- Nur ICT-Inventar --- */
+
+  /* Der Punkt der Wortmarke: nur Dekoration, nie Text. */
+  --campus-gruen:        #84b819;
+  /* Wortmarke «ICT.INVENTAR» (rahmen.css). */
+  --schrift-marke:       Archivo, 'Trade Gothic Next', 'Helvetica Neue', Arial, sans-serif;
+  --gewicht-marke:       650;
+  /* Name und E-Mail in der Konto-Kapsel des Kopfs, danach «…». */
+  --konto-breit:         240px;
+  /* Diagramme (Balken, Säulen, Zeitstrahl): Rollen statt Farben. */
+  --diagramm-a:          var(--ds-primary);
+  --diagramm-b:          var(--ds-accent);
+  --diagramm-gefahr:     var(--ds-error);
+  --diagramm-warnung:    var(--ds-warning);
+}

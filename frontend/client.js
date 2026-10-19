@@ -179,11 +179,11 @@ function sperrenNachfuehren(knoepfe) {
   nachfuehren(setzen);
 }
 
-function raster(kinder) { return UI.anhaengen(el("div", "raster-2"), kinder); }
+function raster(kinder) { return UI.anhaengen(el("div", "ds-grid-2"), kinder); }
 
 /* Jeder Bereich steht in EINEM Stapel: so staffelt der Auftritt beim
    Bereichswechsel seine Karten (Bewegung.auftritt staffelt nur Raster). */
-function stapel(ziel) { return ziel.appendChild(el("div", "stapel")); }
+function stapel(ziel) { return ziel.appendChild(el("div", "ds-stack")); }
 
 /* Zeile für einen Wert aus SCCM; leere Werte zeigen «–». */
 function datenZeile(name, w, neben) {
@@ -1058,7 +1058,7 @@ function sccmBenutzerKarte() {
     datenZeile("Hauptbenutzer (Konsole)", zeile.SCCM_TopConsoleUser),
     datumZeile("Letzte Anmeldung", zeile.SCCM_LastConsoleUse)
   ]));
-  k.inhalt.appendChild(el("h3", "karte-untertitel", "Konsolenbenutzer"));
+  k.inhalt.appendChild(el("h3", "ds-card__subtitle", "Konsolenbenutzer"));
   const konsole = Hilfe.zeilen(zeile.SCCM_ConsoleUsers).map(Hilfe.felder);
   if (!konsole.length) {
     k.inhalt.appendChild(UI.hinweis("Keine Konsolennutzung erfasst."));
@@ -1103,7 +1103,7 @@ function bereichSoftware(ziel) {
   const anzahl = el("p", "anzahl");
   anzahl.id = "g-installiert-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  kInst.inhalt.appendChild(UI.anhaengen(el("div", "werkzeugleiste"), [
+  kInst.inhalt.appendChild(UI.anhaengen(el("div", "ds-action-bar"), [
     UI.suchfeld({ id: "g-suche-installiert", platzhalter: "Name suchen", label: "Installierte Software suchen",
       wert: swSuche, beiEingabe: function (w) { swSuche = w; installiertFuellen(); } }),
     anzahl
@@ -1123,7 +1123,7 @@ function bereichSoftware(ziel) {
   const sammlungen = Hilfe.zeilen(zeile.SCCM_Collections);
   const kSamml = UI.karte({ titel: "Sammlungen" });
   kSamml.inhalt.appendChild(sammlungen.length
-    ? UI.anhaengen(el("div", "chips"), sammlungen.map(n => UI.status(n, "neutral", { sinnbild: "ordner" })))
+    ? UI.anhaengen(el("div", "ds-chips"), sammlungen.map(n => UI.status(n, "neutral", { sinnbild: "ordner" })))
     : UI.hinweis("Keine Sammlungen erfasst."));
   s.appendChild(raster([kOffice, kSamml]));
 }
@@ -1444,7 +1444,7 @@ function bereichFelder(ziel) {
   const anzahl = el("p", "anzahl");
   anzahl.id = "g-felder-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  const leiste = UI.anhaengen(el("div", "werkzeugleiste"), [
+  const leiste = UI.anhaengen(el("div", "ds-action-bar"), [
     UI.suchfeld({ id: "g-suche-felder", platzhalter: "Feld oder Wert suchen", label: "Feld oder Wert suchen",
       wert: rohSuche, beiEingabe: function (w) { rohSuche = w; felderFuellen(); } }),
     UI.ankreuzen({ text: "Leere Felder zeigen", an: rohLeereZeigen, id: "g-leere-zeigen",
@@ -1499,13 +1499,13 @@ function felderFuellen() {
           beiKlick: function () { kopieren(text, "«" + sp.d + "» kopiert."); }, fokus: "kopieren-" + sp.i }));
       }
       const z = UI.feldZeile(sp.d, teile);
-      z.firstChild.appendChild(el("span", "meta g-feld-intern", sp.i + " · " + sp.t + " · " + (QUELLEN[sp.q] || sp.q)));
+      z.firstChild.appendChild(el("span", "ds-meta g-feld-intern", sp.i + " · " + sp.t + " · " + (QUELLEN[sp.q] || sp.q)));
       z.lastChild.classList.add("g-feld-wert");
       zeilen.push(z);
     }
     if (!zeilen.length) continue;
     gezeigt += zeilen.length;
-    inhalt.appendChild(el("h3", "karte-untertitel", g.titel));
+    inhalt.appendChild(el("h3", "ds-card__subtitle", g.titel));
     inhalt.appendChild(UI.datenzeilen(zeilen));
   }
   UI.textSetzen($("g-felder-anzahl"), gezeigt + " von " + gesamt + " Feldern");
@@ -2014,7 +2014,7 @@ function fokusNachAktion() {
   const a = document.activeElement;
   if (a && a !== document.body && a !== Rahmen.elemente().tafel) return;
   const kopf = $("g-kopf");
-  const ziel = (kopf && kopf.querySelector(".seitenkopf-aktionen > .knopf")) || $("g-titel");
+  const ziel = (kopf && kopf.querySelector(".seitenkopf-aktionen > .ds-btn")) || $("g-titel");
   if (ziel) ziel.focus({ preventScroll: true });
 }
 
@@ -2032,7 +2032,7 @@ function verlaufTextMit(basis, notiz) {
    warnung: Text oder fertiger Banner. */
 function aktionsDialog(o) {
   if (F.istBeschaeftigt()) return;
-  const inhalt = [el("p", "dialog-text", o.text)];
+  const inhalt = [el("p", "ds-dialog__text", o.text)];
   if (o.warnung) inhalt.push(o.warnung.nodeType ? o.warnung : UI.banner({ ton: "warnung", text: o.warnung }));
   const notiz = UI.eingabe({ art: "textbereich", id: "g-aktion-notiz", zeilen: 2, platzhalter: "z. B. den Grund" });
   inhalt.push(UI.feld("Notiz für den Verlauf (optional)", notiz));
@@ -2117,7 +2117,7 @@ function inhaberEntfernenDialog(b) {
       });
       if (ok) UI.meldung("«" + personName(b) + "» ist nicht mehr eingetragen.");
     } });
-  const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], inhalt: [el("p", "dialog-text",
+  const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], inhalt: [el("p", "ds-dialog__text",
     "«" + personName(b) + "» ist danach nicht mehr Inhaber. Das Gerät selbst bleibt unverändert.")] });
 }
 
@@ -2149,7 +2149,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
     // Dialogs; Suchfeld, Titel und Knöpfe bleiben stehen.
     const liste = el("div", "dialog-liste");
     liste.setAttribute("data-rolle", "treffer");
-    const zahl = el("p", "meta");
+    const zahl = el("p", "ds-meta");
     zahl.setAttribute("aria-live", "polite");
     const suche = UI.suchfeld({ id: "g-inhaber-suche", platzhalter: "Name, Login oder Abteilung", label: "Person suchen",
       wert: suchText, verzoegerung: 100, beiEingabe: function (w) { suchText = w; treffer(liste, zahl); } });
@@ -2202,7 +2202,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
     d.titel(ausLager ? "Ausgeben an «" + personName(b) + "»?" : "«" + personName(b) + "» als Inhaber?");
     UI.leeren(d.inhalt);
     UI.leeren(d.knoepfe);
-    d.inhalt.appendChild(el("p", "dialog-text", "«" + pcName + "» geht an «" + personName(b) + "» (" + (String(b.Title || "").trim() || "ohne Login")
+    d.inhalt.appendChild(el("p", "ds-dialog__text", "«" + pcName + "» geht an «" + personName(b) + "» (" + (String(b.Title || "").trim() || "ohne Login")
       + (String(b.Abteilung || "").trim() ? ", " + String(b.Abteilung).trim() : "")
       + ")." + (ausLager ? " Das Gerät bekommt den Status «Aktiv»." : "")));
     if (abgebende.length) {

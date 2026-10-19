@@ -1,9 +1,11 @@
 /* styleguide.js — die lebende Komponentenübersicht (styleguide.html).
 
-   Baut jede Komponente des Design-Systems in ihren Zuständen, und zwar
-   ausschliesslich über die Bauer der Fundament-Dateien: UI.* (bausteine.js
-   und rahmen.js), Rahmen.* und Bewegung.*. Was hier richtig aussieht,
-   sieht in den Seiten gleich aus; was hier fehlt, fehlt im System. Darum
+   Baut jede Komponente in ihren Zuständen, und zwar ausschliesslich über
+   die Bauer der Fundament-Dateien: UI.* (bausteine.js und rahmen.js),
+   Rahmen.* und Bewegung.* – die ihrerseits die Bausteine von Dashboard-Style
+   (.ds-*, vendor/dashboard-style/) setzen. Der Abschnitt «Grundlagen» zeigt
+   das Campus-Thema und verweist auf den Styleguide von Dashboard-Style.
+   Was hier richtig aussieht, sieht in den Seiten gleich aus; was hier fehlt, fehlt im System. Darum
    steht hier kein eigenes Markup für Komponenten, nur das Gerüst der
    Abschnitte und ein paar Musterflächen (Farbfelder, Bühne).
 
@@ -56,7 +58,7 @@
 
   function beschriftung(text) { return el("p", "sg-beschriftung", text); }
 
-  function raster(kinder, klasse) { return anhaengen(el("div", klasse || "raster-2"), kinder); }
+  function raster(kinder, klasse) { return anhaengen(el("div", klasse || "ds-grid-2"), kinder); }
 
   function warten(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
@@ -95,12 +97,12 @@
     const wert = function (token) { return stil.getPropertyValue(token).trim(); };
 
     const FARBEN = [
-      ["Flächen", ["--hintergrund", "--flaeche", "--flaeche-tief", "--flaeche-hoch", "--flaeche-hoechst"]],
-      ["Text und Linien", ["--text", "--text-leise", "--text-still", "--linie", "--linie-stark", "--umriss"]],
-      ["Primär und Akzent", ["--primaer", "--auf-primaer", "--akzent", "--auf-akzent", "--campus-gruen"]],
-      ["Status", ["--erfolg", "--erfolg-container", "--auf-erfolg", "--warnung", "--warnung-container",
-        "--warnung-flaeche", "--gefahr", "--gefahr-container", "--auf-gefahr"]],
-      ["Invers und Schleier", ["--invers", "--auf-invers", "--invers-primaer", "--schleier"]]
+      ["Flächen", ["--ds-backdrop", "--ds-surface", "--ds-surface-low", "--ds-surface-high", "--ds-surface-highest"]],
+      ["Text und Linien", ["--ds-text", "--ds-text-2", "--ds-text-3", "--ds-line", "--ds-line-2", "--ds-outline"]],
+      ["Primär und Akzent", ["--ds-primary", "--ds-on-primary", "--ds-accent", "--ds-on-accent", "--campus-gruen"]],
+      ["Status", ["--ds-success", "--ds-success-container", "--ds-on-success-container", "--ds-warning", "--ds-warning-container",
+        "--ds-warning-surface", "--ds-error", "--ds-error-container", "--ds-on-error-container"]],
+      ["Invers und Schleier", ["--ds-inverse", "--ds-on-inverse", "--ds-inverse-primary", "--ds-scrim"]]
     ];
     const farben = [];
     FARBEN.forEach(function (gruppe, i) {
@@ -109,68 +111,69 @@
         const f = el("div", "sg-farbe");
         const muster = el("div", "sg-farbe-feld");
         muster.style.setProperty("background", "var(" + token + ")");
-        anhaengen(f, [muster, el("code", null, token), el("span", "meta", wert(token))]);
+        anhaengen(f, [muster, el("code", null, token), el("span", "ds-meta", wert(token))]);
         feld.appendChild(f);
       }
-      if (i) farben.push(el("h3", "karte-untertitel", gruppe[0]));
-      else farben.push(el("p", "hinweis", "Das Pastell ist die einzige Tönung. Es gibt kein Blau, auch kein blaues «Info»: "
-        + "Neutrale Hinweise sind #f9f9f7 mit grünem Icon. #84b819 nur als Dekoration (Punkt der Wortmarke)."));
-      if (!i) farben.push(el("h3", "karte-untertitel", gruppe[0]));
+      if (i) farben.push(el("h3", "ds-card__subtitle", gruppe[0]));
+      else farben.push(el("p", "ds-muted", "Das Pastell ist die einzige Tönung. Es gibt kein Blau, auch kein blaues «Info»: "
+        + "Neutrale Hinweise sind #f9f9f7 mit grünem Icon. #84b819 nur als Dekoration (Punkt der Wortmarke). "
+        + "Flächen, Haarlinie, Primär und Akzent setzt thema.css; alles Übrige ist der Standard von Dashboard-Style."));
+      if (!i) farben.push(el("h3", "ds-card__subtitle", gruppe[0]));
       farben.push(feld);
     });
 
     const ROLLEN = [
-      ["--t-ueberschrift", "Seitentitel", "24/32 · 400 · h1 jeder Ansicht"],
-      ["--t-titel", "Titel von Dialog und Seitenblatt", "22/28 · 400"],
-      ["--t-untertitel", "Kartentitel", "16/24 · 500"],
-      ["--t-lesen", "Lesetext in Blättern", "16/24 · 400"],
-      ["--t-text", "Fliesstext, Felder, Tabellenzellen", "14/20 · 400"],
-      ["--t-beschriftung", "Knöpfe, Tabellenkopf, aktive Navigation", "14/20 · 500"],
-      ["--t-meta", "Meta-Zeile, Hinweise, Zeitstempel", "12/16 · 400"],
-      ["--t-klein", "Status-Chips, Feldbeschriftungen", "12/16 · 500"],
-      ["--t-anzeige", "1’284", "36/44 · 400 · Kennzahlen, tabellarische Ziffern"],
-      ["--t-code", "{ \"Title\": \"CAMPUS-907\" }", "13/20 · Mono"]
+      ["--ds-font-headline", "Seitentitel", "24/32 · 400 · h1 jeder Ansicht"],
+      ["--ds-font-title", "Titel von Dialog und Seitenblatt", "22/28 · 400"],
+      ["--ds-font-subtitle", "Kartentitel", "16/24 · 500"],
+      ["--ds-font-reading", "Lesetext in Blättern", "16/24 · 400"],
+      ["--ds-font-body", "Fliesstext, Felder, Tabellenzellen", "14/20 · 400"],
+      ["--ds-font-label", "Knöpfe, Tabellenkopf, aktive Navigation", "14/20 · 500"],
+      ["--ds-font-meta", "Meta-Zeile, Hinweise, Zeitstempel", "12/16 · 400"],
+      ["--ds-font-caption", "Status-Chips, Feldbeschriftungen", "12/16 · 500"],
+      ["--ds-font-display", "1’284", "36/44 · 400 · Kennzahlen, tabellarische Ziffern"],
+      ["--ds-font-code", "{ \"Title\": \"CAMPUS-907\" }", "13/20 · Mono"]
     ];
     const schrift = el("div");
     for (const r of ROLLEN) {
       const z = el("div", "sg-schrift");
       const probe = el("p", null, r[1]);
       probe.style.setProperty("font", "var(" + r[0] + ")");
-      if (r[0] === "--t-anzeige") probe.style.setProperty("font-variant-numeric", "tabular-nums");
+      if (r[0] === "--ds-font-display") probe.style.setProperty("font-variant-numeric", "tabular-nums");
       anhaengen(z, [probe, UI.teile([r[0], r[2]])]);
-      z.lastChild.classList.add("meta");
+      z.lastChild.classList.add("ds-meta");
       schrift.appendChild(z);
     }
 
     const abstaende = el("div", "sg-masse");
-    for (const a of ["--a1", "--a2", "--a3", "--a4", "--a5", "--a6", "--a7", "--a8", "--a10", "--a12"]) {
+    for (const a of ["--ds-space-1", "--ds-space-2", "--ds-space-3", "--ds-space-4", "--ds-space-5", "--ds-space-6", "--ds-space-7", "--ds-space-8", "--ds-space-10", "--ds-space-12"]) {
       const m = el("div", "sg-mass");
       const b = el("div", "sg-mass-balken");
       b.style.setProperty("height", "var(" + a + ")");
-      anhaengen(m, [b, el("span", "meta", a.replace("--", "") + " · " + wert(a))]);
+      anhaengen(m, [b, el("span", "ds-meta", a.replace("--", "") + " · " + wert(a))]);
       abstaende.appendChild(m);
     }
 
     const radien = el("div", "sg-flaechen");
-    for (const r of [["--r-xs", "Tooltip, Code"], ["--r-s", "Felder, Chips, Meldung"], ["--r-m", "Karten, Status, Banner"],
-      ["--r-l", "Kacheln, Dialoge, Blatt"], ["--r-xl", "Tafel (nur oben)"], ["--r-rund", "Jede Aktion"]]) {
+    for (const r of [["--ds-radius-xs", "Tooltip, Code"], ["--ds-radius-sm", "Felder, Chips, Meldung"], ["--ds-radius-md", "Karten, Status, Banner"],
+      ["--ds-radius-lg", "Kacheln, Dialoge, Blatt"], ["--ds-radius-xl", "Tafel (nur oben)"], ["--ds-radius-action", "Jede Aktion"]]) {
       const f = el("div", "sg-flaeche");
       f.style.setProperty("border-radius", "var(" + r[0] + ")");
-      anhaengen(f, [anhaengen(el("div"), [el("code", null, r[0]), el("div", "meta", r[1])])]);
+      anhaengen(f, [anhaengen(el("div"), [el("code", null, r[0]), el("div", "ds-meta", r[1])])]);
       radien.appendChild(f);
     }
     const ebenen = el("div", "sg-flaechen");
-    for (const e of [["--erhebung-1", "Hover gefüllter Knöpfe"], ["--erhebung-2", "Menüs, Sprungmarke"],
-      ["--erhebung-3", "Dialog, Blatt, Meldung, Speicherleiste"]]) {
+    for (const e of [["--ds-elev-1", "Hover gefüllter Knöpfe"], ["--ds-elev-2", "Menüs, Sprungmarke"],
+      ["--ds-elev-3", "Dialog, Blatt, Meldung, Speicherleiste"]]) {
       const f = el("div", "sg-flaeche");
       f.style.setProperty("border-color", "transparent");
-      f.style.setProperty("border-radius", "var(--r-karte)");
+      f.style.setProperty("border-radius", "var(--ds-radius-card)");
       f.style.setProperty("box-shadow", "var(" + e[0] + ")");
-      anhaengen(f, [anhaengen(el("div"), [el("code", null, e[0]), el("div", "meta", e[1])])]);
+      anhaengen(f, [anhaengen(el("div"), [el("code", null, e[0]), el("div", "ds-meta", e[1])])]);
       ebenen.appendChild(f);
     }
 
-    // Sinnbilder: jede Glyphe einmal, Zweitnamen (Aliase) dahinter.
+    // Sinnbilder: jede Glyphe einmal (DS.icons), der deutsche Name und Zweitnamen (Aliase) dahinter.
     const namenJeGlyphe = new Map();
     for (const name of Object.keys(UI.SINNBILDER)) {
       const g = UI.SINNBILDER[name];
@@ -183,18 +186,47 @@
       z.appendChild(UI.sinnbild(namen[0], 20));
       const t = el("span");
       t.appendChild(el("code", null, namen[0]));
-      if (namen.length > 1) t.appendChild(el("span", "meta", "auch " + namen.slice(1).join(", ")));
+      t.appendChild(el("span", "ds-meta", UI.SINNBILDER[namen[0]] + (namen.length > 1 ? " · auch " + namen.slice(1).join(", ") : "")));
       z.appendChild(t);
       sinnbilder.appendChild(z);
     }
 
+    // Woher alles kommt: Dashboard-Style (vendor/dashboard-style/) mit seinem eigenen Styleguide.
+    const DS_REPO = "https://github.com/saschazesiger/Dashboard-Style";
+    function dsLink(text, pfad) {
+      const a = el("a", null, text);
+      a.href = DS_REPO + pfad;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.appendChild(UI.sinnbild("extern", 16));
+      return a;
+    }
+    const grundlage = karte({ titel: "Dashboard-Style", unter: "Die Grundlage aller Seiten: Tokens (--ds-*), Bausteine (.ds-*), Bewegung "
+      + "(DS.motion) und Sinnbilder (DS.icons). Diese Seite zeigt sie so, wie ICT-Inventar sie über UI.* baut, dazu die "
+      + "Bausteine, die es nur hier gibt; die neutrale Übersicht steht im Styleguide von Dashboard-Style. Die Kopie "
+      + "in vendor/dashboard-style/ wird nie von Hand geändert (STYLEGUIDE.md)." }, [
+      UI.kennwerte([
+        ["Version (ds.js)", (typeof DS !== "undefined" && DS.version) || "–"],
+        ["Ablage", "vendor/dashboard-style/"],
+        ["Campus-Thema", "thema.css"],
+        ["Eigene Bausteine", "bausteine.css, rahmen.css"]
+      ]),
+      reihe([
+        dsLink("Repository", ""),
+        dsLink("Bausteine (components.md)", "/blob/main/docs/components.md"),
+        dsLink("Tokens (tokens.md)", "/blob/main/docs/tokens.md"),
+        dsLink("Styleguide (Quelltext; lokal öffnen)", "/blob/main/styleguide/index.html")
+      ])
+    ]);
+
     return abschnitt("grundlagen", "Grundlagen",
-      "Die Tokens aus design.css. Komponenten und Seiten lesen nur diese Namen, nie Farben, Radien, Schriften oder Dauern als Literal.",
+      "Dashboard-Style mit dem Campus-Thema. Komponenten und Seiten lesen nur diese Tokens, nie Farben, Radien, Schriften oder Dauern als Literal.",
       [
+        grundlage,
         karte({ titel: "Farben" }, farben),
         raster([
           karte({ titel: "Schriftrollen", unter: "Google Sans, nur 400 und 500. Überschriften sind nie fett, nichts ist gesperrt." }, [schrift]),
-          anhaengen(el("div", "stapel"), [
+          anhaengen(el("div", "ds-stack"), [
             karte({ titel: "Abstände", unter: "4er-Raster. Seite 20 px zwischen Blöcken, Karte 16 px." }, [abstaende]),
             karte({ titel: "Radien" }, [radien]),
             karte({ titel: "Erhebung", unter: "Nur Schwebendes wirft Schatten; Karten haben eine Haarlinie." }, [ebenen])
@@ -266,7 +298,7 @@
               knopf({ variante: "sinnbild", sinnbild: "schliessen", titel: "Schliessen" }),
               knopf({ variante: "sinnbild", sinnbild: "bearbeiten", titel: "Bearbeiten" }),
               knopf({ variante: "sinnbild", sinnbild: "mehr", titel: "Weitere Aktionen" }),
-              knopf({ variante: "sinnbild", sinnbild: "verlauf", titel: "Verlauf (Scheibe)", klasse: "knopf-scheibe" }),
+              knopf({ variante: "sinnbild", sinnbild: "verlauf", titel: "Verlauf (Scheibe)", klasse: "ds-btn--disc" }),
               knopf({ variante: "sinnbild", sinnbild: "papierkorb", titel: "Entfernen", klein: true })
             ]),
             reihe([
@@ -290,7 +322,7 @@
           reihe([speichern, testen, beschriftung("← klicken: beschäftigt")])
         ]),
         karte({ titel: "Aktionszeile eines Formulars" }, [
-          anhaengen(el("div", "aktionszeile"), [
+          anhaengen(el("div", "ds-form-actions"), [
             knopf({ text: "Speichern", variante: "primaer" }),
             knopf({ text: "Verbindung testen" }),
             knopf({ text: "Verlauf anzeigen", variante: "leise", sinnbild: "verlauf" }),
@@ -321,11 +353,11 @@
     optionen.forEach(function (c) {
       c.addEventListener("click", function () { for (const o of optionen) o.setzen(o === c); });
     });
-    const trenner = el("span", "chips-trenner");
+    const trenner = el("span", "ds-chips__divider");
     trenner.setAttribute("aria-hidden", "true");
     const anzahl = el("p", "anzahl", "47 von 163");
     anzahl.setAttribute("aria-live", "polite");
-    const gruppe = el("div", "chips");
+    const gruppe = el("div", "ds-chips");
     gruppe.setAttribute("role", "group");
     gruppe.setAttribute("aria-label", "Status");
     anhaengen(gruppe, optionen);
@@ -406,13 +438,13 @@
 
     const gefuellt = UI.karte({ titel: "Testergebnis", gefuellt: true, ebene: 3 });
     anhaengen(gefuellt.inhalt, [
-      reihe([UI.status("Graph erreichbar", "erfolg"), el("span", "hinweis", "120 ms")]),
-      reihe([UI.status("Liste «ADMIN-Clients» lesbar", "erfolg"), el("span", "hinweis", "50 Zeilen")])
+      reihe([UI.status("Graph erreichbar", "erfolg"), el("span", "ds-muted", "120 ms")]),
+      reihe([UI.status("Liste «ADMIN-Clients» lesbar", "erfolg"), el("span", "ds-muted", "50 Zeilen")])
     ]);
 
-    const unterabschnitt = anhaengen(el("div", "unterabschnitt"), [
-      el("h3", "karte-untertitel", "Netzwerk"),
-      el("p", "hinweis", "Ein Teil einer Karte mit eigenem kleinem Titel: Haarlinie und 20 px Luft darüber.")
+    const unterabschnitt = anhaengen(el("div", "ds-subsection"), [
+      el("h3", "ds-card__subtitle", "Netzwerk"),
+      el("p", "ds-muted", "Ein Teil einer Karte mit eigenem kleinem Titel: Haarlinie und 20 px Luft darüber.")
     ]);
 
     const kacheln = UI.kacheln([
@@ -455,7 +487,7 @@
           ]),
           karte({ titel: "Gefüllte Karte darin" }, [UI.hinweis("Ein ruhigerer Block in einer Karte (Testergebnis)."), gefuellt]),
           karte({ titel: "Zwischentitel" }, [
-            el("h3", "karte-untertitel", "Datenquellen"),
+            el("h3", "ds-card__subtitle", "Datenquellen"),
             UI.hinweis("Ein h3 in 14/20 500 mit 24 px Luft darüber und 8 px darunter."),
             unterabschnitt
           ])
@@ -487,7 +519,7 @@
               UI.feldZeile("Bemerkung", "")
             ])
           ]),
-          anhaengen(el("div", "stapel"), [
+          anhaengen(el("div", "ds-stack"), [
             karte({ titel: "Kennwerte" }, [
               UI.kennwerte([["ADMIN-Clients", "50"], ["EDU-Clients", "18"], ["Benutzer", "56"], ["Telefonnummern", ""]])
             ]),
@@ -552,7 +584,7 @@
 
     const vorschlag = anhaengen(el("div", "datenzeile-zeile"), [
       knopf({ text: "Vorschlag 2027/28 übernehmen", variante: "leise", klein: true }),
-      el("span", "meta", "Beschaffung + 5 Jahre")
+      el("span", "ds-meta", "Beschaffung + 5 Jahre")
     ]);
 
     const bearbeiten = UI.datenzeilen([
@@ -575,7 +607,7 @@
       info("Ticket «" + ticket.value.trim() + "» gefunden.");
     } });
 
-    const felder = el("div", "feld-raster");
+    const felder = el("div", "ds-form-grid ds-form-grid--2");
     anhaengen(felder, [
       UI.feld("Vorname", UI.eingabe({ platzhalter: "z. B. Max" }), { hinweis: "Wie im Active Directory." }),
       UI.feld("Abteilung", UI.eingabe({ art: "auswahl", werte: ["Informatik", "Verwaltung", "Lehrgänge"], leer: "Alle" })),
@@ -584,7 +616,7 @@
       UI.feld("Notiz", UI.eingabe({ art: "textbereich", platzhalter: "Was soll die nächste Person wissen?" }), { voll: true })
     ]);
 
-    const gefuellt = anhaengen(el("div", "feld-reihe"), [
+    const gefuellt = anhaengen(el("div", "ds-inline-form"), [
       UI.feld("Quelle", UI.eingabe({ art: "auswahl", gefuellt: true, werte: ["Alle", "SCCM", "Von Hand"] })),
       UI.feld("Von", UI.eingabe({ art: "datum", gefuellt: true })),
       UI.feld("Bis", UI.eingabe({ art: "datum", gefuellt: true }))
@@ -603,7 +635,7 @@
       } });
     const filter = knopf({ text: "Filter", sinnbild: "filter", variante: "still" });
     filter.appendChild(UI.zaehler(2));
-    const leiste = anhaengen(el("div", "werkzeugleiste"), [suche, filter,
+    const leiste = anhaengen(el("div", "ds-action-bar"), [suche, filter,
       knopf({ text: "Spalten", sinnbild: "spalten", variante: "still" }),
       knopf({ text: "CSV", sinnbild: "herunterladen", variante: "still" }), suchAnzahl]);
 
@@ -630,10 +662,10 @@
           + "(Screenreader: «(geändert)»); die Zahl steht in der Speicherleiste." }, [bearbeiten]),
         raster([
           karte({ titel: "Felder mit Beschriftung" }, [felder]),
-          anhaengen(el("div", "stapel"), [
+          anhaengen(el("div", "ds-stack"), [
             karte({ titel: "Gefüllte Felder (Werkzeugleisten)" }, [gefuellt]),
             karte({ titel: "Feldreihe mit Knopf" }, [
-              anhaengen(el("div", "feld-reihe"), [UI.feld("Ticketnummer", ticket), pruefen]),
+              anhaengen(el("div", "ds-inline-form"), [UI.feld("Ticketnummer", ticket), pruefen]),
               beschriftung("«Prüfen» bei leerem Feld zeigt den Feldfehler; die erste Eingabe löscht ihn.")
             ])
           ])
@@ -710,7 +742,7 @@
         const zellen = [link, UI.status(z.status[0], z.status[1], { sinnbild: z.status[2] }), z.inhaber || "–",
           z.ort, z.modell, z.system, z.speicher + " GB", String(z.jahr), z.gesehen];
         zellen.forEach(function (w, i) {
-          const td = el("td", SPALTEN[i].zahl ? "zahl" : null);
+          const td = el("td", SPALTEN[i].zahl ? "ds-num" : null);
           if (w && w.nodeType) td.appendChild(w); else td.textContent = w;
           if (i === 2 && !z.inhaber) td.classList.add("t-still");
           tr.appendChild(td);
@@ -726,15 +758,15 @@
       ev.preventDefault();
       info("Würde «" + tr.getAttribute("data-name") + "» öffnen (im selben Tab, Ctrl-Klick: neuer Tab).");
     });
-    const tabelle = el("table", "tabelle");
-    tabelle.appendChild(el("caption", "nur-sr", "ADMIN-Clients"));
+    const tabelle = el("table", "ds-table");
+    tabelle.appendChild(el("caption", "ds-sr", "ADMIN-Clients"));
     anhaengen(tabelle, [kopf, koerper]);
     const rahmen = UI.tabellenRahmen(tabelle, { id: "sg-tabelle" });
 
     const dicht = knopf({ text: "Kompakt", sinnbild: "dichte", variante: "still", gedrueckt: false, beiKlick: function () {
       const an = dicht.getAttribute("aria-pressed") !== "true";
       dicht.setAttribute("aria-pressed", an ? "true" : "false");
-      rahmen.classList.toggle("dicht", an);
+      rahmen.classList.toggle("ds-table--dense", an);
     } });
     const liste = anhaengen(el("div", "sg-liste"), [rahmen]);
 
@@ -744,7 +776,7 @@
       [
         karte({ titel: "Aufstellung in einer Karte", unter: "Läuft bis an den Kartenrand; die erste und letzte Zelle "
           + "fluchten mit dem Kartentext. Auf dem Handy blendet der rechte Rand aus." }, [schlicht]),
-        anhaengen(el("div", "werkzeugleiste"), [
+        anhaengen(el("div", "ds-action-bar"), [
           UI.suchfeld({ platzhalter: "In der Liste suchen", label: "In der Liste suchen" }), dicht,
           el("p", "anzahl", "40 ADMIN-Clients")
         ]),
@@ -796,7 +828,7 @@
             ])
           ]),
           karte({ titel: "Laden" }, [
-            reihe([UI.spinner(), el("span", "hinweis", "Spinner 16 px"), UI.status("Läuft", "laeuft"),
+            reihe([UI.spinner(), el("span", "ds-muted", "Spinner 16 px"), UI.status("Läuft", "laeuft"),
               knopf({ text: "Ladezeile neu", klein: true, beiKlick: ladezeileZeigen })]),
             ladeOrt,
             fort,
@@ -994,7 +1026,7 @@
           { text: "LENOVO", zahl: 3 }], beiAenderung: function () { zaehlen(); } }),
         UI.mehrfach({ legende: "Status", eintraege: [{ text: "Aktiv", zahl: 47 }, { text: "Lager", zahl: 2 },
           { text: "Archiviert", zahl: 12 }], beiAenderung: function () { zaehlen(); } }),
-        anhaengen(el("div", "feld-raster"), [UI.feld("Beschafft ab", UI.eingabe({ art: "datum" })),
+        anhaengen(el("div", "ds-form-grid ds-form-grid--2"), [UI.feld("Beschafft ab", UI.eingabe({ art: "datum" })),
           UI.feld("Beschafft bis", UI.eingabe({ art: "datum" }))])
       ];
       blatt = UI.blatt({
@@ -1016,7 +1048,7 @@
         inhalt: [reihe([UI.status("In SCCM", "erfolg"), UI.meta("Zuletzt gesehen 12.10.2026, 14.05")]),
           UI.fakten([["Modell", "Latitude 7440"], ["Seriennummer", "5CG1234XYZ"], ["Gebäude / Stock", "Haus C / UG"],
             ["Inhaber", "Muster Max"]]),
-          el("h3", "karte-untertitel", "Rohdaten"), roh,
+          el("h3", "ds-card__subtitle", "Rohdaten"), roh,
           UI.hinweis("Der Körper rollt; die Haarlinie unter dem Kopf erscheint erst dann.")]
       });
     } });
@@ -1173,7 +1205,7 @@
     const austritte = reihe([["Ausblenden", ""], ["Sinken", "sinken"], ["Skalieren", "skalieren"], ["Schieben", "schieben"]]
       .map(function (v) { return knopf({ text: v[0], klein: true, variante: "leise", beiKlick: austreten(v[1]) }); }));
 
-    const auftrittFlaeche = anhaengen(el("div", "stapel"), [
+    const auftrittFlaeche = anhaengen(el("div", "ds-stack"), [
       UI.kacheln([
         UI.kachel({ text: "ADMIN-Clients", wert: "50", zahl: 50, unter: "47 im Einsatz" }),
         UI.kachel({ text: "Benutzer", wert: "56", zahl: 56, unter: "42 mit Gerät" }),
@@ -1212,7 +1244,7 @@
       [
         raster([
           karte({ titel: "Eintritt und Austritt" }, [buehne, beschriftung("Eintritt"), eintritte, beschriftung("Austritt"), austritte]),
-          anhaengen(el("div", "stapel"), [
+          anhaengen(el("div", "ds-stack"), [
             karte({ titel: "Gleitender Indikator", unter: "Die Pille gleitet in Lage und Grösse (250 ms); die erste "
               + "Platzierung springt. Dieselbe Technik trägt die Schublade." }, [spur]),
             karte({ titel: "Reduzierte Bewegung" }, [
@@ -1352,7 +1384,7 @@
     bahn.appendChild(UI.seitenkopf({
       titel: "Styleguide",
       lead: "Jede Komponente des ICT-Inventars in ihren Zuständen, gebaut mit denselben Bausteinen wie die Seiten "
-        + "(UI, Rahmen, Bewegung). Vorbild ist die Admin-Oberfläche von ChatBob."
+        + "(UI, Rahmen, Bewegung). Grundlage ist Dashboard-Style mit dem Campus-Thema."
     }));
     const nachher = [];
     for (const a of ABSCHNITTE) {

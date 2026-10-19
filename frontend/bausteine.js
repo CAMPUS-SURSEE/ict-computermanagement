@@ -1,15 +1,17 @@
 /* bausteine.js — die Bausteine des Design-Systems (Namensraum «UI»).
 
-   Jeder Baustein aus design.css hat hier genau EINEN Bauer. Seiten bauen
-   nur noch über UI.*, Rahmen.* (rahmen.js), Bewegung.* (bewegung.js) und
+   Jeder Baustein hat hier genau EINEN Bauer: die gemeinsamen bauen das
+   Markup von Dashboard-Style (.ds-*-Klassen aus vendor/dashboard-style/
+   ds.css), die ICT-eigenen das aus bausteine.css. Seiten bauen nur über
+   UI.*, Rahmen.* (rahmen.js), Bewegung.* (unten, über DS.motion) und
    F.* (fenster.js); Kopien von el/knopf/symbol/chip/karte gibt es nicht
    mehr. rahmen.js hängt die Überlagerungen an UI an (UI.dialog,
    UI.bestaetigen, UI.blatt, UI.meldung, UI.tipp, UI.adresse).
 
    Grundsätze:
      - DOM nur über createElement/textContent; nie innerHTML mit Daten.
-       Die Sinnbilder sind Konstanten dieser Datei und werden ohne
-       innerHTML zerlegt.
+       Die Sinnbilder kommen aus Dashboard-Style (DS.icons) und entstehen
+       über DS.icons.iconElement, ohne innerHTML.
      - Jeder Bauer gibt einen DOM-Knoten zurück und nimmt ein Objekt mit
        Optionen; die alten Positionsparameter (F.karte, F.kachel, …)
        funktionieren weiter.
@@ -44,9 +46,9 @@
                           Rahmen.stillZeichnen und der Rückfokus der Ebenen das
                           neu gebaute Element wieder (jedes Bedienelement ohne id).
 
-   Sinnbilder (EIN Set, Lucide-Stil, siehe SINNBILDER unten)
+   Sinnbilder (EIN Set aus DS.icons, Lucide-Stil, siehe SINNBILDER unten)
      UI.sinnbild(name, groesse = 20, klasse?) → <svg class="icon …" aria-hidden>
-     UI.SINNBILDER                    → { name: '<path d="…"/>…' } (eingefroren)
+     UI.SINNBILDER                    → { deutscher Name: Glyphe in DS.icons } (eingefroren)
        Grössen: 20 Navigation/Icon-Knöpfe/Banner, 16 in Knöpfen/Chips/Listen,
        18 Filter-Chip-Haken, 24 Leerzustand.
 
@@ -84,7 +86,7 @@
        sichtbaren ab); der Knopf bleibt gesperrt. Vor einem Neuaufbau.
 
    Status, Hinweise
-     UI.status(text, ton = 'neutral', { sinnbild, titel }) → span.status
+     UI.status(text, ton = 'neutral', { sinnbild, titel }) → span.ds-status
        ton: 'erfolg' | 'warnung' | 'gefahr' | 'neutral' | 'laeuft' (Spinner)
             | 'wartet' (Uhr) | 'aus' (Verbot); alte Töne 'info'/'leise'/'marke'
             → neutral. Standard-Icons wie ChatBob: erfolg=check, warnung und
@@ -94,34 +96,34 @@
        .setzen(text, ton, optionen) aktualisiert an Ort und Stelle (ein
        laufender Spinner dreht weiter).
      UI.banner(textOderKnoten, ton?, knopfKnoten?, { rolle, sinnbild })  (kompatibel zu F.banner)
-     UI.banner({ titel, text, ton, knopf: Knoten|Knoten[], rolle, sinnbild }) → div.banner
+     UI.banner({ titel, text, ton, knopf: Knoten|Knoten[], rolle, sinnbild }) → div.ds-alert
        ton: 'info' (Standard, neutral) | 'erfolg' | 'warnung' | 'gefahr'.
-       titel wird als <strong> vorangestellt. .textKnoten = div.banner-text.
+       titel wird als <strong> vorangestellt. .textKnoten = div.ds-alert__text.
      UI.leerzustand({ sinnbild = 'info', titel, text, aktion: { text, beiKlick,
-                      variante = 'tonal', sinnbild } | Knoten })     → div.leerzustand
+                      variante = 'tonal', sinnbild } | Knoten })     → div.ds-empty
      UI.leerzustand(titel, text)                                    (kompatibel)
-     UI.hinweis(text) → p.hinweis      UI.meta(text) → p.meta
-     UI.teile([text|Knoten, …]) → span.teile (Teile mit «·»; leere fallen weg)
+     UI.hinweis(text) → p.ds-muted      UI.meta(text) → p.ds-meta
+     UI.teile([text|Knoten, …]) → span.ds-parts (Teile mit «·»; leere fallen weg)
 
    Laden
-     UI.spinner(klein?) → span.spinner[.spinner-klein]
-     UI.ladezeile(text = 'Wird geladen …') → div.ladezeile (erscheint nach 200 ms)
-     UI.skelettSeite({ karten = 2, text = 'Wird geladen …', kopf = true }) → div.skelett
+     UI.spinner(klein?) → span.ds-spinner[.ds-spinner--sm]
+     UI.ladezeile(text = 'Wird geladen …') → div.ds-loading (erscheint nach 200 ms)
+     UI.skelettSeite({ karten = 2, text = 'Wird geladen …', kopf = true }) → div.ds-skeleton
        role=status; erscheint nach 200 ms, pulsiert.
 
    Karten, Kacheln
      UI.karte({ titel, unter, aktionen: [Knoten], fuss: [Knoten], sinnbild, breit,
-                gefuellt, ebene = 2, klasse, id }) → section.karte mit .inhalt
+                gefuellt, ebene = 2, klasse, id }) → section.ds-card mit .inhalt
                 (div.karte-inhalt), .kopf, .aktionen (div.karte-kopf-aktionen | null),
-                .fuss (div.karte-aktionen | null: Fusszeile unter einer Haarlinie;
+                .fuss (div.ds-card__links | null: Fusszeile unter einer Haarlinie;
                 im Kartenraster unten bündig). sinnbild: 20 px vor dem Titel.
      UI.karte(titel, unter, breit)                                   (kompatibel)
      UI.kachel({ text, wert, unter, ton, sinnbild, beiKlick, href, zahl, titel })
-       → div|button|a.kachel. Leerer Wert = «–». ton ('erfolg'|'warnung'|
+       → div|button|a.ds-tile. Leerer Wert = «–». ton ('erfolg'|'warnung'|
        'gefahr') setzt ein Icon in die Beschriftung, nie Farbe auf die Zahl.
        zahl (Number) setzt data-zahl fürs Hochzählen beim ersten Zeigen.
      UI.kachel(beschriftung, wertText, unter, ton)                  (kompatibel)
-     UI.kacheln([kachel, …]) → div.kacheln
+     UI.kacheln([kachel, …]) → div.ds-tiles
 
    Datenzeilen
      UI.datenzeilen([zeile, …]) → div.datenzeilen
@@ -136,12 +138,12 @@
        für das (erste) Feld; «(geändert)» für den Screenreader steckt im
        Label und erscheint nur mit .geaendert (Seiten schalten die Klasse
        an der Zeile um, wie bisher).
-     UI.kennwerte([[name, wert], …]) → ul.kennwerte   (Wert rechts, leer «–»)
+     UI.kennwerte([[name, wert], …]) → ul.ds-kv-list   (Wert rechts, leer «–»)
      UI.kennwerte([{ name, wert, href, beiKlick, ton, titel, fokus }, …])
        → klickbare Kennwerte (Bestandskarte, Mapping 7.2 #15): Zeilen als
        Link/Knopf mit 6-%-Ebene, Null leise, ton 'warnung'|'gefahr' als
        Sinnbild vor dem Namen (nie Farbe auf der Zahl).
-     UI.fakten([[name, wert|Knoten], …]) → dl.fakten
+     UI.fakten([[name, wert|Knoten], …]) → dl.ds-facts
 
    Chips, Zähler
      UI.chip({ text, gewaehlt, beiKlick(gewaehlt, e), entfernen: fn, titel, label,
@@ -152,7 +154,7 @@
        sonst Aktions-Chip. .setzen(gewaehlt), .istGewaehlt().
        Höchstens so breit wie seine Zeile: ein langer Text endet mit «…»,
        der Tooltip zeigt ihn dann ganz (ohne titel ist er der Text selbst).
-     UI.chips([chip, …]) → div.chips
+     UI.chips([chip, …]) → div.ds-chips
      UI.zaehler(zahl, still?, { ploppen }) → span.zaehler (.setzen(zahl))
        leer (null/"") = verborgen; .setzen von leer auf eine Zahl ploppt
        einmal, Wert → Wert ohne Bewegung. ploppen: true ploppt schon beim
@@ -170,7 +172,7 @@
        eine Eingabe mit Vorschlägen hat .vorschlaegeSetzen(werte).
        Beispiel: UI.formZeile('Gebäude / Stock', UI.eingabe({ id: 'g-eingabe-GebaeudeStock',
                    wert: z.GebaeudeStock, vorschlaege: alleStockwerke, beiEingabe: setze }))
-     UI.feld(beschriftung, feldKnoten, { hinweis, voll, klasse }) → div.feld
+     UI.feld(beschriftung, feldKnoten, { hinweis, voll, klasse }) → div.ds-field
        (label[for] oben, Hinweis unten mit aria-describedby)
      UI.feldFehler(feld, meldung)   Fehler setzen (Rahmen, Meldung mit Icon darunter,
        aria-invalid, aria-describedby); die erste Eingabe löscht ihn; '' löscht.
@@ -182,10 +184,10 @@
        Getippten hängt: gebaut nur bei neuem Schlüssel, '' = leer und verborgen,
        aufgedeckt nur, wenn er durch eine Eingabe erscheint; Fokus bleibt.
      UI.ankreuzen({ text, an, beiAenderung(an, kaestchen), id, name, wert,
-                    art: 'checkbox'|'radio', gesperrt, klein, fokus }) → label.ankreuzen (.eingabe)
+                    art: 'checkbox'|'radio', gesperrt, klein, fokus }) → label.ds-check (.eingabe)
      UI.mehrfach({ legende, eintraege: [{ wert, text, zahl, an, gesperrt, fokus }], name,
                    fokus (Präfix: data-fokus «<fokus>-<wert>» je Kästchen),
-                   beiAenderung(wert, an, gewaehlte) }) → fieldset.feld mit .mehrfach;
+                   beiAenderung(wert, an, gewaehlte) }) → fieldset.ds-field mit .mehrfach;
        .gewaehlt() → [werte], .setzen([werte]), .zahlenSetzen({ wert: zahl })
        (an Ort und Stelle, der Fokus bleibt).
      UI.datenliste(id, werte) → datalist (anlegen oder aktualisieren)
@@ -197,7 +199,7 @@
 
    Suche, Schalter
      UI.suchfeld({ id, name, platzhalter, wert, label, kuerzel: '/', verzoegerung = 150,
-                   beiEingabe(wert, feld), klasse }) → div.suchfeld
+                   beiEingabe(wert, feld), klasse }) → div.ds-search
        .eingabe (input.suche), .wert(), .setzen(wert) (schreibt nie, während
        getippt wird), .sofort() (wartende Eingabe sofort melden).
        Esc in einer gefüllten Suche leert sie und meldet das sofort
@@ -215,19 +217,19 @@
        das Schloss im Schalter zeigt die Sperre).
 
    Tabellen
-     UI.tabelle(kopfzeilen, datenzeilen, { beschriftung, klasse }) → div.tabelle-schlicht-rahmen
+     UI.tabelle(kopfzeilen, datenzeilen, { beschriftung, klasse }) → div.ds-table-wrap
        (kopfzeilen: Texte oder { text, zahl, klasse }; Zellen Text oder Knoten;
        leer «–»; .tabelle = das table; mit rollKanten: Blende am Rand nur,
        solange es seitlich weitergeht)
      UI.tabellenKopf([{ schluessel, text, sortierbar = true, zahl, klasse, titel }],
                      { sortiert, richtung: 'auf'|'ab', beiSortieren(schluessel, knopf) }) → thead
        aria-sort an allen sortierbaren th; .sortierungSetzen(schluessel, richtung).
-     UI.sortierKnopf(text, richtung?) → button.tabelle-sortierung (.richtungSetzen(r))
+     UI.sortierKnopf(text, richtung?) → button.ds-table__sort (.richtungSetzen(r))
      UI.tabellenRahmen(table, { id, klasse }) → div.tabelle-rahmen (mit rollKanten)
      UI.rollKanten(element) → element; setzt data-gerollt-x / data-gerollt beim Rollen
        und data-mehr-rechts, solange rechts noch Inhalt liegt (auch nach Grössenwechseln),
        dazu --rollleiste (Breite einer senkrechten Rollleiste; die Blende lässt sie aus).
-       design.css blendet .tabelle-rahmen / .tabelle-schlicht-rahmen daran aus.
+       bausteine.css blendet .tabelle-rahmen / .ds-table-wrap daran aus.
 
    Listen
      UI.hinweisZeile({ ton: 'gefahr'|'warnung'|'info'|'erfolg', titel, text, sinnbild })
@@ -250,11 +252,278 @@
        → div.saeulen[role=img]
      UI.verteilung([{ text, zahl, anteil, titel, beiKlick, href }], { max, klasse })
        → ul.verteilung (Name · Zahl · Balken; klickbare Zeilen mit 6-%-Ebene)
-     UI.fortschritt({ anteil, text, detail, unbestimmt, label }) → div.fortschritt-gruppe
+     UI.fortschritt({ anteil, text, detail, unbestimmt, label }) → div.ds-progress
        (.setzen({ … }) ändert nur, was sich ändert; der Balken gleitet weiter)
    ------------------------------------------------------------------ */
 
 "use strict";
+
+/* ==================================================================
+   Bewegung — die deutsche Hülle um DS.motion und DS.indicator
+   (vendor/dashboard-style/ds.js). Früher bewegung.js; die Klassen und
+   Keyframes kommen jetzt aus Dashboard-Style (.ds-enter, .ds-leave,
+   .ds-stagger …), die Zeiten aus seinen Tokens. Hier steht nur, was ICT
+   darüber hinaus braucht: Varianten mit deutschen Namen, ein Ein- oder
+   Austritt wartet auf ALLE eigenen Animationen (siehe eintreten), das
+   Hochzählen in Schweizer Schreibweise und der erste Auftritt einer
+   Ansicht (auftritt).
+
+   Grundregeln:
+     - Auftritte werden AUSDRÜCKLICH ausgelöst (erstes Zeigen, Wechsel der
+       Ansicht), nie von Zeichenfunktionen selbst. Aktualisierte Daten
+       (Auto-Nachladen, BroadcastChannel) animieren nie.
+     - Ladeanzeigen erscheinen erst nach LADE_VERZOEGERUNG_MS und bleiben
+       dann mindestens LADE_MINDESTENS_MS stehen.
+     - Reduzierte Bewegung läuft über die Tokens (1 ms); hier zählen nur
+       hochzaehlen (zeigt sofort das Ziel) und weiches Rollen.
+
+   API (unverändert)
+     Bewegung.LADE_VERZOEGERUNG_MS  200  (= DS.motion.LOADER_DELAY_MS = --ds-delay-loader)
+     Bewegung.LADE_MINDESTENS_MS    450  (= DS.motion.LOADER_MIN_VISIBLE_MS)
+     Bewegung.ZAEHLEN_MS            600  (= DS.motion.COUNT_UP_MS = --ds-dur-glide)
+     Bewegung.STAFFEL_MAX           5    (= DS.motion.STAGGER_MAX, Stufen 0…5)
+     Bewegung.reduziert() → boolean
+     Bewegung.staffeln(elemente, { ab = 0, max = STAFFEL_MAX })   (--ds-i über das CSSOM)
+     Bewegung.wiederholen(el, ...klassen)
+     Bewegung.abgeschlossen(el, { zeit = 1000, ereignis = 'animationend', eigenschaft }) → Promise
+     Bewegung.eintreten(el, variante = '') → Promise
+       '' | 'blenden' | 'skalieren' | 'schieben' | 'tausch' | 'verzoegert' |
+       'ploppen' | 'aufziehen' | 'aufrichten'
+       (= .ds-enter mit --fade, --scale, --slide, --swap, --delayed, --pop,
+       --fill-x, --fill-y)
+     Bewegung.austreten(el, variante = '', { dann = 'entfernen' | 'verbergen' | 'behalten' }) → Promise
+       '' | 'sinken' | 'skalieren' | 'schieben'  (= .ds-leave --sink, --scale, --slide)
+     Bewegung.aufdecken(el) → Promise   (Inhalt ersetzt seinen Platzhalter)
+     Bewegung.ladeHaltenMs(start, jetzt) → ms     Bewegung.ladeAbwarten(start, jetzt) → Promise
+     Bewegung.kurveAusgleiten(t) → 0…1  (ease-out cubic)
+     Bewegung.hochzaehlen(el, ziel, { format, dauer = 600 })   (Standardformat de-CH, «1’284»)
+     Bewegung.zahlenHochzaehlen(behaelter)   jedes [data-zahl], behält « %» usw.
+     Bewegung.aufziehen(behaelter)   .balken-fuell und .saeule-fuell wachsen einmal
+     Bewegung.auftritt(behaelter, { wurzel = true })   staffelt .karten, .ds-grid-2,
+       .ds-stack, .ds-tiles, .zeilenliste, zählt hoch, zieht Balken auf (erstes Zeigen)
+     Bewegung.indikator(spur, { aktiv, klasse }) → { aktualisieren(), zerstoeren() }
+       (= DS.indicator.createIndicator)
+   ================================================================== */
+
+const Bewegung = (function () {
+
+  if (typeof DS === "undefined" || !DS.motion || !DS.indicator) {
+    throw new Error("bausteine.js braucht vendor/dashboard-style/ds.js (vorher laden).");
+  }
+  const M = DS.motion;
+
+  /** Längste Animation des Systems (--ds-dur-glide) plus Reserve. */
+  const STANDARD_FRIST_MS = 1000;
+
+  const EINTRITT_VARIANTEN = { blenden: "fade", skalieren: "scale", schieben: "slide", tausch: "swap",
+    verzoegert: "delayed", ploppen: "pop", aufziehen: "fill-x", aufrichten: "fill-y" };
+  const AUSTRITT_VARIANTEN = { sinken: "sink", skalieren: "scale", schieben: "slide" };
+
+  /* Raster, deren Kinder beim ersten Zeigen gestaffelt einblenden. */
+  const STAFFEL_RASTER = ".karten, .ds-grid-2, .ds-stack, .ds-tiles, .zeilenliste";
+
+  const zahlFormat = (function () {
+    try { return new Intl.NumberFormat("de-CH"); } catch (e) { return null; }
+  })();
+
+  function zahlText(wert) {
+    const gerundet = Math.round(wert);
+    return zahlFormat ? zahlFormat.format(gerundet) : String(gerundet);
+  }
+
+  function reduziert() { return M.prefersReducedMotion(); }
+
+  function staffeln(elemente, optionen) {
+    const o = optionen || {};
+    M.stagger(Array.from(elemente || []), { from: o.ab || 0, max: o.max });
+  }
+
+  function wiederholen(element) {
+    M.replay.apply(null, arguments);
+  }
+
+  function abgeschlossen(element, optionen) {
+    if (!element) return Promise.resolve();
+    const o = optionen || {};
+    return M.settled(element, { timeout: o.zeit || STANDARD_FRIST_MS, event: o.ereignis, property: o.eigenschaft });
+  }
+
+  function eintrittKlassen(variante) {
+    const v = EINTRITT_VARIANTEN[variante];
+    return v ? ["ds-enter", "ds-enter--" + v] : ["ds-enter"];
+  }
+
+  function austrittKlassen(variante) {
+    const v = AUSTRITT_VARIANTEN[variante];
+    return v ? ["ds-leave", "ds-leave--" + v] : ["ds-leave"];
+  }
+
+  function alleAustrittKlassen() {
+    return ["ds-leave"].concat(Object.keys(AUSTRITT_VARIANTEN).map(function (v) { return "ds-leave--" + AUSTRITT_VARIANTEN[v]; }));
+  }
+
+  /* Ein Eintritt besteht aus ZWEI Animationen (Deckkraft und Bewegung).
+     DS.motion.enter wartet auf das erste animationend; ein gleich danach
+     gestarteter Austritt hielte das zweite für sein eigenes Ende und
+     entfernte das Element ohne Bewegung. Darum wartet ein Ein- oder
+     Austritt hier auf ALLE eigenen Animationen (Web Animations API, mit
+     Frist), und eine Laufnummer pro Element sorgt dafür, dass ein
+     überholter Lauf die Klassen eines neueren nicht wegnimmt (aufdecken
+     während eines laufenden Eintritts). */
+  const EINTRITT_KEYFRAMES = ["ds-fade-in", "ds-lift-in", "ds-grow-in", "ds-shift-in", "ds-roll-in",
+    "ds-pop-in", "ds-draw", "ds-fill-x", "ds-fill-y"];
+  const AUSTRITT_KEYFRAMES = ["ds-fade-out", "ds-sink-out", "ds-scale-out", "ds-slide-out", "ds-roll-out"];
+  const laeufe = new WeakMap();
+
+  function neuerLauf(element) {
+    const nr = (laeufe.get(element) || 0) + 1;
+    laeufe.set(element, nr);
+    return nr;
+  }
+
+  function animationenAbwarten(element, namen) {
+    const eigene = element.getAnimations
+      ? element.getAnimations().filter(function (a) { return namen.indexOf(a.animationName) !== -1; })
+      : [];
+    // Ohne Animation (verborgen, ausgehängt, kein Web-Animations-API): Ereignis mit Frist.
+    if (!eigene.length) return abgeschlossen(element);
+    return Promise.race([
+      Promise.all(eigene.map(function (a) { return a.finished.catch(function () {}); })),
+      new Promise(function (r) { setTimeout(r, STANDARD_FRIST_MS); })
+    ]);
+  }
+
+  function eintreten(element, variante) {
+    if (!element) return Promise.resolve();
+    const lauf = neuerLauf(element);
+    const klassen = eintrittKlassen(variante);
+    element.classList.remove.apply(element.classList, alleAustrittKlassen());
+    wiederholen.apply(null, [element].concat(klassen));
+    return animationenAbwarten(element, EINTRITT_KEYFRAMES).then(function () {
+      if (laeufe.get(element) === lauf) element.classList.remove.apply(element.classList, klassen);
+    });
+  }
+
+  function austreten(element, variante, optionen) {
+    if (!element) return Promise.resolve();
+    const lauf = neuerLauf(element);
+    const dann = (optionen && optionen.dann) || "entfernen";
+    const klassen = austrittKlassen(variante);
+    element.classList.remove("ds-enter");
+    element.classList.add.apply(element.classList, klassen);
+    return animationenAbwarten(element, AUSTRITT_KEYFRAMES).then(function () {
+      if (laeufe.get(element) !== lauf) return;   // ein neuerer Ein- oder Austritt gilt
+      if (dann === "entfernen") {
+        element.remove();
+      } else if (dann === "verbergen") {
+        element.hidden = true;
+        element.classList.remove.apply(element.classList, klassen);
+      }
+    });
+  }
+
+  /* Frisch geladener Inhalt ersetzt seinen Platzhalter: bricht einen noch
+     laufenden Eintritt im selben Takt ab (kein Bild mit halber Deckkraft)
+     und spielt den Tausch-Eintritt. */
+  function aufdecken(element) {
+    if (!element) return Promise.resolve();
+    if (element.classList.contains("ds-enter") && element.getAnimations) {
+      element.getAnimations().forEach(function (a) { a.cancel(); });
+    }
+    return eintreten(element, "tausch");
+  }
+
+  function ladeHaltenMs(start, jetzt) { return M.loaderHoldMs(start, jetzt === undefined ? Date.now() : jetzt); }
+
+  function ladeAbwarten(start, jetzt) { return M.settleLoader(start, jetzt === undefined ? Date.now() : jetzt); }
+
+  function hochzaehlen(element, ziel, optionen) {
+    const o = optionen || {};
+    M.countUp(element, ziel, { format: o.format || zahlText, duration: o.dauer });
+  }
+
+  function mitSelbst(behaelter, selektor) {
+    if (!behaelter || !behaelter.querySelectorAll) return [];
+    const liste = Array.from(behaelter.querySelectorAll(selektor));
+    if (behaelter.matches && behaelter.matches(selektor)) liste.unshift(behaelter);
+    return liste;
+  }
+
+  function zahlenHochzaehlen(behaelter) {
+    for (const wert of mitSelbst(behaelter, "[data-zahl]")) {
+      const ziel = Number(wert.getAttribute("data-zahl"));
+      if (!isFinite(ziel)) continue;
+      // «88 %» zählt 88 und behält « %».
+      const nachsatz = /\d/.test(wert.textContent) ? wert.textContent.replace(/^.*\d/, "") : "";
+      hochzaehlen(wert, ziel, { format: function (z) { return zahlText(z) + nachsatz; } });
+    }
+  }
+
+  function aufziehen(behaelter) {
+    for (const f of mitSelbst(behaelter, ".balken-fuell")) eintreten(f, "aufziehen");
+    for (const f of mitSelbst(behaelter, ".saeule-fuell")) eintreten(f, "aufrichten");
+  }
+
+  /* Laufnummer der Staffelung pro Raster: eine Ansicht, die während ihrer
+     Staffelung verborgen und gleich wieder gezeigt wird, startet eine neue;
+     die Frist der alten darf die Klasse dann nicht mitten darin entfernen. */
+  const staffelLaeufe = new WeakMap();
+
+  function auftritt(behaelter, optionen) {
+    if (!behaelter) return;
+    // Rahmen ruft den Auftritt für die ganze Ansicht auf und staffelt nur
+    // die Raster DARIN; Seitenkopf, Banner und Werkzeugleiste erscheinen
+    // mit der Ansicht selbst (wurzel: false).
+    const mitWurzel = !optionen || optionen.wurzel !== false;
+    const raster = mitWurzel ? mitSelbst(behaelter, STAFFEL_RASTER)
+      : (behaelter.querySelectorAll ? Array.from(behaelter.querySelectorAll(STAFFEL_RASTER)) : []);
+    for (const r of raster) {
+      if (!r.lastElementChild) continue;
+      const lauf = (staffelLaeufe.get(r) || 0) + 1;
+      staffelLaeufe.set(r, lauf);
+      staffeln(r.children);
+      // wiederholen: stand die Klasse noch (zweiter Auftritt in der Frist), spielt die Staffelung neu.
+      wiederholen(r, "ds-stagger");
+      // Später eingefügte Kinder (Nachladen, «Mehr laden») blenden nicht erneut ein.
+      abgeschlossen(r.lastElementChild).then(function () {
+        if (staffelLaeufe.get(r) === lauf) r.classList.remove("ds-stagger");
+      });
+    }
+    zahlenHochzaehlen(behaelter);
+    aufziehen(behaelter);
+  }
+
+  function indikator(spur, optionen) {
+    const o = optionen || {};
+    const i = DS.indicator.createIndicator(spur, { active: o.aktiv, className: o.klasse || "" });
+    return {
+      aktualisieren: function () { i.update(); },
+      zerstoeren: function () { i.destroy(); }
+    };
+  }
+
+  return Object.freeze({
+    LADE_VERZOEGERUNG_MS: M.LOADER_DELAY_MS,
+    LADE_MINDESTENS_MS: M.LOADER_MIN_VISIBLE_MS,
+    ZAEHLEN_MS: M.COUNT_UP_MS,
+    STAFFEL_MAX: M.STAGGER_MAX,
+    reduziert: reduziert,
+    staffeln: staffeln,
+    wiederholen: wiederholen,
+    abgeschlossen: abgeschlossen,
+    eintreten: eintreten,
+    austreten: austreten,
+    aufdecken: aufdecken,
+    ladeHaltenMs: ladeHaltenMs,
+    ladeAbwarten: ladeAbwarten,
+    kurveAusgleiten: M.easeOutCubic,
+    hochzaehlen: hochzaehlen,
+    zahlenHochzaehlen: zahlenHochzaehlen,
+    aufziehen: aufziehen,
+    auftritt: auftritt,
+    indikator: indikator
+  });
+})();
 
 const UI = (function () {
 
@@ -358,103 +627,37 @@ const UI = (function () {
 
 
   /* ==================================================================
-     Sinnbilder – EIN Set
-     Lucide-Glyphen (https://lucide.dev, ISC-Lizenz, © Lucide Contributors;
-     abgeleitet von Feather, MIT, © Cole Bemis) auf dem 24er-Raster, Strich 2,
-     runde Enden und Ecken, fill none, Farbe immer currentColor. Die ersten
-     Gruppen sind die Glyphen von ChatBob (design/icons.js) wörtlich, nur
-     deutsch benannt; danach die ICT-eigenen im selben Stil. Ein neues
-     Sinnbild kommt HIER dazu, nie in eine Seite.
+     Sinnbilder – EIN Set, das von Dashboard-Style (DS.icons: Lucide-Stil
+     auf dem 24er-Raster, Strich 2, runde Enden, currentColor). Hier steht
+     nur die Zuordnung der deutschen Namen, die Seiten und Navigation
+     benutzen, zu den Glyphen von DS.icons. Ein neues Sinnbild kommt in
+     Dashboard-Style dazu (docs/icons.md), dann hier ein deutscher Name.
      ================================================================== */
 
   const SINNBILDER = {
-    /* --- ChatBob: Pfeile und Winkel --- */
-    pfeilRechts:   '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-    pfeilLinks:    '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
-    pfeilHoch:     '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
-    pfeilRunter:   '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
-    chevronUnten:  '<path d="m6 9 6 6 6-6"/>',
-    chevronRechts: '<path d="m9 18 6-6-6-6"/>',
-    chevronLinks:  '<path d="m15 18-6-6 6-6"/>',
-    extern:        '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-    /* --- ChatBob: Aktionen --- */
-    plus:          '<path d="M5 12h14"/><path d="M12 5v14"/>',
-    schliessen:    '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    minus:         '<path d="M5 12h14"/>',
-    menue:         '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
-    suche:         '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-    neuSchreiben:  '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>',
-    zuruecksetzen: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
-    sync:          '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-    kopieren:      '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/>',
-    papierkorb:    '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>',
-    abmelden:      '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
-    /* --- ChatBob: Kommunikation --- */
-    chat:          '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-    mail:          '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
-    telefon:       '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
-    globus:        '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
-    flagge:        '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
-    daumenHoch:    '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z"/>',
-    daumenRunter:  '<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88z"/>',
-    /* --- ChatBob: Status (check mit pathLength="1" für «zeichnen») --- */
-    check:         '<path pathLength="1" d="M20 6 9 17l-5-5"/>',
-    checkKreis:    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-    achtung:       '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-    achtungKreis:  '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
-    info:          '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-    uhr:           '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    aus:           '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
-    kalender:      '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
-    /* --- ChatBob: Orte und Dinge --- */
-    uebersicht:    '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
-    einstellungen: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
-    prozessor:     '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
-    schloss:       '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-    benutzer:      '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
-    ticket:        '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
-    datei:         '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
-    dateiText:     '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
-    dateiCode:     '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m10 12.5-2 2.5 2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/>',
-    ordner:        '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
-
-    /* --- ICT-eigene: Bereiche --- */
-    laptop:        '<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>',
-    edu:           '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
-    benutzerGruppe: '<path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/>',
-    /* App-Raster wie der Google-App-Starter: neun Punkte. */
-    software:      '<circle cx="5" cy="5" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="19" cy="5" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="19" r="1"/><circle cx="12" cy="19" r="1"/><circle cx="19" cy="19" r="1"/>',
-    monitor:       '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
-    festplatte:    '<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/>',
-    server:        '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>',
-    schild:        '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
-    aktivitaet:    '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
-    diagramm:      '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
-    liste:         '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
-    gebaeude:      '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
-    ort:           '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
-    schluessel:    '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/>',
-    verknuepfung:  '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
-    /* Videokamera (Lucide «video»): Kameras der Videoüberwachung. */
-    kamera:        '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
-    /* --- ICT-eigene: Werkzeuge --- */
-    filter:        '<path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/>',
-    spalten:       '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
-    dichte:        '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/>',
-    herunterladen: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
-    sortieren:     '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
-    chevronOben:   '<path d="m18 15-6-6-6 6"/>',
-    bearbeiten:    '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
-    speichern:     '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
-    mehr:          '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>',
-    /* --- ICT-eigene: Lebenszyklus eines Geräts --- */
-    archiv:        '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
-    lager:         '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
-    ausgeben:      '<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/>',
-    reaktivieren:  '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
-    verlauf:       '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-    online:        '<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
-    offline:       '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>'
+    /* Pfeile und Winkel */
+    pfeilRechts: "arrowRight", pfeilLinks: "arrowLeft", pfeilHoch: "arrowUp", pfeilRunter: "arrowDown",
+    chevronUnten: "chevronDown", chevronOben: "chevronUp", chevronRechts: "chevronRight", chevronLinks: "chevronLeft",
+    extern: "external",
+    /* Aktionen */
+    plus: "plus", schliessen: "close", minus: "minimize", menue: "menu", suche: "search", neuSchreiben: "compose",
+    zuruecksetzen: "reset", sync: "sync", kopieren: "copy", papierkorb: "trash", abmelden: "logout",
+    filter: "filter", spalten: "columns", dichte: "rows", herunterladen: "download", sortieren: "sort",
+    bearbeiten: "pencil", speichern: "save", mehr: "moreVertical",
+    /* Kommunikation */
+    chat: "chat", mail: "mail", telefon: "phone", globus: "globe", flagge: "flag", daumenHoch: "thumbUp",
+    daumenRunter: "thumbDown", verknuepfung: "link",
+    /* Status (check mit pathLength="1" für «zeichnen») */
+    check: "check", checkKreis: "checkCircle", achtung: "alert", achtungKreis: "alertCircle", info: "info",
+    uhr: "clock", aus: "ban", kalender: "calendar", aktivitaet: "activity", online: "wifi", offline: "wifiOff",
+    /* Orte und Dinge */
+    uebersicht: "overview", einstellungen: "settings", prozessor: "cpu", schloss: "lock", benutzer: "user",
+    benutzerGruppe: "users", ticket: "ticket", datei: "file", dateiText: "fileText", dateiCode: "fileCode",
+    ordner: "folder", laptop: "laptop", edu: "graduationCap", software: "apps", monitor: "monitor",
+    festplatte: "hardDrive", server: "server", schild: "shield", diagramm: "barChart", liste: "list",
+    gebaeude: "building", ort: "mapPin", schluessel: "key", kamera: "video",
+    /* Lebenszyklus eines Geräts */
+    archiv: "archive", lager: "box", ausgeben: "userPlus", reaktivieren: "undo", verlauf: "history"
   };
 
   /* Andere Namen für dieselben Glyphen: die Namen von app.js und der
@@ -475,51 +678,20 @@ const UI = (function () {
   for (const name of Object.keys(ALIASE)) SINNBILDER[name] = SINNBILDER[ALIASE[name]];
   Object.freeze(SINNBILDER);
 
-  /* Die Glyphen sind Konstanten dieser Datei; sie werden einmal in
-     [tag, [[attribut, wert] …]] zerlegt und dann mit createElementNS
-     gebaut – ohne innerHTML. */
-  const zerlegt = Object.create(null);
-
-  function glyphZerlegen(markup) {
-    const teile = [];
-    const element = /<(\w+)((?:\s+[\w-]+="[^"]*")*)\s*\/>/g;
-    let m;
-    while ((m = element.exec(markup))) {
-      const attribute = [];
-      const attr = /([\w-]+)="([^"]*)"/g;
-      let a;
-      while ((a = attr.exec(m[2]))) attribute.push([a[1], a[2]]);
-      teile.push([m[1], attribute]);
-    }
-    return teile;
-  }
-
+  /* Ein Sinnbild als <svg class="icon …">, gebaut mit DS.icons.iconElement
+     (createElementNS, ohne innerHTML). */
   function sinnbild(name, groesse, klasse) {
-    const svg = document.createElementNS(SVG_NS, "svg");
-    const px = String(groesse || 20);
-    svg.setAttribute("class", "icon" + (klasse ? " " + klasse : ""));
-    svg.setAttribute("width", px);
-    svg.setAttribute("height", px);
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "2");
-    svg.setAttribute("stroke-linecap", "round");
-    svg.setAttribute("stroke-linejoin", "round");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("focusable", "false");
-    const markup = SINNBILDER[name];
-    if (typeof markup !== "string") {
+    const glyphe = DS.icons[SINNBILDER[name]];
+    if (typeof glyphe !== "string") {
       // Ein Tippfehler soll beim Prüfen auffallen, aber keine Seite zerstören.
       console.error("UI.sinnbild: unbekanntes Sinnbild «" + name + "»");
-      return svg;
+      const leer = document.createElementNS(SVG_NS, "svg");
+      leer.setAttribute("class", "icon" + (klasse ? " " + klasse : ""));
+      leer.setAttribute("aria-hidden", "true");
+      return leer;
     }
-    const teile = zerlegt[name] || (zerlegt[name] = glyphZerlegen(markup));
-    for (const teil of teile) {
-      const k = document.createElementNS(SVG_NS, teil[0]);
-      for (const a of teil[1]) k.setAttribute(a[0], a[1]);
-      svg.appendChild(k);
-    }
+    const svg = DS.icons.iconElement(glyphe, groesse || 20, "icon" + (klasse ? " " + klasse : ""));
+    svg.setAttribute("focusable", "false");
     return svg;
   }
 
@@ -535,14 +707,20 @@ const UI = (function () {
      SICHTBAREN Knopf: ev.currentTarget ist der Knopf im Dokument. */
   const knopfHandler = new WeakMap();
 
+  /* Varianten von UI.knopf → Modifikatoren von .ds-btn (Dashboard-Style). */
+  const KNOPF_VARIANTEN = { primaer: "ds-btn--primary", tonal: "ds-btn--tonal", leise: "ds-btn--text", still: "ds-btn--quiet", scheibe: "ds-btn--disc" };
+
   function knopf(a, klasse, beiKlick) {
     const o = istOptionen(a) ? a : { text: a, klasse: klasse, beiKlick: beiKlick };
     const k = el(o.href ? "a" : "button");
-    const klassen = ["knopf"];
+    const klassen = ["ds-btn"];
     const nurSinnbild = o.variante === "sinnbild" || (!!o.sinnbild && istLeer(o.text));
-    if (nurSinnbild) klassen.push("knopf-sinnbild");
-    if (o.variante && o.variante !== "sinnbild") klassen.push("knopf-" + o.variante);
-    if (o.klein) klassen.push("knopf-klein");
+    const variante = KNOPF_VARIANTEN[o.variante] || "";
+    if (nurSinnbild) klassen.push("ds-btn--icon");
+    // Ein Icon-Knopf ohne eigene Variante ist gedämpft (wie bisher knopf-sinnbild).
+    if (variante) klassen.push(variante);
+    else if (nurSinnbild) klassen.push("ds-btn--quiet");
+    if (o.klein) klassen.push("ds-btn--sm");
     if (o.weiter) klassen.push("knopf-weiter");
     if (o.klasse) klassen.push(o.klasse);
     k.className = klassen.join(" ");
@@ -551,7 +729,7 @@ const UI = (function () {
     else k.type = o.typ || "button";
     if (o.id) k.id = o.id;
 
-    if (o.sinnbild) k.appendChild(sinnbild(o.sinnbild, nurSinnbild ? (o.klein ? 18 : 20) : 16));
+    if (o.sinnbild) k.appendChild(sinnbild(o.sinnbild, o.sinnbildGroesse || (nurSinnbild ? (o.klein ? 18 : 20) : 16)));
     if (!istLeer(o.text)) {
       if (o.sinnbild || o.weiter) k.appendChild(el("span", null, o.text));
       else k.appendChild(document.createTextNode(String(o.text)));
@@ -640,9 +818,9 @@ const UI = (function () {
   /* Ändert nur die Beschriftung; ein Icon und ein laufender Spinner bleiben. */
   function knopfText(k, neuerText) {
     if (!k) return k;
-    const huelle = k.querySelector(":scope > .knopf-tausch");
+    const huelle = k.querySelector(":scope > .ds-btn__swap");
     const ziel = huelle || k;
-    const span = ziel.querySelector(":scope > span:not(.nur-sr):not(.zaehler):not(.spinner)");
+    const span = ziel.querySelector(":scope > span:not(.ds-sr):not(.zaehler):not(.ds-spinner)");
     if (span) textSetzen(span, neuerText);
     else if (!ziel.querySelector(":scope > svg")) textSetzen(ziel, neuerText);
     else {
@@ -663,7 +841,7 @@ const UI = (function () {
      Formular auslöst. */
   document.addEventListener("click", function (e) {
     const ziel = e.target instanceof Element
-      ? e.target.closest('button[aria-disabled="true"], a[aria-disabled="true"], [role="switch"][aria-disabled="true"], [role="button"][aria-disabled="true"], .knopf[aria-busy="true"]')
+      ? e.target.closest('button[aria-disabled="true"], a[aria-disabled="true"], [role="switch"][aria-disabled="true"], [role="button"][aria-disabled="true"], .ds-btn[aria-busy="true"]')
       : null;
     if (!ziel) return;
     e.preventDefault();
@@ -673,7 +851,7 @@ const UI = (function () {
   /* Tauscht den Inhalt mit einem kurzen Einblenden (150 ms). Die
      zurückkehrende Beschriftung verlässt ihre Hülle danach wieder. */
   function inhaltTauschen(k, knoten, auspacken) {
-    const huelle = el("span", "knopf-tausch");
+    const huelle = el("span", "ds-btn__swap");
     anhaengen(huelle, knoten);
     leeren(k).appendChild(huelle);
     return Bewegung.eintreten(huelle, "blenden").then(function () {
@@ -705,7 +883,7 @@ const UI = (function () {
         zustand.gezeigtAb = Date.now();
         zustand.inhalt = Array.from(k.childNodes);
         k.style.width = k.offsetWidth + "px";
-        inhaltTauschen(k, [spinner(true), el("span", "nur-sr", beschriftung || "Wird gespeichert …")], false);
+        inhaltTauschen(k, [spinner(true), el("span", "ds-sr", beschriftung || "Wird gespeichert …")], false);
       }, Bewegung.LADE_VERZOEGERUNG_MS);
       beschaeftigtZustaende.set(k, zustand);
       return Promise.resolve();
@@ -742,11 +920,14 @@ const UI = (function () {
     wartet: "uhr", aus: "aus", info: "info", leise: "info", marke: "check", fehler: "achtung", ok: "check"
   };
 
+  /* Töne → Modifikatoren von .ds-status; neutral hat keinen. */
+  const STATUS_KLASSEN = { erfolg: "ds-status--ok", warnung: "ds-status--warning", gefahr: "ds-status--error", laeuft: "ds-status--running" };
+
   function statusSetzen(s, beschriftung, ton, optionen) {
     const o = optionen || {};
     const roh = ton || "neutral";
     const t = STATUS_TOENE[roh] || "neutral";
-    const klasse = "status status-" + t + (o.klasse ? " " + o.klasse : "");
+    const klasse = "ds-status" + (STATUS_KLASSEN[t] ? " " + STATUS_KLASSEN[t] : "") + (o.klasse ? " " + o.klasse : "");
     if (s.className !== klasse) s.className = klasse;
 
     // Das Symbol nur tauschen, wenn es sich ändert: ein laufender Spinner dreht weiter.
@@ -754,10 +935,10 @@ const UI = (function () {
       : t === "laeuft" ? "#spinner"
         : (o.sinnbild || STATUS_SINNBILDER[roh] || STATUS_SINNBILDER[t]);
     if (s.getAttribute("data-symbol") !== symbol) {
-      const alt = s.querySelector(":scope > svg, :scope > .spinner");
+      const alt = s.querySelector(":scope > svg, :scope > .ds-spinner");
       if (alt) alt.remove();
       if (symbol === "#spinner") {
-        s.insertBefore(el("span", "spinner status-spinner"), s.firstChild).setAttribute("aria-hidden", "true");
+        s.insertBefore(el("span", "ds-spinner ds-status__spinner"), s.firstChild).setAttribute("aria-hidden", "true");
       } else if (symbol) {
         s.insertBefore(sinnbild(symbol, 16), s.firstChild);
       }
@@ -793,16 +974,17 @@ const UI = (function () {
      ================================================================== */
 
   const BANNER_TOENE = { info: "info", neutral: "info", erfolg: "erfolg", warnung: "warnung", gefahr: "gefahr", fehler: "gefahr" };
+  const BANNER_KLASSEN = { erfolg: "ds-alert--success", warnung: "ds-alert--warning", gefahr: "ds-alert--error" };
   const BANNER_SINNBILDER = { info: "info", erfolg: "checkKreis", warnung: "achtung", gefahr: "achtungKreis" };
 
   function banner(a, ton, knopfKnoten, optionen) {
     const o = istOptionen(a) ? a : Object.assign({ text: a, ton: ton, knopf: knopfKnoten }, optionen || {});
     const t = BANNER_TOENE[o.ton] || "info";
-    const b = el("div", "banner" + (t === "info" ? "" : " banner-" + t));
+    const b = el("div", "ds-alert" + (BANNER_KLASSEN[t] ? " " + BANNER_KLASSEN[t] : ""));
     if (o.rolle) b.setAttribute("role", o.rolle);
     b.appendChild(sinnbild(o.sinnbild || BANNER_SINNBILDER[t], 20));
 
-    const textKnoten = el("div", "banner-text");
+    const textKnoten = el("div", "ds-alert__text");
     if (!istLeer(o.titel)) {
       textKnoten.appendChild(el("strong", null, o.titel));
       if (o.text) textKnoten.appendChild(document.createTextNode(" "));
@@ -822,14 +1004,14 @@ const UI = (function () {
 
   function leerzustand(a, textZeile) {
     const o = istOptionen(a) ? a : { titel: a, text: textZeile };
-    const l = el("div", "leerzustand");
-    const scheibe = el("span", "leerzustand-scheibe");
+    const l = el("div", "ds-empty");
+    const scheibe = el("span", "ds-empty__disc");
     scheibe.setAttribute("aria-hidden", "true");
     scheibe.appendChild(sinnbild(o.sinnbild || "info", 24));
     l.appendChild(scheibe);
-    if (!istLeer(o.titel)) l.appendChild(el("p", "leerzustand-titel", o.titel));
-    if (o.text && o.text.nodeType) l.appendChild(anhaengen(el("p", "leerzustand-text"), o.text));
-    else if (!istLeer(o.text)) l.appendChild(el("p", "leerzustand-text", o.text));
+    if (!istLeer(o.titel)) l.appendChild(el("p", "ds-empty__title", o.titel));
+    if (o.text && o.text.nodeType) l.appendChild(anhaengen(el("p", "ds-empty__text"), o.text));
+    else if (!istLeer(o.text)) l.appendChild(el("p", "ds-empty__text", o.text));
     if (o.aktion) {
       l.appendChild(o.aktion.nodeType ? o.aktion : knopf({
         text: o.aktion.text, variante: o.aktion.variante || "tonal",
@@ -840,13 +1022,13 @@ const UI = (function () {
     return l;
   }
 
-  function hinweis(inhalt) { return inhaltSetzen(el("p", "hinweis"), inhalt); }
+  function hinweis(inhalt) { return inhaltSetzen(el("p", "ds-muted"), inhalt); }
 
-  function meta(inhalt) { return inhaltSetzen(el("p", "meta"), inhalt); }
+  function meta(inhalt) { return inhaltSetzen(el("p", "ds-meta"), inhalt); }
 
   function teile(liste) {
-    const aussen = el("span", "teile");
-    const innen = el("span", "teile-liste");
+    const aussen = el("span", "ds-parts");
+    const innen = el("span", "ds-parts__list");
     for (const t of liste || []) {
       if (t && t.nodeType) innen.appendChild(anhaengen(el("span"), t));
       else if (!istLeer(t)) innen.appendChild(el("span", null, t));
@@ -861,13 +1043,13 @@ const UI = (function () {
      ================================================================== */
 
   function spinner(klein) {
-    const s = el("span", "spinner" + (klein ? " spinner-klein" : ""));
+    const s = el("span", "ds-spinner" + (klein ? " ds-spinner--sm" : ""));
     s.setAttribute("aria-hidden", "true");
     return s;
   }
 
   function ladezeile(beschriftung) {
-    const z = el("div", "ladezeile");
+    const z = el("div", "ds-loading");
     z.setAttribute("role", "status");
     z.appendChild(spinner());
     z.appendChild(el("span", null, beschriftung || "Wird geladen …"));
@@ -875,7 +1057,7 @@ const UI = (function () {
   }
 
   function skelettZeile(zusatz) {
-    const z = el("span", "skelett-zeile" + (zusatz ? " " + zusatz : ""));
+    const z = el("span", "ds-skeleton__line" + (zusatz ? " " + zusatz : ""));
     z.setAttribute("aria-hidden", "true");
     return z;
   }
@@ -883,19 +1065,19 @@ const UI = (function () {
   function skelettSeite(optionen) {
     const o = optionen || {};
     const anzahl = o.karten === undefined ? 2 : o.karten;
-    const s = el("div", "skelett");
+    const s = el("div", "ds-skeleton");
     s.setAttribute("role", "status");
-    s.appendChild(el("span", "nur-sr", o.text || "Wird geladen …"));
+    s.appendChild(el("span", "ds-sr", o.text || "Wird geladen …"));
     if (o.kopf !== false) {
-      s.appendChild(skelettZeile("skelett-titel"));
-      s.appendChild(skelettZeile("skelett-lead"));
+      s.appendChild(skelettZeile("ds-skeleton__line--heading"));
+      s.appendChild(skelettZeile("ds-skeleton__line--lead"));
     }
     for (let i = 0; i < anzahl; i++) {
-      const karte = el("div", "skelett-karte");
+      const karte = el("div", "ds-skeleton__card");
       karte.setAttribute("aria-hidden", "true");
-      karte.appendChild(skelettZeile("skelett-kartentitel"));
+      karte.appendChild(skelettZeile("ds-skeleton__line--title"));
       karte.appendChild(skelettZeile());
-      karte.appendChild(skelettZeile(i % 2 ? "skelett-mittel" : "skelett-kurz"));
+      karte.appendChild(skelettZeile(i % 2 ? "ds-skeleton__line--mid" : "ds-skeleton__line--short"));
       s.appendChild(karte);
     }
     return s;
@@ -908,18 +1090,19 @@ const UI = (function () {
 
   function karte(a, unter, breit) {
     const o = istOptionen(a) ? a : { titel: a, unter: unter, breit: breit };
-    const k = el("section", "karte"
-      + (o.breit ? " karte-breit" : "") + (o.gefuellt ? " karte-gefuellt" : "")
+    const k = el("section", "ds-card"
+      + (o.breit ? " karte-breit" : "") + (o.gefuellt ? " ds-card--filled" : "")
       + (o.klasse ? " " + o.klasse : ""));
     if (o.id) k.id = o.id;
     k.kopf = null;
     k.aktionen = null;
+    k.unter = null;
 
     const aktionen = (o.aktionen || []).filter(Boolean);
     if (!istLeer(o.titel) || aktionen.length) {
-      const kopf = el("div", "karte-kopf");
+      const kopf = el("div", "ds-card__row");
       if (!istLeer(o.titel)) {
-        const h = el("h" + (o.ebene || 2), "karte-titel");
+        const h = el("h" + (o.ebene || 2), "ds-card__title");
         // Sinnbild vor dem Titel (Bestandskarten, Mapping 7.2 #15).
         if (o.sinnbild) h.appendChild(sinnbild(o.sinnbild, 20));
         h.appendChild(document.createTextNode(String(o.titel)));
@@ -932,17 +1115,18 @@ const UI = (function () {
       k.appendChild(kopf);
       k.kopf = kopf;
     }
-    if (o.unter && o.unter.nodeType) k.appendChild(anhaengen(el("p", "karte-unter"), o.unter));
-    else if (!istLeer(o.unter)) k.appendChild(el("p", "karte-unter", o.unter));
+    // Beschreibung unter dem Titel: leiser Text im Rhythmus der Karte (.unter).
+    if (o.unter && o.unter.nodeType) k.unter = k.appendChild(anhaengen(el("p", "ds-muted"), o.unter));
+    else if (!istLeer(o.unter)) k.unter = k.appendChild(el("p", "ds-muted", o.unter));
 
     const inhalt = el("div", "karte-inhalt");
     k.appendChild(inhalt);
     k.inhalt = inhalt;
 
     // Fusszeile unter einer Haarlinie (Links und Aktionen der Karte); in
-    // einem Kartenraster steht sie unten bündig (design.css .karte-aktionen).
+    // einem Kartenraster steht sie unten bündig (.ds-card__links).
     const fuss = (o.fuss || []).filter(Boolean);
-    k.fuss = fuss.length ? anhaengen(el("div", "karte-aktionen"), fuss) : null;
+    k.fuss = fuss.length ? anhaengen(el("div", "ds-card__links"), fuss) : null;
     if (k.fuss) k.appendChild(k.fuss);
     return k;
   }
@@ -952,7 +1136,7 @@ const UI = (function () {
   function kachel(a, wertText, unter, ton) {
     const o = istOptionen(a) ? a : { text: a, wert: wertText, unter: unter, ton: ton };
     const tag = o.href ? "a" : (o.beiKlick ? "button" : "div");
-    const k = el(tag, "kachel" + (o.klasse ? " " + o.klasse : ""));
+    const k = el(tag, "ds-tile" + (o.klasse ? " " + o.klasse : ""));
     if (tag === "button") k.type = "button";
     if (o.href) k.href = o.href;
     if (o.beiKlick) k.addEventListener("click", o.beiKlick);
@@ -963,23 +1147,23 @@ const UI = (function () {
     fokusSetzen(k, o.fokus);
 
     // Spans statt p: in button und a ist nur Phrasierungsinhalt erlaubt.
-    const beschriftung = el("span", "kachel-text");
+    const beschriftung = el("span", "ds-tile__label");
     const symbol = o.sinnbild || KACHEL_SINNBILDER[o.ton];
     if (symbol) beschriftung.appendChild(sinnbild(symbol, 20, KACHEL_SINNBILDER[o.ton] ? "t-" + o.ton : ""));
     beschriftung.appendChild(el("span", null, o.text));
     k.appendChild(beschriftung);
 
     const leer = istLeer(o.wert);
-    const wert = el("span", "kachel-wert" + (leer ? " leer" : ""), leer ? "–" : String(o.wert));
+    const wert = el("span", "ds-tile__value" + (leer ? " leer" : ""), leer ? "–" : String(o.wert));
     if (!leer && typeof o.zahl === "number" && isFinite(o.zahl)) wert.setAttribute("data-zahl", String(o.zahl));
     k.appendChild(wert);
 
-    if (o.unter && o.unter.nodeType) k.appendChild(anhaengen(el("span", "kachel-unter"), o.unter));
-    else if (!istLeer(o.unter)) k.appendChild(el("span", "kachel-unter", o.unter));
+    if (o.unter && o.unter.nodeType) k.appendChild(anhaengen(el("span", "ds-tile__note"), o.unter));
+    else if (!istLeer(o.unter)) k.appendChild(el("span", "ds-tile__note", o.unter));
     return k;
   }
 
-  function kacheln(liste) { return anhaengen(el("div", "kacheln"), liste || []); }
+  function kacheln(liste) { return anhaengen(el("div", "ds-tiles"), liste || []); }
 
 
   /* ==================================================================
@@ -1044,7 +1228,7 @@ const UI = (function () {
       if (!steuer.id) steuer.id = id("ui-feld");
       name.htmlFor = steuer.id;
     }
-    name.appendChild(el("span", "geaendert-text nur-sr", " (geändert)"));
+    name.appendChild(el("span", "geaendert-text ds-sr", " (geändert)"));
     z.appendChild(name);
 
     const wert = el("div", "datenzeile-wert");
@@ -1069,7 +1253,7 @@ const UI = (function () {
      ohne Ziel wird damit ein Tabstopp. */
   function kennwerte(paare) {
     if ((paare || []).some(istOptionen)) return kennwerteKlickbar(paare);
-    const liste = el("ul", "kennwerte");
+    const liste = el("ul", "ds-kv-list");
     for (const p of paare || []) {
       const li = el("li");
       li.appendChild(el("span", null, p[0]));
@@ -1102,7 +1286,7 @@ const UI = (function () {
       if (e.ton === "warnung" || e.ton === "gefahr") {
         name.appendChild(sinnbild("achtung", 16, "kennwert-ton t-" + e.ton));
         name.appendChild(document.createTextNode(text(e.name)));
-        name.appendChild(el("span", "nur-sr", e.ton === "gefahr" ? " (dringend)" : " (zu prüfen)"));
+        name.appendChild(el("span", "ds-sr", e.ton === "gefahr" ? " (dringend)" : " (zu prüfen)"));
       } else {
         name.textContent = text(e.name);
       }
@@ -1117,7 +1301,7 @@ const UI = (function () {
   }
 
   function fakten(paare) {
-    const dl = el("dl", "fakten");
+    const dl = el("dl", "ds-facts");
     for (const p of paare || []) {
       const gruppe = el("div");
       gruppe.appendChild(el("dt", null, p[0]));
@@ -1157,7 +1341,7 @@ const UI = (function () {
       c.setAttribute("aria-label", o.label);
     }
     // Ohne titel trägt der Chip seinen eigenen Text als Tooltip: UI.tipp
-    // zeigt ihn nur, wenn der Text gekürzt ist («…», design.css .chip-text).
+    // zeigt ihn nur, wenn der Text gekürzt ist («…», bausteine.css .chip-text).
     if (o.titel || !istLeer(o.text)) c.setAttribute("data-tipp", o.titel || text(o.text));
     fokusSetzen(c, o.fokus);
     if (o.deaktiviert) c.disabled = true;
@@ -1176,7 +1360,7 @@ const UI = (function () {
     return c;
   }
 
-  function chips(liste) { return anhaengen(el("div", "chips"), liste || []); }
+  function chips(liste) { return anhaengen(el("div", "ds-chips"), liste || []); }
 
   /* Zahl-Plakette (Mapping 7.2 #16). Leer (null, "") ist sie verborgen.
      Erscheint sie (.setzen von leer auf eine Zahl), ploppt sie einmal
@@ -1300,7 +1484,7 @@ const UI = (function () {
       f = el("input");
       f.type = EINGABE_TYPEN[art] || "text";
     }
-    f.className = "feld-eingabe" + (o.gefuellt ? " feld-gefuellt" : "")
+    f.className = "ds-input" + (o.gefuellt ? " ds-input--filled" : "")
       + (o.schmal ? " eingabe-schmal" : "") + (o.klasse ? " " + o.klasse : "");
     if (o.id) f.id = o.id;
     fokusSetzen(f, o.fokus);
@@ -1350,11 +1534,11 @@ const UI = (function () {
   /* Feld mit Beschriftung oben und Hinweis unten (Filter, Dialoge). */
   function feld(beschriftung, feldKnoten, optionen) {
     const o = optionen || {};
-    const f = el("div", "feld" + (o.voll ? " feld-voll" : "") + (o.klasse ? " " + o.klasse : ""));
+    const f = el("div", "ds-field" + (o.voll ? " ds-field--full" : "") + (o.klasse ? " " + o.klasse : ""));
     const steuer = feldKnoten && feldKnoten.matches
       ? (feldKnoten.matches("input, select, textarea") ? feldKnoten : feldKnoten.querySelector("input, select, textarea"))
       : null;
-    const label = el(steuer ? "label" : "span", "feld-label", beschriftung);
+    const label = el(steuer ? "label" : "span", "ds-field__label", beschriftung);
     if (steuer) {
       if (!steuer.id) steuer.id = id("ui-feld");
       label.htmlFor = steuer.id;
@@ -1362,7 +1546,7 @@ const UI = (function () {
     f.appendChild(label);
     if (feldKnoten) f.appendChild(feldKnoten);
     if (!istLeer(o.hinweis)) {
-      const h = el("p", "feld-hinweis", o.hinweis);
+      const h = el("p", "ds-field__hint", o.hinweis);
       h.id = id("ui-hinweis");
       f.appendChild(h);
       if (steuer) beschreibungHinzu(steuer, h.id);
@@ -1397,17 +1581,15 @@ const UI = (function () {
     }
     if (istLeer(meldung)) {
       steuer.removeAttribute("aria-invalid");
-      steuer.classList.remove("ungueltig");
       return;
     }
     steuer.setAttribute("aria-invalid", "true");
-    steuer.classList.add("ungueltig");
     const meldungsId = id("ui-fehler");
-    const m = el("p", "feld-fehler");
+    const m = el("p", "ds-field__hint ds-field__hint--error");
     m.id = meldungsId;
     m.appendChild(sinnbild("achtung", 16));
     m.appendChild(el("span", null, meldung));
-    const anker = steuer.closest("label, .suchfeld, .feld-reihe") || steuer;
+    const anker = steuer.closest("label, .ds-search, .ds-inline-form") || steuer;
     anker.insertAdjacentElement("afterend", m);
     beschreibungHinzu(steuer, meldungsId);
     steuer.setAttribute("data-fehler-id", meldungsId);
@@ -1418,7 +1600,7 @@ const UI = (function () {
 
   /* Feldhinweis mit Sinnbild an Ort und Stelle (Live-Prüfung «in
      Ordnung»): schreibt Text und Sinnbild in einen vorhandenen Hinweis
-     (.feld-hinweis oder .datenzeile-hinweis, z. B. aus UI.feld/UI.formZeile)
+     (.ds-field__hint oder .datenzeile-hinweis, z. B. aus UI.feld/UI.formZeile)
      und verbirgt ihn ohne Text. Den Fehlerfall zeigt UI.feldFehler. Der
      Ton färbt nur das Sinnbild; der Text bleibt leise. */
   function feldHinweis(knoten, inhalt, optionen) {
@@ -1459,7 +1641,7 @@ const UI = (function () {
       if (knoten) anhaengen(p, knoten);
       if (knoten && knoten.nodeType && warLeer && optionenSetzen && optionenSetzen.aufdecken) Bewegung.aufdecken(knoten);
       if (fokusDrin) {
-        const zeile = p.closest(".datenzeile, .feld");
+        const zeile = p.closest(".datenzeile, .ds-field");
         const ziel = p.querySelector("button, a[href]")
           || (zeile ? zeile.querySelector("input, select, textarea") : null);
         if (ziel) ziel.focus();
@@ -1473,7 +1655,7 @@ const UI = (function () {
   /* Kontrollkästchen oder Optionsfeld mit Text, eine 40-px-Zeile. */
   function ankreuzen(optionen) {
     const o = optionen || {};
-    const z = el("label", "ankreuzen" + (o.klein ? " ankreuzen-klein" : "") + (o.klasse ? " " + o.klasse : ""));
+    const z = el("label", "ds-check" + (o.klein ? " ds-check--sm" : "") + (o.klasse ? " " + o.klasse : ""));
     const k = el("input");
     k.type = o.art === "radio" ? "radio" : "checkbox";
     if (o.id) k.id = o.id;
@@ -1495,8 +1677,8 @@ const UI = (function () {
      Kästchen («<fokus>-<wert>»; ein Eintrag kann mit e.fokus abweichen). */
   function mehrfach(optionen) {
     const o = optionen || {};
-    const gruppe = el("fieldset", "feld" + (o.klasse ? " " + o.klasse : ""));
-    if (!istLeer(o.legende)) gruppe.appendChild(el("legend", "feld-label", o.legende));
+    const gruppe = el("fieldset", "ds-field" + (o.klasse ? " " + o.klasse : ""));
+    if (!istLeer(o.legende)) gruppe.appendChild(el("legend", "ds-field__label", o.legende));
     const liste = el("div", "mehrfach");
     const name = o.name || id("ui-mehrfach");
     const zahlen = Object.create(null);
@@ -1587,9 +1769,9 @@ const UI = (function () {
      getippt wird (Fehler B4); sofort() löst eine wartende Eingabe aus. */
   function suchfeld(optionen) {
     const o = optionen || {};
-    const huelle = el("div", "suchfeld" + (o.klasse ? " " + o.klasse : ""));
+    const huelle = el("div", "ds-search" + (o.klasse ? " " + o.klasse : ""));
     huelle.appendChild(sinnbild("suche", 20));
-    const f = el("input", "suche");
+    const f = el("input", "ds-input");
     f.type = "search";
     if (o.id) f.id = o.id;
     if (o.name) f.name = o.name;
@@ -1765,13 +1947,13 @@ const UI = (function () {
   function tabelle(kopfzeilen, datenzeilen, optionen) {
     const o = optionen || {};
     const spalten = (kopfzeilen || []).map(spalteLesen);
-    const rahmen = el("div", "tabelle-schlicht-rahmen");
-    const t = el("table", "tabelle tabelle-schlicht" + (o.klasse ? " " + o.klasse : ""));
-    if (!istLeer(o.beschriftung)) t.appendChild(el("caption", "nur-sr", o.beschriftung));
+    const rahmen = el("div", "ds-table-wrap");
+    const t = el("table", "ds-table" + (o.klasse ? " " + o.klasse : ""));
+    if (!istLeer(o.beschriftung)) t.appendChild(el("caption", "ds-sr", o.beschriftung));
     const kopf = el("thead");
     const reihe = el("tr");
     for (const s of spalten) {
-      const th = el("th", (s.zahl ? "zahl" : "") + (s.klasse ? " " + s.klasse : "") || null, s.text);
+      const th = el("th", ((s.zahl ? "ds-num" : "") + (s.klasse ? " " + s.klasse : "")).trim() || null, s.text);
       th.scope = "col";
       reihe.appendChild(th);
     }
@@ -1782,7 +1964,7 @@ const UI = (function () {
       const tr = el("tr");
       (Array.isArray(z) ? z : []).forEach(function (wert, i) {
         const s = spalten[i] || {};
-        tr.appendChild(zelleFuellen(el("td", (s.zahl ? "zahl" : "") + (s.klasse ? " " + s.klasse : "") || null), wert));
+        tr.appendChild(zelleFuellen(el("td", ((s.zahl ? "ds-num" : "") + (s.klasse ? " " + s.klasse : "")).trim() || null), wert));
       });
       koerper.appendChild(tr);
     }
@@ -1797,7 +1979,7 @@ const UI = (function () {
 
   /* Sortierknopf im th; der 16-px-Pfeil steht nur an der sortierten Spalte. */
   function sortierKnopf(beschriftung, richtung) {
-    const k = el("button", "tabelle-sortierung");
+    const k = el("button", "ds-table__sort");
     k.type = "button";
     k.appendChild(el("span", null, beschriftung));
     k.richtungSetzen = function (r) {
@@ -1822,7 +2004,7 @@ const UI = (function () {
     const knoepfe = Object.create(null);
     for (const roh of spalten || []) {
       const s = spalteLesen(roh);
-      const th = el("th", ((s.zahl ? "zahl" : "") + (s.klasse ? " " + s.klasse : "")).trim() || null);
+      const th = el("th", ((s.zahl ? "ds-num" : "") + (s.klasse ? " " + s.klasse : "")).trim() || null);
       th.scope = "col";
       // Die Erklärung einer Spalte hängt am fokussierbaren Element (Sortier-
       // knopf, sonst ein Tabstopp um den Text): so erscheint sie auch per
@@ -1981,7 +2163,7 @@ const UI = (function () {
 
     anhaengen(z, Array.isArray(o.status) ? o.status : (o.status ? [o.status] : []));
     // In einem Link oder Knopf kein Bedienelement im Bedienelement.
-    if (ganz) for (const st of Array.from(z.querySelectorAll(".status[tabindex]"))) st.removeAttribute("tabindex");
+    if (ganz) for (const st of Array.from(z.querySelectorAll(".ds-status[tabindex]"))) st.removeAttribute("tabindex");
     if (aktionen.length) z.appendChild(anhaengen(el("div", "listen-zeile-aktionen"), aktionen));
     if (ganz) {
       const pfeil = el("span", "listen-zeile-pfeil");
@@ -2108,27 +2290,27 @@ const UI = (function () {
      darunter. setzen() ändert nur, was sich ändert – der Balken gleitet
      weiter, statt neu zu beginnen. */
   function fortschritt(optionen) {
-    const g = el("div", "fortschritt-gruppe");
-    const spur = el("div", "fortschritt");
+    const g = el("div", "ds-progress");
+    const spur = el("div", "ds-progress__track");
     spur.setAttribute("role", "progressbar");
     spur.setAttribute("aria-valuemin", "0");
     spur.setAttribute("aria-valuemax", "100");
-    const balkenKnoten = el("span", "fortschritt-balken");
+    const balkenKnoten = el("span", "ds-progress__bar");
     spur.appendChild(balkenKnoten);
-    const textKnoten = el("p", "fortschritt-text");
+    const textKnoten = el("p", "ds-progress__label");
     textKnoten.setAttribute("aria-live", "polite");
-    const detail = el("p", "fortschritt-detail");
+    const detail = el("p", "ds-progress__detail");
     anhaengen(g, [spur, textKnoten, detail]);
 
     g.setzen = function (o) {
       o = o || {};
       if (o.label !== undefined) spur.setAttribute("aria-label", o.label);
-      if (o.unbestimmt !== undefined) spur.classList.toggle("unbestimmt", !!o.unbestimmt);
-      if (spur.classList.contains("unbestimmt")) {
+      if (o.unbestimmt !== undefined) g.classList.toggle("ds-progress--indeterminate", !!o.unbestimmt);
+      if (g.classList.contains("ds-progress--indeterminate")) {
         spur.removeAttribute("aria-valuenow");
       } else if (o.anteil !== undefined) {
         const a = anteilBegrenzen(o.anteil);
-        balkenKnoten.style.setProperty("--fortschritt", String(a));
+        balkenKnoten.style.setProperty("--ds-progress", String(a));
         spur.setAttribute("aria-valuenow", String(Math.round(a * 100)));
       }
       if (o.text !== undefined) textSetzen(textKnoten, o.text);

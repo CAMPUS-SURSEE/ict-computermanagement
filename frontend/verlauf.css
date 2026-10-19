@@ -1,8 +1,8 @@
 /* verlauf.css — Layout des Verlaufs (verlauf.js) auf client.html,
    benutzer.html und telefon.html.
 
-   Das Aussehen kommt ganz aus design.css: Karte und gefüllter Block
-   (.karte, .karte-gefuellt), Zeitachse (.zeitachse: 2-px-Linie, Punkte in
+   Das Aussehen kommt ganz aus Dashboard-Style und bausteine.css: Karte und
+   gefüllter Block (.ds-card, .ds-card--filled), Zeitachse (.zeitachse: 2-px-Linie, Punkte in
    Primärgrün, Abgleich grau, Sync-Sinnbild in der Meta-Zeile), Status-
    Chips, Felder und Knöpfe. Hier steht nur, wie die Teile im Verlauf
    zueinander liegen – nur Tokens.
@@ -14,7 +14,7 @@
 .vl {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a4);
+  gap: var(--ds-space-4);
   min-width: 0;
 }
 

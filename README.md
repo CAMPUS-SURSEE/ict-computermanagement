@@ -45,7 +45,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `439 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 7 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `439 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 9 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -67,7 +67,8 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine Notiz zu einer Kamera-Rolle festhalten** | Kamerarechte → Rolle öffnen → Bereich «Rolle», Karte **«Bemerkung»**. Den früheren Nachweis (Zweck, Bewilligt durch/am) gibt es seit dem 19.10.2026 nicht mehr |
 | **eine Kamera erfassen** | **nicht nötig** und im Frontend nicht möglich: Kameras in Milestone legt der Sync selbst an. Eine ausgebaute Kamera bleibt erhalten, wenn ihr Status vor dem Entfernen aus Milestone auf **`Lager`** steht |
 | **eine Kamera bewerten** | Kameraseite → Bereich **«Bewertung»** (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) |
-| **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln, Tokens, Bausteine) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
+| **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln auf Dashboard-Style: Campus-Thema, eigene Bausteine, Abweichungen) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
+| **das Design-System (Dashboard-Style) aktualisieren** | im Wurzelordner dieses Repositorys `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` (holt den neusten Stand von `main`; läuft jede Nacht automatisch über `.github/workflows/update-dashboard-style.yml`) (Dashboard-Style als Checkout daneben; `-From ..\Dashboard-Style` für den lokalen Stand), nie von Hand ändern; danach `Pruefe-Frontend.ps1` und `styleguide.html` ansehen (`frontend/STYLEGUIDE.md`, Abschnitt 11) |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
 | **einen Fehler im Log verstehen** | Abschnitt 6, Fehlerbehebung |
 | **das abgelaufene Zertifikat erneuern** | neues Zertifikat erzeugen und an der App hinterlegen (Abschnitt 7.1) |
@@ -196,7 +197,7 @@ ausserdem als `Inventar/sync-status.json` in die Dokumentbibliothek der Site; de
 | `Migriere-Inhaberschaft.ps1` | einmalig: stellt die Inhaberschaft vom PC-Namen («Computer») auf die Listen-ID des Geräts («AdminClientId») um, auf Wunsch löscht es danach «Computer» (Abschnitt 11) |
 | `Installiere-Sync.ps1` | bringt `code/server/` auf `adminsrv319` und richtet die geplante Aufgabe ein: Tests, Sicherung, Kopie mit Prüfsumme, Probelauf als SYSTEM, Aufgabe alle 30 Minuten (Abschnitt 2.5) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
-| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Literale in den Seiten-CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Keyframes, Literale im eigenen CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten, unveränderte Kopie von Dashboard-Style, Ladereihenfolge (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
 
 Die Arbeitsplatz-Skripte laden `Inventar-Gemeinsam.ps1` und die Konfiguration aus `server/` – es gibt
@@ -209,11 +210,15 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 ### Dateien im Ordner `frontend`
 
-Stand 12.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
+Stand 19.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
 mit je einem Namensraum und kein einziges Inline-Skript (die Inhaltsrichtlinie in `_headers` verbietet sie).
-Aussehen und Bewegung folgen der Admin-Oberfläche von ChatBob. **Die Regeln stehen in
-[`frontend/STYLEGUIDE.md`](frontend/STYLEGUIDE.md)** (Tokens, Bausteine, Bewegung, Barrierefreiheit, Vorgehen für
-neue Seiten), die lebende Übersicht aller Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
+**Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)**, das gemeinsame Design-System
+(dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung und Sinnbilder liegen als unveränderte, mit Prüfsummen
+festgenagelte Kopie in `frontend/vendor/dashboard-style/`. Darauf setzt ICT-Inventar nur das Campus-Thema
+(`thema.css`) und die Bausteine, die es nur hier gibt (Speicherleiste, Zeitachse, Diagramme, Wortmarke …). **Die
+Regeln stehen in [`frontend/STYLEGUIDE.md`](frontend/STYLEGUIDE.md)** (Thema, eigene Bausteine, Abweichungen,
+Bewegung, Barrierefreiheit, Vorgehen für neue Seiten, Aktualisieren von Dashboard-Style), die lebende Übersicht aller
+Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
 
 Jede Seite hat denselben Rahmen: oben die Kopfzeile (links die Wortmarke «ICT.INVENTAR» als Weg zur Übersicht,
 rechts eine umrandete Kapsel mit Konto und «Abmelden»; alle Seiten laden alle 5 Minuten still nach), links die
@@ -225,16 +230,17 @@ Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas 
 
 | Datei | Zweck |
 |---|---|
-| `design.css` | Design-System: Tokens (Farben, Schrift, Abstände, Bewegung) und alle gemeinsamen Bausteine |
-| `bewegung.css`, `bewegung.js` | alle Animationen (die einzigen `@keyframes`) und ihre JS-Hälfte (`Bewegung`) |
-| `bausteine.js` | ein Bauer je Baustein: Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`) |
+| `vendor/dashboard-style/` | Dashboard-Style: `ds.css` (alle Bausteine), `ds.js` (`DS`: Bewegung, Indikator, Sinnbilder), Google Sans mit Lizenz, `VERSION`, `SHA256SUMS` – **nie von Hand ändern**, nur mit `vendor.ps1` ersetzen (`STYLEGUIDE.md`, Abschnitt 11) |
+| `thema.css` | Campus-Thema: Farben von Campus Sursee auf den Rollen von Dashboard-Style, die eigenen Tokens, Schrift der Wortmarke |
+| `schriften/` | Archivo für die Wortmarke, selbst gehostet (Lizenz SIL OFL 1.1, `OFL.txt` daneben) |
+| `bausteine.css`, `bausteine.js` | die eigenen Bausteine und ein Bauer je Baustein (gemeinsame bauen das Markup von Dashboard-Style): Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`), dazu `Bewegung` über `DS.motion` |
 | `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Seitenwechsel) und die Ebenen Dialog, Seitenblatt, Meldung, Tooltip, Speicherleiste (`Rahmen`, ergänzt `UI`) |
-| `fenster.js` | gemeinsames Gerüst der vier Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
+| `fenster.js` | gemeinsames Gerüst der Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
 | `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer- und Telefonseite (`Verlauf`) |
 | `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software |
 | `client.*`, `benutzer.*`, `telefon.*`, `software.*`, `kamera.*`, `kamerarolle.*` | die Detailseiten eines Datensatzes (die `.css` nur mit Seitenlayout) |
 | `styleguide.html`, `styleguide.js` | lebende Übersicht aller Bausteine in allen Zuständen |
-| `STYLEGUIDE.md` | Regeln des Design-Systems |
+| `STYLEGUIDE.md` | Regeln des Frontends auf Dashboard-Style |
 | `konfig.js` | Mandant, Client-ID, Listen-IDs, Takt des Nachladens – keine Geheimnisse (Abschnitt 7.4) |
 | `auth.js` | Anmeldung über MSAL (`Auth`) |
 | `graph.js` | Lesen und Schreiben über Microsoft Graph, erfundene Daten für `?mock=1` (`Daten`, `Mock`) |
@@ -242,23 +248,26 @@ Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas 
 | `spalten.js` | **generiert** von `Build-Spalten.ps1`, nie von Hand ändern (Abschnitt 4) |
 | `_headers` | Sicherheitsheader und Inhaltsrichtlinie (Abschnitt 7.4) |
 
-**Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: Stilvorlagen `design.css` → `bewegung.css` →
-`rahmen.css` → die eigene Seitenvorlage (+ `verlauf.css`); Skripte `konfig.js` → `bewegung.js` → `bausteine.js` →
-`rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` → auf den Detailseiten
-`verlauf.js` und `fenster.js` → das Skript der Seite. Dazu steht im `<head>` jeder Seite die Zeile
+**Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: `<html class="ds-theme ds-base">`; Stilvorlagen
+`vendor/dashboard-style/fonts/fonts.css` → `vendor/dashboard-style/ds.css` → `thema.css` → `bausteine.css` →
+`rahmen.css` → die eigene Seitenvorlage (+ `verlauf.css`); Skripte `konfig.js` → `vendor/dashboard-style/ds.js` →
+`bausteine.js` → `rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` →
+auf den Detailseiten `verlauf.js` und `fenster.js` → das Skript der Seite. Dazu steht im `<head>` jeder Seite die Zeile
 `<style>@view-transition { navigation: auto; }</style>` für die ruhigen Seitenübergänge. Die vollständige Vorlage
-steht in `STYLEGUIDE.md`, Abschnitt 10.
+steht in `STYLEGUIDE.md`, Abschnitt 12. Ausser MSAL und dem Favicon lädt das Frontend nichts von fremden Servern,
+auch keine Schriften.
 
 Lokal ansehen: `.\serve.ps1` im Ordner `code`, dann `http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen
 Daten; `&fehler=1` zeigt den Fehlerzustand) oder `http://localhost:8123/styleguide.html`.
 
 **Nach jeder Änderung prüfen:** `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` im Ordner `code`
-(Windows PowerShell 5.1, ohne Browser und ohne Netz). Es prüft statisch, ob jedes Token definiert ist, die Seiten-CSS
-nur Tokens lesen, `@keyframes` nur in `bewegung.css` stehen, kein `innerHTML`, `eval` oder `window.confirm` vorkommt,
-keine Seite ein Inline-Skript trägt (sonst blockiert die Inhaltsrichtlinie es auf Cloudflare), MSAL überall mit
-derselben Prüfsumme geladen wird und keine Altlasten (Google-Blau, alte Klassen) zurückkommen – je Prüfung «OK» oder
-die Fundstellen mit Datei und Zeile, Exit-Code 0/1. Was danach im Browser anzusehen ist, steht in
-`STYLEGUIDE.md`, Abschnitt 9.3.
+(Windows PowerShell 5.1, ohne Browser und ohne Netz). Es prüft statisch, ob jedes Token definiert ist (auch die von
+Dashboard-Style), `@keyframes` nur in Dashboard-Style stehen, das eigene CSS nur Tokens liest, kein `innerHTML`, `eval`
+oder `window.confirm` vorkommt, keine Seite ein Inline-Skript trägt (sonst blockiert die Inhaltsrichtlinie es auf
+Cloudflare), MSAL überall mit derselben Prüfsumme geladen wird, keine Altlasten (alte Klassen und Tokens, Google
+Fonts) zurückkommen, die Kopie von Dashboard-Style unverändert ist (`SHA256SUMS`) und jede Seite sie in der richtigen
+Reihenfolge lädt – je Prüfung «OK» oder die Fundstellen mit Datei und Zeile, Exit-Code 0/1. Was danach im Browser
+anzusehen ist, steht in `STYLEGUIDE.md`, Abschnitt 10.3.
 
 ---
 

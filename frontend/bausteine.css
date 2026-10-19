@@ -1,0 +1,1470 @@
+/* bausteine.css — die Bausteine, die es nur in ICT-Inventar gibt, und die
+   wenigen Abweichungen von Dashboard-Style.
+
+   Wird nach vendor/dashboard-style/ds.css und thema.css geladen, vor
+   rahmen.css und der Seitenvorlage. Alle gemeinsamen Bausteine (Knopf,
+   Karte, Kachel, Feld, Tabelle, Status, Banner, Leerzustand, Spinner,
+   Skelett, Fortschritt …) kommen aus Dashboard-Style mit ihren .ds-*-Klassen;
+   hier steht nichts davon noch einmal. Gebaut werden sie von bausteine.js
+   (UI.*), das die .ds-*-Klassen setzt.
+
+   Regeln wie in Dashboard-Style: nur Tokens (--ds-* und die ICT-Tokens aus
+   thema.css), keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale,
+   keine @keyframes (die stehen nur in vendor/dashboard-style/css/motion.css;
+   hier werden sie nur beim Namen genannt). Hover-Regeln in
+   @media (hover: hover). Code/Pruefe-Frontend.ps1 prüft das.
+
+   ------------------------------------------------------------------
+   INHALT
+   ------------------------------------------------------------------
+   1. Grundstil (was ICT über .ds-base hinaus setzt)
+   2. Abweichungen von Dashboard-Style (je mit Grund)
+   3. Sinnbild, Tonklassen, Hilfstexte (.icon .t-* .kuerzel .code-block .anzahl)
+   4. Raster (.karten .karte-breit .karte-inhalt .karte-kopf-aktionen)
+   5. Knopf mit Weiter-Pfeil (.knopf-weiter)
+   6. Filter-Chips als Knöpfe, Zähler (.chip .chip-* .zaehler)
+   7. Datenzeilen (.datenzeilen .datenzeile* .schloss .geaendert)
+   8. Hinweisliste (.hinweise .hinweis-zeile*)
+   9. Formulare (.eingabe-schmal .mit-sinnbild .hinweis-platz .mehrfach)
+  10. Schalter mit drei Zuständen (.schalter .schalter-*)
+  11. Liste über die ganze Seite (.tabelle-rahmen .tabelle-kopf-text .name-link)
+  12. Listenzeilen und Zahlmarke (.zeilenliste .listen-zeile* .zahlmarke)
+  13. Zeitachse (.zeitachse*)
+  14. Balken, Säulen, Verteilung (.balken* .saeule* .verteilung* .kennwert*)
+   ------------------------------------------------------------------ */
+
+
+/* ==================================================================
+   1. Grundstil
+   .ds-base (auf <html>) setzt Grund, Schrift, Links, Code, Fokus und
+   [hidden]. ICT setzt dazu die Überschriften auf die Rollen und gibt
+   Kästchen die Primärfarbe. Gleiche Gewichtung wie blanke Elemente.
+   ================================================================== */
+
+/* Überschriften: Satzschreibung, nie fett, nie gesperrt. Bausteine setzen
+   ihre eigene Rolle über die Klasse. */
+:where(.ds-base) :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+:where(.ds-base) h1 { font: var(--ds-font-headline); }
+:where(.ds-base) h2 { font: var(--ds-font-subtitle); }
+:where(.ds-base) :is(h3, h4, h5, h6) { font: var(--ds-font-label); }
+
+/* Ein nachgestelltes Sinnbild im Link (↗ extern) hält etwas Luft. */
+a:not(.ds-btn, .chip, .ds-tile, .listen-zeile) > svg:last-child:not(:first-child) {
+  margin-left: var(--ds-space-1);
+  vertical-align: -2px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ds-primary);
+}
+
+
+/* ==================================================================
+   2. Abweichungen von Dashboard-Style
+   Jede Regel hier ändert einen gemeinsamen Baustein bewusst. Neue
+   Abweichungen nur mit Grund – und lieber in Dashboard-Style selbst,
+   wenn sie für jedes Projekt gelten (STYLEGUIDE.md, Abschnitt 5).
+   ================================================================== */
+
+/* Leiser Text (UI.hinweis) steht auch in Blättern und Dialogen, deren
+   Spalten den Abstand selbst setzen: nie Browser-Ränder. Null Gewichtung,
+   der Kartenrhythmus unten gewinnt. */
+:where(.ds-muted) {
+  margin: 0;
+}
+
+/* Kartenrhythmus: 16 px zwischen allen Kindern einer Karte UND ihres
+   Inhaltsbereichs (.karte-inhalt, UI.karte). Die doppelte Gewichtung hebt
+   ihn über das margin: 0 der ICT-Bausteine (.datenzeilen, .hinweise …);
+   Bausteine mit eigenem Abstand in einer Karte nennen ihn unten. */
+:is(.ds-card, .karte-inhalt) > :not(:first-child) {
+  margin-top: var(--ds-space-4);
+}
+
+:is(.ds-card, .karte-inhalt) > .ds-card__subtitle { margin-top: var(--ds-space-6); }
+:is(.ds-card, .karte-inhalt) > .ds-card__subtitle:first-child { margin-top: 0; }
+:is(.ds-card, .karte-inhalt) > .ds-card__subtitle + * { margin-top: var(--ds-space-2); }
+:is(.ds-card, .karte-inhalt) > .ds-subsection { margin-top: var(--ds-space-2); }
+:is(.ds-card, .karte-inhalt) > .ds-inline-form + .ds-field__hint--error { margin-top: var(--ds-space-1); }
+
+/* Fakten stehen 20 px unter dem, was darüber steht, auch als erstes Kind
+   des Inhaltsbereichs. */
+:is(.ds-card, .karte-inhalt) > .ds-facts:not(:first-child),
+.ds-card > .karte-inhalt:not(:first-child):has(> .ds-facts:first-child) {
+  margin-top: var(--ds-space-5);
+}
+
+/* Ein Zwischentitel ausserhalb einer Karte (Blatt, Dialog) hat keinen
+   eigenen Rand. */
+.ds-card__subtitle { margin: 0; }
+
+.ds-card__title { min-width: 0; }
+.ds-card__title > .icon { margin-right: var(--ds-space-2); }
+
+/* Der Schalter von ICT ist 32 px hoch (ein Knopf, kein Label mit Spur),
+   seine Zeile 40 px: beide ragen gleich weit über die Titelzeile. */
+.ds-card__row > .schalter { margin-block: calc((24px - 32px) / 2); }
+.ds-card__row > :is(.schalter-feld, :has(> .schalter), :has(> .schalter-feld)) { margin-block: calc((24px - 40px) / 2); }
+
+/* Fusszeile einer Karte: nur Text-Knöpfe hängen ihr Polster in den Rand;
+   umrandete und gefüllte Knöpfe stehen bündig und 12 px auseinander wie
+   in einer Aktionszeile. */
+.ds-card__links { align-items: center; }
+.ds-card__links > * { margin-left: 0; }
+.ds-card__links > .ds-btn--text { margin-left: calc(-1 * var(--ds-space-3)); }
+.ds-card__links > .ds-btn:not(.ds-btn--text) + .ds-btn { margin-left: calc(var(--ds-space-3) - var(--ds-space-2) - var(--ds-space-3)); }
+
+/* Stapel: 20 px auf Seitenebene, auch verschachtelt (die Bereiche der
+   Detailseiten sind Stapel in einem Stapel); in einer Karte 16 px. */
+.ds-stack { gap: var(--ds-space-5); }
+.ds-card .ds-stack { gap: var(--ds-space-4); }
+
+/* Kachel: ein Wert, der auch verkleinert nicht passt (ein Text statt einer
+   Zahl), endet sichtbar mit «…» statt an der Kachelkante. */
+.ds-tile__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-tile__value.leer { color: var(--ds-text-2); }
+
+/* Kennwerte: oft der letzte Block einer Karte, darum auch unten ohne
+   Polster; lange Namen brechen, ein leerer Wert steht leise. */
+.ds-kv-list { margin-top: 0; }
+.ds-kv-list > li:last-child { padding-bottom: 0; }
+.ds-kv-list > li > span { min-width: 0; overflow-wrap: anywhere; }
+.ds-kv-list > li > strong.leer { color: var(--ds-text-2); }
+
+/* Banner: der Knopf (auch mehrere in .banner-knoepfe) ist immer kompakt
+   (32 px) und ragt gleich weit über und unter die 20-px-Textzeile. Wird
+   der Text daneben schmaler als 8em, rutscht er rechts unter den Text. */
+.ds-alert > .ds-btn,
+.ds-alert > .banner-knoepfe {
+  --ds-btn-height: 32px;
+  --ds-btn-padding-x: var(--ds-space-3);
+  flex-shrink: 0;
+  margin-block: calc((var(--ds-space-5) - 32px) / 2);
+  margin-inline: auto calc(-1 * var(--ds-space-2));
+}
+
+.banner-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+}
+
+.banner-knoepfe > .ds-btn {
+  --ds-btn-height: 32px;
+  --ds-btn-padding-x: var(--ds-space-3);
+  margin: 0;
+}
+
+.ds-alert__text > p + p { margin-top: var(--ds-space-2); }
+
+.ds-alert:has(> .ds-btn, > .banner-knoepfe) {
+  flex-wrap: wrap;
+  row-gap: var(--ds-space-2);
+}
+
+.ds-alert:has(> .ds-btn, > .banner-knoepfe) > .ds-alert__text { flex: 1 1 8em; }
+
+/* Status-Chip: ein langer Text bricht im Chip um. */
+.status-text { min-width: 0; overflow-wrap: anywhere; }
+
+/* Filter-Chips (Knöpfe, Abschnitt 6) in .ds-chips: ohne Chip keine Zeile. */
+.ds-chips:empty { display: none; }
+.ds-chips .ds-status { flex-shrink: 0; }
+
+/* Feldfehler (UI.feldFehler) unter einer Zeile, Reihe oder Suche: 4 px
+   Luft; im Feld (UI.feld) übernimmt dessen Abstand. */
+.ds-field__hint--error { margin-top: var(--ds-space-1); }
+.ds-field > .ds-field__hint--error { margin-top: 0; }
+
+.ds-check > span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Datumsfelder behalten auch unter 720 px das Polster jedes anderen
+   Felds (12 px), wie vor Dashboard-Style: Dashboard-Style rückt sie dort
+   auf 8 px, damit zwei Daten nebeneinander auf 320 px passen. Die
+   Datumsfelder der Seiten (Bewertet am, Bewilligt am, Verlauf) stehen
+   einzeln untereinander; ihr Wert bleibt auf der Kante der Felder darüber
+   und darunter. */
+@media (max-width: 720px) {
+  .ds-input[type="date"] { padding-inline: var(--ds-space-3); }
+}
+
+/* Tabelle in einer Karte: die Blende am Rand steht nur, solange es dort
+   wirklich weitergeht (UI.rollKanten setzt data-mehr-rechts bzw.
+   data-gerollt-x) – auch auf dem Telefon, wo Dashboard-Style sie immer
+   zeigt. Die Maske liest nur die Deckkraft; jede deckende Farbe taugt. */
+@media (max-width: 600px) {
+  .ds-card .ds-table-wrap {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+.ds-table-wrap[data-mehr-rechts] {
+  -webkit-mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
+  mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
+}
+
+.ds-table-wrap[data-gerollt-x] {
+  -webkit-mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
+  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
+}
+
+.ds-table-wrap[data-gerollt-x][data-mehr-rechts] {
+  -webkit-mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)),
+    var(--ds-text) calc(100% - var(--ds-card-pad, var(--ds-space-6))), transparent);
+  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)),
+    var(--ds-text) calc(100% - var(--ds-card-pad, var(--ds-space-6))), transparent);
+}
+
+/* Einträge einer Liste blenden beim ersten Zeigen kürzer ein als Karten. */
+.ds-stagger.zeilenliste > * { animation-duration: var(--ds-dur-fast); }
+
+
+/* ==================================================================
+   3. Sinnbild, Tonklassen, Hilfstexte
+   ================================================================== */
+
+/* Sinnbild aus DS.icons (UI.sinnbild setzt die Klasse): mittig in der
+   Zeile, schrumpft nie. */
+.icon {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+
+/* Tonklassen für Text und Sinnbilder; Status immer zusammen mit Sinnbild
+   oder Wort, nie Farbe allein. «Info» ist neutral – es gibt kein Blau. */
+.t-erfolg  { color: var(--ds-success); }
+.t-warnung { color: var(--ds-warning); }
+.t-gefahr  { color: var(--ds-error); }
+.t-leise   { color: var(--ds-text-2); }
+.t-still   { color: var(--ds-text-3); }
+.t-info    { color: var(--ds-text-2); }
+.t-stark   { color: var(--ds-text); font-weight: var(--ds-weight-label); }
+
+/* Tastenkürzel wie Inline-Code; auf Touch-Geräten gibt es keine Tasten. */
+.kuerzel {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 var(--ds-space-1);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-surface-low);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-family: var(--ds-font-mono);
+  text-align: center;
+}
+
+@media (hover: none) {
+  .kuerzel { display: none; }
+}
+
+/* Kürzel «/» im Polster am Ende der Suche; weicht, sobald man tippt oder
+   fokussiert. */
+.ds-search:has(> .kuerzel) > .ds-input { padding-right: calc(var(--ds-space-4) + 20px + var(--ds-space-2)); }
+
+.ds-search > .kuerzel {
+  position: absolute;
+  right: var(--ds-space-4);
+  pointer-events: none;
+}
+
+.ds-search:focus-within > .kuerzel,
+.ds-search:has(> .ds-input:not(:placeholder-shown)) > .kuerzel { display: none; }
+
+/* Vorformatierter Block (Rohdaten, JSON). */
+.code-block {
+  margin: 0;
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-low);
+  color: var(--ds-text);
+  font: var(--ds-font-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+
+/* Ergebniszahl einer Liste («47 von 163 ADMIN-Clients»); schliesst eine
+   Leiste oder Chipreihe rechts ab. */
+.anzahl {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-action-bar > .anzahl,
+.ds-chips > .anzahl { margin-left: auto; }
+
+
+/* ==================================================================
+   4. Raster
+   ================================================================== */
+
+/* Kartenraster: so viele Spalten, wie 420 px breit Platz haben. */
+.karten {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: var(--ds-space-5);
+  min-width: 0;
+}
+
+.karten > .karte-breit,
+.ds-grid-2 > .karte-breit { grid-column: 1 / -1; }
+
+/* Karten nebeneinander teilen eine Höhe; ihre Fusszeilen liegen unten auf
+   einer Linie (wie .ds-grid-2 in Dashboard-Style, hier auch im .karten). */
+:is(.karten, .ds-grid-2) > .ds-card:has(> .ds-card__links) {
+  display: flex;
+  flex-direction: column;
+}
+
+:is(.karten, .ds-grid-2) > .ds-card > .ds-card__links { margin-top: auto; }
+:is(.karten, .ds-grid-2) > .ds-card > :has(+ .ds-card__links) { margin-bottom: var(--ds-space-4); }
+
+/* Inhaltsbereich einer Karte (UI.karte): ein leerer nimmt keinen Platz. */
+.karte-inhalt:empty { display: none; }
+
+/* Aktionen rechts neben dem Kartentitel; bricht die Zeile um, stehen sie
+   links unter dem Titel. Ohne Titel stehen sie trotzdem rechts. */
+.karte-kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+
+.ds-card__row > .karte-kopf-aktionen:only-child { margin-left: auto; }
+
+/* Ein Text-Knopf am Ende der Kopfzeile hängt sein Polster rechts hinaus. */
+:is(.ds-card__row, .karte-kopf-aktionen) > .ds-btn--text:last-child { margin-right: calc(-1 * var(--ds-space-3)); }
+
+
+/* ==================================================================
+   5. Knöpfe: Blatt offen, Weiter-Pfeil
+   ================================================================== */
+
+/* Ein Knopf, der ein Blatt öffnet («Filter», «Spalten»), ist tonal, solange
+   es offen ist – wie ein gedrückter Umschaltknopf (.ds-btn[aria-pressed]),
+   aber über aria-expanded: er schaltet nichts um, aria-pressed wäre für
+   den Screenreader falsch. */
+.ds-btn[aria-haspopup="dialog"][aria-expanded="true"] {
+  --ds-btn-border: var(--ds-accent);
+  --ds-btn-bg: var(--ds-accent);
+  --ds-btn-color: var(--ds-on-accent);
+  --ds-btn-hover-color: var(--ds-on-accent);
+}
+
+@media (forced-colors: active) {
+  .ds-btn[aria-haspopup="dialog"][aria-expanded="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-btn[aria-haspopup="dialog"][aria-expanded="true"]:focus-visible { outline-color: CanvasText; }
+}
+
+/* ==================================================================
+   Knopf mit Weiter-Pfeil (UI.knopf({ weiter: true }))
+   Der nachgestellte Pfeil lehnt sich in die Richtung, in die es geht
+   (wie .ds-card__link, hier für jeden Knopf). Hover-Asymmetrie: zurück
+   200 ms, hin 250 ms.
+   ================================================================== */
+
+.knopf-weiter > svg:last-child {
+  transition: transform var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .knopf-weiter:hover > svg:last-child {
+    transform: translateX(var(--ds-distance-sm));
+    transition-duration: var(--ds-dur-medium);
+  }
+}
+
+
+/* ==================================================================
+   6. Filter-Chips als Knöpfe (UI.chip) und Zähler (UI.zaehler)
+   Dashboard-Style baut Filter-Chips aus Kästchen (.ds-chip). ICT braucht
+   Knöpfe: Umschalter mit aria-pressed, entfernbare aktive Filter mit ×
+   und Aktions-Chips, die eine Seite öffnen. Gleiche Masse und Zustände.
+   ================================================================== */
+
+/* Höchstens so breit wie die Zeile: ein langer Filter («Suche: …») kürzt
+   seinen Text mit «…» (der Tooltip zeigt ihn ganz), Sinnbild und × bleiben. */
+.chip {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  max-width: 100%;
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  padding: 0 var(--ds-space-4);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-chip);
+  background: transparent;
+  color: var(--ds-text-2);
+  font: var(--ds-font-chip);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Zustandsebene in der Farbe des Inhalts. */
+.chip::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .chip:hover::before { opacity: var(--ds-state-hover); }
+}
+
+.chip:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+.chip:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.chip:disabled,
+.chip[aria-disabled="true"] {
+  opacity: var(--ds-state-disabled);
+  cursor: default;
+}
+
+.chip > svg { flex-shrink: 0; }
+
+.chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-haken { display: none; flex-shrink: 0; }
+
+/* Gewählt: Pastell + Häkchen + aria-pressed (Pastell allein hat zu wenig
+   Kontrast); der Haken schiebt sich links ein. */
+.chip[aria-pressed="true"] {
+  padding-left: var(--ds-space-2);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.chip[aria-pressed="true"] > .chip-haken {
+  display: block;
+  animation: ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Entfernbar («Hersteller: HP ×»): ein aktiver Filter, darum Pastell; das
+   nachgestellte × sagt, was ein Klick tut. */
+.chip-entfernbar {
+  padding-right: var(--ds-space-2);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.chip-x { flex-shrink: 0; }
+
+/* Zahl-Plakette: Pastell (aktiv, Anzahl Filter) oder neutral (Anzahl
+   Spalten). Ohne Zahl keine Plakette; erscheint sie, ploppt sie
+   (Bewegung.eintreten(z, 'ploppen') = .ds-enter--pop). */
+.zaehler {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+  font: var(--ds-font-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.zaehler-still {
+  background: var(--ds-surface-high);
+  color: var(--ds-text-2);
+}
+
+.zaehler:empty { display: none; }
+
+/* Auf einer Pastellfläche verschwände die Pastell-Plakette: dort dunkel. */
+:is(.ds-btn[aria-pressed="true"], .ds-btn[aria-haspopup="dialog"][aria-expanded="true"], .ds-btn--tonal, .chip[aria-pressed="true"]) .zaehler:not(.zaehler-still) {
+  background: var(--ds-primary);
+  color: var(--ds-on-primary);
+}
+
+@media (forced-colors: active) {
+  :is(.ds-btn[aria-pressed="true"], .ds-btn[aria-haspopup="dialog"][aria-expanded="true"]) .zaehler { background: HighlightText; color: Highlight; }
+}
+
+
+/* ==================================================================
+   7. Datenzeilen
+   Name links (leise), Wert in der zweiten Spalte, Haarlinien dazwischen.
+   Die erste Zeile ohne Linie und Polster oben, die letzte ohne Polster
+   unten (die Liste endet oft eine Karte).
+   ================================================================== */
+
+.datenzeilen { margin: 0; padding: 0; }
+
+.datenzeile {
+  display: grid;
+  grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-3) 0;
+  border-top: 1px solid var(--ds-line);
+  font: var(--ds-font-body);
+}
+
+.datenzeile:first-child { padding-top: 0; border-top: 0; }
+.datenzeile:last-child { padding-bottom: 0; }
+
+.datenzeile-name {
+  min-width: 0;
+  color: var(--ds-text-2);
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.datenzeile-wert {
+  min-width: 0;
+  color: var(--ds-text);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.datenzeile-wert.leer { color: var(--ds-text-3); }
+
+/* Klein und leise daneben («vor 3 Tagen»). */
+.datenzeile-neben {
+  margin-left: var(--ds-space-2);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.datenzeile-hinweis {
+  margin-top: var(--ds-space-1);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  text-wrap: pretty;
+}
+
+.datenzeile-hinweis:empty { display: none; }
+
+/* Knopfzeile unter einem Feld («Vorschlag übernehmen»); ein Text-Knopf am
+   Zeilenanfang fluchtet mit dem Feld darüber. */
+.datenzeile-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-2);
+}
+
+.datenzeile-zeile > .ds-btn--text:first-child { margin-left: calc(-1 * var(--ds-space-3)); }
+
+/* Ein Kästchen als Wert ragt (40-px-Ziel) über die 20-px-Zeile hinaus. */
+.datenzeile-wert > .ds-check:only-child { margin-block: calc((20px - 40px) / 2); }
+
+/* Schloss: der Wert kommt aus dem Abgleich (der Tooltip nennt die Quelle). */
+.schloss {
+  display: inline-flex;
+  margin-left: var(--ds-space-1);
+  color: var(--ds-text-2);
+  vertical-align: -3px;
+}
+
+/* Bearbeiten: Beschriftung 12/16 500 oben, Feld darunter (höchstens 560 px). */
+.datenzeile-form {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ds-space-1);
+}
+
+.datenzeile-form > .datenzeile-name {
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+}
+
+.datenzeile-form > .datenzeile-wert { max-width: 560px; }
+
+/* Geändert: 6-px-Punkt hinter der Beschriftung und «(geändert)» für den
+   Screenreader – nie Farbe allein, dazu die Zahl in der Speicherleiste.
+   Der Punkt blendet per Übergang ein: eine Zeile, die schon geändert neu
+   gezeichnet wird, zeigt ihn ohne Bewegung. */
+.datenzeile-form > .datenzeile-name::after,
+.datenzeile.geaendert > .datenzeile-name::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--ds-space-2);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-primary);
+  vertical-align: middle;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.datenzeile.geaendert > .datenzeile-name::after { opacity: 1; }
+.datenzeile:not(.geaendert) .geaendert-text { display: none !important; }
+
+
+/* ==================================================================
+   8. Hinweisliste (UI.hinweise)
+   Sinnbild 20 + Titel 500 + Text, Haarlinien dazwischen. Der Ton färbt
+   nur das Sinnbild, der Text bleibt ruhig.
+   ================================================================== */
+
+.hinweise {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hinweis-zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) 0;
+  border-top: 1px solid var(--ds-line);
+  font: var(--ds-font-body);
+}
+
+.hinweis-zeile:first-child { padding-top: 0; border-top: 0; }
+.hinweis-zeile:last-child { padding-bottom: 0; }
+
+.hinweis-zeile,
+.hinweis-zeile:is(.t-gefahr, .t-warnung, .t-info, .t-erfolg) { color: var(--ds-text); }
+
+.hinweis-zeile > svg { flex-shrink: 0; color: var(--ds-primary); }
+.hinweis-zeile.t-gefahr > svg { color: var(--ds-error); }
+.hinweis-zeile.t-warnung > svg { color: var(--ds-warning); }
+.hinweis-zeile.t-erfolg > svg { color: var(--ds-success); }
+
+.hinweis-zeile-text { display: grid; gap: 2px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hinweis-zeile-titel { color: var(--ds-text); font: var(--ds-font-label); }
+.hinweis-zeile-inhalt { color: var(--ds-text-2); }
+
+
+/* ==================================================================
+   9. Formulare
+   ================================================================== */
+
+.eingabe-schmal { width: min(100%, 200px); }
+
+/* Hinweis mit Sinnbild vor dem Text (UI.feldHinweis: Live-Prüfung «in
+   Ordnung»). Der Ton färbt nur das Sinnbild (.t-erfolg …). */
+:is(.ds-field__hint, .datenzeile-hinweis).mit-sinnbild {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-1);
+}
+
+:is(.ds-field__hint, .datenzeile-hinweis).mit-sinnbild > .icon { flex-shrink: 0; }
+
+/* Platz für einen Hinweis, der am Getippten hängt (UI.hinweisPlatz): ohne
+   Inhalt verborgen, sonst 8 px unter Feld und Hinweis. */
+.hinweis-platz[hidden] { display: none; }
+:is(.datenzeile-wert, .ds-field) > .hinweis-platz { margin-top: var(--ds-space-2); }
+
+/* Mehrfachauswahl (Filter): umrandete Liste von Kästchen mit Zahl rechts,
+   Haarlinien, eigener dünner Rollbalken. Positioniert: absolut platzierte
+   Nachfahren rollen mit. */
+.mehrfach {
+  position: relative;
+  display: grid;
+  max-height: 264px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+.mehrfach > .ds-check {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  padding: 0 var(--ds-space-4);
+}
+
+.mehrfach > .ds-check + .ds-check { border-top: 1px solid var(--ds-line); }
+
+.mehrfach > .ds-check::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  background: var(--ds-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .mehrfach > .ds-check:hover::before { opacity: var(--ds-state-hover-lg); }
+}
+
+/* In der beschnittenen Liste liegt der Fokusring innen. */
+.mehrfach > .ds-check > input:focus-visible { outline-offset: 0; }
+.mehrfach > .ds-check > span { flex: 1; }
+.mehrfach > .ds-check > .anzahl { flex: none; margin-left: auto; }
+
+/* Gewählt: zusätzlich 500 (Auswahl nie nur durch das Häkchen). */
+.mehrfach > .ds-check:has(> input:checked) > span:not(.anzahl) { font-weight: var(--ds-weight-label); }
+
+
+/* ==================================================================
+   10. Schalter mit drei Zuständen (UI.schalter, UI.schalterZeile)
+   Dashboard-Style hat .ds-switch (Kästchen mit Spur). ICT braucht einen
+   button[role=switch] mit dem Zustand «an und gesperrt» (Spur voll primär,
+   Schloss im Griff, Tooltip nennt den Grund). Masse wie .ds-switch:
+   52 × 32, Griff 24 px, aus als 16 px gezeigt.
+   ================================================================== */
+
+.schalter {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--ds-outline);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-highest);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--ds-dur-base) var(--ds-ease-in-out),
+    border-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+.schalter::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-outline);
+  transform: scale(calc(2 / 3));
+  transition:
+    transform var(--ds-dur-base) var(--ds-ease-in-out),
+    background-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .schalter[aria-checked="false"]:not(:disabled, [aria-disabled="true"]):hover::after { background: var(--ds-text-2); }
+}
+
+.schalter[aria-checked="true"] { border-color: var(--ds-primary); background: var(--ds-primary); }
+
+.schalter[aria-checked="true"]::after {
+  background: var(--ds-on-primary);
+  transform: translateX(20px);
+}
+
+.schalter:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.schalter:disabled,
+.schalter[aria-disabled="true"]:not(.gesperrt) {
+  opacity: var(--ds-state-disabled);
+  cursor: not-allowed;
+}
+
+/* An und gesperrt: volle Stärke, 12-px-Schloss mitten im weissen Griff
+   (das Schloss-Sinnbild «lock» als Maske). */
+.schalter.gesperrt { cursor: not-allowed; }
+
+.schalter.gesperrt::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 28px;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  background: var(--ds-primary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / 12px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+
+/* Zeile: Schalter · Name (+ Unterzeile) · Zustandswort/Chips rechts. */
+.schalter-zeile {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 56px;
+  padding: var(--ds-space-2) 0;
+  border-top: 1px solid var(--ds-line);
+}
+
+.schalter-zeile:first-child { min-height: 48px; padding-top: 0; border-top: 0; }
+.schalter-zeile:last-child { min-height: 48px; padding-bottom: 0; }
+.schalter-zeile:only-child { min-height: 40px; }
+
+/* Kompakt in einer Kopfzeile («ICT-Ablage  Aktiv»). */
+.schalter-feld {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 40px;
+}
+
+.schalter-text { display: grid; flex: 1; min-width: 0; }
+.schalter-feld > .schalter-text { flex: none; }
+
+.schalter-name {
+  min-width: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+
+.schalter-unter { color: var(--ds-text-2); font: var(--ds-font-meta); }
+
+/* Das Zustandswort hält die Breite des längeren Worts: nichts springt. In
+   der Zeile steht es ganz rechts und rechtsbündig (die Wörter aller Zeilen
+   fluchten); Zusatz-Chips («Geändert») erscheinen links davon (order:
+   im DOM steht es vor dem Zusatz; es ist aria-hidden, die Lesefolge
+   bleibt). Kompakt steht es dicht hinter dem Namen. */
+.schalter-wort {
+  min-width: 3.5em;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+}
+
+.schalter-zeile > .schalter-wort {
+  order: 1;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.schalter-feld > .schalter-wort { margin-left: calc(-1 * var(--ds-space-1)); }
+
+.schalter-zusatz {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ds-space-2);
+  margin-left: auto;
+}
+
+/* Handy: Chips rutschen unter den Namen und fluchten mit ihm (Schalter 52
+   + Abstand 12), damit der Name nicht zerquetscht wird. */
+@media (max-width: 600px) {
+  .schalter-zeile:has(> .schalter-zusatz) { flex-wrap: wrap; row-gap: var(--ds-space-1); }
+
+  .schalter-zeile > .schalter-zusatz {
+    order: 2;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+    padding-left: calc(52px + var(--ds-space-3));
+  }
+}
+
+@media (forced-colors: active) {
+  .schalter::after { forced-color-adjust: none; background: CanvasText; }
+  .schalter[aria-checked="true"] { forced-color-adjust: none; border-color: Highlight; background: Highlight; }
+  .schalter[aria-checked="true"]::after { background: Canvas; }
+  .schalter.gesperrt::before { forced-color-adjust: none; background: Highlight; }
+}
+
+
+/* ==================================================================
+   11. Liste über die ganze Seite (UI.tabellenRahmen)
+   Der Rahmen ist ein eigener Scroller: der Kopf klebt oben, die erste
+   Spalte links. Die Kopflinie ist ein Schatten, weil zusammengefallene
+   Rahmen mitrollen. Zellen brechen nicht um, lange Werte enden mit «…»
+   (4 px Rand, damit Fokusringe von Links sichtbar bleiben). Zeilen sind
+   klickbar (die Seite öffnet die Detailseite).
+   ================================================================== */
+
+.tabelle-rahmen {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+.tabelle-rahmen > .ds-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tabelle-rahmen > .ds-table td {
+  max-width: 280px;
+  overflow: clip;
+  overflow-clip-margin: var(--ds-space-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabelle-rahmen > .ds-table :is(th, td):first-child { min-width: 180px; }
+.tabelle-rahmen > .ds-table tbody tr { cursor: pointer; }
+
+.tabelle-rahmen > .ds-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--ds-z-raised) + 1);
+  border-bottom: 0;
+  background: var(--ds-surface);
+  box-shadow: inset 0 -1px 0 var(--ds-line);
+}
+
+.tabelle-rahmen > .ds-table :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: var(--ds-z-raised);
+  background: var(--ds-surface);
+}
+
+.tabelle-rahmen > .ds-table thead th:first-child { z-index: calc(var(--ds-z-raised) + 2); }
+
+/* Der Hover liegt auf den Zellen, damit auch die klebende erste Spalte
+   ihn bekommt. */
+.tabelle-rahmen > .ds-table :is(th, td) {
+  transition: background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .tabelle-rahmen > .ds-table tbody tr:hover > * { background: var(--ds-backdrop); }
+}
+
+/* Die Haarlinie rechts der ersten Spalte erscheint nur beim seitlichen
+   Rollen (UI.rollKanten setzt data-gerollt-x). */
+.tabelle-rahmen > .ds-table :is(th, td):first-child::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ds-line);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.tabelle-rahmen[data-gerollt-x] > .ds-table :is(th, td):first-child::after { opacity: 1; }
+
+/* Blende nur rechts und nur, solange es dort weitergeht (links klebt die
+   erste Spalte, die Haarlinie sagt dort genug). Die senkrechte Rollleiste
+   (--rollleiste, UI.rollKanten) bleibt von der Blende ausgenommen. */
+.tabelle-rahmen[data-mehr-rechts] {
+  -webkit-mask-image: linear-gradient(to left, var(--ds-text) var(--rollleiste, 0px), transparent var(--rollleiste, 0px),
+    var(--ds-text) calc(var(--rollleiste, 0px) + var(--ds-space-8)));
+  mask-image: linear-gradient(to left, var(--ds-text) var(--rollleiste, 0px), transparent var(--rollleiste, 0px),
+    var(--ds-text) calc(var(--rollleiste, 0px) + var(--ds-space-8)));
+}
+
+/* Text eines nicht sortierbaren Kopfs mit Erklärung: ein Tabstopp für den
+   Tooltip (UI.tabellenKopf); der Ring folgt dem Radius des Sortierknopfs. */
+.tabelle-kopf-text { border-radius: var(--ds-radius-xs); }
+
+/* Name, der die Detailseite öffnet: unterstrichen, 500. */
+.name-link {
+  color: var(--ds-primary);
+  font-weight: var(--ds-weight-label);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--ds-link-underline-thickness);
+  text-underline-offset: var(--ds-link-underline-offset);
+  text-decoration-color: var(--ds-link-underline);
+}
+
+
+/* ==================================================================
+   12. Listenzeilen (UI.listenZeile) und Zahlmarke (UI.zahlmarke)
+   Eine umrandete Liste mit Haarlinien; Zeilen als Link oder Knopf mit
+   6-%-Ebene und einem Pfeil, der beim Hover 4 px nachrückt.
+   ================================================================== */
+
+.zeilenliste {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  list-style: none;
+}
+
+.zeilenliste:empty { display: none; }
+
+.listen-zeile {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border: 0;
+  background: transparent;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  text-align: left;
+  text-decoration: none;
+}
+
+/* Haarlinie zwischen den Zeilen; mit dem Listenkind gewichtet, sonst
+   gewänne «border: 0» oben bei gleicher Spezifität. */
+.zeilenliste > * + *,
+.zeilenliste > .listen-zeile + .listen-zeile { border-top: 1px solid var(--ds-line); }
+
+:is(a, button).listen-zeile {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(a, button).listen-zeile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  background: var(--ds-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  :is(a, button).listen-zeile:hover::before { opacity: var(--ds-state-hover-lg); }
+}
+
+:is(a, button).listen-zeile:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* In der beschnittenen Liste liegt der Fokusring innen. */
+:is(a, button).listen-zeile:focus-visible { outline-offset: calc(-1 * var(--ds-focus-width)); }
+
+/* Die aktuelle Zeile («dieses Gerät», «Inhaber») ruhig getönt. */
+.listen-zeile.aktuell { background: var(--ds-surface-low); }
+
+.listen-zeile-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+
+.listen-zeile-titel {
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  overflow-wrap: break-word;
+}
+
+.listen-zeile-unter {
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: break-word;
+}
+
+.listen-zeile-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ds-space-1);
+  margin-right: calc(-1 * var(--ds-space-2));
+}
+
+.listen-zeile > .ds-status { flex-shrink: 0; }
+
+/* Zahlmarke: 32 px rund, 500 tabellarisch, tonal nach Dringlichkeit. Die
+   Dringlichkeit steht zusätzlich als Wort in der Zeile. */
+.zahlmarke {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--ds-space-2);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-high);
+  color: var(--ds-text-2);
+  font: var(--ds-font-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.zahlmarke.ton-warnung { background: var(--ds-warning-container); color: var(--ds-on-warning-container); }
+.zahlmarke.ton-gefahr { background: var(--ds-error-container); color: var(--ds-on-error-container); }
+
+@media (forced-colors: active) {
+  .zahlmarke { border: 1px solid CanvasText; }
+}
+
+.listen-zeile-pfeil {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ds-text-2);
+  transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Hover-Asymmetrie: zurück 200 ms, hin 250 ms. */
+.listen-zeile-pfeil > svg { transition: transform var(--ds-dur-base) var(--ds-ease-in-out); }
+
+@media (hover: hover) {
+  :is(a, button).listen-zeile:hover .listen-zeile-pfeil { color: var(--ds-text); }
+
+  :is(a, button).listen-zeile:hover .listen-zeile-pfeil > svg {
+    transform: translateX(var(--ds-distance-sm));
+    transition-duration: var(--ds-dur-medium);
+  }
+}
+
+/* Handy: Aktionen rutschen unter den Text. */
+@media (max-width: 600px) {
+  .listen-zeile:has(> .listen-zeile-aktionen) { flex-wrap: wrap; }
+  .listen-zeile:has(> .listen-zeile-aktionen) > .listen-zeile-text { flex-basis: 100%; }
+  .listen-zeile > .listen-zeile-aktionen { justify-content: flex-start; margin: 0 0 0 calc(-1 * var(--ds-space-3)); }
+}
+
+
+/* ==================================================================
+   13. Zeitachse (UI.zeitachse)
+   2-px-Linie, 10-px-Punkte in Primärgrün (automatische Einträge grau),
+   Haarlinien zwischen den Einträgen ab der Textkante.
+   ================================================================== */
+
+.zeitachse {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zeitachse-eintrag {
+  position: relative;
+  display: grid;
+  gap: var(--ds-space-1);
+  padding: var(--ds-space-3) 0 var(--ds-space-3) var(--ds-space-6);
+}
+
+.zeitachse-eintrag:first-child { padding-top: 0; }
+.zeitachse-eintrag:last-child { padding-bottom: 0; }
+
+/* Haarlinie ab der Textkante, damit sie die Linie nicht kreuzt. */
+.zeitachse-eintrag + .zeitachse-eintrag {
+  background: linear-gradient(var(--ds-line), var(--ds-line)) var(--ds-space-6) 0 / calc(100% - var(--ds-space-6)) 1px no-repeat;
+}
+
+/* Die Linie verbindet den ersten mit dem letzten Punkt. */
+.zeitachse-eintrag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 2px;
+  background: var(--ds-line);
+}
+
+.zeitachse-eintrag:first-child::before { top: 10px; }
+.zeitachse-eintrag:last-child::before { bottom: auto; height: calc(var(--ds-space-3) + 10px); }
+.zeitachse-eintrag:only-child::before { display: none; }
+
+/* Punkt mittig auf der ersten 20-px-Zeile. */
+.zeitachse-eintrag::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--ds-space-3) + 5px);
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-primary);
+}
+
+.zeitachse-eintrag:first-child::after { top: 5px; }
+.zeitachse-eintrag.still::after { background: var(--ds-line-2); }
+
+.zeitachse-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-1) var(--ds-space-2);
+}
+
+.zeitachse-titel {
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.zeitachse-zeit {
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Meta-Zeile mit Sinnbild davor (Abgleich: «sync»). */
+.zeitachse-zeit:has(> .icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+}
+
+.zeitachse-zeit > .icon { flex-shrink: 0; }
+
+.zeitachse-text {
+  color: var(--ds-text);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.zeitachse-text:empty { display: none; }
+
+/* Text-Knöpfe eines Eintrags hängen ihr Polster in den Rand. */
+.zeitachse-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-1);
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+
+/* ==================================================================
+   14. Balken, Säulen, Verteilung
+   Höhe und Breite nie animieren: der Anteil ist ein transform (scaleX/
+   scaleY über --anteil). Beim ersten Zeigen wachsen sie einmal
+   (Bewegung.aufziehen = .ds-enter--fill-x / --fill-y aus Dashboard-Style);
+   spätere Werte springen.
+   ================================================================== */
+
+.balken {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+}
+
+.balken.still { background: var(--ds-surface-highest); }
+
+.balken-fuell {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--diagramm-a);
+  transform: scaleX(var(--anteil, 0));
+  transform-origin: left center;
+}
+
+.balken.ton-warnung > .balken-fuell { background: var(--diagramm-warnung); }
+.balken.ton-gefahr > .balken-fuell { background: var(--diagramm-gefahr); }
+
+/* Mini-Verteilung: Säulen nebeneinander, die eigene hervorgehoben. */
+.saeulen {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 32px;
+}
+
+.saeule {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  min-width: 4px;
+  height: 100%;
+}
+
+.saeule-fuell {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ds-radius-xs) var(--ds-radius-xs) 0 0;
+  background: var(--diagramm-b);
+  transform: scaleY(var(--anteil, 0));
+  transform-origin: center bottom;
+}
+
+.saeule.hervorgehoben > .saeule-fuell { background: var(--diagramm-a); }
+
+@media (forced-colors: active) {
+  .balken { outline: 1px solid CanvasText; }
+  .balken-fuell, .saeule-fuell { forced-color-adjust: none; background: CanvasText; }
+  .saeule.hervorgehoben > .saeule-fuell { background: Highlight; }
+}
+
+/* Verteilung: Kennwert-Zeilen mit einem 4-px-Balken darunter: Beschriftung
+   links (leise, einzeilig, ganzer Name im Tooltip), Zahl rechts (500,
+   tabellarisch), Haarlinien dazwischen. Klickbare Zeilen (Sprung in die
+   gefilterte Liste) bekommen die 6-%-Ebene der grossen Ziele; ihre Fläche
+   ragt 8 px über den Text hinaus. */
+.verteilung {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.verteilung > li + li { border-top: 1px solid var(--ds-line); }
+
+.verteilung-zeile {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--ds-space-3) 0;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  text-align: left;
+  text-decoration: none;
+}
+
+.verteilung:not(.verteilung-klickbar) > li:first-child > .verteilung-zeile { padding-top: 0; }
+.verteilung:not(.verteilung-klickbar) > li:last-child > .verteilung-zeile { padding-bottom: 0; }
+
+.verteilung-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verteilung-zahl {
+  color: var(--ds-text);
+  font-weight: var(--ds-weight-label);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.verteilung-zeile > .balken { grid-column: 1 / -1; }
+
+/* Klickbar: die Liste gleicht das Polster der ersten und letzten Zeile
+   aus, damit der Kartenrhythmus (16 px) und die Textkanten stimmen. */
+.verteilung-klickbar .verteilung-zeile {
+  width: calc(100% + 2 * var(--ds-space-2));
+  margin-inline: calc(-1 * var(--ds-space-2));
+  padding-inline: var(--ds-space-2);
+}
+
+:is(.ds-card, .karte-inhalt) > .verteilung-klickbar:not(:first-child) { margin-top: calc(var(--ds-space-4) - var(--ds-space-3)); }
+.verteilung-klickbar:first-child { margin-top: calc(-1 * var(--ds-space-3)); }
+.verteilung-klickbar:last-child { margin-bottom: calc(-1 * var(--ds-space-3)); }
+
+:is(a, button).verteilung-zeile {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(a, button).verteilung-zeile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ds-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  :is(a, button).verteilung-zeile:hover::before { opacity: var(--ds-state-hover-lg); }
+}
+
+:is(a, button).verteilung-zeile:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* Eine Null (oder kein Wert) steht leise, nie gefärbt. */
+.verteilung-zahl.leer {
+  color: var(--ds-text-2);
+  font-weight: var(--ds-weight-regular);
+}
+
+/* Klickbare Kennwerte (UI.kennwerte mit Objekten): Zeilen der Verteilung
+   ohne Balken; ein Ton steht als Sinnbild vor dem Namen. */
+.kennwerte-klickbar .verteilung-zeile { align-items: center; }
+
+.kennwert-ton {
+  margin-right: var(--ds-space-2);
+  vertical-align: -3px;
+}

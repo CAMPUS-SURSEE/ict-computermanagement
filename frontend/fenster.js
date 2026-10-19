@@ -16,7 +16,7 @@
 
    HTML der Seite (Präfix z. B. «g»): body[data-seite] mit dem Rahmen-Gerüst
    (siehe rahmen.js) und in der Bahn
-       <header class="seitenkopf" id="g-kopf"></header>
+       <header class="ds-page-head" id="g-kopf"></header>
        <div class="fenster-bereich" id="g-bereich"></div>
    Dialog, Meldung und Speicherleiste baut das Gerüst selbst.
 
@@ -216,7 +216,7 @@ const Fenster = (function () {
       if (kopf) return kopf;
       let wurzel = $(p + "kopf");
       if (!wurzel) {
-        wurzel = el("header", "seitenkopf");
+        wurzel = el("header", "ds-page-head");
         wurzel.id = p + "kopf";
         const b = $(p + "bereich");
         if (b && b.parentNode) b.parentNode.insertBefore(wurzel, b);

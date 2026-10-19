@@ -259,7 +259,7 @@ function geraetVerweis(c, fokus) {
   a.href = UI.adresse.client("admin", c.id);
   a.setAttribute("data-fokus", fokus);
   UI.tipp(a, "Listen-ID " + c.id + " – ADMIN-Client öffnen");
-  return UI.anhaengen(UI.el("span", "chips"), [a, geraetStatus(c)]);
+  return UI.anhaengen(UI.el("span", "ds-chips"), [a, geraetStatus(c)]);
 }
 
 /* ==================================================================
@@ -268,7 +268,7 @@ function geraetVerweis(c, fokus) {
 
 function bereichUebersicht(ziel) {
   const zahlen = rechteZaehlen();
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
 
   /* Kennzahlen: die Zahl wird nie gefärbt. Ein Klick führt zu den
      Berechtigungen, wo sich die Zahlen ändern lassen. */
@@ -441,7 +441,7 @@ function inhaberWerden(c) {
 }
 
 function bereichGeraet(ziel) {
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
   stapel.appendChild(geraetKarte());
   stapel.appendChild(sucheKarte());
   ziel.appendChild(stapel);
@@ -463,7 +463,7 @@ function geraetKarte() {
   });
 
   /* Der Teil, der sich mit einer Wahl ändert (wird aufgedeckt). */
-  const ergebnis = UI.el("div", "stapel");
+  const ergebnis = UI.el("div", "ds-stack");
   ergebnis.id = "b-geraet-ergebnis";
 
   if (!id) {
@@ -662,15 +662,15 @@ function bereichBerechtigungen(ziel) {
   rechte.anzahl = UI.el("p", "anzahl");
   rechte.anzahl.id = "b-rechte-anzahl";
   // b-rechte-leiste: auf schmaler Bahn nimmt die Suche eine eigene Zeile (benutzer.css).
-  ziel.appendChild(UI.anhaengen(UI.el("div", "werkzeugleiste b-rechte-leiste"), [suche, nurAktiveChip, rechte.anzahl]));
+  ziel.appendChild(UI.anhaengen(UI.el("div", "ds-action-bar b-rechte-leiste"), [suche, nurAktiveChip, rechte.anzahl]));
 
   // Nach Kategorie gruppiert, Reihenfolge aus der Spalte «Reihenfolge».
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
   for (const kategorie of kategorien) {
     const inKategorie = pSpalten.filter(s => s.g === kategorie);
     const aktiv = inKategorie.filter(s => programmStufe(s.i) > 0).length;
     const k = UI.karte({ titel: kategorie, unter: aktiv + " von " + inKategorie.length + " aktiv" });
-    const unter = k.querySelector(".karte-unter");
+    const unter = k.unter;
     const liste = UI.el("div", "b-programme");
     k.inhalt.appendChild(liste);
     const eintrag = { karte: k, unter: unter, liste: liste, spalten: inKategorie, zeilen: [] };
@@ -797,7 +797,7 @@ function rechteZuruecksetzen() {
    ================================================================== */
 
 function bereichBemerkung(ziel) {
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
 
   const k = UI.karte({ titel: "Bemerkung" });
   /* Feld am Entwurf (F.feld): id «b-eingabe-Bemerkung», jede Eingabe in den

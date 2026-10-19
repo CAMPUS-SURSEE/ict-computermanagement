@@ -1,10 +1,11 @@
 /* styles.css — Seitenlayout der Hauptseite (index.html).
 
-   Alles Gemeinsame steht im Fundament: Tokens und Bausteine in design.css
-   (auch Zahlmarke und klickbare Kennwerte), Bewegung in bewegung.css,
-   Rahmen und Ebenen in rahmen.css. Hier steht nur, wie die sechs Ansichten
-   der Hauptseite angeordnet sind, dazu das Einzige, was es nur hier gibt:
-   der Zeitstrahl der Ersatzplanung (ChatBob-Mapping 7.2 #11).
+   Alles Gemeinsame steht im Fundament: Tokens, Bausteine und Bewegung in
+   Dashboard-Style (vendor/dashboard-style/ds.css) mit dem Campus-Thema
+   (thema.css), die ICT-eigenen Bausteine in bausteine.css (auch Zahlmarke
+   und klickbare Kennwerte), Rahmen und Ebenen in rahmen.css. Hier steht
+   nur, wie die Ansichten der Hauptseite angeordnet sind, dazu das Einzige,
+   was es nur hier gibt: der Zeitstrahl der Ersatzplanung.
    Werte nur über Tokens; keine Keyframes (die Säulen wachsen über
    .saeule-fuell und Bewegung.aufziehen, nicht über eigene Regeln).
 
@@ -29,7 +30,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--a2) var(--a3);
+  gap: var(--ds-space-2) var(--ds-space-3);
   margin-left: auto;
 }
 
@@ -44,7 +45,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  margin-right: var(--a2);
+  margin-right: var(--ds-space-2);
   vertical-align: -3px;
 }
 
@@ -54,12 +55,12 @@
 .tabelle-leer { flex: none; }
 
 /* Vorlagen im Spaltenblatt: Text-Knöpfe hängen ihr Polster in den Rand. */
-.blatt-vorlagen { margin-left: calc(-1 * var(--a3)); }
+.blatt-vorlagen { margin-left: calc(-1 * var(--ds-space-3)); }
 
 /* Schmale Bahn: die Suche nimmt eine eigene Zeile, darunter die Knöpfe;
    Zahl und «Neu» bleiben rechts. */
-@container bahn (max-width: 600px) {
-  .werkzeugleiste > .suchfeld {
+@container ds-content (max-width: 600px) {
+  .ds-action-bar > .ds-search {
     flex-basis: 100%;
     max-width: none;
   }
@@ -77,18 +78,18 @@
 .uebersicht-abschnitt {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a3);
+  gap: var(--ds-space-3);
   min-width: 0;
 }
 
-.uebersicht-abschnitt + .uebersicht-abschnitt { margin-top: var(--a3); }
+.uebersicht-abschnitt + .uebersicht-abschnitt { margin-top: var(--ds-space-3); }
 
 .abschnitt-kopf {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--a1) var(--a3);
+  gap: var(--ds-space-1) var(--ds-space-3);
   min-width: 0;
 }
 
@@ -104,7 +105,7 @@
 
 .zeilenliste.aufgaben {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-  gap: var(--a3);
+  gap: var(--ds-space-3);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -113,9 +114,9 @@
 
 .zeilenliste.aufgaben > .listen-zeile {
   width: auto;
-  border: 1px solid var(--linie);
-  border-radius: var(--r-karte);
-  background: var(--flaeche);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
 }
 
 /* Die Hover- und Druckebene folgt der Rundung der Karte. */
@@ -124,40 +125,40 @@
 /* ==================================================================
    4. Ersatzplanung: Zeitstrahl je Client-Liste (Mapping 7.2 #11)
    Je Geschäftsjahr zwei Säulen (beschafft, Ersatz geplant), die Höhe ist
-   ein scaleY über --anteil (.saeule-fuell, design.css). Das laufende
+   ein scaleY über --anteil (.saeule-fuell, bausteine.css). Das laufende
    Geschäftsjahr steht auf einer ruhigen Fläche, sein Jahr 500. Der Strahl
    rollt in der Karte seitlich, nie die Seite; rechts blendet er aus,
    solange es dort weitergeht (data-mehr-rechts setzt UI.rollKanten).
    ================================================================== */
 
-/* Positioniert: unsichtbare Beschriftungen (.nur-sr, absolut) rollen mit
+/* Positioniert: unsichtbare Beschriftungen (.ds-sr, absolut) rollen mit
    und weiten sonst die Tafel (waagrechtes Rollen der Seite auf dem Handy). */
 .zeitstrahl {
   position: relative;
-  margin-inline: calc(-1 * var(--a1));
-  padding: 0 var(--a1) var(--a2);
+  margin-inline: calc(-1 * var(--ds-space-1));
+  padding: 0 var(--ds-space-1) var(--ds-space-2);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--linie-stark) transparent;
+  scrollbar-color: var(--ds-line-2) transparent;
 }
 
 .zeitstrahl[data-mehr-rechts] {
-  mask-image: linear-gradient(to left, transparent, var(--text) var(--a8));
+  mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-space-8));
 }
 
 .zeitstrahl[data-gerollt-x] {
-  mask-image: linear-gradient(to right, transparent, var(--text) var(--a8));
+  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-space-8));
 }
 
 .zeitstrahl[data-gerollt-x][data-mehr-rechts] {
-  mask-image: linear-gradient(to right, transparent, var(--text) var(--a8),
-    var(--text) calc(100% - var(--a8)), transparent);
+  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-space-8),
+    var(--ds-text) calc(100% - var(--ds-space-8)), transparent);
 }
 
 .zeitstrahl-achse {
   display: flex;
-  gap: var(--a1);
+  gap: var(--ds-space-1);
   width: max-content;
   min-width: 100%;
 }
@@ -167,14 +168,14 @@
   flex: 1 0 auto;
   grid-template-rows: auto auto;
   justify-items: center;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
   min-width: 56px;
-  padding: var(--a2) var(--a1);
+  padding: var(--ds-space-2) var(--ds-space-1);
   box-sizing: border-box;
-  border-radius: var(--r-s);
+  border-radius: var(--ds-radius-sm);
 }
 
-.zeitstrahl-jahr.aktuell { background: var(--flaeche-tief); }
+.zeitstrahl-jahr.aktuell { background: var(--ds-surface-low); }
 
 /* Die Säulenfläche: oben Platz für die Marke einer vollen Säule, unten
    die Grundlinie als Haarlinie. */
@@ -182,12 +183,12 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: var(--a1);
+  gap: var(--ds-space-1);
   width: 100%;
   height: 128px;
-  padding-top: var(--a5);
+  padding-top: var(--ds-space-5);
   box-sizing: border-box;
-  border-bottom: 1px solid var(--linie);
+  border-bottom: 1px solid var(--ds-line);
 }
 
 .zeitstrahl-saeule {
@@ -200,9 +201,9 @@
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  border-radius: var(--ds-radius-xs) var(--ds-radius-xs) 0 0;
   background: transparent;
-  color: var(--text);
+  color: var(--ds-text);
 }
 
 .zeitstrahl-saeule.beschafft > .saeule-fuell { background: var(--diagramm-a); }
@@ -211,7 +212,7 @@
    Säule auf der ruhigen Fläche des laufenden Jahrs. */
 .zeitstrahl-saeule.ersatz > .saeule-fuell {
   background: var(--diagramm-b);
-  box-shadow: inset 0 0 0 1px var(--primaer);
+  box-shadow: inset 0 0 0 1px var(--ds-primary);
 }
 
 .zeitstrahl-saeule.faellig > .saeule-fuell { background: var(--diagramm-warnung); }
@@ -221,8 +222,8 @@
 .zeitstrahl-marke {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--anteil, 0) * 100% + var(--a1));
-  color: var(--gefahr);
+  bottom: calc(var(--anteil, 0) * 100% + var(--ds-space-1));
+  color: var(--ds-error);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -236,34 +237,34 @@ button.zeitstrahl-saeule {
 button.zeitstrahl-saeule::before {
   content: '';
   position: absolute;
-  inset: 0 calc(-1 * var(--a1) / 2);
+  inset: 0 calc(-1 * var(--ds-space-1) / 2);
   z-index: -1;
-  border-radius: var(--r-xs);
+  border-radius: var(--ds-radius-xs);
   background: currentColor;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--dauer-schnell) var(--kurve-standard);
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
 }
 
 @media (hover: hover) {
-  button.zeitstrahl-saeule:hover::before { opacity: var(--zustand-hover-gross); }
+  button.zeitstrahl-saeule:hover::before { opacity: var(--ds-state-hover-lg); }
 }
 
 button.zeitstrahl-saeule:active::before {
-  opacity: var(--zustand-druck);
-  transition-duration: var(--dauer-sofort);
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
 }
 
 .zeitstrahl-label {
-  color: var(--text-leise);
-  font: var(--t-meta);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .zeitstrahl-jahr.aktuell .zeitstrahl-label {
-  color: var(--text);
-  font: var(--t-klein);
+  color: var(--ds-text);
+  font: var(--ds-font-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -272,32 +273,32 @@ button.zeitstrahl-saeule:active::before {
 .zeitstrahl-legende {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--a2) var(--a5);
+  gap: var(--ds-space-2) var(--ds-space-5);
   margin: 0;
-  padding: var(--a3) 0 0;
-  border-top: 1px solid var(--linie);
-  color: var(--text-leise);
-  font: var(--t-meta);
+  padding: var(--ds-space-3) 0 0;
+  border-top: 1px solid var(--ds-line);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
   list-style: none;
 }
 
 .zeitstrahl-legende > li {
   display: inline-flex;
   align-items: center;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
 }
 
-.zeitstrahl-legende > li > svg { margin-left: calc(-1 * var(--a1)); }
+.zeitstrahl-legende > li > svg { margin-left: calc(-1 * var(--ds-space-1)); }
 
 .legende-marke {
   flex-shrink: 0;
   width: 10px;
   height: 10px;
-  border-radius: calc(var(--r-xs) / 2);
+  border-radius: calc(var(--ds-radius-xs) / 2);
 }
 
 .legende-marke.beschafft { background: var(--diagramm-a); }
-.legende-marke.ersatz { background: var(--diagramm-b); box-shadow: inset 0 0 0 1px var(--primaer); }
+.legende-marke.ersatz { background: var(--diagramm-b); box-shadow: inset 0 0 0 1px var(--ds-primary); }
 .legende-marke.faellig { background: var(--diagramm-warnung); }
 .legende-marke.ueberfaellig { background: var(--diagramm-gefahr); }
 
@@ -316,7 +317,7 @@ button.zeitstrahl-saeule:active::before {
 .software-liste {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a5);
+  gap: var(--ds-space-5);
   min-width: 0;
 }
 
@@ -327,7 +328,7 @@ button.zeitstrahl-saeule:active::before {
 }
 
 /* Der Programmname ist ein Link; ein langer Name bricht um. */
-.software-karte .karte-titel { overflow-wrap: anywhere; }
+.software-karte .ds-card__title { overflow-wrap: anywhere; }
 
 /* Kamerarechte: dieselben Karten wie die Software; der Hinweis zum Stand
    des Abgleichs nimmt keinen Platz, solange er fehlt. */

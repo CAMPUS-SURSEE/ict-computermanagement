@@ -466,7 +466,7 @@ function personKarte() {
     unter: "Bei wem die Nummer im AD-Feld «Telefon» steht."
   });
   k.id = "tf-personkarte";
-  const inhalt = UI.el("div", "stapel");
+  const inhalt = UI.el("div", "ds-stack");
   inhalt.id = "tf-person";
   k.inhalt.appendChild(inhalt);
   return k;
@@ -593,7 +593,7 @@ function hinweisKarte(breit) {
 }
 
 function bereichHinweis(ziel) {
-  const stapel = UI.el("div", "stapel");
+  const stapel = UI.el("div", "ds-stack");
   stapel.appendChild(hinweisKarte(false));
   stapel.appendChild(verlaufEinbauen());
   ziel.appendChild(stapel);

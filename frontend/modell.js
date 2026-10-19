@@ -315,7 +315,7 @@ const Modell = (function () {
     return status(zeile && zeile.Status) === "Archiviert";
   }
 
-  /* Textfarbe je Status (Klassen aus design.css). «Aktiv» bleibt bewusst
+  /* Textfarbe je Status (Tonklassen .t-* aus bausteine.css). «Aktiv» bleibt bewusst
      ohne Farbe: der Normalfall braucht keine Auszeichnung. */
   const STATUS_TON = { Aktiv: "", Lager: "info", Archiviert: "still" };
 

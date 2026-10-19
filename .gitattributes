@@ -1,0 +1,8 @@
+# Dashboard-Style liegt mit Prüfsummen (SHA256SUMS) im Frontend: Git darf an
+# diesen Dateien keine Zeilenenden umschreiben (core.autocrlf unter Windows),
+# sonst stimmen die Prüfsummen nach dem Auschecken nicht mehr
+# (code/Pruefe-Frontend.ps1, Prüfung 8).
+frontend/vendor/dashboard-style/** -text
+
+# Schriften sind Binärdateien.
+*.woff2 binary

@@ -3,7 +3,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
 
 # Hinweise zur Richtlinie oben. Wird eine dieser Adressen je geändert, muss sie
 # auch hier nachgeführt werden, sonst blockiert der Browser den Aufruf
@@ -16,13 +16,17 @@
 #                               direkt in eine Seite schreibt, muss das hier
 #                               aufweichen: besser den Code in eine .js-Datei.
 #   script-src cdn.jsdelivr.net Für MSAL, die Anmeldebibliothek von Microsoft.
-#                               Sie ist in ALLEN FÜNF Seiten (index, client,
-#                               benutzer, telefon, software .html) mit
-#                               derselben Integritätsprüfsumme
+#                               Sie ist in ALLEN SIEBEN Seiten mit Anmeldung
+#                               (index, client, benutzer, telefon, software,
+#                               kamera, kamerarolle .html; nicht im Styleguide)
+#                               mit derselben Integritätsprüfsumme
 #                               (integrity="sha384-…") auf eine feste Fassung
 #                               festgenagelt. Wird die Version angehoben, müssen
-#                               Adresse und Prüfsumme in allen fünf mit – wer
-#                               nur index.html anhebt, bricht die Detailseiten.
+#                               Adresse und Prüfsumme in allen sieben mit – wer
+#                               nur index.html anhebt, bricht die Detailseiten
+#                               (code/Pruefe-Frontend.ps1 prüft das).
+#                               Dashboard-Style (vendor/dashboard-style/ds.js)
+#                               liegt im Repository und fällt unter 'self'.
 #   style-src 'unsafe-inline'   Jede Seite trägt im <head> die Zeile
 #                               <style>@view-transition { navigation: auto; }</style>
 #                               (Seitenübergänge: aus einer Stilvorlage bricht
@@ -31,12 +35,12 @@
 #                               Custom Properties über element.style (Säulen,
 #                               Indikator, Meldungen). Für Stile ist das
 #                               ungefährlich, für Skripte wäre es das nicht.
-#   style-src fonts.googleapis  Google Sans und Archivo (Google Fonts): das
-#   font-src fonts.gstatic      Stylesheet kommt von fonts.googleapis.com, die
-#                               Schriftdateien von fonts.gstatic.com. Fällt
-#                               beides weg, greift der Fallback ('Segoe UI',
-#                               system-ui), nichts bricht. Archivo ist nur für
-#                               die Wortmarke «ICT.INVENTAR».
+#   font-src 'self'             Google Sans und Archivo liegen selbst gehostet
+#                               im Repository (vendor/dashboard-style/fonts/,
+#                               schriften/; Lizenz SIL OFL 1.1 je daneben).
+#                               Google Fonts wird nicht mehr geladen: kein
+#                               fonts.googleapis.com, kein fonts.gstatic.com.
+#                               Archivo ist nur für die Wortmarke «ICT.INVENTAR».
 #   img-src campus-sursee.ch    Nur für das Favicon. Es wird bewusst direkt
 #                               von campus-sursee.ch geladen (alle Seiten) und
 #                               nicht ins Repository kopiert. (Das Campus-Logo

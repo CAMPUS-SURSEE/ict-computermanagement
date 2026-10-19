@@ -1,197 +1,106 @@
-/* rahmen.css — der App-Rahmen aller Seiten und die schwebenden Ebenen.
+/* rahmen.css — was der App-Rahmen und die Ebenen von ICT-Inventar über
+   Dashboard-Style hinaus brauchen.
 
-   Vorbild ist die Admin-Oberfläche von ChatBob (Aufbau eines Google-
-   Dashboards): ein getönter Hintergrund, darauf ohne Linien und Schatten
-   die Kopfzeile (64 px) und links die Navigationsschublade (256 px), und
-   rechts EINE weisse Tafel mit 20 px Radius oben, die als einziges Element
-   der Seite rollt. html und body rollen nie.
+   Den Rahmen selbst bringt Dashboard-Style (components/shell.css, page.css,
+   sheet.css, dialog.css, toast.css, tooltip.css): ein getönter Grund, darauf
+   ohne Linien und Schatten die Kopfzeile (.ds-topbar, 64 px) und links die
+   Navigation (.ds-drawer, 256 px), rechts EINE weisse Tafel (.ds-panel >
+   main.ds-view) mit 20 px Radius oben, die als einziges Element rollt.
 
      ┌ Kopf: [≡ ≤900] ICT.INVENTAR ········ ( (A) Name/E-Mail │ Abmelden ) ┐
-     │ Schublade │ ╭──── Tafel (.tafel-rahmen > main.tafel) ─────────────╮ │
-     │ Gruppen,  │ │  .bahn (Polster 24/32/96, max 1280, Raster-Abstand 20) │ │
-     │ 48-px-    │ │   Seitenkopf · Karten · Kacheln · Tabellen …           │ │
-     │ Pillen    │ │                                    [Speicherleiste]    │ │
-     └───────────┴─╰────────────────────────────────────────────────────────╯─┘
-       [Meldung unten links in der Tafel]
+     │ Schublade │ ╭── .ds-panel > main.ds-view#tafel ──────────────────╮ │
+     │ Gruppen,  │ │  .ds-content > .ds-page#inhalt (max. 1280, Abstand 20)│ │
+     │ 48-px-    │ │   Seitenkopf · Karten · Kacheln · Tabellen …          │ │
+     │ Pillen    │ │                                   [Speicherleiste]    │ │
+     └───────────┴─╰───────────────────────────────────────────────────────╯─┘
+
+   Hier steht nur, was es nur bei ICT gibt (Wortmarke, Konto-Kapsel,
+   Zurück-Eintrag und Zähler der Schublade, Zustände der Seite, Seitenkopf
+   mit Zurück-Link und Aktionen, Speicherleiste, Rollflächen im Dialog,
+   Meldung über der Speicherleiste, Seitenübergänge) und die wenigen
+   Abweichungen vom Rahmen von Dashboard-Style, je mit Grund.
 
    Inhalt:
-     1. Seitengerüst (Raster, Sprungmarke)
-     2. Kopf (Menüknopf, Wortmarke, Kapsel aus Konto und Abmelden)
-     3. Schublade (Gruppen, Einträge, gleitende Pastell-Pille, Zähler)
-     4. Tafel, Bahn, Kante, Ladebalken, Zustände der Tafel, Seitenwechsel
-     5. Seitenkopf (Zurück-Link, Titel, Teile-Zeile, Status, Aktionen)
-     6. Gerüst der Detailseiten (Bereich)
-     7. Modale Schublade (≤ 900 px) und schmale Fenster (≤ 720 / 600 / 359 px)
-     8. Dialog (Bestätigen, Formulare)
-     9. Seitenblatt (Filter, Spalten, Details)
-    10. Meldung (Snackbar)
-    11. Tooltip
-    12. Speicherleiste
-    13. Seitenübergänge zwischen den HTML-Seiten (View Transitions)
-    14. Kontrastmodus (forced colors)
-    15. Druck (nur der Inhalt, die Tafel läuft über alle Seiten)
+     1. Seitengerüst und Kopf (Wortmarke, Konto-Kapsel)
+     2. Schublade (Zurück-Eintrag, Zähler, Knopf-Einträge)
+     3. Tafel: Ladebalken, Platz am Ende, Tabellenansichten, Zustände
+     4. Seitenkopf (Zurück-Link, Teile-Zeile, Status, Aktionen)
+     5. Gerüst der Detailseiten (.fenster-bereich)
+     6. Schmale Fenster (≤ 900 / 720 / 600 / 359 px)
+     7. Dialog (Rollfläche zwischen Titel und Knöpfen)
+     8. Seitenblatt (Unterzeile, Fusszeile)
+     9. Meldung (über der Speicherleiste, Aktion)
+    10. Speicherleiste
+    11. Seitenübergänge zwischen den HTML-Seiten (View Transitions)
+    12. Kontrastmodus und Druck
 
-   Regeln wie in design.css: nur Tokens (Farben, Radien, Schriften, Dauern,
-   Kurven), keine @keyframes hier — die Namen (einblenden, anheben, wachsen,
-   einschieben, ausblenden, absinken, wegschieben, unbestimmt) stehen in
-   bewegung.css. Animiert werden nur transform, opacity, Farben, box-shadow
-   und clip-path. Hover-Regeln immer in @media (hover: hover). Reduzierte
-   Bewegung schaltet design.css über die Tokens ab, hier steht dafür nichts.
+   Regeln wie in bausteine.css: nur Tokens, keine @keyframes (die Namen
+   ds-fade-in, ds-lift-in … stehen in vendor/dashboard-style/css/motion.css).
+   Reduzierte Bewegung schaltet Dashboard-Style über die Tokens ab.
 
-   Gebaut und gesteuert werden alle Teile von rahmen.js (Rahmen, UI.dialog,
+   Gebaut und gesteuert wird alles von rahmen.js (Rahmen, UI.dialog,
    UI.bestaetigen, UI.blatt, UI.meldung, UI.tipp, UI.speicherleiste). */
 
 
 /* ==================================================================
-   1. Seitengerüst
+   1. Seitengerüst und Kopf
    ================================================================== */
 
-/* Der body selbst ist das Raster. Alles, was rahmen.js später an den body
-   hängt (Schleier, Meldungen, Tooltip, Dialoge), ist fest positioniert und
-   bekommt deshalb keine Rasterzelle. 100dvh statt 100vh: auf Telefonen ist
-   100vh höher als der sichtbare Bereich, das Tafelende läge sonst hinter
-   der Adressleiste (Fehler E3). */
-.app {
-  height: 100vh;
-  height: 100dvh;
-  margin: 0;
+/* body ist .ds-app. Er rollt nie: alles, was rahmen.js später an den body
+   hängt (Dialoge, Meldungen, Tooltip, die Ansage), ist fest positioniert. */
+.ds-app {
   overflow: hidden;
-  display: grid;
-  grid-template-columns: calc(var(--schublade-breit) + env(safe-area-inset-left)) minmax(0, 1fr);
-  grid-template-rows: calc(var(--kopf-hoch) + env(safe-area-inset-top)) minmax(0, 1fr);
-  grid-template-areas:
-    "kopf kopf"
-    "schublade tafel";
-  background: var(--hintergrund);
-  /* Die Wortmarke steht über der linken Kante der Navigationssinnbilder:
-     Einzug der Liste (12) + Polster des Eintrags (16). Die Gruppentitel
-     beginnen auf derselben Linie. */
-  --sinnbild-achse: calc(var(--a3) + var(--a4));
 }
 
-/* Seiten ohne Navigation (ein neues Gerät hat nur das eine Formular): die
-   Tafel nimmt die ganze Breite, wie der Chat-Modus von ChatBob. */
-.app[data-ohne-schublade] {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    "kopf"
-    "tafel";
+/* Die Wortmarke steht über der linken KANTE der Navigationssinnbilder
+   (Einzug der Liste 12 + Polster des Eintrags 16; Dashboard-Style mittet
+   ein 32-px-Logo auf ihrer Achse). Die Gruppentitel beginnen auf derselben
+   Linie. Ohne Schublade (Neu-Formulare) bleibt sie, wo sie mit Schublade
+   steht: beim Wechsel Liste → «Neuer …» rückt der Kopf nicht. */
+.ds-app--drawer {
+  --sinnbild-achse: calc(var(--ds-space-3) + var(--ds-space-4));
 }
 
-.app[data-ohne-schublade] .schublade,
-.app[data-ohne-schublade] .schublade-schleier,
-.app[data-ohne-schublade] .kopf-menue {
-  display: none;
+/* Nur mit fester Schublade: darunter gelten die Abstände von
+   Dashboard-Style (Kopf am Menüknopf) und unten die eigene Regel ohne
+   Schublade (§6). */
+@media (min-width: 901px) {
+  .ds-app--drawer .ds-topbar,
+  .ds-app--drawer[data-drawer-hidden] .ds-topbar {
+    padding-left: max(var(--sinnbild-achse), env(safe-area-inset-left));
+  }
 }
 
-/* Sprungmarke: bis zu einem Dutzend Navigationseinträge stehen vor dem
-   Inhalt. Unsichtbar, bis sie den Fokus hat, dann eine Pille über dem Kopf. */
-.sprungmarke {
-  position: fixed;
-  top: calc(var(--a3) + env(safe-area-inset-top));
-  left: max(var(--a4), env(safe-area-inset-left));
-  z-index: var(--z-meldung);
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--a10);
-  padding: 0 var(--a5);
-  border-radius: var(--r-aktion);
-  background: var(--flaeche);
-  box-shadow: var(--erhebung-2);
-  color: var(--text);
-  font: var(--t-beschriftung);
-  text-decoration: none;
-}
-
-.sprungmarke:focus-visible {
-  outline: var(--fokus-umriss);
-}
-
-.sprungmarke:not(:focus) {
-  width: 1px;
-  height: 1px;
-  min-height: 0;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  box-shadow: none;
-}
-
-
-/* ==================================================================
-   2. Kopf
-   ================================================================== */
-
-/* Liegt direkt auf dem Hintergrund: keine Linie, kein Schatten. */
-.kopf {
-  grid-area: kopf;
-  position: relative;
-  z-index: var(--z-klebend);
-  display: flex;
-  align-items: center;
-  gap: var(--a2);
-  min-width: 0;
-  padding:
-    env(safe-area-inset-top)
-    max(var(--a4), env(safe-area-inset-right))
-    0
-    max(var(--sinnbild-achse), env(safe-area-inset-left));
-}
-
-/* Ohne Schublade (Neu-Formulare) bleibt die Wortmarke, wo sie mit
-   Schublade steht (--sinnbild-achse, oben): beim Wechsel Liste → «Neuer …»
-   rückt der Kopf nicht (der Rahmen bleibt beim Seitenübergang ruhig). */
-
-/* Den Menüknopf gibt es nur mit der modalen Schublade (≤ 900 px). */
-.kopf-menue {
-  display: none;
-  flex-shrink: 0;
-}
-
-/* Die Wortmarke führt zur Übersicht. Sie wird nie gestaucht: eher
-   verschwindet rechts der Name (≤ 720 px). Wie bei ChatBob ohne
-   Hover-Fläche, der Fokusring folgt der Pillenform. */
-.kopf-marke {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  border-radius: var(--r-aktion);
-  color: var(--text);
-  text-decoration: none;
-}
+.ds-topbar__menu { flex-shrink: 0; }
 
 /* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
-   Logo von Campus Sursee, Archivo breit, der Punkt im Campus-Grün. Grösse
-   und Zeilenhöhe der Titelrolle (22/28) wie der Produktname bei ChatBob. */
+   Logo von Campus Sursee, Archivo breit (thema.css), der Punkt im
+   Campus-Grün. Grösse und Zeilenhöhe der Titelrolle (22/28). */
 .wortmarke {
-  font: var(--t-titel);
+  font: var(--ds-font-title);
   font-family: var(--schrift-marke);
   font-stretch: 112%;
   font-weight: var(--gewicht-marke);
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--ds-text);
   white-space: nowrap;
 }
 
 /* Beim harten Laden bleibt sie unsichtbar, bis Archivo da ist (höchstens
    300 ms, rahmen.js): in der Ersatzschrift ist sie schmaler und spränge
    sonst sichtbar in ihre Breite. Ihr Platz bleibt (visibility). */
-.wortmarke[data-schrift-wartet] {
-  visibility: hidden;
-}
+.wortmarke[data-schrift-wartet] { visibility: hidden; }
 
-/* Der Punkt ist wie im Logo ein satter Kreis auf der Grundlinie, deutlich
-   schwerer als die Buchstaben. Als Fläche gezeichnet, nicht als Zeichen,
-   damit Grösse und Lage nicht von der Schrift abhängen. Das «.» bleibt im
-   Text (Vorlesen, Kopieren), ist aber unsichtbar. */
+/* Der Punkt ist wie im Logo ein satter Kreis auf der Grundlinie, als
+   Fläche gezeichnet. Das «.» bleibt im Text (Vorlesen, Kopieren), ist
+   aber unsichtbar. */
 .wortmarke-punkt {
   display: inline-block;
   width: 0.3em;
   height: 0.3em;
   margin: 0 0.08em 0 -0.04em;
-  border-radius: var(--r-rund);
+  border-radius: var(--ds-radius-action);
   background: var(--campus-gruen);
   color: transparent;
   overflow: hidden;
@@ -200,614 +109,265 @@
 
 /* Rechts EINE Kapsel aus Konto und «Abmelden»: weiss auf dem getönten
    Grund wie die Tafel darunter, 1 px Haarlinie, Pillenform. Links die
-   Initiale (32 px, Pastell) mit Name und E-Mail, nach einem Trenner der
-   Text-Knopf; Initiale und Knopf stehen fast rundum gleich weit von der
-   Kante (48 px hoch, Polster 8 links, 4 rechts). */
+   Initiale (immer sichtbar) mit Name und E-Mail, nach einem Trenner der
+   Text-Knopf. 48 px hoch, Polster 8 links, 4 rechts. */
 .kopf-konto {
   display: flex;
   align-items: center;
   flex-shrink: 1;
   min-width: 0;
-  min-height: var(--a12);
+  min-height: var(--ds-space-12);
   margin-left: auto;
-  padding: 0 var(--a1) 0 var(--a2);
-  border: 1px solid var(--linie);
-  border-radius: var(--r-aktion);
-  background: var(--flaeche);
-}
-
-.kopf-konto[hidden],
-.kopf-konto-trenner[hidden] {
-  display: none;
+  padding: 0 var(--ds-space-1) 0 var(--ds-space-2);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface);
 }
 
 /* Ohne «Abmelden» (Vorführmodus) endet die Kapsel nach dem Text. */
-.kopf-konto:has(> .kopf-abmelden[hidden]) {
-  padding-right: var(--a4);
-}
+.kopf-konto:has(> .kopf-abmelden[hidden]) { padding-right: var(--ds-space-4); }
 
-.konto {
-  display: flex;
-  align-items: center;
-  gap: var(--a3);
-  min-width: 0;
-}
+/* .ds-account in der Kapsel: Initiale vorne und immer da, der Text links
+   bündig und höchstens --konto-breit breit. */
+.kopf-konto > .ds-account { margin-left: 0; }
 
-.konto[hidden] {
-  display: none;
-}
-
-.konto-text {
-  min-width: 0;
+.kopf-konto .ds-account__text {
   max-width: var(--konto-breit);
+  text-align: left;
 }
 
-.konto-name,
-.konto-email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.konto-name {
-  color: var(--text);
-  font: var(--t-beschriftung);
-}
-
-.konto-email {
-  color: var(--text-leise);
-  font: var(--t-meta);
-}
-
-.konto-email:empty {
-  display: none;
-}
-
-/* Die Initiale steht immer in der Kapsel; schmal (≤ 720 px) allein, dann
-   nennt sie Name und E-Mail selbst (aria-label, Tooltip auch auf
-   Antippen; rahmen.js macht sie dafür zum Tabstopp). */
-.konto-initiale {
-  display: grid;
-  flex-shrink: 0;
-  width: var(--a8);
-  height: var(--a8);
-  place-items: center;
-  border-radius: var(--r-rund);
-  background: var(--akzent);
-  color: var(--auf-akzent);
-  font: var(--t-beschriftung);
-  user-select: none;
-}
+.kopf-konto .ds-account__avatar { display: grid; }
+.ds-account__email:empty { display: none; }
 
 .kopf-konto-trenner {
   flex-shrink: 0;
   width: 1px;
-  height: var(--a6);
-  margin: 0 var(--a1) 0 var(--a4);
-  background: var(--linie);
+  height: var(--ds-space-6);
+  margin: 0 var(--ds-space-1) 0 var(--ds-space-4);
+  background: var(--ds-line);
 }
 
-.kopf-abmelden {
-  flex-shrink: 0;
-}
+.kopf-abmelden { flex-shrink: 0; }
 
 
 /* ==================================================================
-   3. Schublade
+   2. Schublade
    ================================================================== */
 
-.schublade {
-  grid-area: schublade;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding-left: env(safe-area-inset-left);
-  background: var(--hintergrund);
+/* Einträge sind Links oder (Styleguide, Abschnitte) Knöpfe; Knöpfe setzt
+   Dashboard-Style zurück. Kein Tipp-Blitz auf Links: der Eintrag hat seine
+   eigene Zustandsschicht. */
+.ds-drawer__item { -webkit-tap-highlight-color: transparent; }
+
+/* Der Text nimmt den Platz, der Zähler steht am Ende. */
+.ds-drawer__label { flex: 1; }
+
+/* Zähler am Ende des Eintrags: eine Beschriftung, keine Pille — auf der
+   Pastell-Pille wäre ein Pastell-Zähler unsichtbar. */
+.schublade-zahl {
+  flex-shrink: 0;
+  margin-left: var(--ds-space-2);
+  color: inherit;
+  font: var(--ds-font-caption);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Fokussierbar (tabindex -1) nur, damit ein Klick auf einen Gruppentitel
-   den Fokus in der modalen Schublade hält. Nur die Farbe geht weg: der
-   durchsichtige Rand für den Kontrastmodus bleibt. */
-.schublade:focus {
-  outline-color: transparent;
-}
-
-/* Die Wortmarke wiederholt sich nur in der modalen Schublade, die den Kopf
-   überdeckt. */
-.schublade-kopf {
-  display: none;
-}
-
-/* Die Einträge sind 12 px eingerückt. Die Liste ist die Spur der gleitenden
-   Pille (position/isolation auch ohne Indikator, damit die erste Messung
-   stimmt) und rollt selbst, wenn das Fenster niedrig ist. Klassische
-   Rollleisten (Chrome unter Windows) zögen sonst eine graue Schiene
-   zwischen Schublade und Tafel: der Griff zeigt sich nur, solange Zeiger
-   oder Fokus in der Liste sind. */
-.schublade-liste {
-  position: relative;
-  isolation: isolate;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--a1) var(--a3) var(--a6);
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.schublade-liste:focus-within,
-.schublade-liste[data-ueberlauf] {
-  scrollbar-color: var(--linie-stark) transparent;
-}
+.schublade-zahl:empty { display: none; }
 
 /* Zurück-Eintrag der Detailseiten (Rahmen.navigation zurueck): steht über
-   der Liste und rollt nicht mit ihr. Er sieht aus wie ein Eintrag, nur in
-   voller Textfarbe, und eine Haarlinie auf der Textkante trennt ihn von den
-   Bereichen des Datensatzes. */
+   der Liste und rollt nicht mit ihr. Er sieht aus wie ein Eintrag (Klasse
+   .schublade-eintrag-zurueck als Haken); eine Haarlinie auf der Textkante
+   trennt ihn von den Bereichen des Datensatzes. */
 .schublade-zurueck {
   flex-shrink: 0;
-  padding: var(--a1) var(--a3) 0;
-}
-
-.schublade-zurueck[hidden] {
-  display: none;
+  padding: var(--ds-space-1) var(--ds-space-3) 0;
 }
 
 .schublade-zurueck::after {
   content: '';
   display: block;
   height: 1px;
-  margin: var(--a2) var(--a4) var(--a1);
-  background: var(--linie);
-}
-
-.schublade-eintrag-zurueck,
-.schublade-eintrag-zurueck .icon,
-.schublade-eintrag-zurueck svg {
-  color: var(--text);
-}
-
-@media (hover: hover) {
-  .schublade-liste:hover {
-    scrollbar-color: var(--linie-stark) transparent;
-  }
-}
-
-.schublade-gruppe {
-  display: grid;
-}
-
-/* Satzschreibung, Beschriftungsstil, eine Stufe leiser. Keine Eyebrows. */
-.schublade-titel {
-  margin: 0;
-  padding: var(--a4) var(--a4) var(--a2);
-  color: var(--text-leise);
-  font: var(--t-beschriftung);
-}
-
-.schublade-eintrag {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--a3);
-  width: 100%;
-  min-height: var(--a12);
-  margin: 0;
-  padding: 0 var(--a6) 0 var(--a4);
-  border: 0;
-  border-radius: var(--r-aktion);
-  background: transparent;
-  color: var(--text-leise);
-  font: var(--t-text);
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--dauer-schnell) var(--kurve-standard);
-}
-
-.schublade-eintrag .icon,
-.schublade-eintrag svg {
-  flex-shrink: 0;
-  color: var(--text-leise);
-  transition: color var(--dauer-schnell) var(--kurve-standard);
-}
-
-.schublade-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Zähler am Ende des Eintrags: eine Beschriftung, keine Pille — auf der
-   Pastell-Pille wäre ein Pastell-Zähler unsichtbar. */
-.schublade-zahl {
-  flex-shrink: 0;
-  margin-left: var(--a2);
-  color: inherit;
-  font: var(--t-klein);
-  font-variant-numeric: tabular-nums;
-}
-
-.schublade-zahl:empty {
-  display: none;
-}
-
-/* Zustandsebene (6 % auf grossen Zielen) in der Farbe des Inhalts. */
-.schublade-eintrag::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: currentColor;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dauer-schnell) var(--kurve-standard);
-}
-
-@media (hover: hover) {
-  .schublade-eintrag:hover::before {
-    opacity: var(--zustand-hover-gross);
-  }
-}
-
-.schublade-eintrag:active::before {
-  opacity: var(--zustand-druck);
-  transition-duration: var(--dauer-sofort);
-}
-
-/* Fokusring wie überall aussen (ChatBob: der globale Ring); das Polster
-   der Liste (4 / 12 px) lässt ihm Platz. */
-.schublade-eintrag:focus-visible {
-  outline: var(--fokus-umriss);
-  outline-offset: var(--fokus-abstand);
-}
-
-/* Die aktive Pille: das Pastell gleitet zwischen den Einträgen
-   (Bewegung.indikator); ohne Indikator malt der aktive Eintrag es selbst,
-   so stimmt schon das erste Bild. Das Pastell hat gegen den Hintergrund nur
-   1.3:1, deshalb wird der aktive Eintrag zusätzlich 500 und dunkler — nie
-   Farbe allein. Die Pille ist so breit wie der Eintrag: der Gewichtswechsel
-   verschiebt nichts. */
-.schublade-indikator {
-  border-radius: var(--r-aktion);
-  background: var(--akzent);
-}
-
-.schublade-eintrag[aria-current="page"] {
-  background: var(--akzent);
-  font: var(--t-beschriftung);
-}
-
-.schublade-liste.hat-indikator .schublade-eintrag[aria-current="page"] {
-  background: transparent;
-}
-
-.schublade-eintrag[aria-current="page"],
-.schublade-eintrag[aria-current="page"] .icon,
-.schublade-eintrag[aria-current="page"] svg {
-  color: var(--auf-akzent);
-}
-
-.schublade-schleier {
-  display: none;
+  margin: var(--ds-space-2) var(--ds-space-4) var(--ds-space-1);
+  background: var(--ds-line);
 }
 
 
 /* ==================================================================
-   4. Tafel, Bahn, Kante, Ladebalken, Zustände
+   3. Tafel: Ladebalken, Platz am Ende, Tabellenansichten, Zustände
    ================================================================== */
 
-/* Der gerundete Rahmen. Er rollt nicht selbst: eine klassische Rollleiste
-   ignoriert den Radius ihres eigenen Kastens und würde die Ecke oben rechts
-   eckig machen; der Rahmen schneidet den Roller darin rund ab. Kein
-   clip-path: der würde fest positionierte Nachfahren mitschneiden. */
-.tafel-rahmen {
-  grid-area: tafel;
-  min-height: 0;
-  min-width: 0;
-  margin: 0 max(var(--a4), env(safe-area-inset-right)) 0 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: var(--r-tafel) var(--r-tafel) 0 0;
-  background: var(--flaeche);
-}
-
-.app[data-ohne-schublade] .tafel-rahmen {
-  margin-left: max(var(--a4), env(safe-area-inset-left));
-}
-
-/* Der einzige Roller der App, mit ruhigem Griff auf klarer Spur.
-   Positioniert, damit absolut platzierte Nachfahren (.nur-sr-Texte) in ihm
+/* Positioniert, damit absolut platzierte Nachfahren (.ds-sr-Texte) in ihr
    bleiben: sonst hängen sie am Fenster, verlängern das Dokument, und ein
-   scrollIntoView rollt den ganzen Rahmen samt Kopf aus dem Bild (ChatBob
-   .cba-table-wrap aus demselben Grund). */
-.tafel {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  padding-bottom: env(safe-area-inset-bottom);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  scrollbar-width: thin;
-  scrollbar-color: var(--linie-stark) transparent;
-}
+   scrollIntoView rollt den ganzen Rahmen samt Kopf aus dem Bild. */
+.ds-view { position: relative; }
 
-/* Programmatisches Fokusziel (Sprungmarke, Seitenwechsel): ohne Ring. */
-.tafel:focus,
-.tafel :is(h1, h2)[tabindex="-1"]:focus {
-  outline: none;
-}
-
-/* Kante: eine Haarlinie oben in der Tafel, nur solange Inhalt darunter
-   gerollt ist. Klebt im Roller und nimmt keinen Platz ein. */
-.tafel::before {
-  content: '';
-  position: sticky;
-  top: 0;
-  z-index: var(--z-klebend);
+/* Ladebalken der Seite: klebt oben in der Tafel über dem Inhalt (bei
+   Dashboard-Style steht er im Skelett) und erscheint erst nach 200 ms. */
+.ds-view > .ds-loadbar {
+  z-index: var(--ds-z-sticky);
   flex-shrink: 0;
-  height: 1px;
-  margin-bottom: -1px;
-  background: var(--linie);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dauer-schnell) var(--kurve-standard);
+  margin: 0 0 calc(-1 * var(--ds-space-1));
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
 }
 
-.tafel[data-gerollt]::before {
-  opacity: 1;
+/* Die Bahn (.ds-content) füllt die Tafel nach unten: die Speicherleiste
+   (ohne eigene Höhe, nach der Bahn) steht dann auch bei kurzem Inhalt am
+   unteren Rand. --bahn-unten ist ihr unteres Polster (wie in
+   Dashboard-Style: Abstand, Platz für eine zweizeilige Meldung, 8 px). */
+.ds-view > .ds-content {
+  --bahn-unten: calc(var(--ds-space-6) + var(--ds-toast-room) + var(--ds-space-2));
+  flex: 1 0 auto;
 }
+
+/* Ein einzelner Knopf auf Seitenebene behält seine Breite. */
+.ds-page > .ds-btn,
+.fenster-bereich > .ds-btn { justify-self: start; }
 
 /* Tabellenansichten (Rahmen.fest): Bei genug Platz rollt die Tafel nicht,
    die Ansicht ist eine Spalte (Seitenkopf, Werkzeugleiste, Chips) und die
    Tabelle füllt den Rest und rollt selbst. Unten genügt der normale
-   Abstand. Die Grenzen sind gemessen: darunter (Telefon, niedrige Fenster,
-   200 % Zoom) blieben für die Liste neben Kopf, Werkzeugleiste und Chips
-   nur 0–3 Zeilen, und über dem Seitenkopf rollte nichts. */
-.tafel[data-fest] > .bahn {
-  --bahn-unten: var(--a6);
+   Abstand. Darunter (Telefon, niedrige Fenster, 200 % Zoom) blieben für
+   die Liste nur 0–3 Zeilen: dann rollt die Tafel wie jede Seite. */
+.ds-view[data-fest] > .ds-content {
+  --bahn-unten: var(--ds-space-6);
   padding-bottom: var(--bahn-unten);
 }
 
 @media (min-width: 601px) and (min-height: 720px) {
-  .tafel[data-fest] {
-    overflow: hidden;
-  }
+  .ds-view[data-fest] { overflow: hidden; }
 
-  .tafel[data-fest] > .bahn {
+  .ds-view[data-fest] > .ds-content,
+  .ds-view[data-fest] > .ds-content > .ds-page {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
   }
 
-  /* Die sichtbare Ansicht füllt den Rest der Tafel als Spalte im
-     Seitenrhythmus; darin nimmt .tabelle-rahmen (flex 1, eigener Roller)
-     den restlichen Platz. So braucht keine Seite eigenes Layout dafür. */
-  .tafel[data-fest] > .bahn > :not(.bahn-zustand, .bahn-vorfuehrung, [hidden]) {
+  /* Die sichtbare Ansicht füllt den Rest als Spalte im Seitenrhythmus;
+     darin nimmt .tabelle-rahmen (flex 1, eigener Roller) den Platz. */
+  .ds-view[data-fest] > .ds-content > .ds-page > :not(.bahn-zustand, .bahn-vorfuehrung, [hidden]) {
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--a5);
+    gap: var(--ds-space-5);
   }
 }
 
-/* Zu wenig Platz: Die Tafel rollt wie jede andere Seite (wie ChatBob auf
-   dem Telefon). Die Liste bleibt ein eigener Roller – nur so kleben ihr
-   Kopf und die erste Spalte –, ist aber höchstens so hoch wie die Tafel
-   ohne ihr unteres Polster: ganz hinuntergerollt füllt sie das Fenster
-   samt Kopfzeile, und das Mausrad rollt erst die Liste, an ihrem Ende
-   wieder die Tafel. */
+/* Zu wenig Platz: die Liste bleibt ein eigener Roller (nur so kleben Kopf
+   und erste Spalte), ist aber höchstens so hoch wie die Tafel ohne ihr
+   unteres Polster: das Mausrad rollt erst die Liste, an ihrem Ende wieder
+   die Tafel. */
 @media (max-width: 600px), (max-height: 719.98px) {
-  .tafel[data-fest] .tabelle-rahmen {
-    max-height: calc(100dvh - var(--kopf-hoch) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
-      - var(--bahn-unten) - var(--a2));
+  .ds-view[data-fest] .tabelle-rahmen {
+    max-height: calc(100dvh - var(--ds-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+      - var(--bahn-unten) - var(--ds-space-2));
   }
 }
 
 /* Platz am Tafelende für Speicherleiste und Fehlermeldungen (rahmen.js):
    - [data-leiste], solange die Speicherleiste steht: --leiste-reserve =
      ihre Höhe + Abstand unten + 8 px, als scroll-padding (Fokus und
-     scrollIntoView halten Felder über ihr, Spec 7.2 #1) und als
-     Mindestpolster der Bahn (eine umbrechende, höhere Leiste);
-   - [data-leiste-rest], nachdem sie ging, bis das Polster aus dem Bild
-     ist (--leiste-rest): sonst rutschte der Inhalt am Tafelende nach unten;
+     scrollIntoView halten Felder über ihr) und als Mindestpolster der Bahn;
+   - [data-leiste-rest], nachdem sie ging, bis das Polster aus dem Bild ist
+     (--leiste-rest): sonst rutschte der Inhalt am Tafelende nach unten;
    - [data-meldung-platz], solange eine Fehlermeldung offen ist
-     (--meldung-reserve, darüber noch 24 px): sie verdeckt nie die letzten
+     (--ds-toast-reserve, darüber noch 24 px): sie verdeckt nie die letzten
      Aktionen.
    Bewusst als Polster der Bahn und nicht der Tafel. */
-.tafel {
-  --meldung-zusatz: 0px;
+.ds-view { --meldung-zusatz: 0px; }
+
+.ds-view[data-meldung-platz] { --meldung-zusatz: calc(var(--ds-space-6) + var(--ds-toast-reserve, 0px)); }
+
+.ds-view:is([data-leiste], [data-meldung-platz]) {
+  scroll-padding-bottom: calc(var(--leiste-reserve, 0px) + var(--ds-toast-reserve, 0px));
 }
 
-.tafel[data-meldung-platz] {
-  --meldung-zusatz: calc(var(--a6) + var(--meldung-reserve, 0px));
-}
-
-.tafel:is([data-leiste], [data-meldung-platz]) {
-  scroll-padding-bottom: calc(var(--leiste-reserve, 0px) + var(--meldung-reserve, 0px));
-}
-
-.tafel:is([data-leiste], [data-leiste-rest], [data-meldung-platz]) > .bahn {
+.ds-view:is([data-leiste], [data-leiste-rest], [data-meldung-platz]) > .ds-content {
   padding-bottom: max(var(--bahn-unten), var(--leiste-rest, 0px),
     calc(var(--leiste-reserve, 0px) + var(--meldung-zusatz)));
 }
 
-/* Die Bahn: höchstens --bahn-max breit, mittig. Die Breite der Tafel, nicht
-   die des Fensters, entscheidet über schmale Darstellungen (Container-
-   Abfragen auf «bahn»). Am Ende bleibt Platz für eine zweizeilige Meldung. */
-.bahn {
-  container: bahn / inline-size;
-  /* Füllt die Tafel nach unten: die Speicherleiste (ohne eigene Höhe, nach
-     der Bahn) steht dann auch bei kurzem Inhalt am unteren Rand. */
-  flex: 1 0 auto;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: calc(var(--bahn-max) + 2 * var(--a8));
-  margin: 0 auto;
-  --bahn-unten: calc(var(--a6) + var(--meldung-platz) + var(--a2));
-  padding: var(--a6) var(--a8) var(--bahn-unten);
-  display: grid;
-  /* Eine Spalte, die nie breiter wird als die Bahn: ein breites Kind (eine
-     Liste, die seitlich rollt) rollt in sich, statt die Tafel zu weiten. */
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--a5);
-  align-content: start;
-  min-width: 0;
-}
-
-/* Der Abstand der Bahn ist der Rhythmus: ein Schlusssatz hat keinen
-   Browser-Rand. Ein einzelner Knopf auf Seitenebene behält seine Breite. */
-.bahn > p {
-  margin: 0;
-}
-
-.bahn > .knopf,
-.fenster-bereich > .knopf {
-  justify-self: start;
-}
-
-/* Ladebalken: 4 px oben in der Tafel, klebend, Spur Pastell, ein Segment
-   läuft durch. Erscheint erst nach 200 ms (kurze Ladezeiten zeigen nie
-   einen Lader). */
-.ladebalken {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-klebend);
-  flex-shrink: 0;
-  display: block;
-  height: var(--a1);
-  margin-bottom: calc(-1 * var(--a1));
-  overflow: hidden;
-  background: var(--akzent);
-  animation: einblenden var(--dauer-mittel) var(--kurve-standard) var(--verzoegerung-lader) backwards;
-}
-
-.ladebalken::before {
-  content: '';
-  display: block;
-  width: 35%;
-  height: 100%;
-  border-radius: var(--r-aktion);
-  background: var(--primaer);
-  animation: unbestimmt var(--schleife-unbestimmt) var(--kurve-standard) infinite;
-}
-
-.ladebalken[hidden] {
-  display: none;
-}
-
-/* Zustände der Bahn: solange geladen wird oder ein Fehler steht, ist der
+/* Zustände der Seite: solange geladen wird oder ein Fehler steht, ist der
    Seiteninhalt aus dem Bild (nicht aus dem DOM, die Seite baut weiter);
    sichtbar bleiben nur der Vorführ-Hinweis und der Zustandsblock. Das
    Attribut steht schon im HTML, damit vor dem ersten Skript nichts
    Halbfertiges aufblitzt. */
-.bahn[data-zustand="laden"] > :not(.bahn-vorfuehrung, .bahn-zustand),
-.bahn[data-zustand="fehler"] > :not(.bahn-vorfuehrung, .bahn-zustand),
-.bahn[data-zustand="ende"] > :not(.bahn-vorfuehrung, .bahn-zustand) {
+.ds-page[data-zustand="laden"] > :not(.bahn-vorfuehrung, .bahn-zustand),
+.ds-page[data-zustand="fehler"] > :not(.bahn-vorfuehrung, .bahn-zustand),
+.ds-page[data-zustand="ende"] > :not(.bahn-vorfuehrung, .bahn-zustand) {
   display: none !important;
 }
 
 .bahn-zustand {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a5);
+  gap: var(--ds-space-5);
   min-width: 0;
 }
 
-.bahn-zustand:empty {
-  display: none;
-}
+.bahn-zustand:empty { display: none; }
 
-/* Das Skelett samt Fortschrittszeile erscheint erst nach 200 ms (die
-   Blende trägt .skelett selbst, design.css). */
+/* Das Skelett samt Fortschrittszeile erscheint erst nach 200 ms. */
 .zustand-laden {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a4);
+  gap: var(--ds-space-4);
 }
 
-/* Bei ChatBob ist der Ladebalken das erste Rasterkind des Skeletts und
-   bringt eine Rasterlücke von 16 px mit: der Titel-Platzhalter steht 40 px
-   unter der Tafelkante. Hier klebt der Balken ausserhalb der Bahn, darum
-   steht die Lücke als Polster da. */
-.zustand-laden > .skelett {
-  padding-top: var(--a4);
-}
+/* Bei Dashboard-Style ist der Ladebalken das erste Rasterkind des Skeletts
+   und bringt eine Lücke von 16 px mit; hier klebt er ausserhalb der Bahn,
+   darum steht die Lücke als Polster da. */
+.zustand-laden > .ds-skeleton { padding-top: var(--ds-space-4); }
 
 /* Die Fortschrittszeile steht im Skelett an der Stelle des Leads. */
 .zustand-fortschritt {
-  margin: calc(-1 * var(--a2)) 0 0;
-  color: var(--text-leise);
-  font: var(--t-meta);
+  margin: calc(-1 * var(--ds-space-2)) 0 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
   font-variant-numeric: tabular-nums;
 }
 
-.zustand-fortschritt:empty {
-  display: none;
-}
+.zustand-fortschritt:empty { display: none; }
 
 /* Seitenwechsel innerhalb der Seite (Rahmen.wechseln), ausgehende Hälfte:
-   kurz und beschleunigend. Zurück springt es ohne Übergang, der neue Inhalt
-   tritt selbst ein. */
+   kurz und beschleunigend (wie .ds-view--leaving, aber nur für die
+   ausgehenden Ansichten, nicht für alles in der Tafel). */
 .wechsel-weg {
   opacity: 0;
-  transition: opacity var(--dauer-sofort) var(--kurve-beschleunigen);
+  transition: opacity var(--ds-dur-instant) var(--ds-ease-in);
 }
 
 
 /* ==================================================================
-   5. Seitenkopf
+   4. Seitenkopf (UI.seitenkopf)
+   Titel und Lead sind .ds-page-head; dazu der Zurück-Link darüber, die
+   Teile-Zeile, Status-Chips und Aktionen rechts (auf schmalen Bahnen
+   darunter).
    ================================================================== */
 
-/* Titel 24/32, darunter Lead oder Teile-Zeile 14/20 und Status-Chips;
-   Aktionen rechts, auf schmalen Bahnen darunter. Der Seitenabstand (20)
-   plus 4 px Rand ergibt 24 px bis zum ersten Block. Gebaut wird er nur von
-   UI.seitenkopf (rahmen.js; F.seitenkopf und der Fehlerzustand benutzen
-   denselben Bauer). */
-.seitenkopf {
-  display: grid;
-  gap: var(--a1);
-  margin-bottom: var(--a1);
-  min-width: 0;
-}
+.ds-page-head:empty { display: none; }
 
-.seitenkopf:empty {
-  display: none;
-}
-
-/* Zurück-Link «‹ ADMIN-Clients» (.knopf.knopf-leise.knopf-klein): sein
-   Polster hängt in den Rand, damit der Text auf der Titelkante steht. */
+/* Zurück-Link «‹ ADMIN-Clients» (Text-Knopf, klein): sein Polster hängt in
+   den Rand, damit der Text auf der Titelkante steht. */
 .seitenkopf-pfad {
   justify-self: start;
-  margin: 0 0 var(--a1) calc(-1 * var(--a3));
-}
-
-.seitenkopf-pfad[hidden] {
-  display: none;
+  margin: 0 0 var(--ds-space-1) calc(-1 * var(--ds-space-3));
 }
 
 /* Steht die Schublade fest daneben und trägt sie den Zurück-Eintrag, wäre
-   der Link hier doppelt. Ohne Schublade (Neu-Formular, Fehler) und bei der
-   modalen (≤ 900 px) bleibt er der Weg zurück. */
+   der Link hier doppelt. */
 @media (width > 900px) {
-  .app[data-zurueck] .seitenkopf-pfad {
-    display: none;
-  }
+  .ds-app[data-zurueck] .seitenkopf-pfad { display: none; }
 }
 
 .seitenkopf-zeile {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--a3) var(--a4);
+  gap: var(--ds-space-3) var(--ds-space-4);
   min-width: 0;
 }
 
@@ -815,377 +375,158 @@
   flex: 1 1 20rem;
   min-width: 0;
   display: grid;
-  gap: var(--a1);
+  gap: var(--ds-space-1);
 }
 
-.seitenkopf-titel {
-  margin: 0;
-  color: var(--text);
-  font: var(--t-ueberschrift);
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
-.seitenkopf-lead,
+/* Lead und Teile-Zeile mit tabellarischen Ziffern («47 von 163»). */
+.ds-page-head__lead,
 .seitenkopf-unter {
   margin: 0;
-  max-width: var(--mass);
-  color: var(--text-leise);
-  font: var(--t-text);
+  max-width: var(--ds-measure);
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
   font-variant-numeric: tabular-nums;
   text-wrap: pretty;
 }
 
-.seitenkopf-lead:empty,
-.seitenkopf-unter:empty {
-  display: none;
-}
+.ds-page-head__lead:empty,
+.seitenkopf-unter:empty { display: none; }
 
 .seitenkopf-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--a2);
-  margin-top: var(--a2);
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-2);
 }
 
-.seitenkopf-status:empty {
-  display: none;
-}
+.seitenkopf-status:empty { display: none; }
 
 .seitenkopf-aktionen {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
   margin-left: auto;
 }
 
-.seitenkopf-aktionen:empty {
-  display: none;
-}
+.seitenkopf-aktionen:empty { display: none; }
 
-/* Ein Text-Knopf hinten hängt sein Polster in den Rand (wie die Knöpfe im
-   Kartenkopf, ChatBob .cba-card__row): sein Text endet auf der Kante von
-   Banner und Karten darunter. Umrandete und gefüllte Knöpfe bleiben bündig. */
-.seitenkopf-aktionen:has(> .knopf-leise:last-child) {
-  margin-right: calc(-1 * var(--a3));
-}
+/* Ein Text-Knopf hinten hängt sein Polster in den Rand: sein Text endet
+   auf der Kante von Banner und Karten darunter. */
+.seitenkopf-aktionen:has(> .ds-btn--text:last-child) { margin-right: calc(-1 * var(--ds-space-3)); }
 
-/* Schmale Bahn: die Aktionen stehen links unter dem Titel. */
-@container bahn (max-width: 600px) {
+/* Schmale Bahn: die Aktionen stehen links unter dem Titel; ein Text-Knopf
+   vorne fluchtet mit dem Titel. */
+@container ds-content (max-width: 600px) {
   .seitenkopf-aktionen,
-  .seitenkopf-aktionen:has(> .knopf-leise:last-child) {
+  .seitenkopf-aktionen:has(> .ds-btn--text:last-child) {
     justify-content: flex-start;
     margin-left: 0;
     margin-right: 0;
   }
 
-  /* Ein Text-Knopf vorne hängt sein Polster in den Rand und fluchtet so
-     mit dem Titel (wie der Zurück-Link darüber). */
-  .seitenkopf-aktionen > .knopf-leise:first-child {
-    margin-left: calc(-1 * var(--a3));
-  }
+  .seitenkopf-aktionen > .ds-btn--text:first-child { margin-left: calc(-1 * var(--ds-space-3)); }
 }
 
 
 /* ==================================================================
-   6. Gerüst der Detailseiten
+   5. Gerüst der Detailseiten
+   Der Bereich, den fenster.js je nach Navigation füllt: Karten im
+   Seitenrhythmus untereinander.
    ================================================================== */
 
-/* Der Bereich, den fenster.js je nach Navigation füllt: Karten im
-   Seitenrhythmus untereinander. */
 .fenster-bereich {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--a5);
+  gap: var(--ds-space-5);
   align-content: start;
   min-width: 0;
 }
 
-.fenster-bereich:empty {
-  display: none;
-}
+.fenster-bereich:empty { display: none; }
 
 
 /* ==================================================================
-   7. Modale Schublade und schmale Fenster
+   6. Schmale Fenster
    ================================================================== */
 
-/* Gleiche Grenze wie MODAL_ABFRAGE in rahmen.js. */
+/* Modale Schublade (gleiche Grenze wie MODAL_ABFRAGE in rahmen.js): der
+   Kopf rückt an den Menüknopf (Dashboard-Style); ohne Schublade steht er
+   schon ab 900 px am schmalen Seitenrand von 16 px, nicht erst ab 600. */
 @media (max-width: 900px) {
-  .app {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "kopf"
-      "tafel";
-  }
-
-  .tafel-rahmen {
-    margin-left: max(var(--a4), env(safe-area-inset-left));
-  }
-
-  .app .kopf {
-    padding-left: max(var(--a2), env(safe-area-inset-left));
-  }
-
-  .kopf-menue {
-    display: inline-flex;
-  }
-
-  .app[data-ohne-schublade] .kopf {
-    padding-left: max(var(--a4), env(safe-area-inset-left));
-  }
-
-  .schublade {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-schublade);
-    width: min(calc(var(--schublade-breit) + env(safe-area-inset-left)), calc(100vw - 56px));
-    padding-top: env(safe-area-inset-top);
-    border-radius: 0 var(--r-dialog) var(--r-dialog) 0;
-    box-shadow: var(--erhebung-3);
-    /* Unsichtbar; der Kontrastmodus malt ihn, so behält das Blatt eine
-       Kante gegen die Seite. */
-    outline: 1px solid transparent;
-    /* Ein deckendes Blatt: es gleitet nur, der Schleier blendet. */
-    visibility: hidden;
-    transform: translateX(calc(-1 * var(--weg-blatt)));
-    transition:
-      transform var(--dauer-basis) var(--kurve-beschleunigen),
-      visibility 0ms linear var(--dauer-basis);
-  }
-
-  .app[data-schublade-offen] .schublade {
-    visibility: visible;
-    transform: none;
-    transition:
-      transform var(--dauer-langsam) var(--kurve-betont),
-      visibility 0ms;
-  }
-
-  /* Die modale Schublade ist zu, wenn der aktive Eintrag wechselt: die
-     Pille muss nur beim nächsten Öffnen stimmen, nicht gleiten. */
-  .schublade .schublade-indikator {
-    transition: none;
-  }
-
-  /* Die Wortmarke steht dort, wo der Kopf sie zeigt (Menüknopf-Einzug,
-     40-px-Knopf, Abstand), damit sie beim Hereingleiten nicht springt. */
-  .schublade-kopf {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    height: var(--kopf-hoch);
-    padding: 0 var(--a6) 0 calc(var(--a2) + var(--a10) + var(--a2));
-  }
-
-  .schublade-schleier {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-schublade);
-    background: var(--schleier);
-    visibility: hidden;
-    opacity: 0;
-    transition:
-      opacity var(--dauer-basis) var(--kurve-beschleunigen),
-      visibility 0ms linear var(--dauer-basis);
-  }
-
-  .app[data-schublade-offen] .schublade-schleier {
-    visibility: visible;
-    opacity: 1;
-    transition:
-      opacity var(--dauer-basis) var(--kurve-standard),
-      visibility 0ms;
-  }
+  .ds-app--drawer[data-drawer-hidden] .ds-topbar { padding-left: max(var(--ds-space-4), env(safe-area-inset-left)); }
 }
 
 /* Konto als Initiale: Name und E-Mail weichen, die Kapsel bleibt. */
 @media (max-width: 720px) {
-  .konto-text {
-    display: none;
-  }
-
-  .kopf-konto-trenner {
-    margin-left: var(--a2);
-  }
-
-  .kopf-konto:has(> .kopf-abmelden[hidden]) {
-    padding-right: var(--a2);
-  }
-
-  .bahn {
-    padding-top: var(--a5);
-    padding-inline: var(--a4);
-  }
+  .kopf-konto-trenner { margin-left: var(--ds-space-2); }
+  .kopf-konto:has(> .kopf-abmelden[hidden]) { padding-right: var(--ds-space-2); }
 }
 
-/* Telefone: die Tafel randlos (die runde Oberkante bleibt), die Wortmarke
-   kleiner, die Meldung näher am Rand. */
+/* Telefone: die Wortmarke kleiner, die Bahn mit weniger Polster unten. */
 @media (max-width: 600px) {
-  .tafel-rahmen,
-  .app[data-ohne-schublade] .tafel-rahmen {
-    margin: 0;
-  }
-
-  .tafel {
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .kopf-marke .wortmarke,
-  .schublade-kopf .wortmarke {
-    font: var(--t-lesen);
+  .ds-brand .wortmarke,
+  .ds-drawer__head .wortmarke {
+    font: var(--ds-font-reading);
     font-family: var(--schrift-marke);
     font-stretch: 112%;
     font-weight: var(--gewicht-marke);
   }
 
-  .bahn {
-    --bahn-unten: calc(var(--a4) + var(--meldung-platz) + var(--a2));
-  }
+  .ds-view > .ds-content { --bahn-unten: calc(var(--ds-space-4) + var(--ds-toast-room) + var(--ds-space-2)); }
 }
 
 /* 320 px (400 % Zoom): kein Platz für Wortmarke, Initiale und «Abmelden».
-   Ohne Initiale (und Trenner) bleiben Name und E-Mail für Screenreader,
-   unsichtbar; die Kapsel trägt dann nur «Abmelden». */
+   Ohne Initiale (und Trenner) bleiben Name und E-Mail für Screenreader
+   (Dashboard-Style blendet sie unsichtbar ein); die Kapsel trägt dann nur
+   «Abmelden», im Vorführmodus gar nichts. */
 @media (max-width: 359px) {
-  .konto-initiale,
-  .kopf-konto-trenner {
-    display: none;
-  }
+  .kopf-konto .ds-account__avatar,
+  .kopf-konto-trenner { display: none; }
 
-  .kopf-konto {
-    padding-left: var(--a1);
-  }
-
-  /* Ohne «Abmelden» (Vorführmodus) bliebe eine leere Kapsel. */
-  .kopf-konto:has(> .kopf-abmelden[hidden]) {
-    display: none;
-  }
-
-  .konto-text {
-    display: block;
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+  .kopf-konto { padding-left: var(--ds-space-1); }
+  .kopf-konto:has(> .kopf-abmelden[hidden]) { display: none; }
 }
 
 
 /* ==================================================================
-   8. Dialog
+   7. Dialog (UI.dialog, UI.bestaetigen)
+   Eine Spalte aus Titel, Inhalt (.dialog-inhalt) und Knopfzeile: ist der
+   Dialog höher als das Fenster, bleiben Titel und Knöpfe stehen, und NUR
+   der Inhalt dazwischen rollt – eine einzige Rollfläche. Dashboard-Style
+   rollt die ganze Fläche; dann läge «Abbrechen» unter dem Rand.
    ================================================================== */
 
-/* Dialog und Blatt sind eigene Ebenen über dem ganzen Fenster (wie bei
-   ChatBob), kein natives <dialog>: dessen Modalität hielte die Seite noch
-   während des Austritts inert, der Fokus käme erst danach zurück. Die
-   Wurzel ist nur die durchsichtige Bühne; Schleier und Fläche darin sind
-   eigene Elemente, damit beide ihren Austritt spielen können. rahmen.js
-   macht den Rest der Seite inert und fängt Tab und Esc. */
-.dialog,
-.blatt {
-  position: fixed;
-  inset: 0;
-  color: var(--text);
-}
-
-.dialog {
-  z-index: var(--z-dialog);
-  display: grid;
-  place-items: center;
-  padding: var(--a4);
-}
-
-/* Die Fläche nimmt den Fokus nur als Parkplatz (ohne Ring). */
-.dialog-flaeche:focus,
-.blatt-flaeche:focus {
-  outline: none;
-}
-
-.dialog-schleier,
-.blatt-schleier {
-  position: absolute;
-  inset: 0;
-  background: var(--schleier);
-  animation: einblenden var(--dauer-basis) var(--kurve-standard) backwards;
-}
-
-/* 400 px für Fragen, 560 px für Formulare und Listen; Radius 16, Ebene 3.
-   Tritt ein: Blende 250 auf der Standardkurve + 8 px Heben und .98 → 1 auf
-   der bremsenden. Der durchsichtige Rand malt im Kontrastmodus die Kante.
-   Eine Spalte aus Titel, Inhalt und Knopfzeile: ist der Dialog höher als
-   das Fenster, bleiben Titel und Knöpfe stehen, und NUR der Inhalt
-   dazwischen rollt – eine einzige Rollfläche. Früher rollte die ganze
-   Fläche: «Abbrechen» lag dann unter dem Rand. */
-.dialog-flaeche {
-  position: relative;
-  width: min(400px, 100%);
-  max-height: 100%;
+.ds-dialog__box {
   overflow: hidden;
-  padding: var(--a6);
   display: flex;
   flex-direction: column;
-  gap: var(--a4);
-  border: 1px solid transparent;
-  border-radius: var(--r-dialog);
-  background: var(--flaeche);
-  box-shadow: var(--erhebung-3);
-  text-align: left;
-  animation:
-    einblenden var(--dauer-mittel) var(--kurve-standard) backwards,
-    wachsen var(--dauer-mittel) var(--kurve-bremsen) backwards;
 }
 
-.dialog-breit .dialog-flaeche {
-  width: min(560px, 100%);
-}
+/* 560 px für Formulare und Listen (UI.dialog({ breit: true })). */
+.dialog-breit { --ds-dialog-width: 560px; }
 
-/* Schliessen: Zustand und Fokus wechseln sofort, nur die Pixel gehen einen
-   Moment später — kürzer als sie kamen, beschleunigend, 4 px absinkend. */
-.dialog[data-schliesst],
-.blatt[data-schliesst] {
-  pointer-events: none;
-}
+/* Fläche und Blatt nehmen den Fokus nur als Parkplatz (ohne Ring). */
+.ds-dialog__box:focus,
+.ds-sheet__panel:focus { outline: none; }
 
-.dialog[data-schliesst] .dialog-schleier {
-  animation: ausblenden var(--dauer-schnell) var(--kurve-beschleunigen) forwards;
-}
+.ds-dialog__title,
+.ds-dialog__actions { flex-shrink: 0; }
 
-.dialog[data-schliesst] .dialog-flaeche {
-  --bewegung-weg: var(--weg-s);
-  animation: absinken var(--dauer-schnell) var(--kurve-beschleunigen) forwards;
-}
+.ds-dialog__actions:empty { display: none; }
 
-.dialog-titel {
-  flex-shrink: 0;
-  margin: 0;
-  color: var(--text);
-  font: var(--t-titel);
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
-/* Der Inhalt ist die Rollfläche des Dialogs; er schrumpft als Einziger.
-   Seine Kinder schrumpfen nie (auch eine Tabellenhülle mit eigenem
-   overflow nicht) – ausser einer Liste, siehe unten.
-   Der Fokusring eines Felds am Rand (2 px Abstand + 2 px Strich ausserhalb)
+/* Der Inhalt ist die Rollfläche; er schrumpft als Einziger, seine Kinder
+   nie (ausser einer Liste, unten). Der Fokusring eines Felds am Rand
    würde vom Rollen abgeschnitten: der Inhalt greift um diesen Raum in das
    Polster der Fläche aus und gibt ihn innen als Polster zurück. */
 .dialog-inhalt {
-  --dialog-fokusraum: calc(var(--fokus-breite) + var(--fokus-abstand));
+  --dialog-fokusraum: calc(var(--ds-focus-width) + var(--ds-focus-offset));
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
-  gap: var(--a4);
+  gap: var(--ds-space-4);
   min-width: 0;
   min-height: 0;
   margin: calc(-1 * var(--dialog-fokusraum));
@@ -1193,40 +534,29 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--linie-stark) transparent;
+  scrollbar-color: var(--ds-line-2) transparent;
 }
 
-.dialog-inhalt > * {
-  flex-shrink: 0;
-}
+.dialog-inhalt > * { flex-shrink: 0; }
+.dialog-inhalt:empty { display: none; }
 
-.dialog-inhalt:empty {
-  display: none;
-}
-
-/* Fliesstext im Dialog nennt die Folge, eine Stufe leiser als der Titel;
-   8 px unter dem Titel statt 16. :where hält die Gewichtung tief, damit
-   Tonklassen der Seite gewinnen. */
-:where(.dialog-inhalt) > p,
-.dialog-text {
+/* Fliesstext im Dialog nennt die Folge (wie .ds-dialog__text); 8 px unter
+   dem Titel statt 16. :where hält die Gewichtung tief (Tonklassen gewinnen). */
+:where(.dialog-inhalt) > p {
   margin: 0;
-  color: var(--text-leise);
-  font: var(--t-text);
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
 }
 
-.dialog-inhalt:has(> p:first-child, > .dialog-text:first-child) {
-  margin-top: calc(-1 * (var(--dialog-fokusraum) + var(--a2)));
+.dialog-inhalt:has(> p:first-child, > .ds-dialog__text:first-child) {
+  margin-top: calc(-1 * (var(--dialog-fokusraum) + var(--ds-space-2)));
 }
 
 /* Eine Liste im Dialog (.dialog-liste: Treffer einer Suche) rollt selbst
-   und nimmt die Resthöhe: wird der Dialog knapp, schrumpft sie, statt die
-   Knöpfe aus dem Bild zu schieben; Platz genug, zeigt sie höchstens 420 px.
-   Was über ihr steht (Text, Suchfeld), bleibt stehen, und der Inhalt
-   selbst rollt nicht – es bleibt bei einer Rollfläche.
-   Bliebe der Liste nicht einmal Platz für gut eine Zeile, setzt rahmen.js
-   data-knapp: dann steht die Liste in voller Länge im Inhalt, der Inhalt
-   ist die eine Rollfläche, und was direkt über der Liste steht (das
-   Suchfeld), bleibt beim Rollen oben stehen. */
+   und nimmt die Resthöhe (höchstens 420 px). Bliebe ihr nicht einmal Platz
+   für gut eine Zeile, setzt rahmen.js data-knapp: dann steht die Liste in
+   voller Länge im Inhalt, der Inhalt ist die eine Rollfläche, und was
+   direkt über der Liste steht (das Suchfeld), bleibt oben stehen. */
 .dialog-inhalt > .dialog-liste {
   flex: 0 1 auto;
   min-height: 0;
@@ -1234,204 +564,79 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--linie-stark) transparent;
+  scrollbar-color: var(--ds-line-2) transparent;
 }
 
-.dialog-flaeche[data-knapp] .dialog-inhalt > .dialog-liste {
+.ds-dialog__box[data-knapp] .dialog-inhalt > .dialog-liste {
   flex-shrink: 0;
   max-height: none;
   overflow: visible;
 }
 
-/* Klebt an der Innenkante (Browser rechnen das Polster des Rollers mit).
-   Zwei Schatten in Flächenfarbe decken den Fokusraum darüber und 8 px
-   darunter: dort scheinen keine Zeilen durch, die Liste läuft mit etwas
-   Luft unter dem Suchfeld weg. */
-.dialog-flaeche[data-knapp] .dialog-inhalt > :has(+ .dialog-liste) {
+/* Klebt an der Innenkante; zwei Schatten in Flächenfarbe decken den
+   Fokusraum darüber und 8 px darunter. */
+.ds-dialog__box[data-knapp] .dialog-inhalt > :has(+ .dialog-liste) {
   position: sticky;
   top: 0;
-  z-index: var(--z-erhoben);
-  background: var(--flaeche);
+  z-index: var(--ds-z-raised);
+  background: var(--ds-surface);
   box-shadow:
-    0 calc(-1 * var(--dialog-fokusraum)) 0 0 var(--flaeche),
-    0 var(--a2) 0 0 var(--flaeche);
-}
-
-/* Hauptaktion rechts, «Abbrechen» als Text-Knopf links davon. */
-.dialog-knoepfe {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--a2);
-  margin-top: var(--a2);
-}
-
-.dialog-knoepfe:empty {
-  display: none;
+    0 calc(-1 * var(--dialog-fokusraum)) 0 0 var(--ds-surface),
+    0 var(--ds-space-2) 0 0 var(--ds-surface);
 }
 
 /* Bestätigung durch Eintippen (F.loeschenDialog). */
 .dialog-bestaetigung {
   display: grid;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
 }
 
 
 /* ==================================================================
-   9. Seitenblatt
+   8. Seitenblatt (UI.blatt)
    ================================================================== */
 
-.blatt {
-  z-index: var(--z-schublade);
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* 560 px (720 px breit), volle Höhe, Radius 16 an der vorderen Kante.
-   Tritt ein: Blende + 24 px von rechts, 350 ms auf der betonten Kurve. */
-.blatt-flaeche {
-  position: relative;
-  width: min(100%, 560px);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding-top: env(safe-area-inset-top);
-  border-radius: var(--r-dialog) 0 0 var(--r-dialog);
-  background: var(--flaeche);
-  box-shadow: var(--erhebung-3);
-  outline: 1px solid transparent;
-  animation:
-    einblenden var(--dauer-langsam) var(--kurve-standard) backwards,
-    einschieben var(--dauer-langsam) var(--kurve-betont) backwards;
-}
-
-.blatt-breit .blatt-flaeche {
-  width: min(100%, 720px);
-}
-
-.blatt[data-schliesst] .blatt-schleier {
-  animation: ausblenden var(--dauer-basis) var(--kurve-beschleunigen) forwards;
-}
-
-.blatt[data-schliesst] .blatt-flaeche {
-  animation: wegschieben var(--dauer-basis) var(--kurve-beschleunigen) forwards;
-}
-
-/* Kopf 64 px; seine Haarlinie zeigt sich nur, solange der Körper darunter
-   gerollt ist. Ein <div>, kein <header> (kein zweites Banner). */
-.blatt-kopf {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--a3);
-  flex-shrink: 0;
-  min-height: var(--kopf-hoch);
-  padding: var(--a3) max(var(--a3), env(safe-area-inset-right)) var(--a3) var(--a6);
-}
-
-/* Mit Unterzeile («47 von 163») bleibt der Kopf 64 px hoch: Titel und
-   Zahl stehen zusammen mittig, das Polster gibt nach. */
-.blatt-kopf:has(.blatt-unter:not(:empty)) {
-  padding-block: var(--a2);
-}
-
-.blatt-kopf::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: var(--linie);
-  opacity: 0;
-  transition: opacity var(--dauer-schnell) var(--kurve-standard);
-}
-
-.blatt-flaeche[data-gerollt] .blatt-kopf::after {
-  opacity: 1;
-}
+/* Mit Unterzeile («47 von 163») bleibt der Kopf 64 px hoch: Titel und Zahl
+   stehen zusammen mittig, das Polster gibt nach. */
+.ds-sheet__head:has(.blatt-unter:not(:empty)) { padding-block: var(--ds-space-2); }
 
 .blatt-kopf-text {
   min-width: 0;
   display: grid;
 }
 
-.blatt-titel {
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text);
-  font: var(--t-titel);
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Unterzeile im Kopf, z. B. die Trefferzahl «47 von 163» — live. */
+/* Unterzeile im Kopf, z. B. die Trefferzahl — live. */
 .blatt-unter {
   margin: 0;
-  color: var(--text-leise);
-  font: var(--t-meta);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
   font-variant-numeric: tabular-nums;
 }
 
-.blatt-unter:empty {
-  display: none;
-}
+.blatt-unter:empty { display: none; }
 
-.blatt-schliessen {
-  flex-shrink: 0;
-}
+.blatt-schliessen { flex-shrink: 0; }
 
-/* Der Körper ist ein eigener Tabstopp: ein Blatt mit reinem Text hat sonst
-   nichts zum Fokussieren, und Tastaturnutzer rollen ihn mit den Pfeilen. */
-.blatt-koerper {
-  /* Positioniert: .nur-sr-Texte rollen mit und bleiben im Körper (wie .tafel). */
+/* Der Körper rollt (min-height 0 in der Spalte), mit ruhigem Griff, und
+   ist positioniert: .ds-sr-Texte rollen mit und bleiben im Körper. */
+.ds-sheet__body {
   position: relative;
-  flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  padding:
-    var(--a2)
-    max(var(--a6), env(safe-area-inset-right))
-    calc(var(--a8) + env(safe-area-inset-bottom))
-    var(--a6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--a3);
   scrollbar-width: thin;
-  scrollbar-color: var(--linie-stark) transparent;
+  scrollbar-color: var(--ds-line-2) transparent;
 }
 
-/* Knöpfe direkt im Körper behalten ihre eigene Breite (die Spalte
-   streckt sonst jedes Kind). */
-.blatt-koerper > .knopf {
-  align-self: flex-start;
-}
+/* Knöpfe direkt im Körper behalten ihre eigene Breite. */
+.ds-sheet__body > .ds-btn { align-self: flex-start; }
 
 /* Im Blatt stehen Auswahllisten (79 SCCM-Spalten, Beschaffungsjahre) in
-   voller Länge: es rollt nur das Blatt, nie zusätzlich eine Liste darin
-   (sechs sichtbare Zeilen in einem Roller im Roller erschwerten das
-   Finden). Die Höhenbegrenzung gilt weiter für kurze Listen in der Seite. */
-.blatt-koerper .mehrfach {
-  max-height: none;
-}
+   voller Länge: es rollt nur das Blatt, nie zusätzlich eine Liste darin. */
+.ds-sheet__body .mehrfach { max-height: none; }
 
-.blatt-koerper:focus {
-  outline: none;
-}
-
-.blatt-koerper:focus-visible {
-  outline: var(--fokus-umriss);
-  outline-offset: calc(-1 * var(--fokus-abstand));
-}
-
-.blatt-koerper[data-meldung-platz] {
-  padding-bottom: calc(var(--a8) + env(safe-area-inset-bottom) + var(--meldung-reserve, 0px));
-  scroll-padding-bottom: var(--meldung-reserve, 0px);
+/* Platz für eine offene Fehlermeldung im Blatt (rahmen.js, wie in der Tafel). */
+.ds-sheet__body[data-meldung-platz] {
+  padding-bottom: calc(var(--ds-space-8) + env(safe-area-inset-bottom) + var(--ds-toast-reserve, 0px));
+  scroll-padding-bottom: var(--ds-toast-reserve, 0px);
 }
 
 /* Optionale Fusszeile (Trefferzahl, «Fertig»): bleibt stehen, der Körper
@@ -1442,232 +647,82 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--a2) var(--a3);
+  gap: var(--ds-space-2) var(--ds-space-3);
   padding:
-    var(--a3)
-    max(var(--a6), env(safe-area-inset-right))
-    calc(var(--a3) + env(safe-area-inset-bottom))
-    var(--a6);
-  border-top: 1px solid var(--linie);
+    var(--ds-space-3)
+    max(var(--ds-space-6), env(safe-area-inset-right))
+    calc(var(--ds-space-3) + env(safe-area-inset-bottom))
+    var(--ds-space-6);
+  border-top: 1px solid var(--ds-line);
 }
 
-.blatt-fuss:empty {
-  display: none;
-}
+.blatt-fuss:empty { display: none; }
 
-.blatt-flaeche:has(> .blatt-fuss:not(:empty)) .blatt-koerper {
-  padding-bottom: var(--a6);
-}
+.ds-sheet__panel:has(> .blatt-fuss:not(:empty)) .ds-sheet__body { padding-bottom: var(--ds-space-6); }
 
 @media (max-width: 600px) {
-  .blatt-flaeche,
-  .blatt-breit .blatt-flaeche {
-    width: 100%;
-    border-radius: 0;
-  }
-
-  .blatt-kopf {
-    padding-left: max(var(--a4), env(safe-area-inset-left));
-  }
-
-  .blatt-koerper {
-    padding-inline: max(var(--a4), env(safe-area-inset-left)) max(var(--a4), env(safe-area-inset-right));
-  }
-
   .blatt-fuss {
-    padding-inline: max(var(--a4), env(safe-area-inset-left)) max(var(--a4), env(safe-area-inset-right));
+    padding-inline: max(var(--ds-space-4), env(safe-area-inset-left)) max(var(--ds-space-4), env(safe-area-inset-right));
   }
 }
 
 
 /* ==================================================================
-   10. Meldung (Snackbar)
+   9. Meldung (Snackbar, UI.meldung)
+   Unten links in der Tafel (rahmen.js richtet --ds-toast-left an ihrer
+   Kante aus) und über einer sichtbaren Speicherleiste (--ds-toast-bottom).
+   Wechselt die Ebene (Blatt ↔ Seite), gleiten die sichtbaren Meldungen
+   an die neue Kante (--ds-toast-shift, --ds-toast-shift-y). Alle vier
+   sind Laufzeitvariablen von Dashboard-Style; rahmen.js setzt sie.
    ================================================================== */
-
-/* Unten links in der Tafel (rahmen.js richtet --meldung-links an ihrer
-   Kante aus und hebt --meldung-unten über eine sichtbare Speicherleiste,
-   Fehler E1). Wechselt die Ebene (Blatt ↔ Seite), gleiten die sichtbaren
-   Meldungen an die neue Kante statt neu einzutreten. */
-.meldungen {
-  position: fixed;
-  left: var(--meldung-links, var(--a6));
-  bottom: var(--meldung-unten, var(--a6));
-  margin-bottom: env(safe-area-inset-bottom);
-  z-index: var(--z-meldung);
-  display: grid;
-  justify-items: start;
-  gap: var(--a2);
-  max-width: min(560px, calc(100vw - var(--meldung-links, var(--a6)) - var(--a6)));
-  pointer-events: none;
-  translate: var(--meldung-verschub, 0px) var(--meldung-verschub-y, 0px);
-  transition: translate var(--dauer-mittel) var(--kurve-standard);
-}
-
-/* Tritt ein: Blende + 8 px Heben, 250 ms. Bereits gezeigte Meldungen
-   spielen das nicht noch einmal, wenn sie in eine andere Ebene umziehen. */
-.meldung {
-  display: flex;
-  align-items: center;
-  gap: var(--a3);
-  min-height: var(--a12);
-  max-width: 100%;
-  padding: var(--a3) var(--a4);
-  border-radius: var(--r-s);
-  background: var(--invers);
-  color: var(--auf-invers);
-  font: var(--t-text);
-  box-shadow: var(--erhebung-3);
-  outline: 1px solid transparent;
-  pointer-events: auto;
-  --bewegung-weg: var(--weg-m);
-  animation:
-    einblenden var(--dauer-mittel) var(--kurve-standard) backwards,
-    anheben var(--dauer-mittel) var(--kurve-bremsen) backwards;
-}
-
-.meldung[data-gezeigt]:not(.austritt) {
-  animation: none;
-}
-
-/* Austritt kürzer: 150 ms Blende (bewegung.css .austritt liest die Dauer). */
-.meldung.austritt {
-  --austritt-dauer: var(--dauer-schnell);
-}
-
-.meldung > .icon,
-.meldung > svg {
-  flex-shrink: 0;
-  color: var(--invers-primaer);
-}
-
-.meldung-fehler > .icon,
-.meldung-fehler > svg,
-.meldung-info > .icon,
-.meldung-info > svg {
-  color: var(--auf-invers);
-}
-
-.meldung-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 
 /* Aktion in der Meldung («Rückgängig»): Text-Knopf in der inversen
-   Primärfarbe, wie Material es vorsieht. Über die Knopf-Variablen, damit
-   auch Hover und Druck auf der dunklen Fläche hell bleiben. */
-.meldung-aktion.knopf {
-  --knopf-farbe: var(--invers-primaer);
-  --knopf-hover-farbe: var(--invers-primaer);
+   Primärfarbe, wie Material es vorsieht. */
+.meldung-aktion.ds-btn {
+  --ds-btn-color: var(--ds-inverse-primary);
+  --ds-btn-hover-color: var(--ds-inverse-primary);
   flex-shrink: 0;
-  margin: calc(-1 * var(--a1)) 0 calc(-1 * var(--a1)) auto;
+  margin: calc(-1 * var(--ds-space-1)) 0 calc(-1 * var(--ds-space-1)) auto;
 }
 
-/* Schliessen: runder 36-px-Knopf mit 18-px-Kreuz (ChatBob .cba-toast__close). */
-.meldung-schliessen.knopf {
-  --knopf-sinnbild-groesse: calc(var(--a8) + var(--a1));
-  --knopf-farbe: var(--auf-invers);
-  --knopf-hover-farbe: var(--auf-invers);
-  flex-shrink: 0;
-  margin: calc(-1 * var(--a2)) calc(-1 * var(--a2)) calc(-1 * var(--a2)) auto;
-}
+.meldung-aktion + .ds-toast__close { margin-left: 0; }
 
-.meldung-aktion + .meldung-schliessen.knopf {
-  margin-left: 0;
-}
-
-.meldung .knopf:focus-visible {
-  outline-color: var(--auf-invers);
-}
-
-@media (max-width: 600px) {
-  .meldungen {
-    left: var(--a4);
-    right: var(--a4);
-    bottom: var(--meldung-unten, var(--a4));
-    max-width: none;
-    justify-items: stretch;
-  }
-}
+.ds-toast .ds-btn:focus-visible { outline-color: var(--ds-on-inverse); }
 
 
 /* ==================================================================
-   11. Tooltip
-   ================================================================== */
-
-/* Inverse Fläche, 12/16, Radius 4, 8 px unter dem Bedienelement. Wächst
-   nur aus knapp voller Grösse (verankert, kein Heben) und geht mit einer
-   schnellen Blende. Der Zeiger darf auf den Tooltip wechseln. */
-.tipp {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: var(--z-meldung);
-  width: max-content;
-  max-width: min(320px, calc(100vw - 2 * var(--a2)));
-  padding: var(--a1) var(--a2);
-  border-radius: var(--r-xs);
-  background: var(--invers);
-  color: var(--auf-invers);
-  font: var(--t-meta);
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  outline: 1px solid transparent;
-  pointer-events: auto;
-  --bewegung-weg: 0px;
-  animation:
-    einblenden var(--dauer-schnell) var(--kurve-standard) backwards,
-    wachsen var(--dauer-schnell) var(--kurve-bremsen) backwards;
-}
-
-.tipp.austritt {
-  --austritt-dauer: var(--dauer-sofort);
-}
-
-.tipp[hidden] {
-  display: none;
-}
-
-
-/* ==================================================================
-   12. Speicherleiste
-   ================================================================== */
-
-/* Schwebt unten in der Tafel, 24 px von ihren Kanten (auf breiten Tafeln
+   10. Speicherleiste (UI.speicherleiste)
+   Schwebt unten in der Tafel, 24 px von ihren Kanten (auf breiten Tafeln
    bündig mit der Bahn). Sie klebt im Roller nach der Bahn, trägt aber
    keine Höhe bei: der negative Rand oben ist ihre eigene Höhe
    (--leiste-hoehe, rahmen.js misst sie) plus der Abstand unten. Am
    Tafelende liegt sie so im unteren Polster der Bahn, und Kommen und
-   Gehen verschieben nichts (früher sprang der Inhalt beim Speichern am
-   Ende um 80 px). Den Platz darüber hält die Tafel frei, solange sie
-   steht ([data-leiste], §4). Die Bahn füllt die Tafel: bei kurzem Inhalt
-   steht die Leiste am unteren Rand.
-   Eintritt Blende + 8 px Heben 250, Austritt Sinken 200 (rahmen.js). */
+   Gehen verschieben nichts. Den Platz darüber hält die Tafel frei,
+   solange sie steht ([data-leiste], Abschnitt 3).
+   Eintritt Blende + 8 px Heben 250, Austritt Sinken 200 (rahmen.js).
+   ================================================================== */
+
 .speicherleiste {
-  --leiste-unten: var(--a6);
+  --leiste-unten: var(--ds-space-6);
   position: sticky;
   bottom: var(--leiste-unten);
-  z-index: var(--z-klebend);
+  z-index: var(--ds-z-sticky);
   flex-shrink: 0;
-  box-sizing: border-box;
   margin:
-    calc(-1 * (var(--leiste-hoehe, calc(var(--a12) + var(--a2))) + var(--leiste-unten)))
-    max(var(--a6), (100% - var(--bahn-max)) / 2)
+    calc(-1 * (var(--leiste-hoehe, calc(var(--ds-space-12) + var(--ds-space-2))) + var(--leiste-unten)))
+    max(var(--ds-space-6), (100% - var(--ds-content-max)) / 2)
     var(--leiste-unten);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--a2) var(--a3);
-  min-height: calc(var(--a12) + var(--a2));
-  padding: var(--a2) var(--a2) var(--a2) var(--a5);
-  border-radius: var(--r-dialog);
-  background: var(--flaeche);
-  box-shadow: var(--erhebung-3);
+  gap: var(--ds-space-2) var(--ds-space-3);
+  min-height: calc(var(--ds-space-12) + var(--ds-space-2));
+  padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-2) var(--ds-space-5);
+  border-radius: var(--ds-radius-dialog);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-overlay);
   outline: 1px solid transparent;
-  --bewegung-weg: var(--weg-m);
-}
-
-.speicherleiste[hidden] {
-  display: none;
+  --ds-motion-distance: var(--ds-distance-md);
 }
 
 .speicherleiste-text {
@@ -1677,41 +732,37 @@
 }
 
 .speicherleiste-anzahl {
-  color: var(--text);
-  font: var(--t-beschriftung);
+  color: var(--ds-text);
+  font: var(--ds-font-label);
   font-variant-numeric: tabular-nums;
 }
 
 .speicherleiste-meta {
-  color: var(--text-leise);
-  font: var(--t-meta);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
   font-variant-numeric: tabular-nums;
 }
 
-.speicherleiste-meta:empty {
-  display: none;
-}
+.speicherleiste-meta:empty { display: none; }
 
 .speicherleiste-knoepfe {
   display: flex;
   align-items: center;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
   margin-left: auto;
 }
 
 @media (max-width: 600px) {
   .speicherleiste {
-    --leiste-unten: var(--a4);
-    margin-inline: var(--a4);
+    --leiste-unten: var(--ds-space-4);
+    margin-inline: var(--ds-space-4);
   }
 }
 
 
 /* ==================================================================
-   13. Seitenübergänge zwischen den HTML-Seiten
-   ================================================================== */
-
-/* Wechselt man von der Liste ins Detailfenster und zurück, bleibt der
+   11. Seitenübergänge zwischen den HTML-Seiten
+   Wechselt man von der Liste ins Detailfenster und zurück, bleibt der
    Rahmen ruhig stehen und nur der Inhalt blendet durch: alt 100 ms
    beschleunigend aus, neu danach 250 ms ein mit 4 px Heben — dieselbe
    Choreografie wie Rahmen.wechseln.
@@ -1719,25 +770,21 @@
    Das Opt-in steht NICHT hier, sondern als eine Zeile im <head> jeder
    Seite: <style>@view-transition { navigation: auto; }</style>. Chrome
    prüft es auf der neuen Seite, bevor externe Stilvorlagen aktiv sind;
-   aus einer Stilvorlage brach der Übergang darum meist ab («ViewTransition
-   opt-in disabled» als Fehler in der Konsole der neuen Seite; gemessen 2
-   von 8 Wechseln, inline 8 von 8). Seiten ohne die Zeile wechseln ohne
-   Übergang und ohne Fehler. Hier steht nur die Choreografie.
-
-   Keine eigene reduced-motion-Abfrage (ChatBob §4.11): bei reduzierter
-   Bewegung laufen auch diese Animationen über die Tokens in 1 ms.
+   aus einer Stilvorlage brach der Übergang meist ab. Hier steht nur die
+   Choreografie; bei reduzierter Bewegung laufen auch diese Animationen
+   über die Tokens in 1 ms.
 
    Kopf, Schublade und Tafel sind eigene Gruppen ohne Animation, ihr altes
-   Bild wird gar nicht gezeigt: der Kopf hat keine eigene Fläche, altes und
-   neues Bild lägen sonst 370 ms lang übereinander (Name, «Stand …» und
-   «Abmelden» doppelt). Der Name «inhalt» liegt auf dem Roller (.tafel),
-   nicht auf der Bahn: das alte Bild ist so der sichtbare Ausschnitt einer
-   gerollten Tafel und blendet an Ort und Stelle aus, statt zum Seiten-
-   anfang zu springen. */
-.kopf { view-transition-name: kopf; }
-.schublade { view-transition-name: schublade; }
-.tafel-rahmen { view-transition-name: tafel; }
-.tafel { view-transition-name: inhalt; }
+   Bild wird gar nicht gezeigt (sonst lägen Name und «Abmelden» 370 ms
+   doppelt übereinander). Der Name «inhalt» liegt auf dem Roller
+   (.ds-view): das alte Bild ist der sichtbare Ausschnitt einer gerollten
+   Tafel und blendet an Ort und Stelle aus.
+   ================================================================== */
+
+.ds-topbar { view-transition-name: kopf; }
+.ds-drawer { view-transition-name: schublade; }
+.ds-panel { view-transition-name: tafel; }
+.ds-view { view-transition-name: inhalt; }
 
 ::view-transition-group(*),
 ::view-transition-old(root),
@@ -1755,102 +802,58 @@
 }
 
 ::view-transition-old(inhalt) {
-  animation: ausblenden var(--dauer-sofort) var(--kurve-beschleunigen) both;
+  animation: ds-fade-out var(--ds-dur-instant) var(--ds-ease-in) both;
 }
 
 ::view-transition-new(inhalt) {
-  --bewegung-weg: var(--weg-s);
+  --ds-motion-distance: var(--ds-distance-sm);
   animation:
-    einblenden var(--dauer-mittel) var(--kurve-standard) var(--dauer-sofort) both,
-    anheben var(--dauer-mittel) var(--kurve-bremsen) var(--dauer-sofort) both;
+    ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-dur-instant) both,
+    ds-lift-in var(--ds-dur-medium) var(--ds-ease-out) var(--ds-dur-instant) both;
 }
 
 
 /* ==================================================================
-   14. Kontrastmodus
+   12. Kontrastmodus und Druck
    ================================================================== */
 
-/* Im Kontrastmodus fällt die Pastell-Füllung weg: der aktive Eintrag
-   trägt die Systemfarbe der Auswahl (wie ein gewählter Listeneintrag) –
-   kein Umriss, denn der Umriss ist der Fokusring: als Markierung des
-   aktiven Eintrags sah dieser mit und ohne Fokus gleich aus. Weil der
-   Eintrag seine Farben dann selbst setzt, nennt auch sein Fokusring eine
-   Systemfarbe. Ränder, die nur aus Schatten oder Fläche bestehen, tragen
-   oben schon einen durchsichtigen Umriss, den das System malt. */
+/* Im Kontrastmodus trägt der aktive Eintrag die Systemfarbe der Auswahl
+   (wie ein gewählter Listeneintrag) statt eines Umrisses: der Umriss ist
+   der Fokusring, mit und ohne Fokus sähe er gleich aus. Weil der Eintrag
+   seine Farben dann selbst setzt, nennt auch sein Fokusring eine
+   Systemfarbe. */
 @media (forced-colors: active) {
-  .schublade-liste.hat-indikator .schublade-eintrag[aria-current="page"],
-  .schublade-liste .schublade-eintrag[aria-current="page"] {
+  .ds-drawer__list .ds-drawer__item[aria-current="page"] {
     forced-color-adjust: none;
+    outline: none;
     background: Highlight;
     color: HighlightText;
   }
 
-  .schublade-liste .schublade-eintrag[aria-current="page"] :is(.icon, svg) {
-    color: HighlightText;
-  }
+  .ds-drawer__list .ds-drawer__item[aria-current="page"] svg { color: HighlightText; }
 
-  .schublade-liste .schublade-eintrag[aria-current="page"]:focus-visible {
+  .ds-drawer__list .ds-drawer__item[aria-current="page"]:focus-visible {
     outline: 2px solid CanvasText;
-    outline-offset: var(--fokus-abstand);
+    outline-offset: var(--ds-focus-offset);
   }
 
-  .ladebalken::before {
-    forced-color-adjust: none;
-    background: Highlight;
-  }
 
-  .ladebalken {
-    outline: 1px solid CanvasText;
-  }
-
-  .wortmarke-punkt {
-    forced-color-adjust: none;
-    background: CanvasText;
-  }
+  .wortmarke-punkt { forced-color-adjust: none; background: CanvasText; }
 }
 
-
-/* ==================================================================
-   15. Druck
-   Gedruckt wird nur der Inhalt: ohne Kopf, Schublade, Ladebalken,
-   Speicherleiste, Meldungen und Tooltip. Die Tafel rollt dabei nicht,
-   sondern läuft über alle Seiten – sonst druckte der Browser nur ihren
-   sichtbaren Ausschnitt. Schnellaktionen im Seitenkopf haben auf Papier
-   keinen Sinn.
-   ================================================================== */
-
+/* Gedruckt wird nur der Inhalt (Dashboard-Style blendet den Rahmen aus).
+   Dazu: keine Speicherleiste, keine Schnellaktionen im Seitenkopf, und die
+   seitenfüllende Liste läuft über alle Seiten statt nur ihren Ausschnitt. */
 @media print {
-  .app {
-    display: block;
-    height: auto;
-    overflow: visible;
-    background: var(--flaeche);
-  }
+  .ds-app { overflow: visible; }
 
-  .kopf,
-  .schublade,
-  .schublade-schleier,
-  .sprungmarke,
-  .ladebalken,
   .speicherleiste,
-  .meldungen,
-  .tipp,
-  .seitenkopf-aktionen {
-    display: none;
-  }
+  .seitenkopf-aktionen { display: none; }
 
-  .tafel-rahmen,
-  .tafel,
   .tabelle-rahmen {
     height: auto;
     max-height: none;
     overflow: visible;
     border-radius: 0;
-    box-shadow: none;
-  }
-
-  .bahn {
-    max-width: none;
-    padding: 0;
   }
 }

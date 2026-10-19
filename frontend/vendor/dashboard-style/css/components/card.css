@@ -1,0 +1,176 @@
+/*
+ * Card: white, outlined with the passive hairline at --ds-radius-card.
+ * Hierarchy comes from type, hairlines and tonal tiles, never shadows.
+ *
+ *   <section class="ds-card">
+ *     <div class="ds-card__row"> <h2 class="ds-card__title"> [button | switch]
+ *     <p class="ds-muted"> ...
+ *     <h3 class="ds-card__subtitle"> ...
+ *     <div class="ds-subsection"> ...
+ *     <nav class="ds-card__links"> <a class="ds-btn ds-btn--text ds-card__link"> ...
+ *
+ *   .ds-card--filled   a quieter block inside a card or form
+ *
+ * Hooks (on .ds-theme or an element): --ds-card-padding (--ds-space-6),
+ * --ds-card-padding-sm (600px and below, --ds-space-4),
+ * --ds-card-padding-filled (--ds-space-5), --ds-card-title-line (the
+ * title's line height, 24px, which a button or switch in the header row
+ * overhangs). --ds-card-pad is the resulting padding of each card, which
+ * tables read to bleed to its edges: read it, never set it.
+ *
+ * Progressive: equal-height cards with bottom-aligned links and the header
+ * row overhang use :has(); without it cards keep their own height.
+ */
+
+.ds-card {
+  --ds-card-pad: var(--ds-card-padding, var(--ds-space-6));
+  min-width: 0;
+  padding: var(--ds-card-pad);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+}
+
+/* The rhythm below decides all spacing: no browser margins of paragraphs
+   (a last one would add 1em to the bottom padding). Zero specificity, so
+   every component's own margin still wins. */
+:where(.ds-card) p {
+  margin-block: 0;
+}
+
+.ds-card > * + * {
+  margin-top: var(--ds-space-4);
+}
+
+/* An empty live region (filled later) takes no room. */
+.ds-card > p:empty {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .ds-card {
+    --ds-card-pad: var(--ds-card-padding-sm, var(--ds-space-4));
+  }
+}
+
+.ds-card--filled {
+  --ds-card-pad: var(--ds-card-padding-filled, var(--ds-space-5));
+  border-color: transparent;
+  background: var(--ds-surface-low);
+}
+
+/* Cards side by side share one height; their link rows line up at the
+   bottom edge. */
+.ds-grid-2 > .ds-card:has(> .ds-card__links) {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-grid-2 > .ds-card > .ds-card__links {
+  margin-top: auto;
+}
+
+.ds-card__title {
+  margin: 0;
+  padding: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-subtitle);
+  letter-spacing: 0;
+}
+
+.ds-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+/* A button (36px) or a switch (40px) next to the title hangs out of the
+   title's line (--ds-card-title-line) on both sides instead of making the row taller: every
+   card title starts at the same height, whatever its head holds. When the
+   row wraps (phones), the row gap makes up for the overhang. */
+.ds-card__row {
+  row-gap: calc(var(--ds-space-3) + (var(--ds-btn-height, 36px) - var(--ds-card-title-line, 24px)) / 2);
+}
+
+.ds-card__row > :not(.ds-card__title, :has(> .ds-card__title)) {
+  margin-block: calc((var(--ds-card-title-line, 24px) - var(--ds-btn-height, 36px)) / 2);
+}
+
+/* Two rules, not one list: a browser without :has() would drop the
+   whole list, the plain switch included. */
+.ds-card__row > .ds-switch {
+  margin-block: calc((var(--ds-card-title-line, 24px) - 40px) / 2);
+}
+
+.ds-card__row > :has(> .ds-switch) {
+  margin-block: calc((var(--ds-card-title-line, 24px) - 40px) / 2);
+}
+
+.ds-card__subtitle {
+  margin: var(--ds-space-6) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+}
+
+.ds-card > .ds-card__subtitle + * {
+  margin-top: var(--ds-space-2);
+}
+
+/* Links to related pages: text buttons in a row under a hairline. Each one
+   hangs its padding into the gutter, so the first of every line lines up
+   with the card text (the gap makes up for it between them). */
+.ds-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-1) calc(var(--ds-space-2) + var(--ds-space-3));
+  padding-top: var(--ds-space-3);
+  border-top: 1px solid var(--ds-line);
+}
+
+.ds-card__links > * {
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+.ds-card__link {
+  --ds-btn-padding-x: var(--ds-space-3);
+}
+
+/* At the end of a card's header row the padding hangs out on the right. */
+.ds-card__row > .ds-card__link:last-child {
+  margin-right: calc(-1 * var(--ds-space-3));
+}
+
+/* The arrow leans into the direction of travel. */
+.ds-card__link svg {
+  transition: transform var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-card__link:hover svg {
+    transform: translateX(var(--ds-distance-sm));
+    transition-duration: var(--ds-dur-medium);
+  }
+}
+
+/* A part of a card with its own small title: a hairline and room above,
+   the content close under its title. */
+.ds-subsection {
+  display: grid;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-2);
+  padding-top: var(--ds-space-5);
+  border-top: 1px solid var(--ds-line);
+}
+
+.ds-subsection > .ds-card__subtitle,
+.ds-subsection > p {
+  margin: 0;
+}
+
+/* A centred "load more" row. */
+.ds-more {
+  display: flex;
+  justify-content: center;
+}

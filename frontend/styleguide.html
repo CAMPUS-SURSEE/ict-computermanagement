@@ -1,24 +1,25 @@
 <!DOCTYPE html>
-<html lang="de-CH">
+<html lang="de-CH" class="ds-theme ds-base">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f3f4f2">
 <title>Styleguide – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400..700&family=Archivo:wdth,wght@112,500..700&display=swap">
-<!-- Lebende Komponentenübersicht im echten Rahmen. Jede Komponente wird
-     von styleguide.js über dieselben Bauer gebaut wie in den Seiten
-     (UI.*, Rahmen.*, Bewegung.*); nichts hier ist von Hand nachgebaut.
-     Ohne Anmeldung und ohne Daten zu öffnen. Die Regeln unten sind nur das
-     Layout dieser Seite (Muster-Flächen) und lesen nur Tokens. -->
-<link rel="stylesheet" href="design.css">
-<link rel="stylesheet" href="bewegung.css">
+<!-- Lebende Übersicht im echten Rahmen: jede Komponente wird von
+     styleguide.js über dieselben Bauer gebaut wie in den Seiten (UI.*,
+     Rahmen.*, Bewegung.*); nichts hier ist von Hand nachgebaut. Ohne
+     Anmeldung und ohne Daten zu öffnen. Die Grundlage ist Dashboard-Style;
+     sein eigener Styleguide (im Repository saschazesiger/Dashboard-Style,
+     styleguide/index.html) zeigt die gemeinsamen Bausteine neutral. Die
+     Regeln unten sind nur das Layout dieser Seite und lesen nur Tokens. -->
+<link rel="stylesheet" href="vendor/dashboard-style/fonts/fonts.css">
+<link rel="stylesheet" href="vendor/dashboard-style/ds.css">
+<link rel="stylesheet" href="thema.css">
+<link rel="stylesheet" href="bausteine.css">
 <link rel="stylesheet" href="rahmen.css">
 <!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
-     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §13). -->
+     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §11). -->
 <style>@view-transition { navigation: auto; }</style>
 <style>
   /* Abschnitte: jeder beginnt mit einem eigenen Kopf; zwischen zwei
@@ -26,43 +27,43 @@
   .sg-abschnitt {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--a5);
+    gap: var(--ds-space-5);
     min-width: 0;
-    scroll-margin-top: var(--a6);
+    scroll-margin-top: var(--ds-space-6);
   }
   .sg-abschnitt + .sg-abschnitt {
-    margin-top: var(--a5);
-    padding-top: var(--a10);
-    border-top: 1px solid var(--linie);
+    margin-top: var(--ds-space-5);
+    padding-top: var(--ds-space-10);
+    border-top: 1px solid var(--ds-line);
   }
-  .sg-abschnitt > .seitenkopf .seitenkopf-titel { font: var(--t-titel); }
+  .sg-abschnitt > .ds-page-head .ds-page-head__title { font: var(--ds-font-title); }
 
   /* Reihen von Mustern (Knöpfe, Chips, Status). */
-  .sg-reihe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--a3); }
-  .sg-reihe + .sg-reihe { margin-top: var(--a4); }
-  .sg-beschriftung { margin: 0; color: var(--text-leise); font: var(--t-klein); }
+  .sg-reihe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-3); }
+  .sg-reihe + .sg-reihe { margin-top: var(--ds-space-4); }
+  .sg-beschriftung { margin: 0; color: var(--ds-text-2); font: var(--ds-font-caption); }
 
   /* Farbfelder */
-  .sg-farben { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--a3); }
-  .sg-farbe { display: grid; gap: var(--a2); min-width: 0; }
-  .sg-farbe-feld { height: 56px; border: 1px solid var(--linie); border-radius: var(--r-karte); }
+  .sg-farben { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--ds-space-3); }
+  .sg-farbe { display: grid; gap: var(--ds-space-2); min-width: 0; }
+  .sg-farbe-feld { height: 56px; border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card); }
   .sg-farbe code { justify-self: start; }
 
   /* Schriftrollen */
-  .sg-schrift { display: grid; gap: var(--a1); padding: var(--a3) 0; border-top: 1px solid var(--linie); }
+  .sg-schrift { display: grid; gap: var(--ds-space-1); padding: var(--ds-space-3) 0; border-top: 1px solid var(--ds-line); }
   .sg-schrift:first-child { padding-top: 0; border-top: 0; }
-  .sg-schrift > :first-child { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+  .sg-schrift > :first-child { margin: 0; color: var(--ds-text); overflow-wrap: anywhere; }
 
   /* Abstände, Radien, Erhebung */
-  .sg-masse { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--a4); }
-  .sg-mass { display: grid; justify-items: center; gap: var(--a1); }
-  .sg-mass-balken { width: var(--a4); background: var(--akzent); border-radius: var(--r-xs); }
-  .sg-flaechen { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--a4); }
-  .sg-flaeche { display: grid; place-items: center; min-height: 88px; padding: var(--a3); border: 1px solid var(--linie); background: var(--flaeche); text-align: center; }
+  .sg-masse { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ds-space-4); }
+  .sg-mass { display: grid; justify-items: center; gap: var(--ds-space-1); }
+  .sg-mass-balken { width: var(--ds-space-4); background: var(--ds-accent); border-radius: var(--ds-radius-xs); }
+  .sg-flaechen { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--ds-space-4); }
+  .sg-flaeche { display: grid; place-items: center; min-height: 88px; padding: var(--ds-space-3); border: 1px solid var(--ds-line); background: var(--ds-surface); text-align: center; }
 
   /* Sinnbilder */
-  .sg-sinnbilder { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--a2) var(--a4); }
-  .sg-sinnbild { display: flex; align-items: center; gap: var(--a3); min-width: 0; padding: var(--a2) 0; color: var(--text); }
+  .sg-sinnbilder { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--ds-space-2) var(--ds-space-4); }
+  .sg-sinnbild { display: flex; align-items: center; gap: var(--ds-space-3); min-width: 0; padding: var(--ds-space-2) 0; color: var(--ds-text); }
   .sg-sinnbild > span { display: grid; justify-items: start; gap: 2px; min-width: 0; }
 
   /* Liste mit klebendem Kopf: im Styleguide eine feste Höhe statt der
@@ -70,39 +71,41 @@
   .sg-liste { display: flex; flex-direction: column; height: 440px; min-height: 0; }
 
   /* Bühne für die Bewegungsbeispiele. */
-  .sg-buehne { display: grid; place-items: center; min-height: 168px; padding: var(--a5); border-radius: var(--r-karte); background: var(--flaeche-tief); }
+  .sg-buehne { display: grid; place-items: center; min-height: 168px; padding: var(--ds-space-5); border-radius: var(--ds-radius-card); background: var(--ds-surface-low); }
   .sg-muster-karte { width: min(100%, 320px); }
-  .sg-spur { display: inline-flex; flex-wrap: wrap; gap: var(--a1); padding: var(--a1); border: 1px solid var(--umriss); border-radius: var(--r-aktion); }
-  .sg-spur > .knopf { --knopf-rand: transparent; }
-  .sg-spur > .knopf[aria-pressed="true"] { --knopf-flaeche: transparent; }
-  .sg-indikator { border-radius: var(--r-aktion); background: var(--akzent); }
+  .sg-spur { display: inline-flex; flex-wrap: wrap; gap: var(--ds-space-1); padding: var(--ds-space-1); border: 1px solid var(--ds-outline); border-radius: var(--ds-radius-action); }
+  .sg-spur > .ds-btn { --ds-btn-border: transparent; }
+  .sg-spur > .ds-btn[aria-pressed="true"] { --ds-btn-bg: transparent; }
+  .sg-indikator { border-radius: var(--ds-radius-action); background: var(--ds-accent); }
 
   /* Ein Seitenkopf als Muster (wie auf einer Detailseite). */
-  .sg-probe { padding: var(--a6) var(--a8); border: 1px dashed var(--linie-stark); border-radius: var(--r-karte); }
-  @media (max-width: 600px) { .sg-probe { padding: var(--a4); } }
+  .sg-probe { padding: var(--ds-space-6) var(--ds-space-8); border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius-card); }
+  @media (max-width: 600px) { .sg-probe { padding: var(--ds-space-4); } }
 </style>
 </head>
 <!-- data-seite="styleguide": rahmen.js baut Kopf und Schublade; die
      Schublade zeigt die Abschnitte dieser Seite (Anker, die Pille folgt
      beim Rollen). -->
-<body class="app" data-seite="styleguide">
+<body class="ds-app ds-app--drawer" data-seite="styleguide">
 
-<a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
+<a class="ds-skip" href="#inhalt">Zum Inhalt</a>
 
-<header class="kopf" id="kopf"></header>
+<header class="ds-topbar" id="kopf"></header>
 
-<nav class="schublade" id="schublade" aria-label="Abschnitte"></nav>
+<nav class="ds-drawer" id="schublade" aria-label="Abschnitte"></nav>
 
-<div class="tafel-rahmen">
-  <main class="tafel" id="tafel" tabindex="-1">
-    <div class="ladebalken" id="ladebalken" hidden></div>
-    <div class="bahn" id="inhalt" data-zustand="laden">
-      <!-- styleguide.js baut die Abschnitte hier hinein. -->
+<div class="ds-panel">
+  <main class="ds-view" id="tafel" tabindex="-1">
+    <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
+    <div class="ds-content">
+      <div class="ds-page" id="inhalt" data-zustand="laden">
+        <!-- styleguide.js baut die Abschnitte hier hinein. -->
+      </div>
     </div>
   </main>
 </div>
 
-<script src="bewegung.js"></script>
+<script src="vendor/dashboard-style/ds.js"></script>
 <script src="bausteine.js"></script>
 <script src="rahmen.js"></script>
 <script src="styleguide.js"></script>

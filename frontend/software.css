@@ -1,11 +1,12 @@
 /* software.css — Seitenlayout des Softwarefensters (software.html).
 
-   Wird NACH design.css, bewegung.css und rahmen.css geladen. Rahmen,
+   Wird NACH Dashboard-Style (ds.css), thema.css,
+   bausteine.css und rahmen.css geladen. Rahmen,
    Seitenkopf, Karten, Kacheln, Datenzeilen, Felder, Listen, Speicherleiste,
    Meldungen und Dialoge kommen von dort (gebaut über UI.* und F.*); die
    Abstände zwischen den Karten geben .fenster-bereich und .karten vor.
    Hier stehen nur Breiten – alle Werte Tokens. Der Hinweis mit Sinnbild
-   unter der Programm-ID ist UI.feldHinweis (design.css .mit-sinnbild).
+   unter der Programm-ID ist UI.feldHinweis (bausteine.css .mit-sinnbild).
    Eigene Klassen beginnen mit «sw-». */
 
 
@@ -13,7 +14,7 @@
    Festbreitenschrift, damit sich Gross/Klein und Ziffern gut lesen. */
 .sw-eingabe-id {
   width: min(100%, 320px);
-  font-family: var(--schrift-mono);
+  font-family: var(--ds-font-mono);
 }
 
 .sw-eingabe-kategorie {

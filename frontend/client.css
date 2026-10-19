@@ -1,10 +1,11 @@
 /* client.css — Seitenlayout des Clientfensters (client.html).
 
-   Wird NACH design.css, bewegung.css und rahmen.css geladen. Alles, was
+   Wird NACH Dashboard-Style (ds.css), thema.css,
+   bausteine.css und rahmen.css geladen. Alles, was
    dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Seitenkopf,
    Karten, Kacheln, Hinweise, Datenzeilen, Formularzeilen, Banner, Listen-
    zeilen, Zeitachse, Säulen, schlichte Tabellen, Leerzustände. Raster und
-   Abstände kommen aus .stapel, .raster-2 und .karten (design.css), der
+   Abstände kommen aus .ds-stack, .ds-grid-2 (Dashboard-Style) und .karten (bausteine.css), der
    Bereich aus .fenster-bereich (rahmen.css).
 
    Hier steht nur, was dieses Fenster an Anordnung zusätzlich braucht –
@@ -14,7 +15,7 @@
 
 /* Warnungen unter einem Feld («Name schon vergeben», «Archiviert, aber noch
    in SCCM») sind UI.hinweisPlatz: Abstand und Verbergen kommen aus
-   design.css (.hinweis-platz). */
+   bausteine.css (.hinweis-platz). */
 
 
 /* ------------------------------------------------------------------
@@ -23,7 +24,7 @@
 
 /* Die Hülle, in die verlauf.js seine Karte baut, ist das Rasterfeld. Als
    Raster gibt sie ihre Höhe an die Karte weiter: beide Karten der Zeile
-   sind gleich hoch wie überall in .raster-2. */
+   sind gleich hoch wie überall in .ds-grid-2. */
 .g-verlauf {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -44,7 +45,7 @@
    Formularfeld höchstens wird. */
 .g-vergleich-saeulen {
   max-width: 360px;
-  margin-top: var(--a2);
+  margin-top: var(--ds-space-2);
 }
 
 
@@ -55,7 +56,7 @@
 /* Interner Spaltenname, Typ und Quelle stehen unter der Beschriftung. */
 .g-feld-intern {
   display: block;
-  margin-top: var(--a1);
+  margin-top: var(--ds-space-1);
   overflow-wrap: anywhere;
 }
 
@@ -65,7 +66,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--a2);
+  gap: var(--ds-space-2);
 }
 
 .g-feld-text {
@@ -73,7 +74,7 @@
   white-space: pre-line;
 }
 
-.g-feld-wert > .knopf {
+.g-feld-wert > .ds-btn {
   flex-shrink: 0;
-  margin-block: calc(-1 * var(--a3) / 2);
+  margin-block: calc(-1 * var(--ds-space-3) / 2);
 }

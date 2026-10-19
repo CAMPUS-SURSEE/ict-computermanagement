@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de-CH">
+<html lang="de-CH" class="ds-theme ds-base">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,16 +8,16 @@
      F.seitenkopf; im Fehlerzustand setzt F.zeigeFehler den Titel. -->
 <title>Benutzer – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:opsz,wght@17..18,400..700&family=Archivo:wdth,wght@112,500..700&display=swap">
-<!-- Reihenfolge ist wichtig: Tokens und Komponenten, Bewegung, Rahmen,
-     dann nur noch das Seitenlayout dieses Fensters und der Verlauf. -->
-<link rel="stylesheet" href="design.css">
-<link rel="stylesheet" href="bewegung.css">
+<!-- Reihenfolge ist wichtig: Dashboard-Style (Schrift, Tokens und Bausteine),
+     das Campus-Thema, die ICT-eigenen Bausteine und der Rahmen, dann nur noch
+     das Seitenlayout. Alles liegt auf demselben Ursprung (Inhaltsrichtlinie). -->
+<link rel="stylesheet" href="vendor/dashboard-style/fonts/fonts.css">
+<link rel="stylesheet" href="vendor/dashboard-style/ds.css">
+<link rel="stylesheet" href="thema.css">
+<link rel="stylesheet" href="bausteine.css">
 <link rel="stylesheet" href="rahmen.css">
 <!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
-     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §13). -->
+     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §11). -->
 <style>@view-transition { navigation: auto; }</style>
 <link rel="stylesheet" href="benutzer.css">
 <link rel="stylesheet" href="verlauf.css">
@@ -25,33 +25,35 @@
 <!-- rahmen.js baut Kopf und Schublade sofort beim Laden; die Bereiche
      (Übersicht, Gerät, Berechtigungen, Bemerkung) zeichnet fenster.js
      (F.navZeichnen) in die Schublade. -->
-<body class="app" data-seite="benutzer">
+<body class="ds-app ds-app--drawer" data-seite="benutzer">
 
-<a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
+<a class="ds-skip" href="#inhalt">Zum Inhalt</a>
 
 <!-- Kopfzeile: Wortmarke, Konto, «Abmelden» (rahmen.js). -->
-<header class="kopf" id="kopf"></header>
+<header class="ds-topbar" id="kopf"></header>
 
 <!-- Schublade mit den Bereichen der Person (≤ 900 px modal). -->
-<nav class="schublade" id="schublade" aria-label="Bereiche"></nav>
+<nav class="ds-drawer" id="schublade" aria-label="Bereiche"></nav>
 
 <!-- Die weisse Tafel: der Rahmen rundet, main rollt (einziger Roller). -->
-<div class="tafel-rahmen">
-  <main class="tafel" id="tafel" tabindex="-1">
-    <div class="ladebalken" id="ladebalken" hidden></div>
+<div class="ds-panel">
+  <main class="ds-view" id="tafel" tabindex="-1">
+    <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
     <!-- data-zustand="laden": bis zum ersten Inhalt ausgeblendet, nach
          200 ms erscheint das Skelett. Den Seitenkopf füllt F.seitenkopf,
          den Bereich F.zeichneBereich. Dialog, Meldungen, Tooltip und
          Speicherleiste baut rahmen.js selbst: KEIN statisches Markup. -->
-    <div class="bahn" id="inhalt" data-zustand="laden">
-      <header class="seitenkopf" id="b-kopf"></header>
-      <div class="fenster-bereich" id="b-bereich"></div>
+    <div class="ds-content">
+      <div class="ds-page" id="inhalt" data-zustand="laden">
+        <header class="ds-page-head" id="b-kopf"></header>
+        <div class="fenster-bereich" id="b-bereich"></div>
+      </div>
     </div>
   </main>
 </div>
 
 <script src="konfig.js"></script>
-<script src="bewegung.js"></script>
+<script src="vendor/dashboard-style/ds.js"></script>
 <script src="bausteine.js"></script>
 <script src="rahmen.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"

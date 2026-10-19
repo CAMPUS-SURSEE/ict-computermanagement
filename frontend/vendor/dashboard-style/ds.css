@@ -1,0 +1,4758 @@
+/*! Dashboard-Style 0.1.0 | MIT License | https://github.com/saschazesiger/Dashboard-Style */
+/*
+ * Dashboard-Style: every stylesheet in cascade order. scripts/build.mjs
+ * inlines these imports into dist/ds.css; a bundler can import this file
+ * (or single files) directly. Load a project theme after it.
+ *
+ * Order: tokens, motion, the opt-in page base, then components from the
+ * smallest building blocks to the app frame.
+ */
+
+/* ── tokens.css ── */
+/*
+ * Dashboard-Style tokens.
+ *
+ * Every token lives on `.ds-theme`, never on :root: the system can run
+ * inside a foreign page (an embedded widget) without touching that page's
+ * variables. A full app puts class="ds-theme" on <html>.
+ *
+ * Three layers:
+ *   1. Scales: motion, spacing, state layers, layers (z), radius scale.
+ *      The same everywhere, so components move and respond alike. Themes
+ *      never redefine motion tokens: the reduced-motion switch at the end of
+ *      this file relies on that.
+ *   2. Semantic roles: palette, type roles, radius roles, elevation, focus,
+ *      links, layout sizes. The values below are the neutral default theme;
+ *      a project theme overrides them (themes/example.css lists them all).
+ *   3. Component hooks (--ds-btn-*, --ds-card-pad, ...): read by one
+ *      component with a fallback, set by a theme or on an element.
+ *
+ * Custom properties resolve var() where they are declared. Roles that are
+ * built from other tokens (type roles from --ds-font, --ds-link from
+ * --ds-primary, --ds-focus-ring from --ds-surface) follow a theme only when
+ * the theme sets its values on the .ds-theme element itself, as this file
+ * does. Set on a descendant, those derived roles keep the old value.
+ *
+ * Plain CSS for Safari 14 and up: no @layer, no nesting.
+ *
+ * Progressive: the exact Material emphasized curve (linear()) is added
+ * behind @supports; older browsers keep its cubic-bezier approximation.
+ */
+
+.ds-theme {
+  /* ── 1. Motion: durations ───────────────────────────
+   * Material 3 short2 ... long4. Exits run at about 60-75% of their entry.
+   * instant  pressed state
+   * fast     colour, opacity of small things, exits of small things
+   * base     hover-out of shapes, toggles, exits of panels and dialogs
+   * medium   entries of menus, dialogs, snackbars; hover-in of shapes
+   * slow     large surfaces: side sheet, modal drawer
+   * glide    values that travel: progress, countUp() (js/motion.js)
+   */
+  --ds-dur-instant: 100ms;
+  --ds-dur-fast: 150ms;
+  --ds-dur-base: 200ms;
+  --ds-dur-medium: 250ms;
+  --ds-dur-slow: 350ms;
+  --ds-dur-glide: 600ms;
+
+  /* ── Motion: easings ────────────────────────────────
+   * No curve leaves [0, 1]: nothing overshoots or bounces.
+   * in-out      M3 standard: on-screen changes, hover, indicators, all opacity
+   * out         M3 emphasized-decelerate: transforms of small entering things
+   * in          M3 standard-accelerate: everything leaving
+   * emphasized  large surfaces; the exact M3 path below where supported
+   */
+  --ds-ease-in-out: cubic-bezier(.2, 0, 0, 1);
+  --ds-ease-out: cubic-bezier(.05, .7, .1, 1);
+  --ds-ease-in: cubic-bezier(.3, 0, 1, 1);
+  --ds-ease-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --ds-ease: var(--ds-ease-emphasized);
+
+  /* ── Motion: choreography ───────────────────────────
+   * Distances of entering elements (4-12 px, 24 px for side sheets, a full
+   * width for a sheet that covers the screen), the start scale of dialogs,
+   * the start scale of small markers and disc hovers, the step between
+   * staggered items (at most six, first render only) and the delays before
+   * loading indicators may show (fast loads show nothing; js/motion.js
+   * LOADER_DELAY_MS mirrors --ds-delay-loader).
+   */
+  --ds-distance-sm: 4px;
+  --ds-distance-md: 8px;
+  --ds-distance-lg: 12px;
+  --ds-distance-xl: 24px;
+  --ds-distance-sheet: 100%;
+  --ds-scale-enter: .98;
+  --ds-scale-small: .6;
+  --ds-stagger: 30ms;
+  --ds-delay-loader: 200ms;
+  --ds-delay-boot: 400ms;
+
+  /* Loops of loading indicators (they keep running with reduced motion). */
+  --ds-loop-spin: 1s;
+  --ds-loop-spin-fast: .8s;
+  --ds-loop-indeterminate: 2s;
+  --ds-loop-pulse: 2s;
+
+  /* ── State layers ───────────────────────────────────
+   * Opacity of the content colour laid over a control (::before). Large
+   * targets (rows, navigation items) take the lighter hover. Disabled
+   * content dims to 38%; stale content (about to be replaced) to 55%.
+   */
+  --ds-state-hover: .08;
+  --ds-state-hover-lg: .06;
+  --ds-state-pressed: .10;
+  --ds-state-dragged: .16;
+  --ds-state-disabled: .38;
+  --ds-state-stale: .55;
+
+  /* ── Spacing (4 px grid) ──────────────────────────── */
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-7: 28px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+
+  /* ── Layers (inside one stacking context) ───────────
+   * popover  menus and listboxes
+   * drawer   side sheets and the modal navigation drawer
+   * dialog   dialogs, above an open side sheet (they may ask from inside one)
+   * toast    snackbars, tooltips, the skip link
+   */
+  --ds-z-raised: 1;
+  --ds-z-sticky: 20;
+  --ds-z-popover: 40;
+  --ds-z-drawer: 50;
+  --ds-z-dialog: calc(var(--ds-z-drawer) + 1);
+  --ds-z-toast: 60;
+
+  /* ── 2. Palette (neutral default) ───────────────────
+   * Surfaces: white panels on a cool grey backdrop; hierarchy comes from
+   * tonal surfaces, hairlines and type, not shadows.
+   *   backdrop         the page behind the panels (top bar, drawer)
+   *   surface          panels, cards, dialogs, tables
+   *   surface-low      tiles, filled cards, code, read-only fields
+   *   surface-high     filled fields (search, toolbar selects), neutral chips
+   *   surface-highest  tracks (switch, spinner), skeletons, hovered filled fields
+   */
+  --ds-backdrop: #f0f4f9;
+  --ds-surface: #ffffff;
+  --ds-surface-low: #f8fafd;
+  --ds-surface-high: #e9eef6;
+  --ds-surface-highest: #dde3ea;
+
+  /* Text. --ds-text-3 reaches 4.5:1 on white only; on any tinted surface
+     the quieter text is --ds-text-2. */
+  --ds-text: #1f1f1f;
+  --ds-text-2: #444746;
+  --ds-text-3: #747775;
+
+  /* Lines: passive structure (cards, dividers, rows), outlines of
+     interactive controls (outlined buttons, chips), field borders. */
+  --ds-line: #dde3ea;
+  --ds-line-2: #c4c7c5;
+  --ds-outline: #747775;
+
+  /* Primary: the strongest action, focus, switches, progress, links. The
+     hover and pressed values are references for components that cannot
+     lay a state layer (a solid button drawn by a project). */
+  --ds-primary: #0b57d0;
+  --ds-on-primary: #ffffff;
+  --ds-primary-hover: #1f64d4;
+  --ds-primary-pressed: #094ab1;
+
+  /* The one tint: active navigation, selected chips, the tonal button,
+     tracks of progress, text selection. It is too light against white to
+     carry a state alone: a selection always adds a check, a weight or an
+     aria attribute. */
+  --ds-accent: #d3e3fd;
+  --ds-on-accent: #041e49;
+  --ds-on-accent-icon: var(--ds-on-accent);
+
+  /* Label colour of outlined and text buttons. */
+  --ds-action-ink: var(--ds-primary);
+
+  /* Status: text on its container, always with an icon. The warning
+     surface is a quieter fill for full-width banners. */
+  --ds-error: #b3261e;
+  --ds-error-container: #f9dedc;
+  --ds-on-error-container: #8c1d18;
+  --ds-success: #146c2e;
+  --ds-success-container: #c4eed0;
+  --ds-on-success-container: #0f5223;
+  --ds-warning: #8f4e06;
+  --ds-warning-container: #feefc3;
+  --ds-on-warning-container: #8f4e06;
+  --ds-warning-surface: #fdf6e7;
+
+  /* Inverse surfaces: snackbar, tooltip. */
+  --ds-inverse: #303030;
+  --ds-on-inverse: #f2f2f2;
+  --ds-inverse-primary: #a8c7fa;
+
+  /* Scrim behind dialogs and sheets, never blurred. */
+  --ds-scrim: rgba(0, 0, 0, .32);
+
+  /* The disc behind round icon buttons (.ds-btn--disc). */
+  --ds-fill-round: rgba(31, 31, 31, .08);
+
+  /* Inline code. */
+  --ds-code-bg: var(--ds-surface-low);
+
+  /* Disabled controls: the neutral Material look (a 12% container and
+     38% content) instead of dimming the whole control, so a filled button
+     does not fade into a pale brand colour. A theme that prefers dimming
+     sets --ds-disabled-opacity: var(--ds-state-disabled) and
+     --ds-disabled-fill / --ds-disabled-ink to `initial` (each control then
+     keeps its own fill and ink). */
+  --ds-disabled-opacity: 1;
+  --ds-disabled-fill: rgba(31, 31, 31, .12);
+  --ds-disabled-ink: rgba(31, 31, 31, .38);
+
+  /* The small spinner's track where color-mix() is missing. */
+  --ds-spinner-sm-track: rgba(0, 0, 0, .18);
+
+  /* ── Links ──────────────────────────────────────────
+   * Always underlined: colour alone does not tell a link from text. The
+   * thickness and offset are the same everywhere (themes recolour only),
+   * so links in text, text buttons and tables stay alike.
+   */
+  --ds-link: var(--ds-primary);
+  --ds-link-underline: rgba(11, 87, 208, .4);
+  --ds-link-underline-hover: var(--ds-link);
+  --ds-link-underline-thickness: 1px;
+  --ds-link-underline-offset: 3px;
+
+  /* ── Focus ──────────────────────────────────────────
+   * A 2 px ring that appears instantly, never animated. The outline form
+   * for controls, the box-shadow form for media and floating buttons.
+   */
+  --ds-focus: var(--ds-primary);
+  --ds-focus-width: 2px;
+  --ds-focus-offset: 2px;
+  --ds-focus-outline: var(--ds-focus-width) solid var(--ds-focus);
+  --ds-focus-ring: 0 0 0 2px var(--ds-surface), 0 0 0 4px var(--ds-focus);
+
+  /* ── Radii ──────────────────────────────────────────
+   * The scale (xs ... 2xl) and the roles components read. Every action is
+   * fully round (--ds-radius-action). A theme that wants square containers
+   * sets the scale to 0 and keeps the action radius.
+   */
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 8px;
+  --ds-radius-md: 12px;
+  --ds-radius-lg: 16px;
+  --ds-radius-xl: 20px;
+  --ds-radius-2xl: 28px;
+  --ds-radius-action: 9999px;
+  --ds-radius-panel: var(--ds-radius-xl);
+  --ds-radius-card: var(--ds-radius-md);
+  --ds-radius-dialog: var(--ds-radius-lg);
+  --ds-radius-chip: var(--ds-radius-sm);
+  --ds-radius-field: var(--ds-radius-sm);
+
+  /* ── Type ───────────────────────────────────────────
+   * Headings are regular weight; the label weight is for buttons, labels
+   * and emphasis in UI copy. Sizes in px only: a host page may change the
+   * root font size.
+   */
+  --ds-font: 'Google Sans', Roboto, 'Segoe UI', system-ui, sans-serif;
+  --ds-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --ds-weight-regular: 400;
+  --ds-weight-title: 400;
+  --ds-weight-label: 500;
+  /* Size of the display role, for a component that caps or scales it
+     (key figures shrink with their tile). */
+  --ds-size-display: 36px;
+
+  /*
+   * Type roles as `font` shorthands: one declaration sets size, line
+   * height, weight and family, which also beats host rules that target
+   * elements. The shorthand resets font-variant-numeric: figures set
+   * tabular-nums after it. Tracking is always 0.
+   *   headline  page title
+   *   title     dialog, sheet and section titles, product name
+   *   subtitle  card titles
+   *   reading   running text to read (messages, long notes)
+   *   input     typed text on phones (16px: iOS zooms into smaller fields)
+   *   body      default UI text, fields
+   *   dense     table cells
+   *   label     buttons, labels, navigation, column heads
+   *   chip      chips
+   *   meta      hints, timestamps, notes
+   *   caption   status chips, field labels, counters
+   *   display   key figures (tabular)
+   *   code      code blocks
+   */
+  --ds-font-headline: var(--ds-weight-title) 24px/32px var(--ds-font);
+  --ds-font-title: var(--ds-weight-title) 22px/28px var(--ds-font);
+  --ds-font-subtitle: var(--ds-weight-label) 16px/24px var(--ds-font);
+  --ds-font-reading: var(--ds-weight-regular) 16px/24px var(--ds-font);
+  --ds-font-input: var(--ds-font-reading);
+  --ds-font-body: var(--ds-weight-regular) 14px/20px var(--ds-font);
+  --ds-font-dense: var(--ds-weight-regular) 14px/20px var(--ds-font);
+  --ds-font-label: var(--ds-weight-label) 14px/20px var(--ds-font);
+  --ds-font-chip: var(--ds-weight-label) 14px/20px var(--ds-font);
+  --ds-font-meta: var(--ds-weight-regular) 12px/16px var(--ds-font);
+  --ds-font-caption: var(--ds-weight-label) 12px/16px var(--ds-font);
+  --ds-font-display: var(--ds-weight-regular) var(--ds-size-display)/44px var(--ds-font);
+  --ds-font-code: var(--ds-weight-regular) 13px/20px var(--ds-font-mono);
+
+  /* ── Elevation ──────────────────────────────────────
+   * Only floating layers cast shadows. The three Material levels, and the
+   * roles components read:
+   *   hover    clickable cards and filled buttons on hover (level 1)
+   *   popover  menus, listboxes, the skip link (level 2)
+   *   overlay  dialogs, side sheets, the modal drawer, snackbars (level 3)
+   */
+  --ds-elev-1: 0 1px 2px 0 rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15);
+  --ds-elev-2: 0 1px 2px 0 rgba(60, 64, 67, .3), 0 2px 6px 2px rgba(60, 64, 67, .15);
+  --ds-elev-3: 0 1px 3px 0 rgba(60, 64, 67, .3), 0 4px 8px 3px rgba(60, 64, 67, .15);
+  --ds-elev-hover: var(--ds-elev-1);
+  --ds-elev-popover: var(--ds-elev-2);
+  --ds-elev-overlay: var(--ds-elev-3);
+
+  /* ── Layout ─────────────────────────────────────────
+   * Sizes of the app frame (components/shell.css, components/page.css).
+   *   topbar-height  the top app bar
+   *   drawer-width   the navigation drawer
+   *   content-max    widest page content
+   *   measure        reading measure of running text (leads, notes)
+   *   toast-room     room kept free at a page's end for a two-line snackbar
+   */
+  --ds-topbar-height: 64px;
+  --ds-drawer-width: 256px;
+  --ds-content-max: 1280px;
+  --ds-measure: 76ch;
+  --ds-toast-room: 64px;
+}
+
+/*
+ * The exact Material 3 emphasized path, sampled. Browsers without linear()
+ * (Safari up to 17.1) keep the cubic-bezier above.
+ */
+@supports (transition-timing-function: linear(0, 1)) {
+  .ds-theme {
+    --ds-ease-emphasized: linear(0, 0.003 2%, 0.013 4%, 0.03 6%, 0.056 8%, 0.093 10%, 0.146 12%, 0.222 14%, 0.341 16%, 0.52 18%, 0.636 20%, 0.706 22%, 0.773 25%, 0.84 30%, 0.883 35%, 0.912 40%, 0.951 50%, 0.973 60%, 0.987 70%, 0.995 80%, 0.999 90%, 1);
+  }
+}
+
+/*
+ * Reduced motion: one switch for every component. Movement becomes a
+ * near-instant change (1 ms, not 0: transitionend and animationend still
+ * fire, so code waiting for them keeps working), distances collapse,
+ * scaling and staggering stop. Loading indicators are not decoration (they
+ * say that something runs), so their loops only slow down.
+ *
+ * A page may opt out with .ds-motion-full on its .ds-theme element: it then
+ * moves the same whatever the system setting. Use it only where motion
+ * carries meaning that a still page would lose.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ds-theme:not(.ds-motion-full) {
+    --ds-dur-instant: 1ms;
+    --ds-dur-fast: 1ms;
+    --ds-dur-base: 1ms;
+    --ds-dur-medium: 1ms;
+    --ds-dur-slow: 1ms;
+    --ds-dur-glide: 1ms;
+    --ds-distance-sm: 0px;
+    --ds-distance-md: 0px;
+    --ds-distance-lg: 0px;
+    --ds-distance-xl: 0px;
+    --ds-distance-sheet: 0%;
+    --ds-scale-enter: 1;
+    --ds-stagger: 0ms;
+    --ds-loop-spin: 1.4s;
+    --ds-loop-spin-fast: 1.4s;
+    --ds-loop-indeterminate: 2.4s;
+    --ds-loop-pulse: 2.4s;
+  }
+}
+
+/* ── motion.css ── */
+/*
+ * Motion: the only file with @keyframes (test/css.test.js enforces it).
+ * Components either name a keyframe here directly or use the utility
+ * classes below; durations, easings and distances always come from
+ * tokens.css, so reduced motion is handled once, for everything.
+ *
+ * Enter keyframes only define `from`: the element animates to whatever its
+ * own styles say, so one keyframe works for any final opacity or transform.
+ *
+ * Progressive: .ds-collapsible animates its height only where the browser
+ * supports interpolate-size (elsewhere it simply toggles).
+ */
+
+/* ── Keyframes: enter ──────────────────────────── */
+
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+}
+
+/*
+ * Movement only. Opacity must take the standard curve while the movement
+ * decelerates (a decelerating fade flashes), and one keyframe runs on one
+ * curve, so entrances pair ds-fade-in with one of these:
+ *
+ *   animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) backwards,
+ *              ds-lift-in var(--ds-dur-medium) var(--ds-ease-out) backwards;
+ *
+ * ds-lift-in rises (snackbars, a swapped view), ds-grow-in rises from just
+ * below full size (dialogs), ds-shift-in comes from the side (side sheets),
+ * ds-pop-in grows small markers (badges). The .ds-enter utilities below
+ * always use these pairs.
+ */
+@keyframes ds-lift-in {
+  from { transform: translate3d(0, var(--ds-motion-distance, var(--ds-distance-md)), 0); }
+}
+
+@keyframes ds-grow-in {
+  from { transform: translate3d(0, var(--ds-motion-distance, var(--ds-distance-md)), 0) scale(var(--ds-scale-enter)); }
+}
+
+@keyframes ds-shift-in {
+  from { transform: translate3d(var(--ds-motion-distance, var(--ds-distance-xl)), 0, 0); }
+}
+
+/* A rolling line (a status text that changes): the new line comes up from
+   below into its slot (--ds-motion-distance: 100%, one line height). */
+@keyframes ds-roll-in {
+  from { transform: translate3d(0, var(--ds-motion-distance, 100%), 0); }
+}
+
+/* Small markers that appear (badges, counters): the only scale bigger than
+   --ds-scale-enter, still without overshoot. */
+@keyframes ds-pop-in {
+  from { transform: scale(var(--ds-motion-scale, var(--ds-scale-small))); }
+}
+
+/* A stroke that draws itself (a check after success). The element sets
+   stroke-dasharray to its path length (pathLength="1" keeps it at 1). */
+@keyframes ds-draw {
+  from { stroke-dashoffset: var(--ds-draw-length, 1); }
+}
+
+/* A bar that fills from its start (meters, chart bars and columns on their
+   first render). The element sets its own transform (the scaleX or scaleY
+   of its share) and transform-origin; the bar grows from zero to it. A
+   value that changes later jumps or transitions, it never replays this. */
+@keyframes ds-fill-x {
+  from { transform: scaleX(0); }
+}
+
+@keyframes ds-fill-y {
+  from { transform: scaleY(0); }
+}
+
+/* ── Keyframes: leave ──────────────────────────── */
+
+@keyframes ds-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes ds-sink-out {
+  to { opacity: 0; transform: translate3d(0, var(--ds-motion-distance, var(--ds-distance-md)), 0); }
+}
+
+@keyframes ds-scale-out {
+  to { opacity: 0; transform: translate3d(0, var(--ds-distance-sm), 0) scale(var(--ds-scale-enter)); }
+}
+
+@keyframes ds-slide-out {
+  to { opacity: 0; transform: translate3d(var(--ds-motion-distance, var(--ds-distance-lg)), 0, 0); }
+}
+
+/* The rolling line leaves upwards (--ds-motion-distance: -100%); movement
+   only, it pairs with ds-fade-out. */
+@keyframes ds-roll-out {
+  to { transform: translate3d(0, var(--ds-motion-distance, -100%), 0); }
+}
+
+/* ── Keyframes: loops (loading indicators) ─────── */
+/* No shimmer: shimmers are decoration; skeletons pulse. */
+
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ds-pulse {
+  50% { opacity: .45; }
+}
+
+/* The segment (35% of the track) enters left and leaves right. */
+@keyframes ds-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(286%); }
+}
+
+/* A scan line over media being processed: a band travels from above the
+   frame to below it (percentages of its own height, set by the component). */
+@keyframes ds-scan {
+  from { transform: translate3d(0, var(--ds-scan-from, -100%), 0); }
+  to { transform: translate3d(0, var(--ds-scan-to, 100%), 0); }
+}
+
+/* A ring that widens and fades once behind a confirmation. No overshoot:
+   it only grows and disappears. */
+@keyframes ds-ripple {
+  from { opacity: var(--ds-ripple-opacity, .6); transform: scale(1); }
+  to { opacity: 0; transform: scale(var(--ds-ripple-scale, 1.6)); }
+}
+
+/* ── Utilities ─────────────────────────────────── */
+
+/*
+ * One-shot entrance. Variants pick the keyframes; `--ds-i` (set by
+ * stagger() in js/motion.js) delays each item of a list by one
+ * --ds-stagger step. Every variant fades on the standard curve: movement
+ * runs as a second animation (the lists pair up; duration, delay and fill
+ * repeat), so only the movement decelerates.
+ *
+ *   <li class="ds-enter ds-enter--scale">   via JS: DS.motion.enter(el, 'scale')
+ *
+ * The doubled class is deliberate: a utility must win over the entrance
+ * animation a component declares itself, whatever the file order.
+ */
+.ds-enter.ds-enter {
+  animation-name: var(--ds-enter-keyframes, ds-fade-in, ds-lift-in);
+  animation-duration: var(--ds-enter-duration, var(--ds-dur-medium));
+  animation-timing-function: var(--ds-enter-easing, var(--ds-ease-in-out), var(--ds-ease-out));
+  animation-delay: calc(var(--ds-i, 0) * var(--ds-stagger) + var(--ds-enter-delay, 0ms));
+  /* backwards: hold the start state during the delay, then hand back to the
+     element's own styles (hover transforms keep working afterwards). */
+  animation-fill-mode: backwards;
+}
+
+.ds-enter--fade { --ds-enter-keyframes: ds-fade-in; --ds-enter-easing: var(--ds-ease-in-out); }
+.ds-enter--scale { --ds-enter-keyframes: ds-fade-in, ds-grow-in; }
+.ds-enter--slide { --ds-enter-keyframes: ds-fade-in, ds-shift-in; --ds-enter-duration: var(--ds-dur-slow); --ds-enter-easing: var(--ds-ease-in-out), var(--ds-ease-emphasized); }
+
+/* Content that replaces a placeholder or another view: fade-through, the
+   default pair with the smallest rise. The distance is inherited, but
+   enter() drops the class once the entrance settles, so children that enter
+   with it keep the short rise only for that moment. */
+.ds-enter--swap { --ds-motion-distance: var(--ds-distance-sm); }
+
+/* Waits before it shows: fast loads never flash a loading indicator. */
+.ds-enter--delayed { --ds-enter-keyframes: ds-fade-in; --ds-enter-easing: var(--ds-ease-in-out); --ds-enter-delay: var(--ds-delay-loader); }
+
+/* A small marker appears (a badge, a counter that gets its first value):
+   it pops in from --ds-scale-small, without overshoot. */
+.ds-enter--pop { --ds-enter-keyframes: ds-fade-in, ds-pop-in; }
+
+/* A bar or column grows to its share once (first render of a chart): a
+   value travelling, so it glides on the standard curve like progress. */
+.ds-enter--fill-x { --ds-enter-keyframes: ds-fade-in, ds-fill-x; --ds-enter-duration: var(--ds-dur-glide); --ds-enter-easing: var(--ds-ease-in-out), var(--ds-ease-in-out); }
+.ds-enter--fill-y { --ds-enter-keyframes: ds-fade-in, ds-fill-y; --ds-enter-duration: var(--ds-dur-glide); --ds-enter-easing: var(--ds-ease-in-out), var(--ds-ease-in-out); }
+
+/* One-shot exit; leave() in js/motion.js removes or hides the element
+   afterwards. It starts at once and plays once, whatever delay (a loader
+   that waited to fade in) or loop the element's own animation had. */
+.ds-leave.ds-leave {
+  animation-name: var(--ds-leave-keyframes, ds-fade-out);
+  animation-duration: var(--ds-leave-duration, var(--ds-dur-base));
+  animation-timing-function: var(--ds-ease-in);
+  animation-delay: 0ms;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+
+.ds-leave--sink { --ds-leave-keyframes: ds-sink-out; }
+.ds-leave--scale { --ds-leave-keyframes: ds-scale-out; }
+.ds-leave--slide { --ds-leave-keyframes: ds-slide-out; }
+
+/* First render of a page only: its children (cards, tiles) fade in one
+   after the other, at most six steps (stagger() numbers them). Refreshes
+   never animate: drop the class once the entrance played. */
+.ds-stagger > * {
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) backwards;
+  animation-delay: calc(var(--ds-i, 0) * var(--ds-stagger));
+}
+
+/* Freshly loaded content replaces its placeholder: fade-through with the
+   smallest rise (opacity on the standard curve, the rise decelerating). */
+.ds-reveal {
+  --ds-motion-distance: var(--ds-distance-sm);
+  animation:
+    ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) backwards,
+    ds-lift-in var(--ds-dur-medium) var(--ds-ease-out) backwards;
+}
+
+/*
+ * Disclosure: <details class="ds-collapsible"> opens and closes with a
+ * height transition where the browser can animate to `auto` (progressive
+ * enhancement; elsewhere it simply toggles).
+ */
+@supports (interpolate-size: allow-keywords) {
+  .ds-collapsible {
+    interpolate-size: allow-keywords;
+  }
+
+  .ds-collapsible::details-content {
+    height: 0;
+    overflow: clip;
+    transition: height var(--ds-dur-medium) var(--ds-ease-in-out), content-visibility var(--ds-dur-medium) allow-discrete;
+  }
+
+  .ds-collapsible[open]::details-content {
+    height: auto;
+  }
+}
+
+/* ── base.css ── */
+/*
+ * Page base for full apps (opt-in): the backdrop, body type, selection,
+ * links, inline code and the focus ring. (Border-box sizing applies to
+ * all of .ds-theme, see utilities.css.)
+ *
+ *   <html class="ds-theme ds-base">
+ *
+ * Every rule is scoped to .ds-base through :where(), which adds no
+ * specificity: the rules weigh exactly what bare element selectors would,
+ * so any class of the page still wins over them. An embedded widget simply
+ * leaves .ds-base off and keeps the host page untouched.
+ */
+
+:where(.ds-base) [hidden] {
+  display: none !important;
+}
+
+html:where(.ds-base),
+:where(.ds-base) body {
+  margin: 0;
+  height: 100%;
+}
+
+/* The tinted backdrop of the whole app: white panels sit on it. */
+html:where(.ds-base) {
+  -webkit-text-size-adjust: 100%;
+  background: var(--ds-backdrop);
+}
+
+:where(.ds-base) body {
+  font: var(--ds-font-body);
+  color: var(--ds-text);
+  background: var(--ds-backdrop);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:where(.ds-base) ::selection {
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+/* Set while a modal layer is open (the page behind must not scroll). */
+:where(.ds-base) body.ds-no-scroll {
+  overflow: hidden;
+}
+
+/* Links are told apart from text by the underline, not by colour. */
+:where(.ds-base) a {
+  color: var(--ds-link);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--ds-link-underline-thickness);
+  text-underline-offset: var(--ds-link-underline-offset);
+  text-decoration-color: var(--ds-link-underline);
+  transition: text-decoration-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  :where(.ds-base) a:hover {
+    text-decoration-color: var(--ds-link-underline-hover);
+  }
+}
+
+/* Inline code takes the size of the text around it, only the typeface
+   changes. Its own box is just its glyphs: the monospace font sits higher
+   on the baseline and would open up the line by a pixel. */
+:where(.ds-base) code {
+  font-family: var(--ds-font-mono);
+  font-size: inherit;
+  line-height: 1;
+  background: var(--ds-code-bg);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-xs);
+  padding: 0 var(--ds-space-1);
+}
+
+:where(.ds-base) button,
+:where(.ds-base) input,
+:where(.ds-base) select,
+:where(.ds-base) textarea {
+  font-family: inherit;
+}
+
+/* Two weights, 400 and the label weight: emphasis in UI copy is a label,
+   not the browser's bold. */
+:where(.ds-base) strong,
+:where(.ds-base) b {
+  font-weight: var(--ds-weight-label);
+}
+
+/* Instant ring, never animated; the outline follows the element's radius. */
+:where(.ds-base) :focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+
+/* ── components/utilities.css ── */
+/*
+ * Utilities: border-box sizing inside .ds-theme, screen-reader text and
+ * small text helpers.
+ *
+ *   .ds-sr       visually hidden, still read by screen readers
+ *   .ds-muted    quieter body text (tabular figures)
+ *   .ds-meta     a meta line: hints, "last saved ..." (tabular figures)
+ *   .ds-stale    content on its way out, dimmed until it is replaced
+ *   .ds-num      right-aligned tabular figures (table cells)
+ *   .ds-center   centred text
+ *   .ds-nowrap   keeps a value and its unit together
+ */
+
+/* Every component is measured as border-box (a 100% wide field with its
+   padding, a dialog of min(400px, 100%)). Zero specificity, so a host page
+   that embeds .ds-theme keeps any sizing it sets itself. */
+:where(.ds-theme),
+:where(.ds-theme) *,
+:where(.ds-theme) *::before,
+:where(.ds-theme) *::after {
+  box-sizing: border-box;
+}
+
+/* Placed at the top left of its positioned ancestor: left where it stands
+   (the end of a row that scrolls sideways) it would widen the nearest
+   positioned scroller, up to a sideways scroll of the page. */
+.ds-sr {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.ds-muted {
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  /* Counts and times beside a title line up. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* A paragraph of notes keeps the reading measure and ends without a lone
+   last word. */
+p.ds-muted {
+  max-width: var(--ds-measure);
+  text-wrap: pretty;
+}
+
+.ds-meta {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Content on its way out (a filter applied, a test running again): it
+   stays in place, dimmed, until the new one replaces it in one step, so
+   nothing collapses and jumps back meanwhile. */
+.ds-stale {
+  opacity: var(--ds-state-stale);
+  transition: opacity var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+.ds-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-center {
+  text-align: center !important;
+}
+
+.ds-nowrap {
+  white-space: nowrap;
+}
+
+/* ── components/button.css ── */
+/*
+ * Button: one component for every button. Every action is a pill
+ * (--ds-radius-action).
+ *
+ *   .ds-btn                  outlined (secondary action)
+ *   .ds-btn--outlined        the same, named explicitly
+ *   .ds-btn--primary         filled: the main action of a form or dialog
+ *   .ds-btn--tonal           the tint: a softer main action
+ *   .ds-btn--text            no frame (dialog secondary actions, inline actions)
+ *   .ds-btn--quiet           muted until hovered (toolbars, headers)
+ *   .ds-btn--icon            round, icon only (needs aria-label)
+ *   .ds-btn--disc            hover shows a solid disc that grows in behind the icon
+ *   .ds-btn--sm              compact (tables, card headers, banners); with
+ *                            --icon a 32px round button
+ *   [aria-pressed="true"]    a toggle that is on: the tint, plus the
+ *                            attribute, so it is not told by colour alone
+ *
+ * Hover and press lay the content colour over the button at the state-layer
+ * opacities (::before), so one rule works on every fill and every palette.
+ * No transform on hover or press: the button stays where it is. Focus is an
+ * instant ring, never animated.
+ *
+ * The look comes from --ds-btn-* hooks. A theme may set them on .ds-theme
+ * to tune every button; variants set them on the element. Nothing here
+ * hard-codes a colour. Hooks: -height, -padding-x, -padding-start, -radius,
+ * -font, -bg, -color, -border, -state (layer colour), -state-opacity,
+ * -state-pressed-opacity, -hover-color, -hover-border, -hover-shadow,
+ * -hover-decoration, -icon-size, -quiet-color, -disabled-bg,
+ * -disabled-border.
+ *
+ * Hooks set on the element by a variant (--ds-btn-padding-start before a
+ * leading icon, --ds-btn-quiet-color in the top bar) win over a theme
+ * value; change them per element.
+ *
+ * Progressive: the leading-icon padding needs :has(); without it the
+ * padding stays even. Focus rings sit on :focus and come off again on
+ * :focus:not(:focus-visible), so browsers without :focus-visible keep them.
+ */
+
+.ds-btn {
+  position: relative;
+  /* The state layer (z-index -1) stays above the fill, below the label. */
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
+  min-height: var(--ds-btn-height, 36px);
+  padding-block: 0;
+  padding-inline: var(--ds-btn-padding-start, var(--ds-btn-padding-x, var(--ds-space-4))) var(--ds-btn-padding-x, var(--ds-space-4));
+  border: 1px solid var(--ds-btn-border, var(--ds-line-2));
+  border-radius: var(--ds-btn-radius, var(--ds-radius-action));
+  background: var(--ds-btn-bg, transparent);
+  color: var(--ds-btn-color, var(--ds-action-ink));
+  font: var(--ds-btn-font, var(--ds-font-label));
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out),
+    box-shadow var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* State layer */
+.ds-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ds-btn-state, currentColor);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Touch devices show no hover; pressing shows the end state at once. */
+@media (hover: hover) {
+  .ds-btn:hover {
+    border-color: var(--ds-btn-hover-border, var(--ds-btn-border, var(--ds-line-2)));
+    color: var(--ds-btn-hover-color, var(--ds-btn-color, var(--ds-action-ink)));
+    box-shadow: var(--ds-btn-hover-shadow, none);
+    text-decoration: var(--ds-btn-hover-decoration, none);
+  }
+
+  .ds-btn:hover::before {
+    opacity: var(--ds-btn-state-opacity, var(--ds-state-hover));
+  }
+}
+
+.ds-btn:active::before {
+  opacity: var(--ds-btn-state-pressed-opacity, var(--ds-state-pressed));
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* A leading icon sits closer to the edge (Material 3: 12px instead of 16px). */
+.ds-btn:has(> svg:first-child) {
+  --ds-btn-padding-start: var(--ds-space-3);
+}
+
+/* The ring sits on :focus (which :focus-visible implies), never in one
+   selector list with :focus-visible: a browser without it would drop the
+   whole list. The second rule, which such a browser drops, takes the ring
+   off again after a pointer click. */
+.ds-btn:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ds-btn:disabled,
+.ds-btn[aria-busy="true"] {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* aria-disabled without aria-busy: blocked but still focusable and
+   hoverable, so a tooltip can say why (the page's script ignores its
+   clicks). No state layer and no hover elevation. */
+.ds-btn[aria-disabled="true"]:not([aria-busy="true"]) {
+  cursor: not-allowed;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .ds-btn[aria-disabled="true"]:hover::before {
+    opacity: 0;
+  }
+}
+
+.ds-btn[aria-disabled="true"]:active::before {
+  opacity: 0;
+}
+
+/*
+ * Disabled: the neutral Material look by default (--ds-disabled-fill for
+ * container and outline, --ds-disabled-ink for the label, full opacity). A
+ * theme may dim the whole button instead (--ds-disabled-opacity, see
+ * tokens.css). A busy button (aria-busy) is blocked but keeps its colour.
+ */
+.ds-btn:disabled,
+.ds-btn[aria-disabled="true"]:not([aria-busy="true"]) {
+  opacity: var(--ds-disabled-opacity, var(--ds-state-disabled));
+  color: var(--ds-disabled-ink, var(--ds-btn-color, var(--ds-action-ink)));
+  background: var(--ds-btn-disabled-bg, var(--ds-btn-bg, transparent));
+  border-color: var(--ds-btn-disabled-border, var(--ds-disabled-fill, var(--ds-btn-border, var(--ds-line-2))));
+}
+
+/* Busy: blocked, but in full colour. Nothing changes on a fast response;
+   after the loader delay a spinner and the label say it is working (the
+   dimmed disabled look would only flash). */
+.ds-btn[aria-busy="true"] {
+  opacity: 1;
+}
+
+/* Spinner and label fade in when they swap while busy; laid out like the
+   button's own content. */
+.ds-btn__swap {
+  --ds-enter-duration: var(--ds-dur-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+.ds-btn svg {
+  flex-shrink: 0;
+}
+
+/* Filled. Level 1 on hover where the theme has elevation. */
+.ds-btn--primary {
+  --ds-btn-border: var(--ds-primary);
+  --ds-btn-bg: var(--ds-primary);
+  --ds-btn-color: var(--ds-on-primary);
+  --ds-btn-hover-shadow: var(--ds-elev-hover);
+  --ds-btn-disabled-bg: var(--ds-disabled-fill, var(--ds-btn-bg));
+  --ds-btn-disabled-border: var(--ds-disabled-fill, var(--ds-btn-border));
+}
+
+.ds-btn--tonal {
+  --ds-btn-border: var(--ds-accent);
+  --ds-btn-bg: var(--ds-accent);
+  --ds-btn-color: var(--ds-on-accent);
+  --ds-btn-disabled-bg: var(--ds-disabled-fill, var(--ds-btn-bg));
+  --ds-btn-disabled-border: var(--ds-disabled-fill, var(--ds-btn-border));
+}
+
+.ds-btn--outlined {
+  --ds-btn-border: var(--ds-line-2);
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-action-ink);
+}
+
+.ds-btn--text {
+  --ds-btn-border: transparent;
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-action-ink);
+  --ds-btn-padding-x: var(--ds-space-3);
+  --ds-btn-disabled-border: transparent;
+}
+
+.ds-btn--quiet {
+  --ds-btn-border: transparent;
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-btn-quiet-color, var(--ds-text-2));
+  --ds-btn-hover-color: var(--ds-text);
+  --ds-btn-disabled-border: transparent;
+}
+
+.ds-btn--icon {
+  width: var(--ds-btn-icon-size, 40px);
+  height: var(--ds-btn-icon-size, 40px);
+  min-height: 0;
+  padding: 0;
+}
+
+/*
+ * Disc: a solid --ds-fill-round disc fades and grows in behind the icon
+ * instead of a faint layer (round buttons on the backdrop). In on
+ * --ds-dur-base, out on --ds-dur-fast; pressing shows the full disc at once.
+ */
+.ds-btn--disc {
+  --ds-btn-state: var(--ds-fill-round);
+  --ds-btn-state-opacity: 1;
+  --ds-btn-state-pressed-opacity: 1;
+}
+
+.ds-btn--disc::before {
+  transform: scale(var(--ds-scale-small));
+  transition:
+    opacity var(--ds-dur-fast) var(--ds-ease-in-out),
+    transform var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-btn--disc:active::before {
+  transform: none;
+}
+
+@media (hover: hover) {
+  .ds-btn--disc:hover::before {
+    transform: none;
+    transition-duration: var(--ds-dur-base);
+  }
+}
+
+.ds-btn--sm {
+  --ds-btn-height: 32px;
+  --ds-btn-padding-x: var(--ds-space-3);
+}
+
+.ds-btn--icon.ds-btn--sm {
+  --ds-btn-icon-size: 32px;
+}
+
+/* A toggle that is on (a filter shown, "only active"): the tint. */
+.ds-btn[aria-pressed="true"] {
+  --ds-btn-border: var(--ds-accent);
+  --ds-btn-bg: var(--ds-accent);
+  --ds-btn-color: var(--ds-on-accent);
+  --ds-btn-hover-color: var(--ds-on-accent);
+}
+
+/* Forced colors turn the tint into Canvas, so on would look like off: the
+   system's selection colours instead, and a ring that names its colour. */
+@media (forced-colors: active) {
+  .ds-btn[aria-pressed="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-btn[aria-pressed="true"]:focus {
+    outline-color: CanvasText;
+  }
+}
+
+/* ── components/spinner.css ── */
+/*
+ * Spinner: a ring that turns once per --ds-loop-spin, a primary arc on a
+ * track. It is a loading indicator, not decoration: with reduced motion it
+ * keeps turning, slower (tokens.css). Show it only after --ds-delay-loader
+ * (.ds-enter--delayed) so fast loads never flash it.
+ *
+ *   .ds-spinner         on surfaces (16px)
+ *   .ds-spinner--sm     inside buttons and chips (12px), takes the text colour
+ *
+ * Hooks: --ds-spinner-track, --ds-spinner-color.
+ *
+ * Progressive: the small spinner's faint ring uses color-mix(); older
+ * browsers keep --ds-spinner-sm-track.
+ */
+
+.ds-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 2px solid var(--ds-spinner-track, var(--ds-line));
+  border-top-color: var(--ds-spinner-color, var(--ds-primary));
+  border-radius: 50%;
+  animation: ds-spin var(--ds-loop-spin) linear infinite;
+}
+
+.ds-spinner--sm {
+  width: 12px;
+  height: 12px;
+  /* A faint ring in the text colour. */
+  border-color: var(--ds-spinner-sm-track);
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+}
+
+/* Forced colors paint every side of the border alike: the arc would turn
+   into a still-looking full ring. */
+@media (forced-colors: active) {
+  .ds-spinner {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    border-top-color: Highlight;
+  }
+}
+
+/* ── components/indicator.css ── */
+/*
+ * Sliding indicator (js/indicator.js). The component that uses it gives it
+ * a look (background, radius); this file only moves it. Position and size
+ * glide together on the standard curve, so the pill never stretches past
+ * its target (no spring).
+ *
+ *   <nav class="ds-has-indicator"> <span class="ds-indicator ..."> ... </nav>
+ *   (createIndicator() inserts the span and the class.)
+ */
+
+.ds-has-indicator {
+  position: relative;
+  isolation: isolate;
+}
+
+.ds-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: var(--ds-indicator-w, 0);
+  height: var(--ds-indicator-h, 0);
+  transform: translate3d(var(--ds-indicator-x, 0), var(--ds-indicator-y, 0), 0);
+  pointer-events: none;
+  transition:
+    transform var(--ds-dur-medium) var(--ds-ease-in-out),
+    width var(--ds-dur-medium) var(--ds-ease-in-out),
+    height var(--ds-dur-medium) var(--ds-ease-in-out),
+    opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-indicator--instant {
+  transition: none;
+}
+
+.ds-indicator[data-empty] {
+  opacity: 0;
+}
+
+/* ── components/loading.css ── */
+/*
+ * Loading states. Nothing shows for fast loads: every indicator fades in
+ * only after --ds-delay-loader (the same delay as LOADER_DELAY_MS in
+ * js/motion.js, whose settleLoader() keeps a visible one up long enough).
+ * Indicators are not decoration: with reduced motion they keep running,
+ * slower (the loop tokens in tokens.css).
+ *
+ *   <div class="ds-boot"> ... </div>                 app start, after --ds-delay-boot
+ *   <div class="ds-loading" role="status"><span class="ds-spinner"></span>Loading ...</div>
+ *   <div class="ds-skeleton" role="status"> <span class="ds-sr">Loading ...</span>
+ *     <span class="ds-loadbar"><span class="ds-loadbar__bar"></span></span>
+ *     <span class="ds-skeleton__line ds-skeleton__line--heading"></span> ...
+ *     <div class="ds-skeleton__card"> <span class="ds-skeleton__line ds-skeleton__line--title"></span> ...
+ *
+ * Progressive: the boot screen fills the small viewport (svh) where
+ * supported, the classic viewport height elsewhere.
+ */
+
+/* App start: appears only when the start takes a moment. */
+.ds-boot {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--ds-space-5);
+  animation: ds-fade-in var(--ds-dur-slow) var(--ds-ease-in-out) var(--ds-delay-boot) backwards;
+}
+
+/* Small loading line (side sheets, "load more"). */
+.ds-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4) 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
+}
+
+/* Page placeholder: the outline of the page, pulsing slowly. */
+.ds-skeleton {
+  display: grid;
+  gap: var(--ds-space-4);
+  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
+}
+
+.ds-skeleton__card {
+  display: grid;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-6);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+}
+
+.ds-skeleton__line {
+  display: block;
+  width: 100%;
+  height: 12px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-highest);
+  animation: ds-pulse var(--ds-loop-pulse) var(--ds-ease-in-out) infinite;
+}
+
+.ds-skeleton__line--heading { width: 28%; height: 28px; border-radius: var(--ds-radius-sm); }
+.ds-skeleton__line--lead { width: 56%; margin-bottom: var(--ds-space-2); }
+.ds-skeleton__line--title { width: 24%; height: 16px; }
+.ds-skeleton__line--short { width: 44%; }
+.ds-skeleton__line--mid { width: 70%; }
+
+/*
+ * Page loading bar: 4px at the top edge of the content panel. It sits in
+ * the skeleton (so it shares its delay) and reaches the panel edges by the
+ * page padding of .ds-content (page.css), sticky while the panel scrolls.
+ */
+.ds-loadbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--ds-z-raised);
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  margin: calc(-1 * var(--ds-space-6)) calc(-1 * var(--ds-space-8)) var(--ds-space-5);
+  background: var(--ds-accent);
+}
+
+@media (max-width: 720px) {
+  .ds-loadbar {
+    margin: calc(-1 * var(--ds-space-5)) calc(-1 * var(--ds-space-4)) var(--ds-space-4);
+  }
+}
+
+.ds-loadbar__bar {
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-primary);
+  animation: ds-indeterminate var(--ds-loop-indeterminate) var(--ds-ease-in-out) infinite;
+}
+
+/* Forced colors turn both fills into Canvas, which would hide the bar: an
+   edge for the track and the system highlight for the moving part. */
+@media (forced-colors: active) {
+  .ds-loadbar {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-loadbar__bar {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}
+
+/* ── components/card.css ── */
+/*
+ * Card: white, outlined with the passive hairline at --ds-radius-card.
+ * Hierarchy comes from type, hairlines and tonal tiles, never shadows.
+ *
+ *   <section class="ds-card">
+ *     <div class="ds-card__row"> <h2 class="ds-card__title"> [button | switch]
+ *     <p class="ds-muted"> ...
+ *     <h3 class="ds-card__subtitle"> ...
+ *     <div class="ds-subsection"> ...
+ *     <nav class="ds-card__links"> <a class="ds-btn ds-btn--text ds-card__link"> ...
+ *
+ *   .ds-card--filled   a quieter block inside a card or form
+ *
+ * Hooks (on .ds-theme or an element): --ds-card-padding (--ds-space-6),
+ * --ds-card-padding-sm (600px and below, --ds-space-4),
+ * --ds-card-padding-filled (--ds-space-5), --ds-card-title-line (the
+ * title's line height, 24px, which a button or switch in the header row
+ * overhangs). --ds-card-pad is the resulting padding of each card, which
+ * tables read to bleed to its edges: read it, never set it.
+ *
+ * Progressive: equal-height cards with bottom-aligned links and the header
+ * row overhang use :has(); without it cards keep their own height.
+ */
+
+.ds-card {
+  --ds-card-pad: var(--ds-card-padding, var(--ds-space-6));
+  min-width: 0;
+  padding: var(--ds-card-pad);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+}
+
+/* The rhythm below decides all spacing: no browser margins of paragraphs
+   (a last one would add 1em to the bottom padding). Zero specificity, so
+   every component's own margin still wins. */
+:where(.ds-card) p {
+  margin-block: 0;
+}
+
+.ds-card > * + * {
+  margin-top: var(--ds-space-4);
+}
+
+/* An empty live region (filled later) takes no room. */
+.ds-card > p:empty {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .ds-card {
+    --ds-card-pad: var(--ds-card-padding-sm, var(--ds-space-4));
+  }
+}
+
+.ds-card--filled {
+  --ds-card-pad: var(--ds-card-padding-filled, var(--ds-space-5));
+  border-color: transparent;
+  background: var(--ds-surface-low);
+}
+
+/* Cards side by side share one height; their link rows line up at the
+   bottom edge. */
+.ds-grid-2 > .ds-card:has(> .ds-card__links) {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-grid-2 > .ds-card > .ds-card__links {
+  margin-top: auto;
+}
+
+.ds-card__title {
+  margin: 0;
+  padding: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-subtitle);
+  letter-spacing: 0;
+}
+
+.ds-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+/* A button (36px) or a switch (40px) next to the title hangs out of the
+   title's line (--ds-card-title-line) on both sides instead of making the row taller: every
+   card title starts at the same height, whatever its head holds. When the
+   row wraps (phones), the row gap makes up for the overhang. */
+.ds-card__row {
+  row-gap: calc(var(--ds-space-3) + (var(--ds-btn-height, 36px) - var(--ds-card-title-line, 24px)) / 2);
+}
+
+.ds-card__row > :not(.ds-card__title, :has(> .ds-card__title)) {
+  margin-block: calc((var(--ds-card-title-line, 24px) - var(--ds-btn-height, 36px)) / 2);
+}
+
+/* Two rules, not one list: a browser without :has() would drop the
+   whole list, the plain switch included. */
+.ds-card__row > .ds-switch {
+  margin-block: calc((var(--ds-card-title-line, 24px) - 40px) / 2);
+}
+
+.ds-card__row > :has(> .ds-switch) {
+  margin-block: calc((var(--ds-card-title-line, 24px) - 40px) / 2);
+}
+
+.ds-card__subtitle {
+  margin: var(--ds-space-6) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+}
+
+.ds-card > .ds-card__subtitle + * {
+  margin-top: var(--ds-space-2);
+}
+
+/* Links to related pages: text buttons in a row under a hairline. Each one
+   hangs its padding into the gutter, so the first of every line lines up
+   with the card text (the gap makes up for it between them). */
+.ds-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-1) calc(var(--ds-space-2) + var(--ds-space-3));
+  padding-top: var(--ds-space-3);
+  border-top: 1px solid var(--ds-line);
+}
+
+.ds-card__links > * {
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+.ds-card__link {
+  --ds-btn-padding-x: var(--ds-space-3);
+}
+
+/* At the end of a card's header row the padding hangs out on the right. */
+.ds-card__row > .ds-card__link:last-child {
+  margin-right: calc(-1 * var(--ds-space-3));
+}
+
+/* The arrow leans into the direction of travel. */
+.ds-card__link svg {
+  transition: transform var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-card__link:hover svg {
+    transform: translateX(var(--ds-distance-sm));
+    transition-duration: var(--ds-dur-medium);
+  }
+}
+
+/* A part of a card with its own small title: a hairline and room above,
+   the content close under its title. */
+.ds-subsection {
+  display: grid;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-2);
+  padding-top: var(--ds-space-5);
+  border-top: 1px solid var(--ds-line);
+}
+
+.ds-subsection > .ds-card__subtitle,
+.ds-subsection > p {
+  margin: 0;
+}
+
+/* A centred "load more" row. */
+.ds-more {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── components/tile.css ── */
+/*
+ * Key figures: tonal tiles in a row of four (two below 1100px).
+ *
+ *   <div class="ds-tiles">
+ *     <div class="ds-tile">
+ *       <p class="ds-tile__label">[icon] <span>Open items</span></p>
+ *       <p class="ds-tile__value" data-count="128">128</p>
+ *       <p class="ds-tile__note">+12 this week</p>
+ *
+ * The value never wraps and never takes a colour: on narrow tiles it gets
+ * smaller instead (a broken number reads as another number). Status goes
+ * into the label as an icon. A tile that opens something is a <button
+ * class="ds-tile"> or <a class="ds-tile">: a 6% state layer and the focus
+ * ring, no lift.
+ *
+ * Hook: --ds-tile-radius.
+ *
+ * Progressive: the shrinking value uses container units (cqi); without
+ * them it keeps --ds-size-display. Focus rings sit on :focus and come
+ * off again on :focus:not(:focus-visible), which older browsers drop.
+ */
+
+.ds-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ds-space-3);
+}
+
+@media (max-width: 1100px) {
+  .ds-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ds-tile {
+  /* Its value scales with the tile (cqi, below). */
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--ds-space-4) var(--ds-space-5) var(--ds-space-5);
+  border-radius: var(--ds-tile-radius, var(--ds-radius-lg));
+  background: var(--ds-surface-low);
+}
+
+@media (max-width: 600px) {
+  .ds-tiles {
+    gap: var(--ds-space-2);
+  }
+
+  .ds-tile {
+    padding: var(--ds-space-3) var(--ds-space-4) var(--ds-space-4);
+  }
+}
+
+.ds-tile__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+}
+
+.ds-tile__label svg {
+  flex-shrink: 0;
+}
+
+.ds-tile__value {
+  margin: var(--ds-space-2) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-display);
+  /* Tiles of a row are equally wide, so their values keep one size. */
+  font-size: min(var(--ds-size-display), 26cqi);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Clickable tile: the element's own button or link look is reset. */
+:is(button, a).ds-tile {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(button, a).ds-tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  :is(button, a).ds-tile:hover::before {
+    opacity: var(--ds-state-hover-lg);
+  }
+}
+
+:is(button, a).ds-tile:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+:is(button, a).ds-tile:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+:is(button, a).ds-tile:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* On the tonal tile the quieter text colour is text-2, never text-3. */
+.ds-tile__note {
+  margin: var(--ds-space-1) 0 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── components/list.css ── */
+/*
+ * Lists inside cards: key-value rows, a plain list, a definition grid of
+ * facts and a line of parts separated by «·».
+ *
+ *   <ul class="ds-kv-list"><li><span>Name</span><strong>Value</strong></li></ul>
+ *   <ul class="ds-plain-list"><li>...</li></ul>
+ *   <dl class="ds-facts"><div><dt>Label</dt><dd>Value</dd></div></dl>
+ *   <span class="ds-parts"><span class="ds-parts__list"><span>3 new</span><span>1 updated</span></span></span>
+ *
+ * Progressive: "exactly four facts" layouts use :has() and container
+ * queries; elsewhere the facts take as many 220px columns as fit.
+ */
+
+.ds-kv-list,
+.ds-plain-list {
+  list-style: none;
+  /* No top margin of their own: inside a card the card's rhythm spaces them. */
+  margin-inline: 0;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.ds-kv-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) 0;
+  border-top: 1px solid var(--ds-line);
+  font: var(--ds-font-body);
+}
+
+.ds-kv-list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ds-kv-list li > span {
+  color: var(--ds-text-2);
+}
+
+.ds-kv-list strong {
+  font-weight: var(--ds-weight-label);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-plain-list li + li {
+  margin-top: var(--ds-space-2);
+}
+
+/* ── Facts: label above value, as many columns as fit ── */
+
+.ds-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ds-space-4) var(--ds-space-8);
+  margin: 0;
+}
+
+.ds-facts:empty {
+  display: none;
+}
+
+.ds-card > .ds-facts {
+  margin-top: var(--ds-space-5);
+}
+
+/* Exactly four facts on a page never split three and one: four in a row,
+   two and two on a narrower content area, one column on phones. Only
+   inside the content area: a side sheet lives outside it and keeps the
+   auto-fit columns above. */
+@container ds-content (min-width: 1041px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container ds-content (max-width: 1040px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container ds-content (max-width: 520px) {
+  .ds-facts:has(> :nth-child(4):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Facts above key figures follow the tiles' grid: the second fact starts
+   where the third tile does, or (two tiles per row) where the second one
+   does; phones stack them. */
+.ds-card:has(.ds-tiles) > .ds-facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--ds-space-3);
+}
+
+.ds-card:has(.ds-tiles) > .ds-facts > :nth-child(2) {
+  grid-column: 3 / -1;
+}
+
+@media (max-width: 1100px) {
+  .ds-card:has(.ds-tiles) > .ds-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ds-card:has(.ds-tiles) > .ds-facts > :nth-child(2) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-card:has(.ds-tiles) > .ds-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ds-facts dt {
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+}
+
+.ds-facts dd {
+  margin: var(--ds-space-1) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* A trailing icon in a link (an external target) keeps a little air. */
+.ds-facts a svg {
+  margin-left: var(--ds-space-1);
+  vertical-align: -2px;
+}
+
+/*
+ * Parts: a line of parts that wraps between the parts. A part moves to the
+ * next line whole; only a part longer than a whole line wraps inside. Each
+ * part brings its «·» in front, in a padding of its own; the list is
+ * shifted left by one separator and clipped, so the separator of a part
+ * that starts a line is never seen: nothing dangles at a line end, nothing
+ * leads the next line.
+ */
+.ds-parts {
+  display: block;
+  overflow: hidden;
+}
+
+.ds-parts__list {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+.ds-parts__list > span {
+  position: relative;
+  min-width: 0;
+  padding-left: var(--ds-space-3);
+  overflow-wrap: anywhere;
+}
+
+.ds-parts__list > span::before {
+  content: '·';
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* As wide as « · » in running text. */
+  width: var(--ds-space-3);
+  text-align: center;
+}
+
+/* ── components/empty.css ── */
+/*
+ * Empty state: centred, at most 400px. A tinted disc with the icon (24px),
+ * a title, at most one line of what to do next and at most one action.
+ *
+ *   <div class="ds-empty">
+ *     <span class="ds-empty__disc" aria-hidden="true"><svg ...></span>
+ *     <p class="ds-empty__title">No devices yet</p>
+ *     <p class="ds-empty__text">Add the first one to start the inventory.</p>
+ *     <button class="ds-btn ds-btn--tonal" type="button">Add device</button>
+ */
+
+.ds-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--ds-space-2);
+  max-width: 400px;
+  margin: 0 auto;
+  padding: var(--ds-space-8) var(--ds-space-4);
+  text-align: center;
+}
+
+.ds-empty__disc {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--ds-space-2);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent-icon);
+}
+
+.ds-empty__title {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-subtitle);
+}
+
+.ds-empty__text {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-wrap: pretty;
+}
+
+.ds-empty > .ds-btn {
+  margin-top: var(--ds-space-3);
+}
+
+/* ── components/status.css ── */
+/*
+ * Status chip: icon and text on the tonal container of its status, never
+ * colour alone. A running state turns the small spinner instead of an
+ * icon; keep that node when the label changes, so it never restarts.
+ *
+ *   <span class="ds-status ds-status--ok"><svg ...>(check, 16)</svg><span>Synced</span></span>
+ *   <span class="ds-status ds-status--running"><span class="ds-spinner ds-status__spinner" aria-hidden="true"></span><span>Running</span></span>
+ *
+ *   --ok  --error  --warning  --running   (none: neutral, e.g. idle or off, told apart by the icon)
+ *
+ * Fully round at one line (radius = half the height); a long label that
+ * wraps keeps soft corners instead of turning into a stadium.
+ * Hook: --ds-status-radius.
+ */
+
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  min-height: 24px;
+  max-width: 100%;
+  padding: var(--ds-space-1) var(--ds-space-2) var(--ds-space-1) 6px;
+  border-radius: var(--ds-status-radius, var(--ds-radius-md));
+  background: var(--ds-surface-high);
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+  vertical-align: middle;
+  transition:
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-status > svg {
+  flex-shrink: 0;
+}
+
+.ds-status--ok {
+  background: var(--ds-success-container);
+  color: var(--ds-on-success-container);
+}
+
+.ds-status--ok > svg {
+  color: var(--ds-success);
+}
+
+.ds-status--error {
+  background: var(--ds-error-container);
+  color: var(--ds-on-error-container);
+}
+
+.ds-status--warning {
+  background: var(--ds-warning-container);
+  color: var(--ds-on-warning-container);
+}
+
+/* Running: a neutral chip with the primary spinner. */
+.ds-status--running {
+  color: var(--ds-text);
+}
+
+.ds-status__spinner {
+  width: 14px;
+  height: 14px;
+  margin: 1px;
+  border-width: 2px;
+  animation-duration: var(--ds-loop-spin-fast);
+}
+
+/* ── components/alert.css ── */
+/*
+ * Alerts: notices on tonal containers with an icon, never colour alone.
+ * The neutral alert has no colour of its own: the quiet surface and the
+ * icon in the primary colour.
+ *
+ *   <div class="ds-alert ds-alert--warning" role="status">
+ *     <svg ...>(alert, 20)</svg>
+ *     <span class="ds-alert__text">The certificate expires in 5 days.</span>
+ *     <button class="ds-btn ds-btn--text ds-btn--sm" type="button">Renew</button>
+ *   </div>
+ *
+ *   (none: neutral info)  --success  --warning  --error
+ */
+
+/* No entrance of their own: an alert re-rendered with fresh data must not
+   fade in again. Give an alert that a user action brings in .ds-reveal. */
+
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-low);
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+}
+
+.ds-alert > svg {
+  flex-shrink: 0;
+  color: var(--ds-primary);
+}
+
+/* The 20px icon and a 20px line share one baseline. */
+.ds-alert__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The button hangs out of the 20px text line by the same amount above and
+   below, so its label sits on the text's centre line and the banner keeps
+   its even padding. */
+.ds-alert .ds-btn {
+  flex-shrink: 0;
+  margin-block: calc((var(--ds-space-5) - var(--ds-btn-height, 32px)) / 2);
+  margin-inline: auto calc(-1 * var(--ds-space-2));
+}
+
+.ds-alert a {
+  color: inherit;
+}
+
+.ds-alert--success {
+  background: var(--ds-success-container);
+  color: var(--ds-on-success-container);
+}
+
+.ds-alert--success > svg { color: var(--ds-success); }
+
+.ds-alert--warning {
+  background: var(--ds-warning-surface);
+  color: var(--ds-text);
+}
+
+.ds-alert--warning > svg { color: var(--ds-warning); }
+
+.ds-alert--error {
+  background: var(--ds-error-container);
+  color: var(--ds-on-error-container);
+}
+
+.ds-alert--error > svg { color: var(--ds-error); }
+
+.ds-alert--error .ds-btn {
+  --ds-btn-color: var(--ds-on-error-container);
+}
+
+/* Code in a tonal alert is told apart by the typeface alone. */
+.ds-alert code {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/* Collapsible list of messages: icon and text in the summary.
+
+   <details class="ds-errors"><summary><svg ...>(alertCircle)</svg>2 errors<svg class="ds-errors__chevron" ...>(chevronDown)</svg></summary><ul><li>...</li></ul></details> */
+.ds-errors {
+  font: var(--ds-font-body);
+}
+
+.ds-errors summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  border-radius: var(--ds-radius-xs);
+  color: var(--ds-on-error-container);
+  font: var(--ds-font-label);
+  cursor: pointer;
+}
+
+.ds-errors summary svg {
+  flex-shrink: 0;
+  color: var(--ds-error);
+}
+
+.ds-errors ul {
+  margin: var(--ds-space-2) 0 0;
+  padding-left: var(--ds-space-5);
+  color: var(--ds-text-2);
+  overflow-wrap: anywhere;
+}
+
+.ds-errors li + li {
+  margin-top: var(--ds-space-1);
+}
+
+.ds-errors summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The chevron flips without turning (no rotation in the motion system). */
+.ds-errors .ds-errors__chevron {
+  color: inherit;
+}
+
+.ds-errors[open] .ds-errors__chevron {
+  transform: rotate(180deg);
+}
+
+/* ── components/table.css ── */
+/*
+ * Data tables (Material 3): a 48px header in the label style, 52px rows
+ * divided by the passive hairline, a quiet hover, no zebra. Numbers
+ * right-aligned and tabular. Inside a card the table runs to the card's
+ * edges, so the row hover spans the whole width and the first column lines
+ * up with the card text. The wrapper scrolls sideways on narrow screens,
+ * which rules out a sticky header (it would stick to the wrapper).
+ *
+ *   <div class="ds-table-wrap">
+ *     <table class="ds-table [ds-table--wide]">
+ *       <thead><tr><th>Name</th><th class="ds-num">Count</th><th class="ds-col--secondary">Owner</th></tr></thead>
+ *       <tbody><tr><td class="ds-col--text">...</td><td class="ds-num">12</td><td class="ds-col--secondary">...</td></tr></tbody>
+ *
+ *   .ds-col--text       a text column that keeps a readable width
+ *   .ds-col--secondary  dropped on phones (and in .ds-table--wide when the
+ *                       content area is narrow)
+ *   .ds-link-btn        a button that reads like a link (opens a detail)
+ *   .ds-table--dense    40px rows (long lists)
+ *   <th aria-sort="ascending"><button class="ds-table__sort">Name (arrow)</button></th>
+ *                       a sortable column; the arrow at the sorted column
+ *                       says it, not the colour
+ *
+ * Progressive: .ds-table--wide narrows by container query and the edge
+ * fade of a wide table uses :has(); older browsers scroll sideways.
+ */
+
+/* Positioned, so absolutely placed descendants (the visually hidden header
+   text .ds-sr) are clipped by the scroller instead of widening the page. */
+.ds-table-wrap {
+  position: relative;
+  overflow-x: auto;
+}
+
+.ds-card .ds-table-wrap {
+  margin-inline: calc(-1 * var(--ds-card-pad));
+}
+
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--ds-font-dense);
+  /* Dates, times and counts line up from row to row. */
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-table th,
+.ds-table td {
+  padding: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ds-card .ds-table-wrap :is(th, td):first-child {
+  padding-left: var(--ds-card-pad);
+}
+
+.ds-card .ds-table-wrap :is(th, td):last-child {
+  padding-right: var(--ds-card-pad);
+}
+
+.ds-table caption {
+  text-align: left;
+}
+
+.ds-table th {
+  height: 48px;
+  padding-block: var(--ds-space-3);
+  color: var(--ds-text-2);
+  font: var(--ds-font-label);
+  white-space: nowrap;
+}
+
+.ds-table td {
+  height: 52px;
+  padding-block: var(--ds-space-3);
+}
+
+.ds-table tbody tr {
+  transition: background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-table tbody tr:hover {
+    background: var(--ds-backdrop);
+  }
+}
+
+.ds-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Dense rows: 40px, the text stays 14/20. The hairline counts: 7 + 24 (a
+   status chip) + 7 + 1 = 40. */
+.ds-table--dense :is(th, td) {
+  height: 40px;
+  padding-block: calc(var(--ds-space-2) - 1px);
+}
+
+/* Sort button in a header cell. Its 4px padding (the room of its state
+   layer) hangs into the cell's padding, so the header keeps its height
+   and the label lines up with the cells below. */
+.ds-table__sort {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  margin: calc(-1 * var(--ds-space-1));
+  padding: var(--ds-space-1);
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ds-table__sort::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-table__sort:hover::before {
+    opacity: var(--ds-state-hover);
+  }
+}
+
+.ds-table__sort:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+.ds-table__sort:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-table__sort:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ds-table__sort > svg {
+  flex-shrink: 0;
+}
+
+/* A number column sorts with the arrow in front, so the figures keep
+   their right edge. */
+.ds-table th.ds-num .ds-table__sort {
+  flex-direction: row-reverse;
+}
+
+.ds-table th:is([aria-sort="ascending"], [aria-sort="descending"]) {
+  color: var(--ds-text);
+}
+
+/*
+ * Short cells (numbers, status chips, dates with .ds-nowrap) stay on one
+ * line, and text cells keep a readable width instead of breaking word by
+ * word. A wide table (.ds-table--wide) drops its secondary columns
+ * whenever the content area is narrow, also next to the persistent drawer;
+ * on phones every table does. A table that still does not fit scrolls
+ * sideways, and a fade at the right edge of its card tells that more
+ * columns follow (it covers only the card's padding when nothing does).
+ */
+.ds-table td.ds-num,
+.ds-table .ds-status {
+  white-space: nowrap;
+}
+
+.ds-table .ds-col--text {
+  min-width: 168px;
+}
+
+@container ds-content (max-width: 1040px) {
+  .ds-table--wide th {
+    white-space: normal;
+  }
+
+  .ds-table--wide .ds-col--secondary {
+    display: none;
+  }
+
+  .ds-card .ds-table-wrap:has(> .ds-table--wide) {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+    mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-table th {
+    white-space: normal;
+  }
+
+  .ds-table .ds-col--secondary {
+    display: none;
+  }
+
+  /* A 360px phone has no room for a 168px text column next to three
+     others: it takes what is left, and the cells keep closer together. */
+  .ds-table .ds-col--text {
+    min-width: 0;
+  }
+
+  .ds-table :is(th, td) {
+    padding-inline: var(--ds-space-3);
+  }
+
+  .ds-card .ds-table-wrap {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+    mask-image: linear-gradient(to left, transparent, #000 var(--ds-card-pad));
+  }
+}
+
+/* 320px (400% zoom): closer still, so three columns fit without a sideways
+   scroll. */
+@media (max-width: 359px) {
+  .ds-table :is(th, td) {
+    padding-inline: var(--ds-space-2);
+  }
+}
+
+/* A link that leaves the app carries the external icon. */
+.ds-table a > svg {
+  margin-left: var(--ds-space-1);
+  vertical-align: -2px;
+}
+
+/* Small notes inside a cell ("(default)", "was: ...") stay in one piece:
+   a note broken over two lines reads as two notes. */
+.ds-table small {
+  font: var(--ds-font-meta);
+  white-space: nowrap;
+}
+
+/* A button that reads like a link (the subject that opens the detail). */
+.ds-link-btn {
+  padding: 0;
+  border: 0;
+  border-radius: var(--ds-radius-xs);
+  background: none;
+  color: var(--ds-link);
+  font: inherit;
+  font-weight: var(--ds-weight-label);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: var(--ds-link-underline-thickness);
+  text-decoration-color: var(--ds-link-underline);
+  text-underline-offset: var(--ds-link-underline-offset);
+  cursor: pointer;
+  transition: text-decoration-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-link-btn:hover {
+    text-decoration-color: var(--ds-link-underline-hover);
+  }
+}
+
+/* ── components/form.css ── */
+/*
+ * Forms (Material 3, dense): 40px outlined fields with the label above,
+ * filled toolbar fields (search pill, select), checkboxes and radio cards.
+ * Focus shows as a 2px ring drawn inside the field, so nothing shifts; it
+ * appears at once, never animated. Chips and the switch have files of
+ * their own.
+ *
+ *   <form class="ds-form">
+ *     <div class="ds-form-grid">  (3 columns, the first wider; --2: two; --3: three equal)
+ *       <div class="ds-field">
+ *         <label class="ds-field__label" for="name">Name</label>
+ *         <input class="ds-input" id="name" aria-describedby="name-hint">
+ *         <small class="ds-field__hint" id="name-hint">Shown on the label.</small>
+ *     <div class="ds-form-actions"> <button class="ds-btn ds-btn--primary">Save</button> ...
+ *
+ * Field text is --ds-font-body and switches to --ds-font-input (16px) on
+ * screens up to 600px, where iOS would zoom into smaller text. A theme
+ * that wants one size everywhere sets --ds-input-font.
+ *
+ * Progressive: grids narrow by container queries on "ds-content" (and by
+ * the window width everywhere, also in sheets and dialogs); the disabled
+ * checkbox label and the selected radio card use :has(); older browsers
+ * keep the native control's own state.
+ */
+
+.ds-form {
+  display: grid;
+  gap: var(--ds-space-5);
+}
+
+.ds-card.ds-form {
+  gap: var(--ds-space-4);
+}
+
+.ds-card.ds-form > * + * {
+  margin-top: 0;
+}
+
+.ds-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--ds-space-4);
+}
+
+.ds-form-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ds-form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* By the content area's width (page.css): next to the persistent drawer
+   three fields per row would put their labels on two lines. Side sheets
+   and dialogs lie outside that container: they follow the window. */
+@container ds-content (max-width: 760px) {
+  .ds-form-grid,
+  .ds-form-grid--2,
+  .ds-form-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .ds-form-grid,
+  .ds-form-grid--2,
+  .ds-form-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ds-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+/* Fields next to each other that wrap (filters, a lookup). */
+.ds-inline-form,
+.ds-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-space-3);
+}
+
+.ds-inline-form .ds-field {
+  width: min(100%, 220px);
+}
+
+/* The button is lower than the 40px field: centred on it, while flex-end
+   keeps both under the label. */
+.ds-inline-form > .ds-btn {
+  margin-bottom: calc((var(--ds-space-10) - var(--ds-btn-height, 36px)) / 2);
+}
+
+.ds-filters .ds-field:not(.ds-field--grow) {
+  width: 160px;
+}
+
+@media (max-width: 720px) {
+  .ds-filters .ds-field:not(.ds-field--grow) {
+    width: calc(50% - var(--ds-space-2));
+  }
+
+  /* Two dates side by side at 320px: less padding, so the value is not
+     cut off early. */
+  .ds-input[type="date"] {
+    padding-inline: var(--ds-space-2);
+  }
+}
+
+/* A toolbar of filters: the fields in one row, the chips in the next. */
+.ds-toolbar {
+  display: grid;
+  gap: var(--ds-space-3);
+}
+
+/* An action bar above a list: search, buttons and a count in one row that
+   wraps; the search takes the room that is left, up to a readable width. */
+.ds-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  min-width: 0;
+}
+
+.ds-action-bar > .ds-search {
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+
+/* ── Field: label, control, hint ──────────────── */
+
+.ds-field {
+  display: grid;
+  gap: var(--ds-space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.ds-field--full {
+  grid-column: 1 / -1;
+}
+
+.ds-field--grow {
+  flex: 1 1 240px;
+}
+
+/* The search keeps room for a placeholder of about 224px between the icon
+   and the end padding. When the row cannot hold that and the 160px
+   filters, it takes a row of its own and the filters follow together,
+   instead of a lone field wrapping under them. */
+.ds-filters .ds-field--grow {
+  flex-basis: calc(224px + var(--ds-space-4) * 2 + 20px + var(--ds-space-3) + 2px);
+}
+
+@container ds-content (max-width: 980px) {
+  .ds-filters .ds-field--grow {
+    flex-basis: 100%;
+  }
+}
+
+.ds-field__label {
+  color: var(--ds-text-2);
+  font: var(--ds-font-caption);
+}
+
+/* A group of checkboxes or radio cards is a fieldset whose legend is the
+   label: without the browser's frame and indent. */
+fieldset.ds-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend.ds-field__label {
+  padding: 0;
+}
+
+.ds-field__hint {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  text-wrap: pretty;
+}
+
+.ds-field__hint:empty {
+  display: none;
+}
+
+/* ── Text input, select, textarea ─────────────── */
+
+.ds-input {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border: 1px solid var(--ds-outline);
+  border-radius: var(--ds-radius-field);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: var(--ds-input-font, var(--ds-font-body));
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* A multi-line field: about three lines tall, taller only by hand. */
+textarea.ds-input {
+  display: block;
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* 16px on phones: iOS Safari zooms the page into any smaller field. */
+@media (max-width: 600px) {
+  .ds-input {
+    font: var(--ds-input-font, var(--ds-font-input));
+  }
+}
+
+/* Zero specificity beyond .ds-input itself: the filled toolbar fields
+   (search pill, selects, dates) keep their own hover without an outline. */
+@media (hover: hover) {
+  .ds-input:where(:hover:not(:focus-within, :disabled, [readonly], [aria-invalid="true"])) {
+    border-color: var(--ds-text);
+  }
+}
+
+.ds-input::placeholder {
+  color: var(--ds-text-3);
+  opacity: 1;
+}
+
+/* The ring is the field's own 1px border plus 1px inside: 2px, no shift.
+   It appears at once: the hover fade of the border must not carry over.
+   In Chromium the calendar button of a date field is a tab stop of its
+   own inside the field: the field is not :focus then, but keeps the ring. */
+.ds-input:focus,
+.ds-input[type="date"]:focus-within {
+  outline: none;
+  border-color: var(--ds-primary);
+  box-shadow: inset 0 0 0 1px var(--ds-primary);
+  transition-duration: 0s;
+}
+
+/* Error: the 1px border in the error colour at rest and the 2px ring when
+   focused (Material 3), so the focused field still stands out; the
+   message sits under the field (.ds-field__hint--error), never the colour
+   alone. */
+.ds-input[aria-invalid="true"] {
+  border-color: var(--ds-error);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .ds-input[aria-invalid="true"]:hover:not(:focus-within) {
+    border-color: var(--ds-on-error-container);
+  }
+}
+
+.ds-input[aria-invalid="true"]:focus,
+.ds-input[aria-invalid="true"]:focus-within {
+  border-color: var(--ds-error);
+  box-shadow: inset 0 0 0 1px var(--ds-error);
+}
+
+.ds-field__hint--error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-1);
+  color: var(--ds-on-error-container);
+}
+
+.ds-field__hint--error > svg {
+  flex-shrink: 0;
+  color: var(--ds-error);
+}
+
+/* Under an inline form the message follows the row closely. */
+.ds-card > .ds-inline-form + .ds-field__hint--error {
+  margin-top: var(--ds-space-1);
+}
+
+/* Disabled and read-only: the quiet surface and the quieter text. */
+.ds-input:disabled,
+.ds-input[readonly] {
+  border-color: var(--ds-line);
+  background: var(--ds-surface-low);
+  color: var(--ds-text-2);
+}
+
+.ds-input:disabled {
+  cursor: not-allowed;
+}
+
+.ds-input:disabled::placeholder {
+  color: var(--ds-text-2);
+}
+
+/*
+ * Select: the native control without its arrow, and M3's drop-down triangle
+ * drawn by two gradients in the quieter text colour (no image file). A
+ * field with suggestions (datalist) shows the same triangle at
+ * rest; Chromium's own arrow, which only appears on hover, stays on top of
+ * it invisibly, so a click there still opens the list.
+ */
+select.ds-input,
+input.ds-input[list] {
+  padding-right: var(--ds-space-8);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ds-text-2) 50%),
+    linear-gradient(-45deg, transparent 50%, var(--ds-text-2) 50%);
+  background-repeat: no-repeat;
+  background-position:
+    right 17px top 50%,
+    right 12px top 50%;
+  background-size: 5px 5px;
+}
+
+select.ds-input {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+/* Laid over the triangle (in the field's right padding), so a click on
+   the triangle opens the list. */
+input.ds-input[list]::-webkit-calendar-picker-indicator {
+  width: var(--ds-space-8);
+  margin: 0 calc(-1 * var(--ds-space-8)) 0 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Date fields: the native picker button, drawn as the line set's calendar
+   in the quieter text colour (like the select's triangle and the search
+   icon) instead of Chromium's black filled glyph. Without a minimum width
+   of its own, the field fits its filter column (two per row at 320px). */
+.ds-input[type="date"] {
+  min-width: 0;
+}
+
+.ds-input[type="date"]::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: var(--ds-text-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E") center / 20px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E") center / 20px no-repeat;
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Firefox: no dotted inner focus line. */
+select.ds-input:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 var(--ds-text);
+}
+
+/* Filled toolbar variant: the select sits on the tonal fill, no outline. */
+.ds-input--filled {
+  border-color: transparent;
+  background-color: var(--ds-surface-high);
+}
+
+/* On the tonal fill text-3 falls short of 4.5:1; text-2 keeps it. */
+.ds-input--filled::placeholder,
+.ds-search .ds-input::placeholder {
+  color: var(--ds-text-2);
+}
+
+@media (hover: hover) {
+  .ds-input--filled:hover:not(:focus-within):not(:disabled) {
+    border-color: transparent;
+    background-color: var(--ds-surface-highest);
+  }
+}
+
+/* Search: a filled pill with a leading icon (toolbars). */
+.ds-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ds-search > svg {
+  position: absolute;
+  left: var(--ds-space-4);
+  color: var(--ds-text-2);
+  pointer-events: none;
+}
+
+.ds-search .ds-input {
+  padding-left: calc(var(--ds-space-4) + 20px + var(--ds-space-3));
+  padding-right: var(--ds-space-4);
+  border-color: transparent;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-high);
+}
+
+@media (hover: hover) {
+  .ds-search .ds-input:hover:not(:focus) {
+    border-color: transparent;
+    background: var(--ds-surface-highest);
+  }
+}
+
+.ds-search .ds-input:focus {
+  border-color: var(--ds-primary);
+  background: var(--ds-surface);
+}
+
+/* Chromium's clear button is a blue glyph of its own: the icon set's close icon in the quieter text colour instead, a
+   mask like the date fields' calendar. A click still clears the field. */
+.ds-search .ds-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+.ds-search .ds-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 var(--ds-space-2);
+  background: var(--ds-text-2);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / 20px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / 20px no-repeat;
+  cursor: pointer;
+}
+
+/* Number fields are typed in like every other
+   field: no native spinner showing up on hover. Arrow keys still step. */
+input.ds-input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input.ds-input[type="number"]::-webkit-inner-spin-button,
+input.ds-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Checkbox and radio cards ─────────────────── */
+
+.ds-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 40px;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  cursor: pointer;
+}
+
+.ds-check input,
+.ds-radio input,
+.ds-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ds-primary);
+  cursor: pointer;
+}
+
+/* Not the table's box: table cells place it themselves. */
+.ds-check input,
+.ds-radio input {
+  margin: 0;
+}
+
+
+.ds-check input:disabled {
+  cursor: not-allowed;
+}
+
+.ds-check:has(input:disabled) {
+  color: var(--ds-text-2);
+  cursor: not-allowed;
+}
+
+/* A hint under a checkbox lines up with the label text, not the box
+   (18px box plus the gap). */
+.ds-check + .ds-field__hint {
+  padding-left: calc(18px + var(--ds-space-3));
+}
+
+.ds-check--sm {
+  min-height: 32px;
+  color: var(--ds-text-2);
+}
+
+.ds-radios {
+  display: grid;
+  gap: var(--ds-space-2);
+}
+
+/* The selected card takes a 2px primary outline (its border plus 1px
+   inside, no shift) besides the filled radio: never the tint alone. */
+.ds-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-4);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface);
+  cursor: pointer;
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    box-shadow var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-radio:hover {
+    border-color: var(--ds-outline);
+  }
+}
+
+.ds-radio:has(input:checked) {
+  border-color: var(--ds-primary);
+  background: var(--ds-surface-low);
+  box-shadow: inset 0 0 0 1px var(--ds-primary);
+}
+
+.ds-radio input {
+  margin-top: 1px;
+}
+
+/* Keyboard focus rings the whole card, not a
+   square around the round control: Chromium keeps the native radio's box
+   square for the outline, whatever its border-radius. */
+.ds-radio input:focus-visible {
+  outline: none;
+}
+
+.ds-radio:has(input:focus-visible) {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-radio span {
+  display: grid;
+  gap: var(--ds-space-1);
+}
+
+.ds-radio strong {
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+}
+
+.ds-radio small {
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-wrap: pretty;
+}
+
+/* An option that cannot be chosen says why (icon and text, not only greyed out). */
+.ds-radio--disabled {
+  border-color: var(--ds-line);
+  background: var(--ds-surface-low);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .ds-radio--disabled:hover {
+    border-color: var(--ds-line);
+  }
+}
+
+.ds-radio--disabled strong {
+  color: var(--ds-text-2);
+}
+
+.ds-radio small.ds-radio__note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-1);
+  color: var(--ds-on-warning-container);
+  font: var(--ds-font-meta);
+}
+
+.ds-radio__note svg {
+  flex-shrink: 0;
+  color: var(--ds-warning);
+}
+
+/* "Add a row" under an editable table: a text button whose padding hangs
+   into the gutter, so its icon lines up with the table's first column. */
+.ds-add-row {
+  justify-self: start;
+  margin-left: calc(-1 * var(--ds-space-3));
+}
+
+/*
+ * Forced colors drop background images and fills: the select's triangle is
+ * gone there, so the native controls come back. The date field's calendar
+ * and the search's clear button are masks over a fill, which forced colors
+ * would paint in the field's own background: they keep the mask, filled in
+ * the system text colour.
+ */
+@media (forced-colors: active) {
+  select.ds-input {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    background-image: none;
+  }
+
+  input.ds-input[list] {
+    background-image: none;
+  }
+
+  input.ds-input[list]::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  .ds-input[type="date"]::-webkit-calendar-picker-indicator,
+  .ds-search .ds-input::-webkit-search-cancel-button {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* ── components/chip.css ── */
+/*
+ * Filter chips on native checkboxes or radios: the input stays in the form
+ * and in the tab order, visually hidden; selection shows the tint and a
+ * check, never the tint alone.
+ *
+ *   <fieldset class="ds-chips">
+ *     <legend class="ds-sr">Status</legend>
+ *     <label class="ds-chip">
+ *       <input class="ds-chip__input" type="checkbox" name="status" value="open">
+ *       <span class="ds-chip__body"><svg class="ds-chip__check" ...>(check, 18px)</svg><span>Open</span></span>
+ *     </label>
+ *     <span class="ds-chips__divider" aria-hidden="true"></span>
+ *   </fieldset>
+ */
+
+.ds-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.ds-chips__divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--ds-space-2);
+  background: var(--ds-line);
+}
+
+/* Narrow screens wrap the chips; a divider would dangle at a line end. */
+@media (max-width: 720px) {
+  .ds-chips__divider {
+    display: none;
+  }
+}
+
+.ds-chip {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+/* The native input stays in the form and in the tab order, visually hidden. */
+.ds-chip__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ds-chip__body {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  height: 32px;
+  padding: 0 var(--ds-space-4);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-chip);
+  color: var(--ds-text-2);
+  font: var(--ds-font-chip);
+  white-space: nowrap;
+  transition:
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* State layer in the content colour. */
+.ds-chip__body::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-chip:hover .ds-chip__body::before {
+    opacity: var(--ds-state-hover);
+  }
+}
+
+.ds-chip:active .ds-chip__body::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* The check takes no room until the chip is selected. */
+.ds-chip__check {
+  display: none;
+  flex-shrink: 0;
+}
+
+.ds-chip__input:checked + .ds-chip__body {
+  padding-left: var(--ds-space-2);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ds-chip__input:checked + .ds-chip__body .ds-chip__check {
+  display: block;
+  animation: ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Ring on :focus, off again on :focus:not(:focus-visible); browsers
+   without :focus-visible drop only the second rule (button.css). */
+.ds-chip__input:focus + .ds-chip__body {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-chip__input:focus:not(:focus-visible) + .ds-chip__body {
+  outline: none;
+}
+
+.ds-chip__input:disabled + .ds-chip__body {
+  opacity: var(--ds-state-disabled);
+  cursor: default;
+}
+
+/* ── components/switch.css ── */
+/*
+ * Switch (Material 3, 52 x 32) with its name and a state word next to it,
+ * so the state never shows through the handle position and colour alone.
+ * The word is hidden from screen readers, which announce the switch state
+ * itself; the page keeps it in step.
+ *
+ *   <label class="ds-switch">
+ *     <input type="checkbox" role="switch" name="sync" checked>
+ *     <span class="ds-switch__track" aria-hidden="true"></span>
+ *     <span class="ds-switch__label">Nightly sync</span>
+ *     <span class="ds-switch__state" aria-hidden="true">On</span>
+ *   </label>
+ */
+
+.ds-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 40px;
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  cursor: pointer;
+}
+
+.ds-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.ds-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 32px;
+  border: 2px solid var(--ds-outline);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface-highest);
+  transition:
+    background-color var(--ds-dur-base) var(--ds-ease-in-out),
+    border-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+/* The handle is 24px; off it shows at 16px (scaled), on it glides across
+   at full size. Transform only, no overshoot, no stretching. */
+.ds-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-outline);
+  transform: scale(calc(2 / 3));
+  transition:
+    transform var(--ds-dur-base) var(--ds-ease-in-out),
+    background-color var(--ds-dur-base) var(--ds-ease-in-out);
+}
+
+/* Hover darkens the resting handle (Material 3: on-surface-variant). */
+@media (hover: hover) {
+  .ds-switch:hover input:not(:checked) + .ds-switch__track::after {
+    background: var(--ds-text-2);
+  }
+}
+
+.ds-switch input:checked + .ds-switch__track {
+  border-color: var(--ds-primary);
+  background: var(--ds-primary);
+}
+
+.ds-switch input:checked + .ds-switch__track::after {
+  background: var(--ds-on-primary);
+  transform: translateX(20px);
+}
+
+/* Ring on :focus, off again on :focus:not(:focus-visible); browsers
+   without :focus-visible drop only the second rule (button.css). */
+.ds-switch input:focus + .ds-switch__track {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-switch input:focus:not(:focus-visible) + .ds-switch__track {
+  outline: none;
+}
+
+.ds-switch input:disabled + .ds-switch__track {
+  opacity: var(--ds-state-disabled);
+}
+
+/* The state in words next to the name ("On" / "Off"). It keeps the width
+   of the longer word, so the switch does not move when it flips. */
+.ds-switch__state {
+  min-width: 3.5em;
+  margin-left: calc(-1 * var(--ds-space-1));
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+}
+
+/* Forced colors: the handle and the on state are fills only; in system
+   colours, so on and off still differ. */
+@media (forced-colors: active) {
+  .ds-switch__track::after,
+  .ds-switch:hover input:not(:checked) + .ds-switch__track::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .ds-switch input:checked + .ds-switch__track {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+  }
+
+  .ds-switch input:checked + .ds-switch__track::after {
+    background: Canvas;
+  }
+}
+
+/* ── components/combobox.css ── */
+/*
+ * Combobox: a searchable list under an outlined field (ARIA combobox
+ * pattern; the page provides the behaviour). The field keeps its look, a
+ * chevron at the end says there is a list, and the list opens as a white
+ * surface on the popover elevation. Each entry shows a name and, quieter,
+ * a line of meta. The active entry (keyboard or pointer, data-active) gets
+ * the hover layer, the chosen one (aria-selected) the tint and the label
+ * weight, never colour alone.
+ *
+ *   <div class="ds-combo" [data-open]>
+ *     <input class="ds-input ds-combo__input" role="combobox" aria-expanded="true" aria-controls="list" aria-activedescendant="opt-2">
+ *     <button class="ds-combo__toggle" type="button" tabindex="-1" aria-label="Show list">(chevronDown)</button>
+ *     <div class="ds-combo__popup">
+ *       <ul class="ds-combo__list" id="list" role="listbox">
+ *         <li class="ds-combo__option" id="opt-2" role="option" aria-selected="true" data-active>
+ *           <span class="ds-combo__name">Name</span><span class="ds-combo__meta">Meta</span>
+ *       <p class="ds-combo__status">12 of 240</p>
+ */
+.ds-combo {
+  position: relative;
+}
+
+.ds-combo__input {
+  padding-right: calc(var(--ds-space-2) + 20px + var(--ds-space-3));
+  text-overflow: ellipsis;
+}
+
+.ds-combo__toggle {
+  position: absolute;
+  top: 0;
+  right: var(--ds-space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ds-space-10);
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text-2);
+  cursor: pointer;
+}
+
+/* The chevron flips without turning (no rotation in the motion system). */
+.ds-combo[data-open] .ds-combo__toggle svg {
+  transform: scaleY(-1);
+}
+
+.ds-combo__popup {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  left: 0;
+  right: 0;
+  z-index: var(--ds-z-popover);
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-popover);
+}
+
+.ds-combo__list {
+  /* The offset parent of the options (scrolling to the active one). */
+  position: relative;
+  max-height: 320px;
+  margin: 0;
+  padding: var(--ds-space-2) 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+.ds-combo__option {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  cursor: pointer;
+}
+
+/* State layer of the active entry, as in the drawer. */
+.ds-combo__option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-combo__option[data-active]::before {
+  opacity: var(--ds-state-hover);
+}
+
+.ds-combo__option[aria-selected="true"] {
+  background: var(--ds-accent);
+}
+
+.ds-combo__name {
+  position: relative;
+  overflow: hidden;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-combo__option[aria-selected="true"] .ds-combo__name {
+  color: var(--ds-on-accent);
+  font: var(--ds-font-label);
+}
+
+.ds-combo__meta {
+  position: relative;
+  overflow: hidden;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-combo__option[aria-selected="true"] .ds-combo__meta {
+  color: var(--ds-on-accent);
+}
+
+.ds-combo__status {
+  margin: 0;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  border-top: 1px solid var(--ds-line);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+}
+
+.ds-combo__list[hidden] + .ds-combo__status {
+  border-top: 0;
+}
+
+@media (forced-colors: active) {
+  .ds-combo__popup {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-combo__option[data-active] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
+/* ── components/progress.css ── */
+/*
+ * Linear progress (Material 3): a 4px primary bar on the tinted track. A
+ * known share scales the bar (transform only: set --ds-progress, 0 ... 1,
+ * on the element); an unknown one runs a calm segment across. With reduced
+ * motion the share jumps and the segment keeps running, slower.
+ *
+ *   <div class="ds-progress [ds-progress--indeterminate]" style="--ds-progress: .4">
+ *     <div class="ds-progress__track" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Import">
+ *       <div class="ds-progress__bar"></div>
+ *     </div>
+ *     <p class="ds-progress__label">40%</p>
+ *     <p class="ds-progress__detail">812 of 2,030 rows</p>
+ *
+ *   .ds-progress--waiting  hides the track (only the label shows)
+ */
+
+.ds-progress__track {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+}
+
+.ds-progress__bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--ds-primary);
+  transform: scaleX(var(--ds-progress, 0));
+  transform-origin: left center;
+  transition: transform var(--ds-dur-glide) var(--ds-ease-in-out);
+}
+
+.ds-progress--indeterminate .ds-progress__bar {
+  right: auto;
+  width: 35%;
+  transform: none;
+  transition: none;
+  animation: ds-indeterminate var(--ds-loop-indeterminate) var(--ds-ease-in-out) infinite;
+}
+
+.ds-progress--waiting .ds-progress__track {
+  display: none;
+}
+
+.ds-progress__label {
+  margin: var(--ds-space-2) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-progress__detail {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Forced colors drop both fills: the track gets an edge, the bar a system
+   colour, so the share still shows. */
+@media (forced-colors: active) {
+  .ds-progress__track {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-progress__bar {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}
+
+/* ── components/sheet.css ── */
+/*
+ * Modal side sheet (Material 3): white, rounded on its leading corners, on
+ * the overlay elevation, over a plain scrim (never blurred). It fades in
+ * from the side on the emphasized curve and leaves faster than it came:
+ * add .ds-sheet--closing, wait for the panel's animationend (or
+ * DS.motion.settled), then remove or hide the sheet.
+ *
+ *   <div class="ds-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+ *     <div class="ds-sheet__backdrop" data-close></div>
+ *     <section class="ds-sheet__panel [ds-sheet__panel--wide]">
+ *       <div class="ds-sheet__head">
+ *         <h2 class="ds-sheet__title" id="sheet-title">Details</h2>
+ *         <button class="ds-btn ds-btn--quiet ds-btn--icon" type="button" aria-label="Close">(close)</button>
+ *       </div>
+ *       <div class="ds-sheet__body" tabindex="0"> ... </div>
+ *
+ * Set data-scrolled on the panel while its body is scrolled: the head's
+ * hairline shows then. Do not use <header> in the head: outside main
+ * content it would be a second banner landmark.
+ *
+ * Hook: --ds-sheet-width (560px), --ds-sheet-width-wide (720px).
+ */
+
+.ds-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--ds-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ds-sheet__backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-scrim);
+  animation: ds-fade-in var(--ds-dur-base) var(--ds-ease-in-out) backwards;
+}
+
+/* With viewport-fit=cover the sheet keeps clear of the notch, the status
+   bar and the home indicator, like the app frame (shell.css). */
+.ds-sheet__panel {
+  position: relative;
+  width: min(100%, var(--ds-sheet-width, 560px));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  border-radius: var(--ds-radius-dialog) 0 0 var(--ds-radius-dialog);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-overlay);
+  /* Invisible; forced colors paint it, so the sheet keeps its edge. */
+  outline: 1px solid transparent;
+  animation:
+    ds-fade-in var(--ds-dur-slow) var(--ds-ease-in-out) backwards,
+    ds-shift-in var(--ds-dur-slow) var(--ds-ease-emphasized) backwards;
+}
+
+.ds-sheet__panel--wide {
+  width: min(100%, var(--ds-sheet-width-wide, 720px));
+}
+
+.ds-sheet--closing {
+  pointer-events: none;
+}
+
+.ds-sheet--closing .ds-sheet__backdrop {
+  animation: ds-fade-out var(--ds-dur-base) var(--ds-ease-in) forwards;
+}
+
+.ds-sheet--closing .ds-sheet__panel {
+  animation: ds-slide-out var(--ds-dur-base) var(--ds-ease-in) forwards;
+}
+
+/* Header: 64px; its hairline shows only while the body scrolls under it. */
+.ds-sheet__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: var(--ds-space-3) max(var(--ds-space-3), env(safe-area-inset-right)) var(--ds-space-3) var(--ds-space-6);
+}
+
+.ds-sheet__head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ds-line);
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-sheet__panel[data-scrolled] .ds-sheet__head::after {
+  opacity: 1;
+}
+
+.ds-sheet__title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text);
+  font: var(--ds-font-title);
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding:
+    var(--ds-space-2)
+    max(var(--ds-space-6), env(safe-area-inset-right))
+    calc(var(--ds-space-8) + env(safe-area-inset-bottom))
+    var(--ds-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+/* A snackbar shown inside the sheet (toast.css) that stays until closed:
+   the body keeps room for it at its end on top of its own padding
+   (data-toast-reserve and --ds-toast-reserve, set by the page), so the
+   sheet's actions can scroll clear of it. */
+.ds-sheet__body[data-toast-reserve] {
+  padding-bottom: calc(var(--ds-space-8) + env(safe-area-inset-bottom) + var(--ds-toast-reserve, 0px));
+  scroll-padding-bottom: var(--ds-toast-reserve, 0px);
+}
+
+/* A tab stop for scrolling: the ring only for the keyboard, inside the
+   edge so the panel does not clip it. */
+.ds-sheet__body:focus {
+  outline: none;
+}
+
+.ds-sheet__body:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: calc(-1 * var(--ds-focus-width));
+}
+
+@media (max-width: 600px) {
+  .ds-sheet__panel,
+  .ds-sheet__panel--wide {
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .ds-sheet__head {
+    padding-left: max(var(--ds-space-4), env(safe-area-inset-left));
+  }
+
+  .ds-sheet__body {
+    padding-inline: max(var(--ds-space-4), env(safe-area-inset-left)) max(var(--ds-space-4), env(safe-area-inset-right));
+  }
+}
+
+/* ── components/dialog.css ── */
+/*
+ * Dialog (confirmation): a modal sheet over the whole window, above an open
+ * side sheet (it may ask from inside one) and below snackbars. It enters
+ * with a fading scrim and a sheet that rises from just below full size; it
+ * leaves faster than it came. No blur, no spring.
+ *
+ *   <div class="ds-dialog">
+ *     <div class="ds-dialog__backdrop" data-close></div>
+ *     <div class="ds-dialog__box" role="alertdialog" aria-modal="true" aria-labelledby="d-title" aria-describedby="d-text">
+ *       <h2 class="ds-dialog__title" id="d-title">Delete 3 devices?</h2>
+ *       <p class="ds-dialog__text" id="d-text">They are removed for everyone.</p>
+ *       <div class="ds-dialog__actions">
+ *         <button class="ds-btn ds-btn--text" type="button">Cancel</button>
+ *         <button class="ds-btn ds-btn--primary" type="button">Delete devices</button>
+ *
+ *   .ds-dialog--hidden     not shown (or use the hidden attribute)
+ *   .ds-dialog--closing    plays the exit; remove or hide after animationend
+ *   .ds-dialog--contained  covers its positioned container instead of the
+ *                          window (a dialog inside an embedded panel)
+ *
+ * There are no red buttons: the main action names the consequence.
+ *
+ * Hooks: --ds-dialog-width (400px), --ds-dialog-border (an invisible
+ * hairline that forced colors paint, so the dialog keeps its edge once
+ * shadow and scrim are gone), --ds-dialog-shadow.
+ */
+
+.ds-dialog {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--ds-z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--ds-space-4);
+}
+
+.ds-dialog--contained {
+  position: absolute;
+  z-index: var(--ds-z-popover);
+}
+
+.ds-dialog--hidden {
+  display: none;
+}
+
+.ds-dialog__backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-scrim);
+  animation: ds-fade-in var(--ds-dur-base) var(--ds-ease-in-out) backwards;
+}
+
+.ds-dialog__box {
+  position: relative;
+  width: min(var(--ds-dialog-width, 400px), 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--ds-space-6);
+  display: grid;
+  gap: var(--ds-space-4);
+  border: var(--ds-dialog-border, 1px solid transparent);
+  border-radius: var(--ds-radius-dialog);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-dialog-shadow, var(--ds-elev-overlay));
+  text-align: left;
+  animation:
+    ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) backwards,
+    ds-grow-in var(--ds-dur-medium) var(--ds-ease-out) backwards;
+}
+
+.ds-dialog--closing {
+  pointer-events: none;
+}
+
+.ds-dialog--closing .ds-dialog__backdrop {
+  animation: ds-fade-out var(--ds-dur-fast) var(--ds-ease-in) forwards;
+}
+
+.ds-dialog--closing .ds-dialog__box {
+  --ds-motion-distance: var(--ds-distance-sm);
+  animation: ds-sink-out var(--ds-dur-fast) var(--ds-ease-in) forwards;
+}
+
+.ds-dialog__title {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-title);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.ds-dialog__text {
+  margin: 0;
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+}
+
+/* The title and its text belong together. */
+.ds-dialog__title + .ds-dialog__text {
+  margin-top: calc(-1 * var(--ds-space-2));
+}
+
+.ds-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-2);
+}
+
+/* ── components/toast.css ── */
+/*
+ * Snackbar (Material 3): the inverse surface on the overlay elevation, at
+ * the bottom left of the content panel. Icon and text, never colour alone.
+ * Place the region right after .ds-app: next to a persistent drawer it
+ * then starts at the panel's edge by itself.
+ * Enters with a fade and a short rise, leaves with a quick fade (add
+ * .ds-leave, see motion.css).
+ *
+ *   <div class="ds-toasts" role="status" aria-live="polite">
+ *     <div class="ds-toast [ds-toast--error]">
+ *       <svg ...>(checkCircle, 20)</svg>
+ *       <span class="ds-toast__text">Saved.</span>
+ *       <button class="ds-btn ds-btn--quiet ds-btn--icon ds-toast__close" type="button" aria-label="Close">(close)</button>
+ *
+ * Runtime properties a page may set: --ds-toast-left (the region's left
+ * edge; set it when the panel starts elsewhere), --ds-toast-bottom (its
+ * distance from the bottom edge; set it to stay above a bar pinned there),
+ * --ds-toast-shift and --ds-toast-shift-y (glide it from where it stood
+ * when it moves, e.g. between the page and a side sheet), and
+ * --ds-toast-reserve (room kept for an open message, with
+ * data-toast-reserve on .ds-view or .ds-sheet__body).
+ */
+
+.ds-toasts {
+  position: fixed;
+  left: var(--ds-toast-left, var(--ds-space-6));
+  bottom: var(--ds-toast-bottom, var(--ds-space-6));
+  /* Above the home indicator (viewport-fit=cover); a margin, so `bottom`
+     stays the offset a script may mirror. */
+  margin-bottom: env(safe-area-inset-bottom);
+  z-index: var(--ds-z-toast);
+  display: grid;
+  justify-items: start;
+  gap: var(--ds-space-2);
+  max-width: min(560px, calc(100vw - var(--ds-toast-left, var(--ds-space-6)) - var(--ds-space-6)));
+  pointer-events: none;
+  /* Moving into or out of a side sheet, the messages on screen start where
+     they stood and glide to the new edge (the page sets the shift for
+     one style flush). */
+  translate: var(--ds-toast-shift, 0px) var(--ds-toast-shift-y, 0px);
+  transition: translate var(--ds-dur-medium) var(--ds-ease-in-out);
+}
+
+/* Beside the persistent drawer (above 900px, shell.css): the panel's
+   left edge plus the usual 24px. */
+@media (min-width: 901px) {
+  .ds-app--drawer:not([data-drawer-hidden]) ~ .ds-toasts {
+    --ds-toast-left: calc(var(--ds-drawer-width) + env(safe-area-inset-left) + var(--ds-space-6));
+  }
+}
+
+.ds-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 48px;
+  max-width: 100%;
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-inverse);
+  color: var(--ds-on-inverse);
+  font: var(--ds-font-body);
+  box-shadow: var(--ds-elev-overlay);
+  /* Invisible; forced colors paint it, so the message keeps an edge. */
+  outline: 1px solid transparent;
+  pointer-events: auto;
+  --ds-motion-distance: var(--ds-distance-md);
+  --ds-leave-duration: var(--ds-dur-fast);
+  animation:
+    ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) backwards,
+    ds-lift-in var(--ds-dur-medium) var(--ds-ease-out) backwards;
+}
+
+/* Played once (mark it .ds-toast--shown): moving the region into or out
+   of a side sheet re-inserts the message, which would restart it, so a
+   message already on screen would blink out and rise again. The exit
+   (.ds-leave) still plays. */
+.ds-toast--shown:not(.ds-leave) {
+  animation: none;
+}
+
+.ds-toast > svg {
+  flex-shrink: 0;
+  color: var(--ds-inverse-primary);
+}
+
+.ds-toast__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ds-toast--error > svg,
+.ds-toast--info > svg {
+  color: var(--ds-on-inverse);
+}
+
+/* The shared quiet icon button (state layers for hover and press), in the
+   inverse text colour; toast.css loads after button.css, so these win. */
+.ds-toast__close {
+  --ds-btn-icon-size: 36px;
+  --ds-btn-quiet-color: var(--ds-on-inverse);
+  --ds-btn-hover-color: var(--ds-on-inverse);
+  flex-shrink: 0;
+  margin: calc(-1 * var(--ds-space-2)) calc(-1 * var(--ds-space-2)) calc(-1 * var(--ds-space-2)) auto;
+}
+
+.ds-toast__close:focus {
+  outline-color: var(--ds-on-inverse);
+}
+
+/* While an error message stays open (it waits to be closed), the content
+   panel keeps room for it at its end (the page measures the height):
+   the last form actions can scroll clear of it. The panel's own padding
+   is the safe area (shell.css). A side sheet's body does the same
+   while the message shows in it (sheet.css). */
+.ds-view[data-toast-reserve] {
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--ds-toast-reserve, 0px));
+  scroll-padding-bottom: var(--ds-toast-reserve, 0px);
+}
+
+/* Phones: across the width, above the bottom edge. */
+@media (max-width: 600px) {
+  .ds-toasts {
+    left: var(--ds-space-4);
+    right: var(--ds-space-4);
+    bottom: var(--ds-toast-bottom, var(--ds-space-4));
+    max-width: none;
+    justify-items: stretch;
+  }
+}
+
+/* ── components/tooltip.css ── */
+/*
+ * Plain tooltip (Material 3): the inverse surface, the meta role, placed
+ * below its control by the page's script. It only fades in and grows from
+ * just under full size (no rise: it is anchored to the control), and
+ * leaves with a quick fade. Let the pointer move onto it (WCAG 1.4.13: a
+ * magnifier user can read it there) and keep it open meanwhile.
+ *
+ *   <div class="ds-tooltip" role="tooltip" id="tip" hidden>Copy link</div>
+ */
+.ds-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--ds-z-toast);
+  /* Its own width wherever it was last placed (measure it before moving
+     it), wrapping only past the maximum. */
+  width: max-content;
+  max-width: min(320px, calc(100vw - 2 * var(--ds-space-2)));
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-inverse);
+  color: var(--ds-on-inverse);
+  font: var(--ds-font-meta);
+  /* Line breaks in the text are kept (a name and an email on two lines). */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  /* Invisible; forced colors paint it, so the tooltip keeps an edge. */
+  outline: 1px solid transparent;
+  --ds-motion-distance: 0px;
+  --ds-leave-duration: var(--ds-dur-instant);
+  animation:
+    ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out) backwards,
+    ds-grow-in var(--ds-dur-fast) var(--ds-ease-out) backwards;
+}
+
+.ds-tooltip[hidden] {
+  display: none;
+}
+
+/* ── components/shell.css ── */
+/*
+ * App frame (Google console layout): the frame fills the window on the
+ * tinted backdrop; a top app bar (--ds-topbar-height) and an optional
+ * navigation drawer (--ds-drawer-width), both without lines or shadows,
+ * and one white content panel, the only scroller of the page. At 900px
+ * and below the drawer becomes modal (a sheet from the left over a scrim).
+ *
+ *   <body>
+ *   <div class="ds-app ds-app--drawer" [data-drawer-open] [data-drawer-hidden] [data-scrolled]>
+ *     <a class="ds-skip" href="#main">Skip to content</a>
+ *     <div class="ds-topbar">
+ *       <button class="ds-btn ds-btn--quiet ds-btn--icon ds-topbar__menu" aria-label="Menu">(menu)</button>
+ *       <a class="ds-brand" href="/">[mark] <span class="ds-brand__name">Product</span></a>
+ *       <div class="ds-account"> <div class="ds-account__text"> <div class="ds-account__name"> <div class="ds-account__email"> </div>
+ *         <span class="ds-account__avatar" role="img" aria-label="...">A</span> <button class="ds-btn ds-btn--text">Sign out</button>
+ *     </div>
+ *     <div class="ds-scrim"></div>     (before the drawer, so it covers the page only)
+ *     <nav class="ds-drawer" aria-label="Main">
+ *       <div class="ds-drawer__head"> (brand again, shown in the modal drawer) </div>
+ *       <div class="ds-drawer__list">
+ *         <div class="ds-drawer__group"> <p class="ds-drawer__heading">Group</p>
+ *           <a class="ds-drawer__item" href="/a" aria-current="page">(icon 20) <span class="ds-drawer__label">Overview</span></a>
+ *           (or <button class="ds-drawer__item"> that shows a section in place; also aria-current="page" when active)
+ *     </nav>
+ *     <div class="ds-panel"> <main class="ds-view" id="main" tabindex="-1"> <div class="ds-content"> <div class="ds-page"> ...
+ *
+ * State attributes on .ds-app, set by the page's script:
+ *   data-drawer-open    the modal drawer is open (at 900px and below)
+ *   data-drawer-hidden  this view has no drawer (the panel takes the width)
+ *   data-scrolled       the view is scrolled: the panel's top hairline shows
+ *
+ * A segmented switch (.ds-segmented) may follow the brand in the top bar.
+ * The active drawer item glides with js/indicator.js
+ * (createIndicator(list, { active: '[aria-current="page"]', className: 'ds-drawer__indicator' })).
+ *
+ * Progressive: dvh units and the scrollbar colours degrade to vh and the
+ * platform scrollbar; focus rings sit on :focus and come off again on
+ * :focus:not(:focus-visible), which older browsers drop.
+ *
+ * Print: only the page content, without the frame and its scroller (the
+ * page's own padding and width come off at the end of page.css).
+ */
+.ds-app {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: calc(var(--ds-topbar-height) + env(safe-area-inset-top)) minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "main";
+  background: var(--ds-backdrop);
+}
+
+.ds-app--drawer {
+  grid-template-columns: calc(var(--ds-drawer-width) + env(safe-area-inset-left)) minmax(0, 1fr);
+  grid-template-areas:
+    "top top"
+    "nav main";
+}
+
+/* ── Top app bar ──────────────────────────────── */
+
+.ds-topbar {
+  grid-area: top;
+  position: relative;
+  z-index: var(--ds-z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-width: 0;
+  /* viewport-fit=cover: keep clear of notches and the status bar of an
+     installed app. */
+  padding:
+    env(safe-area-inset-top)
+    max(var(--ds-space-4), env(safe-area-inset-right))
+    0
+    max(var(--ds-space-6), env(safe-area-inset-left));
+}
+
+/* With the drawer, a 32px brand mark centres on the axis of the drawer's
+   icons (the list's inset, the item's padding, half the 20px icon), so the
+   bar and the destinations under it share one line. */
+.ds-app--drawer {
+  --ds-drawer-icon-axis: calc(var(--ds-space-3) + var(--ds-space-4) + 10px);
+}
+
+.ds-app--drawer .ds-topbar {
+  padding-left: max(calc(var(--ds-drawer-icon-axis) - 16px), env(safe-area-inset-left));
+}
+
+/*
+ * Skip link: the drawer puts up to 13 tab stops before the content. Hidden
+ * until focused, then a pill on the backdrop over the top bar.
+ */
+.ds-skip {
+  position: fixed;
+  top: calc(var(--ds-space-3) + env(safe-area-inset-top));
+  left: max(var(--ds-space-4), env(safe-area-inset-left));
+  z-index: var(--ds-z-toast);
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--ds-space-5);
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-popover);
+  color: var(--ds-text);
+  font: var(--ds-font-label);
+  text-decoration: none;
+}
+
+.ds-skip:focus-visible {
+  outline: var(--ds-focus-outline);
+}
+
+.ds-skip:not(:focus) {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+/*
+ * Segmented switch: a compact pill of two or three options after the brand
+ * (a mode switch). The tint glides between them (js/indicator.js); the
+ * current option is also set in the label weight, never colour alone.
+ *
+ *   <nav class="ds-segmented" aria-label="Mode">
+ *     <a class="ds-segmented__option" href="/a" aria-current="true">A</a><a class="ds-segmented__option" href="/b">B</a>
+ *   </nav>
+ *   createIndicator(nav, { active: '[aria-current="true"]', className: 'ds-segmented__indicator' })
+ */
+.ds-segmented {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  flex-shrink: 0;
+  margin-left: var(--ds-space-4);
+  overflow: hidden;
+  border: 1px solid var(--ds-outline);
+  border-radius: var(--ds-radius-action);
+}
+
+.ds-segmented__indicator {
+  background: var(--ds-accent);
+}
+
+.ds-segmented__option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 var(--ds-space-4);
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-segmented__option + .ds-segmented__option {
+  border-left: 1px solid var(--ds-outline);
+}
+
+/* State layer */
+.ds-segmented__option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-segmented__option:hover::before {
+    opacity: var(--ds-state-hover);
+  }
+}
+
+.ds-segmented__option:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+.ds-segmented__option:first-of-type {
+  border-radius: var(--ds-radius-action) 0 0 var(--ds-radius-action);
+}
+
+.ds-segmented__option:last-of-type {
+  border-radius: 0 var(--ds-radius-action) var(--ds-radius-action) 0;
+}
+
+.ds-segmented__option:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: calc(-1 * var(--ds-focus-width));
+}
+
+.ds-segmented__option:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ds-segmented__option[aria-current="true"] {
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+  font: var(--ds-font-label);
+}
+
+.ds-has-indicator > .ds-segmented__option[aria-current="true"] {
+  background: transparent;
+}
+
+/* A view without the drawer: the panel takes the whole width. */
+.ds-app--drawer[data-drawer-hidden] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "main";
+}
+
+.ds-app--drawer[data-drawer-hidden] .ds-drawer,
+.ds-app--drawer[data-drawer-hidden] .ds-scrim,
+.ds-app--drawer[data-drawer-hidden] .ds-topbar__menu {
+  display: none;
+}
+
+.ds-app--drawer[data-drawer-hidden] .ds-panel {
+  margin-left: max(var(--ds-space-4), env(safe-area-inset-left));
+}
+
+.ds-app--drawer[data-drawer-hidden] .ds-topbar {
+  padding-left: max(var(--ds-space-6), env(safe-area-inset-left));
+}
+
+/* When the drawer comes back (a view that has it), it slides in from the
+   left: DS.motion.enter(drawer). */
+.ds-drawer.ds-enter {
+  --ds-motion-distance: calc(-1 * var(--ds-distance-xl));
+}
+
+/* The menu button shows with the modal drawer only. */
+.ds-topbar__menu {
+  display: none;
+  --ds-btn-quiet-color: var(--ds-text-2);
+}
+
+/* Never squeezed: the name would run under the avatar on narrow windows
+   (the account shrinks instead, see the 359px rule). */
+.ds-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  flex-shrink: 0;
+  border-radius: var(--ds-radius-action);
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+.ds-brand__name {
+  font: var(--ds-font-title);
+  color: var(--ds-text);
+  white-space: nowrap;
+}
+
+.ds-account {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-width: 0;
+  margin-left: auto;
+}
+
+.ds-account__text {
+  min-width: 0;
+  text-align: right;
+}
+
+.ds-account__name,
+.ds-account__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-account__name {
+  font: var(--ds-font-label);
+  color: var(--ds-text);
+}
+
+.ds-account__email {
+  font: var(--ds-font-meta);
+  color: var(--ds-text-2);
+}
+
+/* Narrow windows show the initial instead of name and email: the avatar
+   then names them itself (aria-label) and shows them in its
+   tooltip on hover, keyboard focus or a tap. */
+.ds-account__avatar {
+  display: none;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+  font: var(--ds-font-label);
+  user-select: none;
+}
+
+/* ── Navigation drawer ────────────────────────── */
+
+.ds-drawer {
+  grid-area: nav;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: env(safe-area-inset-left);
+  background: var(--ds-backdrop);
+}
+
+/* Focusable (tabindex -1) only so a click on a heading or the padding keeps
+   focus inside the modal drawer, where Tab and Escape are handled. Only
+   the colour goes: the modal drawer's transparent edge (below) stays. */
+.ds-drawer:focus {
+  outline-color: transparent;
+}
+
+/* The brand repeats in the modal drawer only, where it covers the top bar. */
+.ds-drawer__head {
+  display: none;
+}
+
+/* Items inset 12px; the list is the indicator's track and scrolls itself
+   when the window is low. */
+.ds-drawer__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ds-space-1) var(--ds-space-3) var(--ds-space-6);
+  /* Classic scrollbars (Chrome on Windows) would draw a grey rail between
+     drawer and panel, a divider the drawer must not have: the thumb only
+     shows while the pointer or focus is in the list. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.ds-drawer__list:hover,
+.ds-drawer__list:focus-within {
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+/* Taller than the window (the page sets the class): the thumb stays, the only sign
+   that more destinations lie below the fold. */
+.ds-drawer__list--overflow {
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+.ds-drawer__group {
+  display: grid;
+}
+
+/* Sentence case, the label style of the items, a step quieter. No eyebrow. */
+.ds-drawer__heading {
+  margin: 0;
+  padding: var(--ds-space-4) var(--ds-space-4) var(--ds-space-2);
+  font: var(--ds-font-label);
+  color: var(--ds-text-2);
+}
+
+.ds-drawer__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-height: 48px;
+  padding: 0 var(--ds-space-6) 0 var(--ds-space-4);
+  border-radius: var(--ds-radius-action);
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-decoration: none;
+  transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* An item may be a <button> (it switches a section in place instead of
+   loading a page): without the browser's button look, full width. */
+button.ds-drawer__item {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ds-drawer__item svg {
+  flex-shrink: 0;
+  color: var(--ds-text-2);
+  transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-drawer__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* State layer (6% on large targets), the colour of the content. */
+.ds-drawer__item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-drawer__item:hover::before {
+    opacity: var(--ds-state-hover-lg);
+  }
+}
+
+.ds-drawer__item:active::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* The active pill: the tint glides between the items (js/indicator.js);
+   without it the active item paints the tint itself. The tint is only
+   1.3:1 against the backdrop, so the active label also turns medium (500,
+   the others are 400) and darker: the state never rests on colour alone.
+   The pill spans the full item width, so the weight change moves nothing. */
+.ds-drawer__indicator {
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+}
+
+.ds-drawer__item[aria-current="page"] {
+  background: var(--ds-accent);
+}
+
+.ds-has-indicator .ds-drawer__item[aria-current="page"] {
+  background: transparent;
+}
+
+.ds-drawer__item[aria-current="page"] {
+  font: var(--ds-font-label);
+}
+
+.ds-drawer__item[aria-current="page"],
+.ds-drawer__item[aria-current="page"] svg {
+  color: var(--ds-on-accent);
+}
+
+.ds-scrim {
+  display: none;
+}
+
+/* ── Content panel ────────────────────────────── */
+
+/* The rounded frame. It does not scroll itself: a classic scrollbar
+   (Chrome on Windows) ignores the radius of its own box and would square
+   off the top-right corner, but the frame's rounded clip trims the
+   scroller inside. No clip-path: overflow leaves the fixed scrim and
+   dialogs of the views alone. */
+.ds-panel {
+  grid-area: main;
+  min-height: 0;
+  margin: 0 max(var(--ds-space-4), env(safe-area-inset-right)) 0 max(var(--ds-space-4), env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--ds-radius-panel) var(--ds-radius-panel) 0 0;
+  background: var(--ds-surface);
+}
+
+/* The only scroller of the app; quiet thumb on a clear track. */
+.ds-view {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+/* Programmatic focus target (skip link, page change); the panel itself
+   needs no ring. */
+.ds-view:focus,
+.ds-view :is(h1, h2)[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/*
+ * Scroll edge: a hairline at the top of the panel, only while content
+ * scrolls under it. Inside the panel it keeps to the panel's width and its
+ * rounded clip; the negative margin keeps it from taking up space.
+ */
+.ds-view::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  z-index: var(--ds-z-sticky);
+  flex-shrink: 0;
+  height: 1px;
+  margin-bottom: -1px;
+  background: var(--ds-line);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-app[data-scrolled] .ds-view::before {
+  opacity: 1;
+}
+
+/* The drawer brings its own inset on the left. */
+.ds-app--drawer .ds-panel {
+  margin-left: 0;
+}
+
+/* Fade-through, outgoing half: quick and accelerating. Leaving the state
+   snaps back without a transition, the incoming content enters itself. */
+.ds-view--leaving > * {
+  opacity: 0;
+  transition: opacity var(--ds-dur-instant) var(--ds-ease-in);
+}
+
+/* ── Modal drawer ─────────────────────────────── */
+
+/* A script that moves focus into the modal drawer uses the same query:
+   (max-width: 900px). */
+@media (max-width: 900px) {
+  .ds-app--drawer {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "main";
+  }
+
+  .ds-app--drawer .ds-panel {
+    margin-left: max(var(--ds-space-4), env(safe-area-inset-left));
+  }
+
+  .ds-app--drawer .ds-topbar {
+    padding-left: max(var(--ds-space-2), env(safe-area-inset-left));
+  }
+
+  .ds-topbar__menu {
+    display: inline-flex;
+  }
+
+  .ds-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--ds-z-drawer);
+    width: min(calc(var(--ds-drawer-width) + env(safe-area-inset-left)), calc(100vw - 56px));
+    padding-top: env(safe-area-inset-top);
+    border-radius: 0 var(--ds-radius-dialog) var(--ds-radius-dialog) 0;
+    box-shadow: var(--ds-elev-overlay);
+    /* Invisible, but forced colors drop fill, shadow and scrim and paint
+       it: the sheet keeps an edge against the page. */
+    outline: 1px solid transparent;
+    /* An opaque sheet: it only slides, the scrim does the fading. */
+    visibility: hidden;
+    transform: translateX(calc(-1 * var(--ds-distance-sheet)));
+    transition:
+      transform var(--ds-dur-base) var(--ds-ease-in),
+      visibility 0ms linear var(--ds-dur-base);
+  }
+
+  .ds-app[data-drawer-open] .ds-drawer {
+    visibility: visible;
+    transform: none;
+    transition:
+      transform var(--ds-dur-slow) var(--ds-ease-emphasized),
+      visibility 0ms;
+  }
+
+  /* The modal drawer is closed whenever the active item changes: the pill
+     only has to be in place when it opens again, not glide while it leaves. */
+  .ds-drawer .ds-drawer__indicator {
+    transition: none;
+  }
+
+  /* The lock-up stays where the top bar shows it (menu button inset,
+     40px button, gap), so it does not jump while the drawer slides over. */
+  .ds-drawer__head {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-3);
+    flex-shrink: 0;
+    height: var(--ds-topbar-height);
+    padding: 0 var(--ds-space-6) 0 calc(var(--ds-space-2) + var(--ds-space-10) + var(--ds-space-2));
+  }
+
+  .ds-scrim {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--ds-z-drawer);
+    background: var(--ds-scrim);
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity var(--ds-dur-base) var(--ds-ease-in),
+      visibility 0ms linear var(--ds-dur-base);
+  }
+
+  .ds-app[data-drawer-open] .ds-scrim {
+    visibility: visible;
+    opacity: 1;
+    transition:
+      opacity var(--ds-dur-base) var(--ds-ease-in-out),
+      visibility 0ms;
+  }
+}
+
+/* The avatar names the person, so the text goes entirely (screen readers
+   would hear the name twice). */
+@media (max-width: 720px) {
+  .ds-account__text {
+    display: none;
+  }
+
+  .ds-account__avatar {
+    display: grid;
+  }
+}
+
+/* 320px (400% zoom): no room for brand, avatar and sign-out. Without the
+   avatar, name and email stay for screen readers, visually hidden. */
+@media (max-width: 359px) {
+  .ds-account__avatar {
+    display: none;
+  }
+
+  .ds-account__text {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Phones: the panel spans the width, its rounded top stays. */
+@media (max-width: 600px) {
+  .ds-panel,
+  .ds-app--drawer .ds-panel,
+  .ds-app--drawer[data-drawer-hidden] .ds-panel {
+    margin: 0;
+  }
+
+  .ds-view {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .ds-topbar,
+  .ds-app--drawer[data-drawer-hidden] .ds-topbar {
+    padding-left: max(var(--ds-space-4), env(safe-area-inset-left));
+  }
+
+  /* The brand gives way to the mode switch: the mark stays. */
+  .ds-segmented ~ .ds-account .ds-account__text,
+  .ds-app--drawer .ds-brand__name {
+    display: none;
+  }
+
+  .ds-segmented {
+    margin-left: var(--ds-space-2);
+  }
+}
+
+/*
+ * Forced colors (Windows contrast themes) drop the pill's fill: the current
+ * destination gets an outline. Icons coloured on the <svg> itself keep their
+ * authored colour there (dark grey on black), so every icon follows the
+ * forced text colour of its control; status stays readable through the
+ * text that always goes with it.
+ */
+@media (forced-colors: active) {
+  .ds-drawer__item[aria-current="page"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .ds-theme svg {
+    color: inherit !important;
+  }
+}
+
+@media print {
+  .ds-app {
+    display: block;
+    height: auto;
+    background: var(--ds-surface);
+  }
+
+  .ds-topbar,
+  .ds-drawer,
+  .ds-scrim,
+  .ds-skip,
+  .ds-loadbar,
+  .ds-toasts,
+  .ds-tooltip {
+    display: none;
+  }
+
+  .ds-panel,
+  .ds-view {
+    display: block;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    border-radius: 0;
+  }
+
+  .ds-view::before {
+    display: none;
+  }
+}
+
+/* ── components/page.css ── */
+/*
+ * Page content inside the content panel (shell.css): the padded content
+ * area, one page at most --ds-content-max wide, the page header and the
+ * layout helpers for cards.
+ *
+ *   <div class="ds-content">            padding, container "ds-content"
+ *     <div class="ds-page">             one page, gap 20px
+ *       <header class="ds-page-head"> <h1 class="ds-page-head__title"> <p class="ds-page-head__lead">
+ *       <div class="ds-stack"> | <div class="ds-grid-2"> cards ...
+ *
+ * The panel's width, not the window's, decides when tables and form grids
+ * get narrow: the persistent drawer takes --ds-drawer-width of it. Those
+ * rules are container queries on "ds-content". The end of a page stays
+ * clear of a one- or two-line snackbar (--ds-toast-room), so a success
+ * message never covers the actions just pressed.
+ *
+ * Progressive: container queries (here and in card, list, form, table)
+ * need Safari 16; older browsers keep the wide layout and scroll sideways.
+ */
+
+.ds-content {
+  container: ds-content / inline-size;
+  padding: var(--ds-space-6) var(--ds-space-8) calc(var(--ds-space-6) + var(--ds-toast-room) + var(--ds-space-2));
+}
+
+.ds-page {
+  width: min(100%, var(--ds-content-max));
+  margin: 0 auto;
+  display: grid;
+  gap: var(--ds-space-5);
+  align-content: start;
+}
+
+/* The page's gap is the rhythm: a closing note has no browser margin. */
+.ds-page > p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .ds-content {
+    padding-top: var(--ds-space-5);
+    padding-inline: var(--ds-space-4);
+  }
+}
+
+/* Phones: the snackbar sits closer to the bottom edge (toast.css). */
+@media (max-width: 600px) {
+  .ds-content {
+    padding-bottom: calc(var(--ds-space-4) + var(--ds-toast-room) + var(--ds-space-2));
+  }
+}
+
+/* ── Page header ──────────────────────────────── */
+
+.ds-page-head {
+  display: grid;
+  gap: var(--ds-space-1);
+  min-width: 0;
+  margin-bottom: var(--ds-space-1);
+}
+
+/* A long name without spaces (a serial, a URL) breaks instead of
+   widening the page. */
+.ds-page-head__title {
+  margin: 0;
+  color: var(--ds-text);
+  font: var(--ds-font-headline);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.ds-page-head__lead {
+  margin: 0;
+  max-width: var(--ds-measure);
+  color: var(--ds-text-2);
+  font: var(--ds-font-body);
+  text-wrap: pretty;
+}
+
+/* ── Layout helpers ───────────────────────────── */
+
+/* One column that never grows wider than the page: a wide table inside
+   scrolls in its own wrapper instead of scrolling the page sideways. */
+.ds-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-space-4);
+  min-width: 0;
+}
+
+.ds-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+/* Cards in a list or a grid of the page keep the page's own rhythm. A
+   stack of fields inside a card keeps its 16px. */
+.ds-page > .ds-stack,
+.ds-grid-2 {
+  gap: var(--ds-space-5);
+}
+
+@media (max-width: 900px) {
+  .ds-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Print: the page fills the paper, without the panel's padding and width
+   cap. Last in the file, so it beats the rules above, the narrow-window
+   ones included, at the same specificity. */
+@media print {
+  .ds-content {
+    padding: 0;
+  }
+
+  .ds-page {
+    width: auto;
+  }
+}

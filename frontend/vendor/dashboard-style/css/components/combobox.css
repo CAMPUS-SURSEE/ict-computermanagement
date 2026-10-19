@@ -1,0 +1,152 @@
+/*
+ * Combobox: a searchable list under an outlined field (ARIA combobox
+ * pattern; the page provides the behaviour). The field keeps its look, a
+ * chevron at the end says there is a list, and the list opens as a white
+ * surface on the popover elevation. Each entry shows a name and, quieter,
+ * a line of meta. The active entry (keyboard or pointer, data-active) gets
+ * the hover layer, the chosen one (aria-selected) the tint and the label
+ * weight, never colour alone.
+ *
+ *   <div class="ds-combo" [data-open]>
+ *     <input class="ds-input ds-combo__input" role="combobox" aria-expanded="true" aria-controls="list" aria-activedescendant="opt-2">
+ *     <button class="ds-combo__toggle" type="button" tabindex="-1" aria-label="Show list">(chevronDown)</button>
+ *     <div class="ds-combo__popup">
+ *       <ul class="ds-combo__list" id="list" role="listbox">
+ *         <li class="ds-combo__option" id="opt-2" role="option" aria-selected="true" data-active>
+ *           <span class="ds-combo__name">Name</span><span class="ds-combo__meta">Meta</span>
+ *       <p class="ds-combo__status">12 of 240</p>
+ */
+.ds-combo {
+  position: relative;
+}
+
+.ds-combo__input {
+  padding-right: calc(var(--ds-space-2) + 20px + var(--ds-space-3));
+  text-overflow: ellipsis;
+}
+
+.ds-combo__toggle {
+  position: absolute;
+  top: 0;
+  right: var(--ds-space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ds-space-10);
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text-2);
+  cursor: pointer;
+}
+
+/* The chevron flips without turning (no rotation in the motion system). */
+.ds-combo[data-open] .ds-combo__toggle svg {
+  transform: scaleY(-1);
+}
+
+.ds-combo__popup {
+  position: absolute;
+  top: calc(100% + var(--ds-space-1));
+  left: 0;
+  right: 0;
+  z-index: var(--ds-z-popover);
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-elev-popover);
+}
+
+.ds-combo__list {
+  /* The offset parent of the options (scrolling to the active one). */
+  position: relative;
+  max-height: 320px;
+  margin: 0;
+  padding: var(--ds-space-2) 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-line-2) transparent;
+}
+
+.ds-combo__option {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  cursor: pointer;
+}
+
+/* State layer of the active entry, as in the drawer. */
+.ds-combo__option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-combo__option[data-active]::before {
+  opacity: var(--ds-state-hover);
+}
+
+.ds-combo__option[aria-selected="true"] {
+  background: var(--ds-accent);
+}
+
+.ds-combo__name {
+  position: relative;
+  overflow: hidden;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-combo__option[aria-selected="true"] .ds-combo__name {
+  color: var(--ds-on-accent);
+  font: var(--ds-font-label);
+}
+
+.ds-combo__meta {
+  position: relative;
+  overflow: hidden;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-combo__option[aria-selected="true"] .ds-combo__meta {
+  color: var(--ds-on-accent);
+}
+
+.ds-combo__status {
+  margin: 0;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  border-top: 1px solid var(--ds-line);
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+}
+
+.ds-combo__list[hidden] + .ds-combo__status {
+  border-top: 0;
+}
+
+@media (forced-colors: active) {
+  .ds-combo__popup {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-combo__option[data-active] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

@@ -1,0 +1,288 @@
+/*
+ * Button: one component for every button. Every action is a pill
+ * (--ds-radius-action).
+ *
+ *   .ds-btn                  outlined (secondary action)
+ *   .ds-btn--outlined        the same, named explicitly
+ *   .ds-btn--primary         filled: the main action of a form or dialog
+ *   .ds-btn--tonal           the tint: a softer main action
+ *   .ds-btn--text            no frame (dialog secondary actions, inline actions)
+ *   .ds-btn--quiet           muted until hovered (toolbars, headers)
+ *   .ds-btn--icon            round, icon only (needs aria-label)
+ *   .ds-btn--disc            hover shows a solid disc that grows in behind the icon
+ *   .ds-btn--sm              compact (tables, card headers, banners); with
+ *                            --icon a 32px round button
+ *   [aria-pressed="true"]    a toggle that is on: the tint, plus the
+ *                            attribute, so it is not told by colour alone
+ *
+ * Hover and press lay the content colour over the button at the state-layer
+ * opacities (::before), so one rule works on every fill and every palette.
+ * No transform on hover or press: the button stays where it is. Focus is an
+ * instant ring, never animated.
+ *
+ * The look comes from --ds-btn-* hooks. A theme may set them on .ds-theme
+ * to tune every button; variants set them on the element. Nothing here
+ * hard-codes a colour. Hooks: -height, -padding-x, -padding-start, -radius,
+ * -font, -bg, -color, -border, -state (layer colour), -state-opacity,
+ * -state-pressed-opacity, -hover-color, -hover-border, -hover-shadow,
+ * -hover-decoration, -icon-size, -quiet-color, -disabled-bg,
+ * -disabled-border.
+ *
+ * Hooks set on the element by a variant (--ds-btn-padding-start before a
+ * leading icon, --ds-btn-quiet-color in the top bar) win over a theme
+ * value; change them per element.
+ *
+ * Progressive: the leading-icon padding needs :has(); without it the
+ * padding stays even. Focus rings sit on :focus and come off again on
+ * :focus:not(:focus-visible), so browsers without :focus-visible keep them.
+ */
+
+.ds-btn {
+  position: relative;
+  /* The state layer (z-index -1) stays above the fill, below the label. */
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
+  min-height: var(--ds-btn-height, 36px);
+  padding-block: 0;
+  padding-inline: var(--ds-btn-padding-start, var(--ds-btn-padding-x, var(--ds-space-4))) var(--ds-btn-padding-x, var(--ds-space-4));
+  border: 1px solid var(--ds-btn-border, var(--ds-line-2));
+  border-radius: var(--ds-btn-radius, var(--ds-radius-action));
+  background: var(--ds-btn-bg, transparent);
+  color: var(--ds-btn-color, var(--ds-action-ink));
+  font: var(--ds-btn-font, var(--ds-font-label));
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out),
+    box-shadow var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* State layer */
+.ds-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ds-btn-state, currentColor);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Touch devices show no hover; pressing shows the end state at once. */
+@media (hover: hover) {
+  .ds-btn:hover {
+    border-color: var(--ds-btn-hover-border, var(--ds-btn-border, var(--ds-line-2)));
+    color: var(--ds-btn-hover-color, var(--ds-btn-color, var(--ds-action-ink)));
+    box-shadow: var(--ds-btn-hover-shadow, none);
+    text-decoration: var(--ds-btn-hover-decoration, none);
+  }
+
+  .ds-btn:hover::before {
+    opacity: var(--ds-btn-state-opacity, var(--ds-state-hover));
+  }
+}
+
+.ds-btn:active::before {
+  opacity: var(--ds-btn-state-pressed-opacity, var(--ds-state-pressed));
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* A leading icon sits closer to the edge (Material 3: 12px instead of 16px). */
+.ds-btn:has(> svg:first-child) {
+  --ds-btn-padding-start: var(--ds-space-3);
+}
+
+/* The ring sits on :focus (which :focus-visible implies), never in one
+   selector list with :focus-visible: a browser without it would drop the
+   whole list. The second rule, which such a browser drops, takes the ring
+   off again after a pointer click. */
+.ds-btn:focus {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ds-btn:disabled,
+.ds-btn[aria-busy="true"] {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* aria-disabled without aria-busy: blocked but still focusable and
+   hoverable, so a tooltip can say why (the page's script ignores its
+   clicks). No state layer and no hover elevation. */
+.ds-btn[aria-disabled="true"]:not([aria-busy="true"]) {
+  cursor: not-allowed;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .ds-btn[aria-disabled="true"]:hover::before {
+    opacity: 0;
+  }
+}
+
+.ds-btn[aria-disabled="true"]:active::before {
+  opacity: 0;
+}
+
+/*
+ * Disabled: the neutral Material look by default (--ds-disabled-fill for
+ * container and outline, --ds-disabled-ink for the label, full opacity). A
+ * theme may dim the whole button instead (--ds-disabled-opacity, see
+ * tokens.css). A busy button (aria-busy) is blocked but keeps its colour.
+ */
+.ds-btn:disabled,
+.ds-btn[aria-disabled="true"]:not([aria-busy="true"]) {
+  opacity: var(--ds-disabled-opacity, var(--ds-state-disabled));
+  color: var(--ds-disabled-ink, var(--ds-btn-color, var(--ds-action-ink)));
+  background: var(--ds-btn-disabled-bg, var(--ds-btn-bg, transparent));
+  border-color: var(--ds-btn-disabled-border, var(--ds-disabled-fill, var(--ds-btn-border, var(--ds-line-2))));
+}
+
+/* Busy: blocked, but in full colour. Nothing changes on a fast response;
+   after the loader delay a spinner and the label say it is working (the
+   dimmed disabled look would only flash). */
+.ds-btn[aria-busy="true"] {
+  opacity: 1;
+}
+
+/* Spinner and label fade in when they swap while busy; laid out like the
+   button's own content. */
+.ds-btn__swap {
+  --ds-enter-duration: var(--ds-dur-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+.ds-btn svg {
+  flex-shrink: 0;
+}
+
+/* Filled. Level 1 on hover where the theme has elevation. */
+.ds-btn--primary {
+  --ds-btn-border: var(--ds-primary);
+  --ds-btn-bg: var(--ds-primary);
+  --ds-btn-color: var(--ds-on-primary);
+  --ds-btn-hover-shadow: var(--ds-elev-hover);
+  --ds-btn-disabled-bg: var(--ds-disabled-fill, var(--ds-btn-bg));
+  --ds-btn-disabled-border: var(--ds-disabled-fill, var(--ds-btn-border));
+}
+
+.ds-btn--tonal {
+  --ds-btn-border: var(--ds-accent);
+  --ds-btn-bg: var(--ds-accent);
+  --ds-btn-color: var(--ds-on-accent);
+  --ds-btn-disabled-bg: var(--ds-disabled-fill, var(--ds-btn-bg));
+  --ds-btn-disabled-border: var(--ds-disabled-fill, var(--ds-btn-border));
+}
+
+.ds-btn--outlined {
+  --ds-btn-border: var(--ds-line-2);
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-action-ink);
+}
+
+.ds-btn--text {
+  --ds-btn-border: transparent;
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-action-ink);
+  --ds-btn-padding-x: var(--ds-space-3);
+  --ds-btn-disabled-border: transparent;
+}
+
+.ds-btn--quiet {
+  --ds-btn-border: transparent;
+  --ds-btn-bg: transparent;
+  --ds-btn-color: var(--ds-btn-quiet-color, var(--ds-text-2));
+  --ds-btn-hover-color: var(--ds-text);
+  --ds-btn-disabled-border: transparent;
+}
+
+.ds-btn--icon {
+  width: var(--ds-btn-icon-size, 40px);
+  height: var(--ds-btn-icon-size, 40px);
+  min-height: 0;
+  padding: 0;
+}
+
+/*
+ * Disc: a solid --ds-fill-round disc fades and grows in behind the icon
+ * instead of a faint layer (round buttons on the backdrop). In on
+ * --ds-dur-base, out on --ds-dur-fast; pressing shows the full disc at once.
+ */
+.ds-btn--disc {
+  --ds-btn-state: var(--ds-fill-round);
+  --ds-btn-state-opacity: 1;
+  --ds-btn-state-pressed-opacity: 1;
+}
+
+.ds-btn--disc::before {
+  transform: scale(var(--ds-scale-small));
+  transition:
+    opacity var(--ds-dur-fast) var(--ds-ease-in-out),
+    transform var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+.ds-btn--disc:active::before {
+  transform: none;
+}
+
+@media (hover: hover) {
+  .ds-btn--disc:hover::before {
+    transform: none;
+    transition-duration: var(--ds-dur-base);
+  }
+}
+
+.ds-btn--sm {
+  --ds-btn-height: 32px;
+  --ds-btn-padding-x: var(--ds-space-3);
+}
+
+.ds-btn--icon.ds-btn--sm {
+  --ds-btn-icon-size: 32px;
+}
+
+/* A toggle that is on (a filter shown, "only active"): the tint. */
+.ds-btn[aria-pressed="true"] {
+  --ds-btn-border: var(--ds-accent);
+  --ds-btn-bg: var(--ds-accent);
+  --ds-btn-color: var(--ds-on-accent);
+  --ds-btn-hover-color: var(--ds-on-accent);
+}
+
+/* Forced colors turn the tint into Canvas, so on would look like off: the
+   system's selection colours instead, and a ring that names its colour. */
+@media (forced-colors: active) {
+  .ds-btn[aria-pressed="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .ds-btn[aria-pressed="true"]:focus {
+    outline-color: CanvasText;
+  }
+}

@@ -1,25 +1,31 @@
 /* rahmen.js — der Rahmen aller Seiten und die schwebenden Ebenen.
 
-   Port von ChatBob app/src/views/shell.js (Rahmen, Schublade, Seitenwechsel),
-   ui/confirm.js + widget/ui/dialog.js (Dialog), ui/drawer.js (Seitenblatt),
-   ui/toast.js (Meldung) und ui/tooltip.js (Tooltip) — als klassisches
-   Skript mit EINEM Namensraum «Rahmen»; die Ebenen hängen sich an «UI»
-   (bausteine.js) an. Aussehen: rahmen.css.
+   Rahmen (Kopf, Schublade, Seitenwechsel), Dialog, Seitenblatt, Meldung
+   und Tooltip als klassisches Skript mit EINEM Namensraum «Rahmen»; die
+   Ebenen hängen sich an «UI» (bausteine.js) an. Aussehen: die Bausteine
+   von Dashboard-Style (.ds-app, .ds-topbar, .ds-drawer, .ds-panel,
+   .ds-view, .ds-dialog, .ds-sheet, .ds-toast, .ds-tooltip) und rahmen.css.
 
-   Ladereihenfolge: konfig.js, bewegung.js, bausteine.js, rahmen.js, MSAL …
-   rahmen.js baut den Rahmen SOFORT beim Laden aus dem HTML-Gerüst:
+   Ladereihenfolge: konfig.js, vendor/dashboard-style/ds.js, bausteine.js,
+   rahmen.js, MSAL … rahmen.js baut den Rahmen SOFORT beim Laden aus dem
+   HTML-Gerüst:
 
-     <body class="app" data-seite="index|client|benutzer|telefon|software|kamera|kamerarolle|styleguide">
-       <a class="sprungmarke" href="#inhalt">Zum Inhalt</a>
-       <header class="kopf" id="kopf"></header>
-       <nav class="schublade" id="schublade" aria-label="…"></nav>
-       <div class="tafel-rahmen">
-         <main class="tafel" id="tafel" tabindex="-1">
-           <div class="ladebalken" id="ladebalken" hidden></div>
-           <div class="bahn" id="inhalt" data-zustand="laden"> … </div>
+     <html class="ds-theme ds-base">
+     <body class="ds-app ds-app--drawer" data-seite="index|client|benutzer|telefon|software|kamera|kamerarolle|styleguide">
+       <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
+       <header class="ds-topbar" id="kopf"></header>
+       <nav class="ds-drawer" id="schublade" aria-label="…"></nav>
+       <div class="ds-panel">
+         <main class="ds-view" id="tafel" tabindex="-1">
+           <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
+           <div class="ds-content"><div class="ds-page" id="inhalt" data-zustand="laden"> … </div></div>
          </main>
        </div>
      </body>
+
+   Zustände am body (.ds-app): data-drawer-open (modale Schublade offen),
+   data-drawer-hidden (Seite ohne Schublade), data-scrolled (Tafel gerollt:
+   die Kante oben zeigt sich), data-zurueck (Zurück-Eintrag steht).
 
    Fehlt ein Teil, legt rahmen.js ihn an. Ohne body[data-seite] baut es
    keinen Rahmen (Rahmen.bereit = false); die UI-Ebenen (Dialog, Blatt,
@@ -126,23 +132,24 @@
      localStorage, sonst index.html#tab) · mock()       (hängt mock=1 selbst an)
 
    Grundsätze wie überall: kein Framework, kein innerHTML, Text nur über
-   textContent. Bewegung nur über Klassen/Tokens (bewegung.css). */
+   textContent. Bewegung nur über Klassen und Tokens von Dashboard-Style
+   (Bewegung in bausteine.js). */
 
 "use strict";
 
 const Rahmen = (function () {
 
   if (typeof UI === "undefined" || typeof Bewegung === "undefined") {
-    throw new Error("rahmen.js braucht bewegung.js und bausteine.js (vorher laden).");
+    throw new Error("rahmen.js braucht vendor/dashboard-style/ds.js und bausteine.js (vorher laden).");
   }
 
   /* ==================================================================
      Konstanten
      ================================================================== */
 
-  /** Muss der Grenze der modalen Schublade in rahmen.css entsprechen. */
+  /** Muss der Grenze der modalen Schublade in Dashboard-Style (shell.css) und rahmen.css entsprechen. */
   const MODAL_ABFRAGE = "(max-width: 900px)";
-  /** Ab hier zeigt das Konto nur noch die Initiale (rahmen.css §7). */
+  /** Ab hier zeigt das Konto nur noch die Initiale (Dashboard-Style shell.css, rahmen.css Abschnitt 6). */
   const SCHMAL_ABFRAGE = "(max-width: 720px)";
   /** Abstand eines in die Liste gerollten Eintrags zu ihrem Rand (--a2). */
   const LISTEN_RAND_PX = 8;
@@ -490,40 +497,42 @@ const Rahmen = (function () {
   }
 
   function geruestSichern() {
-    body.classList.add("app");
+    body.classList.add("ds-app", "ds-app--drawer");
 
-    sprungmarke = body.querySelector(":scope > .sprungmarke");
+    sprungmarke = body.querySelector(":scope > .ds-skip");
     if (!sprungmarke) {
-      sprungmarke = el("a", "sprungmarke", "Zum Inhalt");
+      sprungmarke = el("a", "ds-skip", "Zum Inhalt");
       sprungmarke.href = "#inhalt";
       body.insertBefore(sprungmarke, body.firstChild);
     }
 
-    kopf = sichern("kopf", "header", "kopf");
+    kopf = sichern("kopf", "header", "ds-topbar");
     if (!kopf.parentNode) sprungmarke.after(kopf);
-    schublade = sichern("schublade", "nav", "schublade");
+    schublade = sichern("schublade", "nav", "ds-drawer");
     if (!schublade.parentNode) kopf.after(schublade);
 
-    tafel = sichern("tafel", "main", "tafel");
-    tafel.classList.add("tafel");
+    tafel = sichern("tafel", "main", "ds-view");
+    tafel.classList.add("ds-view");
     if (!tafel.hasAttribute("tabindex")) tafel.tabIndex = -1;
-    tafelRahmen = tafel.parentElement && tafel.parentElement.classList.contains("tafel-rahmen")
+    tafelRahmen = tafel.parentElement && tafel.parentElement.classList.contains("ds-panel")
       ? tafel.parentElement : null;
     if (!tafelRahmen) {
       // Der Rahmen rundet die Tafel ab, ohne dass ihre Rollleiste die Ecke
-      // eckig macht (rahmen.css §4).
-      tafelRahmen = el("div", "tafel-rahmen");
+      // eckig macht (Dashboard-Style .ds-panel).
+      tafelRahmen = el("div", "ds-panel");
       if (tafel.parentNode) tafel.parentNode.insertBefore(tafelRahmen, tafel);
       else schublade.after(tafelRahmen);
       tafelRahmen.appendChild(tafel);
     }
 
-    bahn = sichern("inhalt", "div", "bahn");
-    bahn.classList.add("bahn");
-    if (!bahn.parentNode) tafel.appendChild(bahn);
+    // Die Bahn: .ds-content (Polster, Container) > .ds-page#inhalt (Breite, Rhythmus).
+    bahn = sichern("inhalt", "div", "ds-page");
+    bahn.classList.add("ds-page");
+    if (!bahn.parentNode) tafel.appendChild(el("div", "ds-content")).appendChild(bahn);
 
-    ladebalken = sichern("ladebalken", "div", "ladebalken");
-    ladebalken.classList.add("ladebalken");
+    ladebalken = sichern("ladebalken", "div", "ds-loadbar");
+    ladebalken.classList.add("ds-loadbar");
+    if (!ladebalken.firstElementChild) ladebalken.appendChild(el("span", "ds-loadbar__bar"));
     ladebalken.setAttribute("aria-hidden", "true");
     if (!ladebalken.parentNode) { ladebalken.hidden = true; tafel.insertBefore(ladebalken, tafel.firstChild); }
 
@@ -532,15 +541,15 @@ const Rahmen = (function () {
   }
 
   function kopfBauen() {
-    kopf.classList.add("kopf");
+    kopf.classList.add("ds-topbar");
 
-    menueKnopf = knopf({ variante: "sinnbild", sinnbild: "menue", titel: "Navigation", klasse: "kopf-menue" });
+    menueKnopf = knopf({ variante: "sinnbild", sinnbild: "menue", titel: "Navigation", klasse: "ds-topbar__menu" });
     menueKnopf.setAttribute("aria-label", "Navigation öffnen");
     menueKnopf.setAttribute("aria-controls", "schublade");
     menueKnopf.setAttribute("aria-expanded", "false");
     menueKnopf.addEventListener("click", function () { schubladeSetzen(true); });
 
-    const marke = el("a", "kopf-marke");
+    const marke = el("a", "ds-brand");
     marke.href = adresse.liste(STARTZIEL);
     marke.setAttribute("aria-label", "ICT-Inventar, zur Übersicht");
     marke.appendChild(wortmarke());
@@ -549,12 +558,12 @@ const Rahmen = (function () {
     kapsel = el("div", "kopf-konto");
     kapsel.hidden = true;
 
-    kontoEl = el("div", "konto");
+    kontoEl = el("div", "ds-account");
     kontoEl.hidden = true;
-    kontoInitiale = el("span", "konto-initiale");
-    const kontoText = el("div", "konto-text");
-    kontoName = el("div", "konto-name");
-    kontoEmail = el("div", "konto-email");
+    kontoInitiale = el("span", "ds-account__avatar");
+    const kontoText = el("div", "ds-account__text");
+    kontoName = el("div", "ds-account__name");
+    kontoEmail = el("div", "ds-account__email");
     kontoText.appendChild(kontoName);
     kontoText.appendChild(kontoEmail);
     kontoEl.appendChild(kontoInitiale);
@@ -594,24 +603,24 @@ const Rahmen = (function () {
   }
 
   function schubladeBauen() {
-    schublade.classList.add("schublade");
+    schublade.classList.add("ds-drawer");
     schublade.tabIndex = -1;
     if (!schublade.getAttribute("aria-label")) {
       schublade.setAttribute("aria-label", seite === "index" ? "Hauptnavigation" : "Bereiche");
     }
-    const schubladeKopf = el("div", "schublade-kopf");
+    const schubladeKopf = el("div", "ds-drawer__head");
     schubladeKopf.setAttribute("aria-hidden", "true");
     schubladeKopf.appendChild(wortmarke());
     // Der Zurück-Eintrag steht über der Liste und rollt nicht mit ihr.
     schubladeZurueck = el("div", "schublade-zurueck");
     schubladeZurueck.hidden = true;
-    schubladeListe = el("div", "schublade-liste");
+    schubladeListe = el("div", "ds-drawer__list");
     UI.leeren(schublade);
     schublade.appendChild(schubladeKopf);
     schublade.appendChild(schubladeZurueck);
     schublade.appendChild(schubladeListe);
 
-    schleier = el("div", "schublade-schleier");
+    schleier = el("div", "ds-scrim");
     schublade.parentNode.insertBefore(schleier, schublade);
   }
 
@@ -623,10 +632,11 @@ const Rahmen = (function () {
       tafel.focus({ preventScroll: true });
     });
 
-    // Die Kante oben in der Tafel zeigt sich nur, solange Inhalt darunter rollt.
+    // Die Kante oben in der Tafel zeigt sich nur, solange Inhalt darunter rollt
+    // (.ds-app[data-scrolled], Dashboard-Style).
     tafel.addEventListener("scroll", function () {
       const gerollt = tafel.scrollTop > 0;
-      if (gerollt !== tafel.hasAttribute("data-gerollt")) tafel.toggleAttribute("data-gerollt", gerollt);
+      if (gerollt !== body.hasAttribute("data-scrolled")) body.toggleAttribute("data-scrolled", gerollt);
       // Das Polster einer gegangenen Speicherleiste fällt, sobald es aus dem Bild ist.
       leisteRestFreigeben(false);
     }, { passive: true });
@@ -668,7 +678,7 @@ const Rahmen = (function () {
   let wahlAusModal = false;
 
   function eintraege() {
-    return schubladeListe ? Array.from(schubladeListe.querySelectorAll(".schublade-eintrag")) : [];
+    return schubladeListe ? Array.from(schubladeListe.querySelectorAll(".ds-drawer__item")) : [];
   }
 
   function eintragVon(schluessel) {
@@ -685,12 +695,12 @@ const Rahmen = (function () {
   }
 
   function eintragBauen(e) {
-    const k = el(e.href ? "a" : "button", "schublade-eintrag");
+    const k = el(e.href ? "a" : "button", "ds-drawer__item");
     if (e.href) k.href = e.href;
     else k.type = "button";
     k.setAttribute("data-schluessel", String(e.schluessel));
     if (e.sinnbild) k.appendChild(UI.sinnbild(e.sinnbild, 20));
-    k.appendChild(el("span", "schublade-text", e.text));
+    k.appendChild(el("span", "ds-drawer__label", e.text));
     k.appendChild(el("span", "schublade-zahl"));
     return k;
   }
@@ -699,10 +709,10 @@ const Rahmen = (function () {
     if (indikator) { indikator.zerstoeren(); indikator = null; }
     UI.leeren(schubladeListe);
     gruppen.forEach(function (g, i) {
-      const gruppe = el("div", "schublade-gruppe");
+      const gruppe = el("div", "ds-drawer__group");
       if (g.titel) {
         const id = "schublade-gruppe-" + i;
-        const titel = el("p", "schublade-titel", g.titel);
+        const titel = el("p", "ds-drawer__heading", g.titel);
         titel.id = id;
         gruppe.setAttribute("role", "group");
         gruppe.setAttribute("aria-labelledby", id);
@@ -717,7 +727,7 @@ const Rahmen = (function () {
     markieren(aktiv);
     if (gruppen.length) {
       indikator = Bewegung.indikator(schubladeListe, {
-        aktiv: "[aria-current=\"page\"]", klasse: "schublade-indikator"
+        aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
       });
     }
     aktivZeigen();
@@ -728,7 +738,7 @@ const Rahmen = (function () {
      und trägt den Namen der Liste; der Pfeil sagt «zurück», das aria-label
      auch dem Screenreader. Solange er steht (body[data-zurueck]), weicht der
      Zurück-Link über dem Seitentitel, wenn die Schublade fest daneben steht
-     (rahmen.css §5). */
+     (rahmen.css Abschnitt 4). */
   const zurueckStand = { signatur: null };
 
   function zurueckSetzen(z) {
@@ -740,11 +750,11 @@ const Rahmen = (function () {
     schubladeZurueck.hidden = !gueltig;
     body.toggleAttribute("data-zurueck", gueltig);
     if (!gueltig) return;
-    const a = el("a", "schublade-eintrag schublade-eintrag-zurueck");
+    const a = el("a", "ds-drawer__item schublade-eintrag-zurueck");
     a.href = z.href;
     a.setAttribute("aria-label", "Zurück zu " + z.text);
     a.appendChild(UI.sinnbild("pfeilLinks", 20));
-    a.appendChild(el("span", "schublade-text", z.text));
+    a.appendChild(el("span", "ds-drawer__label", z.text));
     schubladeZurueck.appendChild(a);
   }
 
@@ -752,8 +762,8 @@ const Rahmen = (function () {
     if (!bereit) return;
     const o = optionen || {};
     const verstecken = !!o.verstecken;
-    if (verstecken !== body.hasAttribute("data-ohne-schublade")) {
-      body.toggleAttribute("data-ohne-schublade", verstecken);
+    if (verstecken !== body.hasAttribute("data-drawer-hidden")) {
+      body.toggleAttribute("data-drawer-hidden", verstecken);
       if (verstecken) schubladeSetzen(false, { fokusZurueck: false });
     }
     zurueckSetzen(verstecken ? null : o.zurueck);
@@ -789,7 +799,7 @@ const Rahmen = (function () {
       // Eintrag) springt die Pille, statt beim Laden schon zu gleiten.
       indikator.zerstoeren();
       indikator = Bewegung.indikator(schubladeListe, {
-        aktiv: "[aria-current=\"page\"]", klasse: "schublade-indikator"
+        aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
       });
     } else if (indikator) {
       // Nur ein ANDERER Eintrag gleitet (Bewegung.indikator merkt sich den letzten).
@@ -815,7 +825,7 @@ const Rahmen = (function () {
   function ueberlaufPruefen() {
     if (!schubladeListe) return false;
     const ueber = schubladeListe.scrollHeight > schubladeListe.clientHeight + 1;
-    if (ueber !== schubladeListe.hasAttribute("data-ueberlauf")) schubladeListe.toggleAttribute("data-ueberlauf", ueber);
+    schubladeListe.classList.toggle("ds-drawer__list--overflow", ueber);
     return ueber;
   }
 
@@ -837,7 +847,7 @@ const Rahmen = (function () {
   }
 
   function beiSchubladeKlick(ev) {
-    const k = ev.target && ev.target.closest ? ev.target.closest(".schublade-eintrag") : null;
+    const k = ev.target && ev.target.closest ? ev.target.closest(".ds-drawer__item") : null;
     if (!k || !schubladeListe.contains(k)) return;
     const modifiziert = ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey;
     const warModal = schubladeOffen;
@@ -875,10 +885,10 @@ const Rahmen = (function () {
   function schubladeSetzen(offen, optionen) {
     const fokusZurueck = !optionen || optionen.fokusZurueck !== false;
     if (!bereit || offen === schubladeOffen) return;
-    if (offen && (!modalAbfrage || !modalAbfrage.matches || body.hasAttribute("data-ohne-schublade"))) return;
+    if (offen && (!modalAbfrage || !modalAbfrage.matches || body.hasAttribute("data-drawer-hidden"))) return;
     schubladeOffen = offen;
     if (offen) schubladeOffenSeit = Date.now();
-    body.toggleAttribute("data-schublade-offen", offen);
+    body.toggleAttribute("data-drawer-open", offen);
     menueKnopf.setAttribute("aria-expanded", String(offen));
     inertSetzen();
     if (offen) {
@@ -888,7 +898,7 @@ const Rahmen = (function () {
       if (indikator) indikator.aktualisieren();
       aktivZeigen();
       const ziel = schubladeListe.querySelector("[aria-current=\"page\"]")
-        || schubladeListe.querySelector(".schublade-eintrag");
+        || schubladeListe.querySelector(".ds-drawer__item");
       (ziel || schublade).focus();
     } else if (fokusZurueck) {
       menueKnopf.focus();
@@ -1041,11 +1051,11 @@ const Rahmen = (function () {
     const o = optionen || {};
     const wurzel = o.element || el("header");
     UI.leeren(wurzel);
-    wurzel.classList.add("seitenkopf");
+    wurzel.classList.add("ds-page-head");
     if (o.id) wurzel.id = o.id;
 
     // Zurück-Link «‹ ADMIN-Clients»: ein echter Link (Mittelklick = neuer Tab).
-    const pfad = el("a", "knopf knopf-leise knopf-klein seitenkopf-pfad");
+    const pfad = el("a", "ds-btn ds-btn--text ds-btn--sm seitenkopf-pfad");
     pfad.appendChild(UI.sinnbild("chevronLinks", 16));
     const pfadText = el("span");
     pfad.appendChild(pfadText);
@@ -1054,10 +1064,10 @@ const Rahmen = (function () {
     const zeile = el("div", "seitenkopf-zeile");
     const textTeil = el("div", "seitenkopf-text");
     // Programmatisches Fokusziel beim Seiten- und Zustandswechsel (ohne Ring).
-    const titel = el("h" + (o.ebene || 1), "seitenkopf-titel");
+    const titel = el("h" + (o.ebene || 1), "ds-page-head__title");
     titel.tabIndex = -1;
     if (o.titelId) titel.id = o.titelId;
-    const lead = el("p", "seitenkopf-lead");
+    const lead = el("p", "ds-page-head__lead");
     const unter = el("p", "seitenkopf-unter");
     const status = el("div", "seitenkopf-status");
     const aktionen = el("div", "seitenkopf-aktionen");
@@ -1140,7 +1150,7 @@ const Rahmen = (function () {
       // Die Meta-Zeile steht unter den Platzhaltern für Titel und Lead (wo
       // sonst der Lead stünde): der Titel-Platzhalter liegt so genau dort,
       // wo der Seitentitel erscheinen wird.
-      ladeSkelett.insertBefore(ladeMeta, ladeSkelett.querySelector(".skelett-karte"));
+      ladeSkelett.insertBefore(ladeMeta, ladeSkelett.querySelector(".ds-skeleton__card"));
       block.appendChild(ladeSkelett);
       UI.leeren(zustandsBlock).appendChild(block);
       ladeText = "";
@@ -1148,7 +1158,7 @@ const Rahmen = (function () {
     }
     if (o.text !== undefined) {
       ladeText = o.text || "";
-      const sr = ladeSkelett && ladeSkelett.querySelector(".nur-sr");
+      const sr = ladeSkelett && ladeSkelett.querySelector(".ds-sr");
       if (sr) UI.textSetzen(sr, ladeText || "Wird geladen …");
     }
     if (o.fortschritt !== undefined) ladeFortschritt = o.fortschritt || "";
@@ -1182,7 +1192,7 @@ const Rahmen = (function () {
       });
     } else {
       kopfTeil.setzen({ lead: [o.text, o.hinweis].filter(Boolean).join(" ") });
-      block = el("div", "aktionszeile");
+      block = el("div", "ds-form-actions");
       block.appendChild(knopf({ text: o.knopfText || "Zur Übersicht", variante: "primaer", beiKlick: beiKlick }));
     }
     UI.leeren(zustandsBlock);
@@ -1289,7 +1299,7 @@ const Rahmen = (function () {
       const liste = fokussierbare(behaelter);
       ziel = liste[Math.min(stelle, liste.length - 1)] || null;
     }
-    if (!ziel) ziel = behaelter.querySelector(".seitenkopf-titel");
+    if (!ziel) ziel = behaelter.querySelector(".ds-page-head__title");
     if (!ziel || !ziel.focus) return;
     ziel.focus({ preventScroll: true });
     if (auswahl && typeof ziel.setSelectionRange === "function") {
@@ -1320,10 +1330,10 @@ const Rahmen = (function () {
      Gibt true zurück, wenn ein Eintritt lief (dann muss der Aufrufer das
      Layout lesen, bevor er .wechsel-weg setzt). */
   function eintrittBeenden(k) {
-    if (!k.classList.contains("eintritt") || !k.getAnimations) return false;
+    if (!k.classList.contains("ds-enter") || !k.getAnimations) return false;
     const deckkraft = parseFloat(getComputedStyle(k).opacity);
     for (const a of k.getAnimations()) a.cancel();
-    k.classList.remove("eintritt", "eintritt--tausch");
+    k.classList.remove("ds-enter", "ds-enter--swap");
     k.style.setProperty("opacity", String(isFinite(deckkraft) && deckkraft >= KAUM_SICHTBAR ? deckkraft : 0));
     deckkraftGehalten.add(k);
     return true;
@@ -1393,7 +1403,7 @@ const Rahmen = (function () {
       rein = rein.filter(sichtbar);
       if (o.nachOben !== false) {
         tafel.scrollTop = 0;
-        tafel.removeAttribute("data-gerollt");
+        body.removeAttribute("data-scrolled");
       }
       if (fokusSeite) seiteFokussieren(rein[0]);
       for (const k of rein) Bewegung.eintreten(k, "tausch");
@@ -1445,7 +1455,7 @@ const Rahmen = (function () {
     // statt mit ihr zu gehen (sie gleiten an die neue Kante).
     meldungenUmziehen();
     fokusZurueckGeben(ebene);
-    ebene.element.setAttribute("data-schliesst", "");
+    ebene.element.classList.add(ebene.art === "dialog" ? "ds-dialog--closing" : "ds-sheet--closing");
     return Bewegung.abgeschlossen(ebene.flaeche).then(function () {
       ebene.element.remove();
     });
@@ -1542,7 +1552,7 @@ const Rahmen = (function () {
            Luft, wie der Flächenschatten in rahmen.css). */
         const ueber = liste.previousElementSibling;
         if (ueber) {
-          const luft = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--a2")) || 8;
+          const luft = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ds-space-2")) || 8;
           inhalt.style.scrollPaddingTop = (ueber.offsetHeight + luft) + "px";
         }
         if (vorher) inhalt.scrollTop = oben;
@@ -1569,17 +1579,17 @@ const Rahmen = (function () {
   function dialog(optionen) {
     const o = optionen || {};
     const id = "dialog-" + (++ebenenZaehler);
-    const wurzel = el("div", "dialog" + (o.breit ? " dialog-breit" : "") + (o.klasse ? " " + o.klasse : ""));
-    const schleierEl = el("div", "dialog-schleier");
-    const flaeche = el("div", "dialog-flaeche");
+    const wurzel = el("div", "ds-dialog" + (o.breit ? " dialog-breit" : "") + (o.klasse ? " " + o.klasse : ""));
+    const schleierEl = el("div", "ds-dialog__backdrop");
+    const flaeche = el("div", "ds-dialog__box");
     flaeche.tabIndex = -1;
     flaeche.setAttribute("role", o.rolle || "dialog");
     flaeche.setAttribute("aria-modal", "true");
     flaeche.setAttribute("aria-labelledby", id + "-titel");
-    const titelEl = el("h2", "dialog-titel", o.titel || "");
+    const titelEl = el("h2", "ds-dialog__title", o.titel || "");
     titelEl.id = id + "-titel";
     const inhalt = el("div", "dialog-inhalt");
-    const knoepfe = el("div", "dialog-knoepfe");
+    const knoepfe = el("div", "ds-dialog__actions");
     UI.anhaengen(inhalt, o.inhalt);
     UI.anhaengen(knoepfe, o.knoepfe);
     flaeche.appendChild(titelEl);
@@ -1658,7 +1668,7 @@ const Rahmen = (function () {
       const ja = knopf({ text: o.ja || "Bestätigen", variante: "primaer" });
       const inhalt = [];
       if (o.text) {
-        const p = el("p", "dialog-text", o.text);
+        const p = el("p", "ds-dialog__text", o.text);
         p.id = textId;
         inhalt.push(p);
       }
@@ -1679,17 +1689,17 @@ const Rahmen = (function () {
     const o = optionen || {};
     const id = "blatt-" + (++ebenenZaehler);
     const breit = (o.breite || 560) >= 720 || o.breit;
-    const wurzel = el("div", "blatt" + (breit ? " blatt-breit" : "") + (o.klasse ? " " + o.klasse : ""));
-    const schleierEl = el("div", "blatt-schleier");
-    const flaeche = el("section", "blatt-flaeche");
+    const wurzel = el("div", "ds-sheet" + (o.klasse ? " " + o.klasse : ""));
+    const schleierEl = el("div", "ds-sheet__backdrop");
+    const flaeche = el("section", "ds-sheet__panel" + (breit ? " ds-sheet__panel--wide" : ""));
     flaeche.tabIndex = -1;
     flaeche.setAttribute("role", "dialog");
     flaeche.setAttribute("aria-modal", "true");
     flaeche.setAttribute("aria-labelledby", id + "-titel");
 
-    const kopfTeil = el("div", "blatt-kopf");
+    const kopfTeil = el("div", "ds-sheet__head");
     const kopfText = el("div", "blatt-kopf-text");
-    const titelEl = el("h2", "blatt-titel", o.titel || "");
+    const titelEl = el("h2", "ds-sheet__title", o.titel || "");
     titelEl.id = id + "-titel";
     const unterEl = el("p", "blatt-unter", o.unter || "");
     kopfText.appendChild(titelEl);
@@ -1699,7 +1709,7 @@ const Rahmen = (function () {
     kopfTeil.appendChild(zu);
 
     // Der Körper ist ein eigener Tabstopp (Pfeiltasten rollen ihn).
-    const koerper = el("div", "blatt-koerper");
+    const koerper = el("div", "ds-sheet__body");
     koerper.tabIndex = 0;
     koerper.setAttribute("role", "region");
     koerper.setAttribute("aria-labelledby", id + "-titel");
@@ -1733,7 +1743,7 @@ const Rahmen = (function () {
 
     koerper.addEventListener("scroll", function () {
       const gerollt = koerper.scrollTop > 0;
-      if (gerollt !== flaeche.hasAttribute("data-gerollt")) flaeche.toggleAttribute("data-gerollt", gerollt);
+      if (gerollt !== flaeche.hasAttribute("data-scrolled")) flaeche.toggleAttribute("data-scrolled", gerollt);
     }, { passive: true });
     zu.addEventListener("click", function () { schliessen("knopf"); });
     schleierVerdrahten(schleierEl, function () { return ebene.offenSeit; }, function () {
@@ -1807,14 +1817,14 @@ const Rahmen = (function () {
   /* Die sichtbare Region ist keine Live-Region (sie zieht in Ebenen um);
      angesagt wird über «ansage». */
   function regionSichern() {
-    if (!region) region = el("div", "meldungen");
+    if (!region) region = el("div", "ds-toasts");
     if (regionPlatzieren() && offeneFehler.size) platzReservieren();
     return region;
   }
 
   function ansageEinrichten() {
     if (ansage || !body) return;
-    ansage = el("div", "nur-sr");
+    ansage = el("div", "ds-sr");
     ansage.id = "ansage";
     ansage.setAttribute("role", "status");
     ansage.setAttribute("aria-live", "polite");
@@ -1860,7 +1870,7 @@ const Rahmen = (function () {
       // Ein umgehängter Knoten spielt seine CSS-Animationen neu: bereits
       // gezeigte Meldungen werden darum vorher als gezeigt markiert.
       for (const m of Array.from(region.children)) {
-        if (!m.classList.contains("austritt")) m.setAttribute("data-gezeigt", "");
+        if (!m.classList.contains("ds-leave")) m.classList.add("ds-toast--shown");
       }
       wirt.appendChild(region);
     }
@@ -1897,13 +1907,13 @@ const Rahmen = (function () {
     const oben = ebeneOben();
     const bezug = oben && oben.art === "blatt" ? oben.flaeche : tafel;
     const links = bezug ? Math.max(0, Math.round(ruheLage(bezug).left)) : 0;
-    region.style.setProperty("--meldung-links", (links + MELDUNG_ABSTAND_PX) + "px");
+    region.style.setProperty("--ds-toast-left", (links + MELDUNG_ABSTAND_PX) + "px");
     const leisteTop = oben ? null : leisteOben();
     if (leisteTop !== null) {
-      region.style.setProperty("--meldung-unten",
+      region.style.setProperty("--ds-toast-bottom",
         (Math.max(0, Math.round(window.innerHeight - leisteTop)) + LUECKE_PX) + "px");
     } else {
-      region.style.removeProperty("--meldung-unten");
+      region.style.removeProperty("--ds-toast-bottom");
     }
   }
 
@@ -1916,12 +1926,12 @@ const Rahmen = (function () {
     const dy = Math.round(jetzt.unten - vorher.unten);
     if (!dx && !dy) return;
     region.style.setProperty("transition", "none");
-    region.style.setProperty("--meldung-verschub", dx + "px");
-    region.style.setProperty("--meldung-verschub-y", dy + "px");
+    region.style.setProperty("--ds-toast-shift", dx + "px");
+    region.style.setProperty("--ds-toast-shift-y", dy + "px");
     void region.offsetWidth;
     region.style.removeProperty("transition");
-    region.style.removeProperty("--meldung-verschub");
-    region.style.removeProperty("--meldung-verschub-y");
+    region.style.removeProperty("--ds-toast-shift");
+    region.style.removeProperty("--ds-toast-shift-y");
   }
 
   function meldungenAusrichten() {
@@ -1939,7 +1949,7 @@ const Rahmen = (function () {
 
   function platzFrei(k) {
     k.removeAttribute("data-meldung-platz");
-    k.style.removeProperty("--meldung-reserve");
+    k.style.removeProperty("--ds-toast-reserve");
   }
 
   /* Solange ein Fehler offen ist, hält der Roller darunter (Tafel bzw. der
@@ -1955,7 +1965,7 @@ const Rahmen = (function () {
     const regionTop = region.getBoundingClientRect().top;
     const leisteTop = oben ? null : leisteOben();
     const basis = leisteTop !== null ? leisteTop : window.innerHeight;
-    roller.style.setProperty("--meldung-reserve", (Math.max(0, Math.round(basis - regionTop)) + LUECKE_PX) + "px");
+    roller.style.setProperty("--ds-toast-reserve", (Math.max(0, Math.round(basis - regionTop)) + LUECKE_PX) + "px");
     roller.setAttribute("data-meldung-platz", "");
     if (urheber && urheber.isConnected && roller.contains(urheber)
       && urheber.getBoundingClientRect().bottom > regionTop - LUECKE_PX) {
@@ -1987,7 +1997,7 @@ const Rahmen = (function () {
     if (ton !== "fehler") {
       for (const m of Array.from(wirt.children)) {
         const d = meldungsDaten.get(m);
-        if (d && !m.classList.contains("austritt") && d.ton === ton && d.text === textWert) {
+        if (d && !m.classList.contains("ds-leave") && d.ton === ton && d.text === textWert) {
           d.neuStarten();
           ansagen(textWert);
           return d.griff;
@@ -1996,20 +2006,20 @@ const Rahmen = (function () {
     }
 
     ansagen(textWert);
-    const item = el("div", "meldung meldung-" + ton);
+    const item = el("div", "ds-toast" + (ton === "fehler" ? " ds-toast--error" : (ton === "info" ? " ds-toast--info" : "")));
     item.appendChild(UI.sinnbild(ton === "erfolg" ? "checkKreis" : (ton === "fehler" ? "achtungKreis" : "info"), 20));
-    item.appendChild(el("span", "meldung-text", textWert));
+    item.appendChild(el("span", "ds-toast__text", textWert));
 
     // Wo der Fokus war: schliesst man eine fokussierte Meldung, kehrt er
     // dorthin zurück.
     const aktiv = aktivesElement();
-    const vorige = aktiv && wirt.contains(aktiv) ? aktiv.closest(".meldung") : null;
+    const vorige = aktiv && wirt.contains(aktiv) ? aktiv.closest(".ds-toast") : null;
     const urheber = vorige ? (herkunft.get(vorige) || null) : aktiv;
     herkunft.set(item, urheber);
 
     let uhr = 0;
     function schliessen() {
-      if (!item.isConnected || item.classList.contains("austritt")) return;
+      if (!item.isConnected || item.classList.contains("ds-leave")) return;
       clearTimeout(uhr);
       offeneFehler.delete(item);
       if (item.contains(document.activeElement)) {
@@ -2032,7 +2042,7 @@ const Rahmen = (function () {
     if (ton === "fehler") {
       // Fehler liest man in Ruhe und schliesst sie selbst: keine Uhr. Ein
       // neuerer Fehler ersetzt den letzten, statt sich zu stapeln.
-      const zu = knopf({ variante: "sinnbild", sinnbild: "schliessen", titel: "Meldung schliessen", klein: true, klasse: "meldung-schliessen" });
+      const zu = knopf({ variante: "sinnbild", sinnbild: "schliessen", sinnbildGroesse: 18, titel: "Meldung schliessen", klasse: "ds-toast__close" });
       zu.addEventListener("click", schliessen);
       item.appendChild(zu);
       const fokusUebernehmen = !!vorige && vorige.contains(document.activeElement);
@@ -2063,13 +2073,13 @@ const Rahmen = (function () {
   }
 
   /* Hat eine Meldung ihren Auftritt gespielt, bleibt sie beim Umzug in eine
-     andere Ebene ruhig (rahmen.css: [data-gezeigt]). */
+     andere Ebene ruhig (.ds-toast--shown, Dashboard-Style). */
   function eingetreten(item) {
-    Bewegung.abgeschlossen(item).then(function () { item.setAttribute("data-gezeigt", ""); });
+    Bewegung.abgeschlossen(item).then(function () { item.classList.add("ds-toast--shown"); });
   }
 
   function zuvieleSchliessen(wirt) {
-    const lebend = Array.from(wirt.children).filter(function (m) { return !m.classList.contains("austritt"); });
+    const lebend = Array.from(wirt.children).filter(function (m) { return !m.classList.contains("ds-leave"); });
     let zuviel = lebend.length - MELDUNG_HOECHSTENS;
     for (const m of lebend) {
       if (zuviel <= 0) break;
@@ -2082,8 +2092,8 @@ const Rahmen = (function () {
      Tooltip
      ================================================================== */
 
-  const TIPP_SELEKTOR = "[data-tipp], button[title], a.knopf[title], [role=\"switch\"][title], "
-    + ".status[title], .chip[title], th button[title]";
+  const TIPP_SELEKTOR = "[data-tipp], button[title], a.ds-btn[title], [role=\"switch\"][title], "
+    + ".ds-status[title], .chip[title], th button[title]";
 
   let tippEl = null;
   let tippZiel = null;
@@ -2179,7 +2189,7 @@ const Rahmen = (function () {
       e.setAttribute("aria-describedby", beschreibungen(e).concat(tippEl.id).join(" "));
     }
     tippMarke += 1;
-    tippEl.classList.remove("austritt");
+    tippEl.classList.remove("ds-leave");
     tippEl.hidden = false;
     tippPlatzieren(e);
   }
@@ -2190,12 +2200,12 @@ const Rahmen = (function () {
     clearTimeout(tippGnade);
     tippLoesen();
     tippZiel = null;
-    if (tippEl.hidden || tippEl.classList.contains("austritt")) return;
+    if (tippEl.hidden || tippEl.classList.contains("ds-leave")) return;
     const marke = tippMarke;
     Bewegung.austreten(tippEl, "", { dann: "behalten" }).then(function () {
       if (marke !== tippMarke) return;
       tippEl.hidden = true;
-      tippEl.classList.remove("austritt");
+      tippEl.classList.remove("ds-leave");
     });
   }
 
@@ -2207,7 +2217,7 @@ const Rahmen = (function () {
 
   function tippEinrichten() {
     if (tippEl || !body) return;
-    tippEl = el("div", "tipp");
+    tippEl = el("div", "ds-tooltip");
     tippEl.id = "tipp";
     tippEl.setAttribute("role", "tooltip");
     tippEl.hidden = true;
@@ -2270,7 +2280,7 @@ const Rahmen = (function () {
     document.addEventListener("scroll", function () {
       if (!tippZiel) return;
       const fokus = document.activeElement;
-      if (!tippEl.hidden && !tippEl.classList.contains("austritt") && fokus && tippZiel.contains(fokus)
+      if (!tippEl.hidden && !tippEl.classList.contains("ds-leave") && fokus && tippZiel.contains(fokus)
         && fokus.matches(":focus-visible")) {
         const r = tippZiel.getBoundingClientRect();
         if (r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth) {
@@ -2432,7 +2442,7 @@ const Rahmen = (function () {
         Bewegung.austreten(element, "sinken", { dann: "behalten" }).then(function () {
           if (generation !== z.generation) return;   // inzwischen wieder gezeigt
           element.hidden = true;
-          element.classList.remove("austritt", "austritt--sinken");
+          element.classList.remove("ds-leave", "ds-leave--sink");
           z.austritt = false;
           ausstehendeAnwenden();
         });

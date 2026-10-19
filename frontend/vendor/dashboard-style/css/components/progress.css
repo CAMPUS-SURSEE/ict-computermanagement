@@ -1,0 +1,78 @@
+/*
+ * Linear progress (Material 3): a 4px primary bar on the tinted track. A
+ * known share scales the bar (transform only: set --ds-progress, 0 ... 1,
+ * on the element); an unknown one runs a calm segment across. With reduced
+ * motion the share jumps and the segment keeps running, slower.
+ *
+ *   <div class="ds-progress [ds-progress--indeterminate]" style="--ds-progress: .4">
+ *     <div class="ds-progress__track" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Import">
+ *       <div class="ds-progress__bar"></div>
+ *     </div>
+ *     <p class="ds-progress__label">40%</p>
+ *     <p class="ds-progress__detail">812 of 2,030 rows</p>
+ *
+ *   .ds-progress--waiting  hides the track (only the label shows)
+ */
+
+.ds-progress__track {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-action);
+  background: var(--ds-accent);
+}
+
+.ds-progress__bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--ds-primary);
+  transform: scaleX(var(--ds-progress, 0));
+  transform-origin: left center;
+  transition: transform var(--ds-dur-glide) var(--ds-ease-in-out);
+}
+
+.ds-progress--indeterminate .ds-progress__bar {
+  right: auto;
+  width: 35%;
+  transform: none;
+  transition: none;
+  animation: ds-indeterminate var(--ds-loop-indeterminate) var(--ds-ease-in-out) infinite;
+}
+
+.ds-progress--waiting .ds-progress__track {
+  display: none;
+}
+
+.ds-progress__label {
+  margin: var(--ds-space-2) 0 0;
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-progress__detail {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ds-text-2);
+  font: var(--ds-font-meta);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Forced colors drop both fills: the track gets an edge, the bar a system
+   colour, so the share still shows. */
+@media (forced-colors: active) {
+  .ds-progress__track {
+    outline: 1px solid CanvasText;
+  }
+
+  .ds-progress__bar {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}

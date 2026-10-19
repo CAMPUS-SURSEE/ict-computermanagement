@@ -1,0 +1,131 @@
+/*
+ * Alerts: notices on tonal containers with an icon, never colour alone.
+ * The neutral alert has no colour of its own: the quiet surface and the
+ * icon in the primary colour.
+ *
+ *   <div class="ds-alert ds-alert--warning" role="status">
+ *     <svg ...>(alert, 20)</svg>
+ *     <span class="ds-alert__text">The certificate expires in 5 days.</span>
+ *     <button class="ds-btn ds-btn--text ds-btn--sm" type="button">Renew</button>
+ *   </div>
+ *
+ *   (none: neutral info)  --success  --warning  --error
+ */
+
+/* No entrance of their own: an alert re-rendered with fresh data must not
+   fade in again. Give an alert that a user action brings in .ds-reveal. */
+
+.ds-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-low);
+  color: var(--ds-text);
+  font: var(--ds-font-body);
+}
+
+.ds-alert > svg {
+  flex-shrink: 0;
+  color: var(--ds-primary);
+}
+
+/* The 20px icon and a 20px line share one baseline. */
+.ds-alert__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The button hangs out of the 20px text line by the same amount above and
+   below, so its label sits on the text's centre line and the banner keeps
+   its even padding. */
+.ds-alert .ds-btn {
+  flex-shrink: 0;
+  margin-block: calc((var(--ds-space-5) - var(--ds-btn-height, 32px)) / 2);
+  margin-inline: auto calc(-1 * var(--ds-space-2));
+}
+
+.ds-alert a {
+  color: inherit;
+}
+
+.ds-alert--success {
+  background: var(--ds-success-container);
+  color: var(--ds-on-success-container);
+}
+
+.ds-alert--success > svg { color: var(--ds-success); }
+
+.ds-alert--warning {
+  background: var(--ds-warning-surface);
+  color: var(--ds-text);
+}
+
+.ds-alert--warning > svg { color: var(--ds-warning); }
+
+.ds-alert--error {
+  background: var(--ds-error-container);
+  color: var(--ds-on-error-container);
+}
+
+.ds-alert--error > svg { color: var(--ds-error); }
+
+.ds-alert--error .ds-btn {
+  --ds-btn-color: var(--ds-on-error-container);
+}
+
+/* Code in a tonal alert is told apart by the typeface alone. */
+.ds-alert code {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/* Collapsible list of messages: icon and text in the summary.
+
+   <details class="ds-errors"><summary><svg ...>(alertCircle)</svg>2 errors<svg class="ds-errors__chevron" ...>(chevronDown)</svg></summary><ul><li>...</li></ul></details> */
+.ds-errors {
+  font: var(--ds-font-body);
+}
+
+.ds-errors summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  border-radius: var(--ds-radius-xs);
+  color: var(--ds-on-error-container);
+  font: var(--ds-font-label);
+  cursor: pointer;
+}
+
+.ds-errors summary svg {
+  flex-shrink: 0;
+  color: var(--ds-error);
+}
+
+.ds-errors ul {
+  margin: var(--ds-space-2) 0 0;
+  padding-left: var(--ds-space-5);
+  color: var(--ds-text-2);
+  overflow-wrap: anywhere;
+}
+
+.ds-errors li + li {
+  margin-top: var(--ds-space-1);
+}
+
+.ds-errors summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The chevron flips without turning (no rotation in the motion system). */
+.ds-errors .ds-errors__chevron {
+  color: inherit;
+}
+
+.ds-errors[open] .ds-errors__chevron {
+  transform: rotate(180deg);
+}

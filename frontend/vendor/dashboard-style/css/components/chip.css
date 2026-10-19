@@ -1,0 +1,134 @@
+/*
+ * Filter chips on native checkboxes or radios: the input stays in the form
+ * and in the tab order, visually hidden; selection shows the tint and a
+ * check, never the tint alone.
+ *
+ *   <fieldset class="ds-chips">
+ *     <legend class="ds-sr">Status</legend>
+ *     <label class="ds-chip">
+ *       <input class="ds-chip__input" type="checkbox" name="status" value="open">
+ *       <span class="ds-chip__body"><svg class="ds-chip__check" ...>(check, 18px)</svg><span>Open</span></span>
+ *     </label>
+ *     <span class="ds-chips__divider" aria-hidden="true"></span>
+ *   </fieldset>
+ */
+
+.ds-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.ds-chips__divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--ds-space-2);
+  background: var(--ds-line);
+}
+
+/* Narrow screens wrap the chips; a divider would dangle at a line end. */
+@media (max-width: 720px) {
+  .ds-chips__divider {
+    display: none;
+  }
+}
+
+.ds-chip {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+/* The native input stays in the form and in the tab order, visually hidden. */
+.ds-chip__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ds-chip__body {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  height: 32px;
+  padding: 0 var(--ds-space-4);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-chip);
+  color: var(--ds-text-2);
+  font: var(--ds-font-chip);
+  white-space: nowrap;
+  transition:
+    background-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    border-color var(--ds-dur-fast) var(--ds-ease-in-out),
+    color var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* State layer in the content colour. */
+.ds-chip__body::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+@media (hover: hover) {
+  .ds-chip:hover .ds-chip__body::before {
+    opacity: var(--ds-state-hover);
+  }
+}
+
+.ds-chip:active .ds-chip__body::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-instant);
+}
+
+/* The check takes no room until the chip is selected. */
+.ds-chip__check {
+  display: none;
+  flex-shrink: 0;
+}
+
+.ds-chip__input:checked + .ds-chip__body {
+  padding-left: var(--ds-space-2);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+}
+
+.ds-chip__input:checked + .ds-chip__body .ds-chip__check {
+  display: block;
+  animation: ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out);
+}
+
+/* Ring on :focus, off again on :focus:not(:focus-visible); browsers
+   without :focus-visible drop only the second rule (button.css). */
+.ds-chip__input:focus + .ds-chip__body {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
+}
+
+.ds-chip__input:focus:not(:focus-visible) + .ds-chip__body {
+  outline: none;
+}
+
+.ds-chip__input:disabled + .ds-chip__body {
+  opacity: var(--ds-state-disabled);
+  cursor: default;
+}

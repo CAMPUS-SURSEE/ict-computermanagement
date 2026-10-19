@@ -1227,8 +1227,8 @@ function neuKnopf(tab) {
     } });
 }
 
-/* Ein Knopf, der ein Blatt öffnet: aria-expanded für den Zustand, tonal
-   (Klasse «aktiv»), solange es offen ist. */
+/* Ein Knopf, der ein Blatt öffnet: aria-expanded für den Zustand; solange
+   es offen ist, ist er tonal (bausteine.css: [aria-haspopup][aria-expanded]). */
 function blattKnopf(tab, art, text, sinnbild, beiKlick) {
   const k = UI.knopf({ text: text, sinnbild: sinnbild, variante: "still", id: tab + "-knopf-" + art, beiKlick: beiKlick });
   k.setAttribute("aria-haspopup", "dialog");
@@ -1238,7 +1238,6 @@ function blattKnopf(tab, art, text, sinnbild, beiKlick) {
 
 function knopfOffen(k, offen) {
   k.setAttribute("aria-expanded", offen ? "true" : "false");
-  k.classList.toggle("aktiv", offen);
 }
 
 /* Trefferzahl und «Neu …» bleiben zusammen am rechten Ende der Leiste,
@@ -1270,15 +1269,15 @@ function tabellenGeruest(tab) {
   const anzahl = el("p", "anzahl");
   anzahl.id = tab + "-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  const leiste = anhaengen(el("div", "werkzeugleiste"),
+  const leiste = anhaengen(el("div", "ds-action-bar"),
     [suchfeld, filterKnopf, spaltenKnopf, csvKnopf, leistenEnde(anzahl, neuKnopf(tab))]);
 
-  const chips = el("div", "chips");
+  const chips = el("div", "ds-chips");
   chips.id = tab + "-chips";
 
-  const tabelle = el("table", "tabelle");
+  const tabelle = el("table", "ds-table");
   tabelle.id = tab + "-tabelle";
-  tabelle.appendChild(el("caption", "nur-sr", titel));
+  tabelle.appendChild(el("caption", "ds-sr", titel));
   const kopfZeile = el("thead");
   const koerper = el("tbody");
   koerper.id = tab + "-koerper";
@@ -1304,7 +1303,7 @@ function tabellenGeruest(tab) {
       if (!modifiziert(ev)) stelleMerken(tr.getAttribute("data-id"));
       return;
     }
-    if (ev.target.closest("button, .status[tabindex]")) return;
+    if (ev.target.closest("button, .ds-status[tabindex]")) return;
     // Wer Text markiert hat, wollte kopieren, nicht öffnen.
     const auswahl = window.getSelection ? String(window.getSelection()) : "";
     if (auswahl && tr.contains(window.getSelection().anchorNode)) return;
@@ -1376,7 +1375,7 @@ function onlineZeichen(zeile) {
   const online = !!zeile.__online;
   z.classList.add(online ? "t-erfolg" : "t-still");
   z.appendChild(UI.sinnbild(online ? "online" : "offline", 16));
-  z.appendChild(el("span", "nur-sr", online ? "online: " : "offline: "));
+  z.appendChild(el("span", "ds-sr", online ? "online: " : "offline: "));
   const zuletzt = Hilfe.relativText(zeile.SCCM_LastActive);
   UI.tipp(z, online ? "Online" : "Offline" + (zuletzt ? " – zuletzt aktiv " + zuletzt : ""));
   return z;
@@ -1397,7 +1396,7 @@ function qualitaetZeichen(zeile) {
   }
   z.classList.add(ton);
   z.appendChild(UI.sinnbild("kamera", 16));
-  z.appendChild(el("span", "nur-sr", "Bildqualität " + wert.toLowerCase() + ": "));
+  z.appendChild(el("span", "ds-sr", "Bildqualität " + wert.toLowerCase() + ": "));
   UI.tipp(z, "Bildqualität " + wert.toLowerCase());
   return z;
 }
@@ -1415,7 +1414,7 @@ function zelle(tab, zeile, schluessel) {
 
   // Namensspalte: echter Link, damit Mittelklick und Ctrl-Klick wirken.
   if (schluessel === TAB[tab].namensSpalte) {
-    td.className = "ohne-umbruch";
+    td.className = "ds-nowrap";
     if (istClientTab(tab)) td.appendChild(onlineZeichen(zeile));
     else if (tab === "kameras") td.appendChild(qualitaetZeichen(zeile));
     const text = String(wert || "").trim()
@@ -1461,7 +1460,7 @@ function zelle(tab, zeile, schluessel) {
     }
     if (schluessel === "__benutzerName" && zeile.__benutzerZeile) {
       const b = zeile.__benutzerZeile;
-      td.className = "ohne-umbruch";
+      td.className = "ds-nowrap";
       td.appendChild(personLink(b, zeile.__benutzerName));
       // Eine Regel, ein Text und ein Ton für alle Seiten (Modell.adStatus).
       const ad = Modell.adStatus(b);
@@ -1517,7 +1516,7 @@ function zelle(tab, zeile, schluessel) {
      bereinigender Datenfehler. */
   if (istClientTab(tab) && schluessel === "__inhaberName") {
     if (!zeile.__inhaber) return leerZelle(td);
-    td.className = "ohne-umbruch";
+    td.className = "ds-nowrap";
     td.appendChild(personLink(zeile.__inhaber, zeile.__inhaberName));
     if (zeile.__mehrfachInhaber) {
       td.appendChild(document.createTextNode(" "));
@@ -1550,7 +1549,7 @@ function zelle(tab, zeile, schluessel) {
     }
     const c = zeile.__client;
     if (!c) return leerZelle(td);
-    td.className = "ohne-umbruch";
+    td.className = "ds-nowrap";
     const link = el("a", "name-link", String(c.Title || "").trim() || "(ohne Namen)");
     link.href = detailAdresse("admin", c.id);
     td.appendChild(link);
@@ -1601,7 +1600,7 @@ function zelle(tab, zeile, schluessel) {
     return td;
   }
   if (s.t === "Number") {
-    td.className = "zahl";
+    td.className = "ds-num";
     const text = Hilfe.zahlText(wert);
     if (!text) return leerZelle(td);
     td.textContent = text;
@@ -1667,7 +1666,7 @@ function koerperZeichnen(tab, spalten) {
     teile.appendChild(tr);
   }
   leeren(k.koerper).appendChild(teile);
-  k.rahmen.classList.toggle("dicht", zustand[tab].dicht);
+  k.rahmen.classList.toggle("ds-table--dense", zustand[tab].dicht);
 }
 
 function trefferText(tab, mitEinheit) {
@@ -1862,7 +1861,7 @@ function chipEntfernen(tab, chip, entfernen) {
 /* ---------- Ganze Ansicht ---------- */
 
 function dichteAnwenden() {
-  for (const tab of TABELLEN) if (knoten[tab]) knoten[tab].rahmen.classList.toggle("dicht", zustand[tab].dicht);
+  for (const tab of TABELLEN) if (knoten[tab]) knoten[tab].rahmen.classList.toggle("ds-table--dense", zustand[tab].dicht);
 }
 
 function zeichneTabellenAnsicht(tab) {
@@ -1942,7 +1941,7 @@ function filterOeffnen(tab) {
      Sie stehen vor den langen Kästchenlisten, damit sie ohne Rollen
      erreichbar sind (der Programmfilter ist der häufigste der Benutzer). */
   const auswahlen = [];
-  const felder = el("div", "feld-raster");
+  const felder = el("div", "ds-form-grid ds-form-grid--2");
   for (const zs of TAB[tab].zeitspalten) {
     const a = UI.eingabe({ art: "auswahl", id: tab + "-zeit-" + zs.k, leer: "Alle",
       werte: ZEITRAEUME.map(s => [s.w, s.d]), wert: z.zeit[zs.k] || "",
@@ -2111,7 +2110,7 @@ function spaltenOeffnen(tab) {
   });
 
   /* Vorlagen setzen nur die Häkchen (C2): nichts wird neu gebaut. */
-  const vorlagen = anhaengen(el("div", "aktionszeile"), [
+  const vorlagen = anhaengen(el("div", "ds-form-actions"), [
     UI.knopf({ text: "Standardspalten", variante: "leise", beiKlick: function () { setzen(TAB[tab].standard.slice()); } }),
     UI.knopf({ text: "Nur Name", variante: "leise", beiKlick: function () { setzen([name]); } }),
     UI.knopf({ text: "Alle Spalten", variante: "leise", beiKlick: function () { setzen(alleSpalten.map(s => s.i)); } })
@@ -2384,7 +2383,7 @@ function rollenKennzahlen() {
 function abschnitt(id, titel, meta, inhalt) {
   const s = el("section", "uebersicht-abschnitt");
   const kopf = el("div", "abschnitt-kopf");
-  const h = el("h2", "karte-titel", titel);
+  const h = el("h2", "ds-card__title", titel);
   h.id = id;
   s.setAttribute("aria-labelledby", id);
   kopf.appendChild(h);
@@ -2559,7 +2558,7 @@ function zeitstrahl(tab) {
           + (v < 0 ? " – überfällig" : ""))
     ]);
     const label = el("span", "zeitstrahl-label", gjKurz(jahr));
-    if (v === 0) label.appendChild(el("span", "nur-sr", " (laufendes Geschäftsjahr)"));
+    if (v === 0) label.appendChild(el("span", "ds-sr", " (laufendes Geschäftsjahr)"));
     anhaengen(spalteJahr, [saeulen, label]);
     achse.appendChild(spalteJahr);
   }
@@ -2783,7 +2782,7 @@ function softwareGeruest() {
   const anzahl = el("p", "anzahl");
   anzahl.id = "software-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  const leiste = anhaengen(el("div", "werkzeugleiste"), [suchfeld, leistenEnde(anzahl, neuKnopf("software"))]);
+  const leiste = anhaengen(el("div", "ds-action-bar"), [suchfeld, leistenEnde(anzahl, neuKnopf("software"))]);
   const liste = el("div", "software-liste");
   liste.id = "software-liste";
   anhaengen(ansicht, [kopf, leiste, liste]);
@@ -2807,7 +2806,7 @@ function berechtigtLink(p, anzahl, stufe, wort) {
 
 function softwareKarte(p, e) {
   const karte = UI.karte({ titel: p.d, ebene: 3, klasse: "software-karte" });
-  const h = karte.kopf.querySelector(".karte-titel");
+  const h = karte.kopf.querySelector(".ds-card__title");
   leeren(h);
   const name = el("a", "name-link", p.d);
   name.href = UI.adresse.software(p.zeilenId);
@@ -2819,7 +2818,7 @@ function softwareKarte(p, e) {
   UI.tipp(name, "Programm-ID: " + p.i);
   h.appendChild(name);
 
-  const zahlen = el("p", "hinweis");
+  const zahlen = el("p", "ds-muted");
   zahlen.appendChild(UI.teile([berechtigtLink(p, e.eins, "1", "von Hand"), berechtigtLink(p, e.zwei, "2", "aus AD")]));
   /* Ohne AD-Gruppe nur eine leise Meta-Zeile (dieselben Worte wie im
      Softwarefenster): bei vielen Programmen sonst ein Wald gleicher Sätze. */
@@ -2911,7 +2910,7 @@ function rechteGeruest() {
   const anzahl = el("p", "anzahl");
   anzahl.id = "kamerarechte-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  const leiste = anhaengen(el("div", "werkzeugleiste"), [suchfeld, leistenEnde(anzahl, null)]);
+  const leiste = anhaengen(el("div", "ds-action-bar"), [suchfeld, leistenEnde(anzahl, null)]);
   const stand = el("div", "kamerarechte-stand");
   const liste = el("div", "karten software-karten kamerarechte-liste");
   liste.id = "kamerarechte-liste";
@@ -2936,7 +2935,7 @@ function rollenKameraLink(r) {
 
 function rollenKarte(r) {
   const karte = UI.karte({ titel: String(r.Title || "").trim() || "(ohne Namen)", ebene: 3, klasse: "software-karte kamerarolle-karte" });
-  const h = karte.kopf.querySelector(".karte-titel");
+  const h = karte.kopf.querySelector(".ds-card__title");
   leeren(h);
   const name = el("a", "name-link", String(r.Title || "").trim() || "(ohne Namen)");
   name.href = UI.adresse.kamerarolle(r.id);
@@ -2953,7 +2952,7 @@ function rollenKarte(r) {
   if (r.__admin && !/admin/i.test(String(r.Title || ""))) status.push(UI.status("Administratoren", "neutral", { sinnbild: "schloss" }));
 
   const n = r.__personen.length + r.__unbekannt.length;
-  const zahlen = el("p", "hinweis");
+  const zahlen = el("p", "ds-muted");
   zahlen.appendChild(UI.teile([rollenKameraLink(r), UI.zahlText(n) + (n === 1 ? " Person" : " Personen")]));
 
   const gruppen = r.__adGruppen.length
@@ -3271,7 +3270,7 @@ function ereignisseVerbinden() {
   /* Die Wortmarke führt zur ersten Übersicht. Ein schlichter Klick bleibt
      auf der Seite (kein Neuladen aller Listen); modifizierte Klicks gehören
      dem Browser. */
-  const marke = Rahmen.elemente().kopf && Rahmen.elemente().kopf.querySelector(".kopf-marke");
+  const marke = Rahmen.elemente().kopf && Rahmen.elemente().kopf.querySelector(".ds-brand");
   if (marke) {
     marke.addEventListener("click", function (ev) {
       if (modifiziert(ev)) return;

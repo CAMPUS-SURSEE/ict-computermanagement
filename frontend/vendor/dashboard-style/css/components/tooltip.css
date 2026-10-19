@@ -1,0 +1,38 @@
+/*
+ * Plain tooltip (Material 3): the inverse surface, the meta role, placed
+ * below its control by the page's script. It only fades in and grows from
+ * just under full size (no rise: it is anchored to the control), and
+ * leaves with a quick fade. Let the pointer move onto it (WCAG 1.4.13: a
+ * magnifier user can read it there) and keep it open meanwhile.
+ *
+ *   <div class="ds-tooltip" role="tooltip" id="tip" hidden>Copy link</div>
+ */
+.ds-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--ds-z-toast);
+  /* Its own width wherever it was last placed (measure it before moving
+     it), wrapping only past the maximum. */
+  width: max-content;
+  max-width: min(320px, calc(100vw - 2 * var(--ds-space-2)));
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-inverse);
+  color: var(--ds-on-inverse);
+  font: var(--ds-font-meta);
+  /* Line breaks in the text are kept (a name and an email on two lines). */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  /* Invisible; forced colors paint it, so the tooltip keeps an edge. */
+  outline: 1px solid transparent;
+  --ds-motion-distance: 0px;
+  --ds-leave-duration: var(--ds-dur-instant);
+  animation:
+    ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out) backwards,
+    ds-grow-in var(--ds-dur-fast) var(--ds-ease-out) backwards;
+}
+
+.ds-tooltip[hidden] {
+  display: none;
+}
