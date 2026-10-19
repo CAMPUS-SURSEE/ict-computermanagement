@@ -3,43 +3,16 @@
         "internal":  "Title",
         "display":  "Rolle",
         "type":  "Title",
-        "group":  "Nachweis",
+        "group":  "Stammdaten",
         "source":  "manuell",
         "inDefaultView":  true,
         "description":  "Name der Rolle in Milestone. Der Abgleich legt die Zeile an und führt den Namen nach"
     },
     {
-        "internal":  "Zweck",
-        "display":  "Zweck",
-        "type":  "Note",
-        "group":  "Nachweis",
-        "source":  "manuell",
-        "inDefaultView":  true,
-        "description":  "Wozu diese Rolle Kamerabilder sehen darf (Datenschutz-Nachweis)"
-    },
-    {
-        "internal":  "BewilligtDurch",
-        "display":  "Bewilligt durch",
-        "type":  "Text",
-        "group":  "Nachweis",
-        "source":  "manuell",
-        "inDefaultView":  true,
-        "description":  "Wer den Zugriff bewilligt hat"
-    },
-    {
-        "internal":  "BewilligtAm",
-        "display":  "Bewilligt am",
-        "type":  "Text",
-        "group":  "Nachweis",
-        "source":  "manuell",
-        "inDefaultView":  true,
-        "description":  "Datum der Bewilligung, Schreibweise 2026-10-13"
-    },
-    {
         "internal":  "Bemerkung",
         "display":  "Bemerkung",
         "type":  "Note",
-        "group":  "Nachweis",
+        "group":  "Stammdaten",
         "source":  "manuell",
         "inDefaultView":  false,
         "description":  "Freitext"
@@ -48,7 +21,7 @@
         "internal":  "Verlauf",
         "display":  "Verlauf",
         "type":  "Note",
-        "group":  "Nachweis",
+        "group":  "Stammdaten",
         "source":  "manuell",
         "inDefaultView":  false,
         "description":  "JSON-Array mit Verlaufseinträgen [{id,datum,text,quelle,erstellt}]; der Abgleich hält dort Änderungen an Mitgliedern und Kameras fest"

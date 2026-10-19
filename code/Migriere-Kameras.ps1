@@ -380,7 +380,7 @@ function Initialize-Liste {
 }
 
 $KameraListId = Initialize-Liste 'Kameras' 'Videokameras aus Milestone XProtect, eine Zeile je Hardware. Abgleich: Sync-Inventar.ps1 (README Abschnitt 2.9).' 'schema-kamera.json'
-$RolleListId = Initialize-Liste 'Kamera-Rollen' 'Rollen aus Milestone XProtect und ihre Rechte auf die Kameras, mit Zweck und Bewilligung. Abgleich: Sync-Inventar.ps1 (README Abschnitt 2.9).' 'schema-kamerarolle.json'
+$RolleListId = Initialize-Liste 'Kamera-Rollen' 'Rollen aus Milestone XProtect und ihre Rechte auf die Kameras. Abgleich: Sync-Inventar.ps1 (README Abschnitt 2.9).' 'schema-kamerarolle.json'
 Log "Listen-IDs – in frontend\konfig.js (kameraListId, kameraRolleListId) und in der Server-Konfiguration (KameraListId, KameraRolleListId) eintragen: Kameras $KameraListId, Kamera-Rollen $RolleListId"
 
 # --- 2) Milestone ------------------------------------------------------------

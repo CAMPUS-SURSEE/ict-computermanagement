@@ -680,7 +680,7 @@ Pruefe 'Kamera-Schema: Verlauf ist Note'      'Note' (@($schemaK | Where-Object 
 Pruefe 'Kamera-Schema: MS_* nur aus Milestone' 0 (@($schemaK | Where-Object { $_.internal -like 'MS_*' -and $_.source -ne 'milestone' }).Count)
 Pruefe 'Kamera-Schema: deckt die Sync-Felder ab' '' ((@((ConvertTo-KameraFelder ([pscustomobject]@{ Kanaele = @() })).Keys) | Where-Object { $k = $_; -not ($schemaK | Where-Object { $_.internal -eq $k }) }) -join ',')
 Pruefe 'Rollen-Schema: Titel heisst Rolle'    'Rolle' (@($schemaR | Where-Object { $_.internal -eq 'Title' })[0].display)
-Pruefe 'Rollen-Schema: Zweck von Hand'        'manuell' (@($schemaR | Where-Object { $_.internal -eq 'Zweck' })[0].source)
+Pruefe 'Rollen-Schema: Bemerkung von Hand'    'manuell' (@($schemaR | Where-Object { $_.internal -eq 'Bemerkung' })[0].source)
 
 Pruefe 'Ort: 10.300 Treppe'          '10|10.300'     ((Get-KameraOrt '10.300 Treppe Trakt 1') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })
 Pruefe 'Ort: 33.A20 P3 Kasse'        '33|33.A20'     ((Get-KameraOrt '33.A20 P3 Kasse A') | ForEach-Object { "$($_.Gebaeude)|$($_.Raum)" })

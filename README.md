@@ -64,8 +64,8 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **ein Gerät, eine Nummer oder ein Programm löschen** | auf der Detailseite **«Löschen …»** rechts im Seitenkopf; zur Bestätigung den PC-Namen, die Kurzwahl bzw. die Programm-ID eingeben, dann **«Löschen»**. Die Zeile kommt in den Papierkorb der SharePoint-Site und lässt sich dort 93 Tage lang zurückholen. Danach führt «Zur Liste» (bzw. «Zur Software-Liste») zurück. Benutzer haben keinen Löschknopf: ihre Liste pflegt der Sync aus dem AD |
 | **mich abmelden** | **«Abmelden»** oben rechts in der Kopfzeile – auf jeder Seite, auch auf den Detailseiten. Es steht mit Initiale, Name und E-Mail des Kontos in einer umrandeten Kapsel (in schmalen Fenstern nur die Initiale) |
 | **wissen, wer eine Kamera sehen darf** | Kameraseite → Bereich **«Berechtigungen»**; umgekehrt Navigation **«Kamerarechte»** (eine Karte je Rolle) und auf der Benutzerseite die Karte **«Videoüberwachung»**. Die Rechte kommen aus Milestone und werden dort im Management Client geändert, nie im Tool (Abschnitt 2.9) |
-| **den Zweck einer Kamera-Rolle festhalten** | Kamerarechte → Rolle öffnen → Bereich «Rolle», Karte **«Nachweis»** (Zweck, Bewilligt durch, Bewilligt am). Rollen ohne Nachweis stehen unter «Handlungsbedarf» |
-| **eine Kamera erfassen** | meist **nicht nötig**: Kameras in Milestone legt der Sync selbst an. «Neue Kamera» nur für Kameras ausserhalb von Milestone (z. B. Reserve im Lager) |
+| **eine Notiz zu einer Kamera-Rolle festhalten** | Kamerarechte → Rolle öffnen → Bereich «Rolle», Karte **«Bemerkung»**. Den früheren Nachweis (Zweck, Bewilligt durch/am) gibt es seit dem 19.10.2026 nicht mehr |
+| **eine Kamera erfassen** | **nicht nötig** und im Frontend nicht möglich: Kameras in Milestone legt der Sync selbst an. Eine ausgebaute Kamera bleibt erhalten, wenn ihr Status vor dem Entfernen aus Milestone auf **`Lager`** steht |
 | **eine Kamera bewerten** | Kameraseite → Bereich **«Bewertung»** (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) |
 | **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln, Tokens, Bausteine) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
@@ -89,7 +89,7 @@ und kein Zusatzmodul; `ActiveDirectory` wird benutzt, wenn es da ist, sonst grei
 | Liste **Telefonnummern** | Titel = Kurzwahl (373), Telefonnummer, Name, Typ, **Status** (Aktiv/Inaktiv/Frei), Apparat, Standort, Hinweis, **Verlauf**, dazu `Benutzer` (Login aus dem AD) und `ADLetzterSync` | Menschen (Frontend) + Sync (`Benutzer`, `ADLetzterSync`, leerer Name aus AD, Frei → Aktiv, neue Nummern aus dem AD) |
 | Liste **Software** | Titel = Programm-Id (= interner Spaltenname in der Benutzer-Liste), dazu Name, Kategorie, AD-Gruppen, Reihenfolge, Bemerkung. Ersetzt seit dem 08.09.2026 die Datei `programme.json` | Menschen (Frontend, Software-Liste) + Sync (legt eine fehlende Programmspalte in der Benutzer-Liste selbst an) |
 | Liste **Kameras** | Titel = Name der Kamera in Milestone, dazu Gebäude, Raum, **Status**, Bemerkung, **Verlauf**, Beschaffung, Bewertung (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) und 18 `MS_*`-Spalten aus Milestone. Eine Zeile je Hardware (Abschnitt 2.9) | Menschen + Sync (`MS_*`, `Status`, `Title` bei Umbenennung in Milestone, leere Gebäude/Raum, an `Verlauf` angehängt) |
-| Liste **Kamera-Rollen** | Titel = Rolle in Milestone, dazu Zweck, Bewilligt durch, Bewilligt am, Bemerkung, **Verlauf** und die `MS_*`-Spalten (Mitglieder, AD-Gruppen, aufgelöste Personen, Rechte, Kameras als JSON) | Menschen (Nachweis) + Sync (alles aus Milestone, Verlauf der Änderungen) |
+| Liste **Kamera-Rollen** | Titel = Rolle in Milestone, dazu Bemerkung, **Verlauf** und die `MS_*`-Spalten (Mitglieder, AD-Gruppen, aufgelöste Personen, Rechte, Kameras als JSON) | Menschen (Bemerkung) + Sync (alles aus Milestone, Verlauf der Änderungen) |
 
 ```
 adminsrv319 (SCCM Site-Server)                        Microsoft 365 / SharePoint mgmts-ict-s
@@ -646,10 +646,10 @@ gelesen», nicht als «Zugriff erhalten». Eingebaute Konten des Milestone-Serve
 wie Milestone die Rechte nennt (die Namen liest `ConvertFrom-MilestoneRechte`).
 
 **Von Hand gepflegt** wird nur, was Milestone nicht kennt: Gebäude, Raum, Status, Bemerkung,
-Beschaffung, Bewertung, Verlauf (Kameras) und der Nachweis Zweck, Bewilligt durch, Bewilligt am
-(Rollen). Im Frontend zählt die Übersicht unter «Handlungsbedarf»: Kameras im Status «Aktiv», die nicht
-in Milestone stehen, in Milestone deaktivierte, Kameras ohne Aufzeichnung, Kanäle ohne eigenen Namen
-(Milestone-Vorgabe «Modell (IP) - Kamera 2»), überfälligen Ersatz und Rollen ohne Nachweis.
+Beschaffung, Bewertung, Verlauf (Kameras) und die Bemerkung (Rollen). Im Frontend zählt die Übersicht
+unter «Handlungsbedarf»: Kameras im Status «Aktiv», die nicht in Milestone stehen, in Milestone
+deaktivierte, Kameras ohne Aufzeichnung, Kanäle ohne eigenen Namen (Milestone-Vorgabe «Modell (IP) -
+Kamera 2») und überfälligen Ersatz.
 
 **Verwandt:** Die Liste «Software» hat ein Programm «Milestone». Wer dort die AD-Gruppen der Rollen
 einträgt, sieht die Berechtigung auch in der Benutzerliste als Stufe 2.

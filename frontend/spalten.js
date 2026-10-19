@@ -187,12 +187,9 @@ const SPALTEN_KAMERA = [
 ];
 
 const SPALTEN_KAMERAROLLE = [
-  { i: "Title", d: "Rolle", t: "Title", g: "Nachweis", q: "manuell" },
-  { i: "Zweck", d: "Zweck", t: "Note", g: "Nachweis", q: "manuell" },
-  { i: "BewilligtDurch", d: "Bewilligt durch", t: "Text", g: "Nachweis", q: "manuell" },
-  { i: "BewilligtAm", d: "Bewilligt am", t: "Text", g: "Nachweis", q: "manuell" },
-  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Nachweis", q: "manuell" },
-  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Nachweis", q: "manuell" },
+  { i: "Title", d: "Rolle", t: "Title", g: "Stammdaten", q: "manuell" },
+  { i: "Bemerkung", d: "Bemerkung", t: "Note", g: "Stammdaten", q: "manuell" },
+  { i: "Verlauf", d: "Verlauf", t: "Note", g: "Stammdaten", q: "manuell" },
   { i: "MS_RolleId", d: "Rollen-ID (Milestone)", t: "Text", g: "Milestone", q: "milestone" },
   { i: "MS_Gefunden", d: "In Milestone", t: "Text", g: "Milestone", q: "milestone" },
   { i: "MS_RollenTyp", d: "Rollentyp", t: "Text", g: "Milestone", q: "milestone" },

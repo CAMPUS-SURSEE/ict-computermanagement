@@ -736,7 +736,7 @@ const Mock = (function () {
      Sonderfälle sind absichtlich dabei: eine Kamera mit zwei Kanälen
      (360°), eine mit einem Kanal ohne Namen, eine deaktivierte, eine ohne
      Aufzeichnung, eine im Lager, eine archivierte, eine, die nur von Hand
-     erfasst ist, und eine Rolle ohne Zweck und Bewilligung. Ein eigener
+     erfasst ist, und eine Rolle, die nicht mehr in Milestone steht. Ein eigener
      Würfel, damit die übrigen Vorführdaten bleiben, wie sie sind. */
 
   const KAMERA_ORTE = [
@@ -833,17 +833,15 @@ const Mock = (function () {
     };
     const definitionen = [
       { id: "1", name: "Administratoren", typ: "Administratoren", gruppen: [], mitglieder: ["Basisbenutzer | admin", "AD-Gruppe | BEISPIEL\\ICT_Admins"],
-        abt: ["ICT"], kameras: rechteFuer(() => true, ["Vollzugriff"]), zweck: "Betrieb und Wartung des Videosystems.", durch: "Leitung ICT", am: "2025-03-01" },
+        abt: ["ICT"], kameras: rechteFuer(() => true, ["Vollzugriff"]) },
       { id: "2", name: "Nachtdienst", typ: "Benutzerdefiniert", gruppen: ["Hot_Nachtdienst"], mitglieder: ["AD-Gruppe | BEISPIEL\\Hot_Nachtdienst"],
-        abt: ["Empfang"], kameras: rechteFuer(k => k.Gebaeude !== "P", ["Live", "Wiedergabe", "Export"]),
-        zweck: "Kontrollgänge ersetzen und Vorfälle in der Nacht nachvollziehen.", durch: "Direktion", am: "2024-10-10" },
+        abt: ["Empfang"], kameras: rechteFuer(k => k.Gebaeude !== "P", ["Live", "Wiedergabe", "Export"]) },
       { id: "3", name: "Technischer Dienst", typ: "Benutzerdefiniert", gruppen: ["TD_Alle"], mitglieder: ["AD-Gruppe | BEISPIEL\\TD_Alle"],
-        abt: ["Technischer Dienst"], kameras: rechteFuer(k => k.Gebaeude === "P", ["Live", "Wiedergabe"]),
-        zweck: "Störungen an Barrieren und Kassen im Parkhaus beheben.", durch: "Direktion", am: "2024-10-10" },
+        abt: ["Technischer Dienst"], kameras: rechteFuer(k => k.Gebaeude === "P", ["Live", "Wiedergabe"]) },
       { id: "4", name: "Team Halle", typ: "Benutzerdefiniert", gruppen: ["Sport_Halle"], mitglieder: ["AD-Gruppe | BEISPIEL\\Sport_Halle", "AD-Benutzer | BEISPIEL\\muster.anna"],
-        abt: ["Gastronomie"], kameras: rechteFuer(k => k.Gebaeude === "C", ["Live"]), zweck: "", durch: "", am: "" },
+        abt: ["Gastronomie"], kameras: rechteFuer(k => k.Gebaeude === "C", ["Live"]) },
       { id: "5", name: "Empfang (alt)", typ: "Benutzerdefiniert", gruppen: ["Hot_Empfang_alt"], mitglieder: ["AD-Gruppe | BEISPIEL\\Hot_Empfang_alt"],
-        abt: [], kameras: {}, zweck: "Abgelöst durch «Nachtdienst».", durch: "Leitung Hotellerie", am: "2023-05-01", fehlt: true }
+        abt: [], kameras: {}, bemerkung: "Abgelöst durch «Nachtdienst».", fehlt: true }
     ];
     return definitionen.map(function (d) {
       const z = leereZeile(SPALTEN_KAMERAROLLE);
@@ -852,9 +850,7 @@ const Mock = (function () {
       for (const k of Object.keys(d.kameras)) for (const x of d.kameras[k]) if (rechte.indexOf(x) === -1) rechte.push(x);
       z.id = String(900 + Number(d.id));
       z.Title = d.name;
-      z.Zweck = d.zweck;
-      z.BewilligtDurch = d.durch;
-      z.BewilligtAm = d.am;
+      z.Bemerkung = d.bemerkung || "";
       z.MS_RolleId = "mock-rolle-" + d.id;
       z.MS_Gefunden = d.fehlt ? "Nein" : "Ja";
       z.MS_RollenTyp = d.typ;

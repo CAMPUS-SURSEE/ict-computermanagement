@@ -45,8 +45,7 @@ const KONFIG = {
   /* Videoüberwachung: «Kameras» (eine Zeile je Hardware in Milestone) und
      «Kamera-Rollen» (die Rollen aus Milestone mit ihren Rechten auf die
      Kameras). Beide füllt der Sync aus Milestone XProtect (adminsrv347);
-     von Hand gepflegt werden nur Ort, Bewertung, Beschaffung, Zweck und
-     Bewilligung. */
+     von Hand gepflegt werden nur Ort, Bewertung, Beschaffung und Bemerkung. */
   kameraListId: "a85c5d97-3599-4c02-9bfc-96a31109f40e",
   kameraRolleListId: "128dcae0-04a9-4115-bf3b-2634b6f51a82",
 

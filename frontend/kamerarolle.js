@@ -3,8 +3,8 @@
    Wird von der Ansicht «Kamerarechte» als kamerarolle.html?id=… geöffnet
    und zeigt eine Zeile der Liste «Kamera-Rollen» in vier Bereichen:
 
-     Rolle      Nachweis (Zweck, bewilligt durch, am, Bemerkung – von Hand)
-                und was Milestone über die Rolle weiss (Mitglieder, Rechte).
+     Rolle      Bemerkung (von Hand) und was Milestone über die Rolle
+                weiss (Mitglieder, Rechte).
      Kameras    Die Kameras, auf die die Rolle Rechte hat, mit den Rechten.
      Personen   Wer die Rolle hat: die Mitglieder der AD-Gruppen, rekursiv
                 aufgelöst (der Abgleich schreibt die Logins).
@@ -12,7 +12,7 @@
                 die der Abgleich festhält.
 
    Führend ist Milestone: Rollen, Mitglieder und Rechte werden im Management
-   Client geändert, nie hier. Bearbeitbar ist nur der Nachweis.
+   Client geändert, nie hier. Bearbeitbar ist nur die Bemerkung.
 
    Gebaut wird nur über UI.*, Rahmen.*, F.* und Bewegung.*. */
 
@@ -80,39 +80,17 @@ function bereichWechseln(schluessel) {
   F.bereichWechseln(BEREICHE, schluessel);
 }
 
-function textWert(feld) { return entwurf.textWert(feld); }
 function inMilestone() { return !!zeile && Hilfe.istJa(zeile.MS_Gefunden); }
 function personenAnzahl() { return zeile ? (zeile.__personen || []).length + (zeile.__unbekannt || []).length : 0; }
 
-function feldZeile(feld, o) {
-  const s = SPALTE[feld];
-  return F.feld(feld, Object.assign({
-    beschriftung: s.d,
-    art: s.t === "Note" ? "textbereich" : "text",
-    entwurf: entwurf
-  }, o || {}));
-}
-
-function vorschlaege(feld) {
-  const werte = [];
-  for (const z of alleRollen) {
-    const w = String(z[feld] || "").trim();
-    if (w && werte.indexOf(w) === -1) werte.push(w);
-  }
-  return werte.sort(Hilfe.vergleiche);
-}
 
 
 /* ---------- Rolle ---------- */
 
-function nachweisKarte() {
-  const k = UI.karte({ titel: "Nachweis",
-    unter: "Wozu die Rolle Kamerabilder sehen darf und wer das bewilligt hat. Wird von Hand gepflegt." });
+function bemerkungKarte() {
+  const k = UI.karte({ titel: "Bemerkung" });
   k.inhalt.appendChild(UI.datenzeilen([
-    feldZeile("Zweck", { eingabe: { zeilen: 3 } }),
-    feldZeile("BewilligtDurch", { eingabe: { vorschlaege: vorschlaege("BewilligtDurch") } }),
-    feldZeile("BewilligtAm", { art: "datum", eingabe: { schmal: true } }),
-    feldZeile("Bemerkung", { eingabe: { zeilen: 3 } })
+    F.feld("Bemerkung", { beschriftung: "Bemerkung", art: "textbereich", entwurf: entwurf, eingabe: { zeilen: 6 } })
   ]));
   return k;
 }
@@ -146,7 +124,7 @@ function milestoneKarte() {
 
 function bereichRolle(ziel) {
   const raster = UI.el("div", "karten");
-  raster.appendChild(nachweisKarte());
+  raster.appendChild(bemerkungKarte());
   raster.appendChild(milestoneKarte());
   ziel.appendChild(raster);
 }
@@ -234,9 +212,6 @@ function kopfZeichnen() {
   if (!zeile) return;
   const status = [];
   if (!inMilestone()) status.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
-  else if (Modell.rolleOhneNachweis({ Zweck: textWert("Zweck"), BewilligtDurch: textWert("BewilligtDurch") })) {
-    status.push(UI.status("Nachweis fehlt", "warnung", { titel: "Zweck oder «Bewilligt durch» fehlt" }));
-  }
   const unter = [(zeile.__adGruppen || []).join(", "), (zeile.__rechte || []).join(", ")];
   const aktionen = F.geloescht() ? [] : [UI.knopf({ text: "Löschen …", variante: "leise", sinnbild: "papierkorb", beiKlick: loeschen,
     gesperrt: entwurf.anzahl() ? GRUND_ENTWURF : (inMilestone() ? "Die Rolle steht in Milestone – der Abgleich legte sie wieder an." : "") })];
@@ -249,8 +224,7 @@ function loeschen() {
   const id = zeile.id;
   F.loeschenDialog({
     titel: "Rolle löschen?",
-    text: "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen. Mit ihr gehen Zweck, Bewilligung und Verlauf.",
-    warnung: "Als Nachweis lohnt es sich meist, die Zeile zu behalten.",
+    text: "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen. Mit ihr gehen Bemerkung und Verlauf.",
     wort: name || "löschen",
     knopfText: "Löschen",
     fehlerText: "Löschen fehlgeschlagen.",
@@ -314,12 +288,6 @@ async function neuLaden() {
   }
 }
 
-function pruefen() {
-  const am = textWert("BewilligtAm").trim();
-  if (entwurf.istGeaendert("BewilligtAm") && am && !Modell.datumIsoGueltig(am)) return { feld: "BewilligtAm", text: "Bitte ein Datum wählen." };
-  return null;
-}
-
 async function aendern() {
   const aenderungen = entwurf.aenderungen();
   const felder = {};
@@ -327,11 +295,6 @@ async function aendern() {
     if (!Modell.istBearbeitbar(SPALTE[feld])) continue;
     const t = aenderungen[feld] === null || aenderungen[feld] === undefined ? "" : String(aenderungen[feld]);
     felder[feld] = feld === "Verlauf" ? t : (t.trim() === "" ? null : t);
-  }
-  /* Ein geänderter Nachweis steht im Verlauf (wer, wann – das ist der Sinn des Nachweises). */
-  const geaendert = ["Zweck", "BewilligtDurch", "BewilligtAm"].filter(f => entwurf.istGeaendert(f));
-  if (geaendert.length) {
-    felder.Verlauf = F.verlaufAnhaengen(entwurf.wert("Verlauf"), "Nachweis geändert: " + geaendert.map(f => SPALTE[f].d).join(", "));
   }
   const anzahl = entwurf.anzahl();
   if (!Object.keys(felder).length) { entwurf.leeren(); return { anzahl: 0 }; }
@@ -345,7 +308,6 @@ async function aendern() {
 function speichern() {
   return F.speicherAblauf({
     anzahl: function () { return entwurf.anzahl(); },
-    pruefen: pruefen,
     schreiben: aendern,
     nachladen: function () { return nachladenStill(); },
     zeichnen: zeichnenAlles,

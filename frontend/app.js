@@ -311,7 +311,7 @@ const SUCH_PLATZHALTER = {
   telefone: "Kurzwahl, Nummer, Name, Abteilung …",
   software: "Programm, Programm-ID, AD-Gruppe …",
   kameras: "Name, Raum, Modell, IP-Adresse, Rolle …",
-  kamerarechte: "Rolle, AD-Gruppe, Zweck …"
+  kamerarechte: "Rolle, AD-Gruppe, Recht …"
 };
 
 function einheit(tab, n) { return EINHEIT[tab][n === 1 ? 0 : 1]; }
@@ -460,8 +460,8 @@ const zustand = {
 };
 
 /* Die Ansicht «Kamerarechte» ist keine Tabelle: eine Karte je Rolle, dazu
-   die Suche und der Schalter «Nur ohne Nachweis». */
-function leererRechteZustand() { return { suche: "", offen: false }; }
+   die Suche. */
+function leererRechteZustand() { return { suche: "" }; }
 
 let adminClients = [];     // angereicherte Zeilen der Liste «ADMIN-Clients»
 let eduClients = [];       // angereicherte Zeilen der Liste «EDU-Clients»
@@ -508,7 +508,6 @@ function parameterVon(a, z, sprung) {
   const p = new URLSearchParams();
   if (a === "software" || a === "kamerarechte") {
     if (z.suche) p.set("q", z.suche);
-    if (a === "kamerarechte" && z.offen) p.set("o", "1");
     return p;
   }
   if (TABELLEN.indexOf(a) === -1) return p;
@@ -577,7 +576,6 @@ function hashLesen() {
   }
   if (a === "kamerarechte") {
     zustand.kamerarechte.suche = p.get("q") || "";
-    zustand.kamerarechte.offen = p.get("o") === "1";
     return;
   }
   if (TABELLEN.indexOf(a) === -1) return;
@@ -1202,8 +1200,7 @@ const NEU = {
   admin: { text: "Neuer ADMIN-Client", adresse: () => UI.adresse.client("admin", null, { neu: true }) },
   edu: { text: "Neuer EDU-Client", adresse: () => UI.adresse.client("edu", null, { neu: true }) },
   telefone: { text: "Neue Telefonnummer", adresse: () => UI.adresse.telefon(null, { neu: true }) },
-  software: { text: "Neues Programm", adresse: () => UI.adresse.software(null, { neu: true }) },
-  kameras: { text: "Neue Kamera", adresse: () => UI.adresse.kamera(null, { neu: true }) }
+  software: { text: "Neues Programm", adresse: () => UI.adresse.software(null, { neu: true }) }
 };
 
 function neuKnopf(tab) {
@@ -1654,7 +1651,7 @@ const LEER_TEXT = {
   edu: "Neue Geräte erscheinen nach dem nächsten SCCM-Abgleich oder über «Neuer EDU-Client».",
   benutzer: "Benutzer kommen mit dem nächsten Abgleich aus dem Active Directory.",
   telefone: "Die erste Nummer lässt sich über «Neue Telefonnummer» erfassen.",
-  kameras: "Kameras kommen mit dem nächsten Abgleich aus Milestone; eine Kamera ausserhalb von Milestone lässt sich über «Neue Kamera» erfassen."
+  kameras: "Kameras kommen mit dem nächsten Abgleich aus Milestone."
 };
 
 function leerzustandBauen(tab, art) {
@@ -2254,14 +2251,12 @@ function telefonKennzahlen() {
 }
 
 /* Kameras: was in Milestone auffällt (nicht mehr da, deaktiviert, ohne
-   Aufzeichnung, Kanal ohne Namen) und Rollen ohne Zweck oder Bewilligung.
-   «Nicht in Milestone» zählt nur Kameras im Status «Aktiv»: eine Kamera im
-   Lager steht mit Absicht nicht in Milestone. Die Rollen-Kennzahl springt in
-   die Ansicht «Kamerarechte» (tab). */
+   Aufzeichnung, Kanal ohne Namen). «Nicht in Milestone» zählt nur Kameras
+   im Status «Aktiv»: eine Kamera im Lager steht mit Absicht nicht in
+   Milestone. */
 function kameraKennzahlen() {
   const imEinsatz = aktiveClients("kameras");
   const archiviert = kameras.length - imEinsatz.length;
-  const ohneNachweis = zaehle(kameraRollen, r => r.__inMilestone && r.__ohneNachweis);
   return [
     { t: "Im Einsatz", w: imEinsatz.length, setzen: nichts,
       unter: UI.zahlText(zaehle(imEinsatz, k => k.__status === "Lager")) + " davon im Lager" },
@@ -2276,8 +2271,6 @@ function kameraKennzahlen() {
       unter: "Kanal heisst in Milestone noch wie das Modell", setzen: z => facetteSetzen(z, "__unbenanntText", "Ja") },
     { t: "Ersatz überfällig", w: zaehle(imEinsatz, k => k.__ersatzStatus === "ueberfaellig"), ton: "gefahr",
       unter: "geplant vor " + Modell.gjAktuell(), setzen: z => facetteSetzen(z, "__ersatzText", ERSATZ_TEXT.ueberfaellig) },
-    { t: "Rollen ohne Nachweis", w: ohneNachweis, ton: "warnung", tab: "kamerarechte",
-      unter: "Zweck oder Bewilligung fehlt", setzen: function (z) { z.offen = true; } },
     { t: "Archiviert", w: archiviert, unter: "in der Liste ausgeblendet",
       setzen: z => facetteSetzen(z, "__statusText", ARCHIVIERT) }
   ];
@@ -2729,8 +2722,8 @@ function zeichneSoftwareAnsicht() {
 
    Eine Karte je Rolle aus Milestone: wer Mitglied ist (AD-Gruppen), welche
    Rechte sie hat, auf wie viele Kameras und wie viele Personen das sind.
-   Führend ist Milestone; hier steht dazu der Nachweis (Zweck, bewilligt
-   durch, am), gepflegt auf der Rollenseite (kamerarolle.html).
+   Führend ist Milestone; die Rollenseite (kamerarolle.html) zeigt die
+   Einzelheiten.
    ================================================================== */
 
 function rechteGeruest() {
@@ -2744,21 +2737,15 @@ function rechteGeruest() {
       hashSchreiben();
     }
   });
-  const nurOffen = UI.chip({ text: "Nur ohne Nachweis", gewaehlt: zustand.kamerarechte.offen, id: "kamerarechte-offen",
-    beiKlick: function (an) {
-      zustand.kamerarechte.offen = an;
-      zeichneKamerarechte();
-      hashSchreiben();
-    } });
   const anzahl = el("p", "anzahl");
   anzahl.id = "kamerarechte-anzahl";
   anzahl.setAttribute("aria-live", "polite");
-  const leiste = anhaengen(el("div", "werkzeugleiste"), [suchfeld, nurOffen, leistenEnde(anzahl, null)]);
+  const leiste = anhaengen(el("div", "werkzeugleiste"), [suchfeld, leistenEnde(anzahl, null)]);
   const stand = el("div", "kamerarechte-stand");
   const liste = el("div", "karten software-karten kamerarechte-liste");
   liste.id = "kamerarechte-liste";
   anhaengen(ansicht, [kopf, leiste, stand, liste]);
-  knoten.kamerarechte = { ansicht: ansicht, kopf: kopf, suchfeld: suchfeld, nurOffen: nurOffen, anzahl: anzahl, stand: stand, liste: liste };
+  knoten.kamerarechte = { ansicht: ansicht, kopf: kopf, suchfeld: suchfeld, anzahl: anzahl, stand: stand, liste: liste };
 }
 
 /* Die Kameras einer Rolle: Link in die Kameraliste, gefiltert auf genau
@@ -2791,7 +2778,6 @@ function rollenKarte(r) {
 
   const status = [];
   if (!r.__inMilestone) status.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
-  else if (r.__ohneNachweis) status.push(UI.status("Nachweis fehlt", "warnung", { titel: "Zweck oder «Bewilligt durch» fehlt" }));
   // Die Rolle der Administratoren sieht alles; heisst sie schon so, sagt der Titel es.
   if (r.__admin && !/admin/i.test(String(r.Title || ""))) status.push(UI.status("Administratoren", "neutral", { sinnbild: "schloss" }));
 
@@ -2803,12 +2789,7 @@ function rollenKarte(r) {
     ? UI.chips(r.__adGruppen.map(g => UI.status(g, "neutral", { sinnbild: "benutzerGruppe" })))
     : UI.meta(r.__mitglieder.length ? r.__mitglieder.map(m => m.name).join(", ") : "Keine Mitglieder");
   const rechte = r.__rechte.length ? UI.meta("Rechte: " + r.__rechte.join(", ")) : null;
-  const zweck = String(r.Zweck || "").trim();
-  const nachweis = zweck
-    ? UI.meta(zweck + (String(r.BewilligtDurch || "").trim() ? " – bewilligt durch " + String(r.BewilligtDurch).trim()
-      + (String(r.BewilligtAm || "").trim() ? " am " + Modell.datumSchweiz(String(r.BewilligtAm).trim()) : "") : ""))
-    : null;
-  anhaengen(karte.inhalt, [status.length ? UI.chips(status) : null, zahlen, gruppen, rechte, nachweis]);
+  anhaengen(karte.inhalt, [status.length ? UI.chips(status) : null, zahlen, gruppen, rechte]);
   return karte;
 }
 
@@ -2817,7 +2798,6 @@ function zeichneKamerarechte() {
   const z = zustand.kamerarechte;
   leeren(k.liste);
   leeren(k.stand);
-  k.nurOffen.setzen(z.offen);
 
   if (listenHinweis.kamerarolle && !kameraRollen.length) {
     k.liste.appendChild(UI.leerzustand({ sinnbild: "schild", titel: "Liste «Kamera-Rollen» nicht verfügbar",
@@ -2843,7 +2823,6 @@ function zeichneKamerarechte() {
 
   const worte = z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const passend = kameraRollen.filter(function (r) {
-    if (z.offen && !(r.__inMilestone && r.__ohneNachweis)) return false;
     for (const w of worte) if (r.__such.indexOf(w) === -1) return false;
     return true;
   }).sort(function (a, b) {
@@ -3003,7 +2982,7 @@ function autoNachladenStarten() {
 const MELDUNGEN = ["zeile-geaendert", "zeile-neu", "zeile-geloescht", "benutzer-geaendert",
                    "telefon-geaendert", "telefon-neu", "telefon-geloescht",
                    "software-geaendert", "software-neu", "software-geloescht",
-                   "kamera-geaendert", "kamera-neu", "kamera-geloescht",
+                   "kamera-geaendert", "kamera-geloescht",
                    "kamerarolle-geaendert", "kamerarolle-geloescht"];
 
 function kanalVerbinden() {

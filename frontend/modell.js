@@ -929,11 +929,6 @@ const Modell = (function () {
     });
   }
 
-  /** Fehlt der Nachweis (Zweck oder Bewilligung) einer Rolle? */
-  function rolleOhneNachweis(rolle) {
-    return !String(rolle.Zweck || "").trim() || !String(rolle.BewilligtDurch || "").trim();
-  }
-
   /**
    * Verknüpft Kameras, Rollen und Benutzer. Verändert die Objekte in place.
    *
@@ -943,7 +938,7 @@ const Modell = (function () {
    * Rollen bekommen: __inMilestone, __admin, __mitglieder, __adGruppen,
    *   __rechte, __kameras [{kamera, rechte}], __kameraIds, __logins,
    *   __personen (Benutzerzeilen), __unbekannt (Logins ohne Benutzerzeile),
-   *   __ohneNachweis, __such.
+   *   __such.
    * Benutzer bekommen: __kameraRollen (Rollen), __kameraAnzahl.
    *
    * @param {Array} kameras  Zeilen der Liste «Kameras»
@@ -1005,7 +1000,6 @@ const Modell = (function () {
         } else r.__unbekannt.push(l);
       }
       r.__personen.sort((a, b) => Hilfe.vergleiche(a.__name || a.Anzeigename || a.Title, b.__name || b.Anzeigename || b.Title));
-      r.__ohneNachweis = rolleOhneNachweis(r);
       r.__such = (suchtext(r, SPALTEN_KAMERAROLLE) + "  " + r.__adGruppen.join(" ")).toLowerCase();
     }
     for (const k of kListe) {
@@ -1087,7 +1081,6 @@ const Modell = (function () {
     kanaeleLesen: kanaeleLesen,
     rollenKameras: rollenKameras,
     rollenMitglieder: rollenMitglieder,
-    rolleOhneNachweis: rolleOhneNachweis,
     kamerasAnreichern: kamerasAnreichern
   };
 })();

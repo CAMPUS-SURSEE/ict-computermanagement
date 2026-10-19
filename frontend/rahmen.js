@@ -31,8 +31,10 @@
    API «Rahmen»
    ------------------------------------------------------------------
    Rahmen.HAUPTZIELE                 Gruppen der Hauptseite (einzige Quelle),
-                                     [{titel?, eintraege:[{schluessel, text, sinnbild, href}]}]
-   Rahmen.zielText(schluessel)       «admin» → «ADMIN-Clients» (für Zurück-Links)
+                                     [{titel?, eintraege:[{schluessel, text, titel?, sinnbild, href}]}]
+   Rahmen.STARTZIEL                  Ansicht der Hauptseite ohne Hash («geraete»)
+   Rahmen.zielText(schluessel)       «admin» → «ADMIN-Clients» (für Zurück-Links);
+                                     ein Eintrag mit titel nennt diesen («geraete» → «Geräte»)
    Rahmen.navigation({gruppen, aktiv, beiWahl(schluessel, ereignis), label, verstecken, zurueck})
                                      Zeichnet die Schublade. Gleiche Struktur → nur
                                      aktiv/Zähler an Ort und Stelle (die Pille gleitet);
@@ -116,7 +118,7 @@
        und .setzen({…}) (dieselben Schlüssel; ersetzt nur, was übergeben wird).
        element: einen vorhandenen <header> füllen statt einen neuen zu bauen.
    UI.adresse.client(liste, id, {neu, vorlage, bereich}|bereich) · benutzer(id, …) ·
-     telefon(id, {neu, benutzer, vorlage, bereich}) · software(id, …) · kamera(id, {neu, bereich}) ·
+     telefon(id, {neu, benutzer, vorlage, bereich}) · software(id, …) · kamera(id, {bereich}) ·
      kamerarolle(id, {bereich}) ·
      liste(tab, filter?) (filter: {suche, programm, stufe} → q/pg/ps, andere Schlüssel
      unverändert, oder URLSearchParams/Text) · listeMerken(adresse?) ·
@@ -164,6 +166,8 @@ const Rahmen = (function () {
   /** So lange gilt eine gemerkte Listenadresse in einem neuen Tab (ein
       Arbeitstag); im selben Tab gilt sie, solange der Tab lebt. */
   const LISTE_DAUER_MS = 12 * 60 * 60 * 1000;
+  /** Die Ansicht der Hauptseite ohne Hash: die Übersicht des ersten Moduls. */
+  const STARTZIEL = "geraete";
   /** Zuletzt gezeigtes Konto: der Kopf einer neuen Seite steht damit vom
       ersten Bild an da (Seitenwechsel, View Transition). */
   const KOPF_SPEICHER = "ictinventar.kopf";

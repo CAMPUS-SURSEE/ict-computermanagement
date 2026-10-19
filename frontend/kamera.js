@@ -13,8 +13,8 @@
                       mit ihren Rechten (live aus der Liste «Kamera-Rollen»).
      Verlauf          Verlauf.
 
-   Mit ?neu=1 wird eine Kamera erfasst, die nicht in Milestone steht (etwa
-   eine Reserve im Lager): ein Formular ohne Bereiche.
+   Neue Kameras legt nur der Abgleich aus Milestone an; ein Formular zum
+   Erfassen gibt es nicht.
 
    Bearbeitbar sind die von Hand gepflegten Spalten (q = «manuell» in
    spalten.js). Den Namen führt der Abgleich aus Milestone nach; solange die
@@ -35,8 +35,7 @@
 const ABFRAGE = new URLSearchParams(location.search);
 const mockModus = UI.adresse.mock();
 
-let elementId = ABFRAGE.get("id");
-let neuModus = ABFRAGE.get("neu") === "1";
+const elementId = ABFRAGE.get("id");
 
 const SPALTEN = SPALTEN_KAMERA;
 const SPALTE = {};
@@ -63,7 +62,6 @@ let zeile = null;
    Hin und Her ist darum keine Änderung. */
 const entwurf = F.entwurf(function () { return zeile; }, {
   leer: { Status: "Aktiv" },
-  neu: function () { return neuModus; },
   beiAenderung: nachAenderung
 });
 
@@ -76,34 +74,27 @@ const BEREICHE = [
   { k: "verlauf",        d: "Verlauf",        sinnbild: "verlauf",  f: bereichVerlauf }
 ];
 
-const BEREICHE_NEU = [
-  { k: "stammdaten", d: "Stammdaten", f: bereichNeu }
-];
-
-function bereiche() { return neuModus ? BEREICHE_NEU : BEREICHE; }
-
 function nachAenderung() {
   kopfZeichnen();
   speicherleisteZeichnen();
 }
 
 function speicherleisteZeichnen() {
-  F.speicherleisteZeichnen({ neuModus: neuModus, anzahl: entwurf.anzahl(), neuText: "Neue Kamera" });
+  F.speicherleisteZeichnen({ anzahl: entwurf.anzahl() });
 }
 
 function navZeichnen() {
-  if (neuModus) { F.navZeichnen([], null, null, { verstecken: true }); return; }
   F.navZeichnen(BEREICHE, aktiverBereich, bereichWechseln, {
     zusatz: function (b) { return b.k === "berechtigungen" && zeile ? (zeile.__rollen || []).length || null : null; }
   });
 }
 
 function zeichneBereich() {
-  aktiverBereich = F.zeichneBereich(bereiche(), aktiverBereich);
+  aktiverBereich = F.zeichneBereich(BEREICHE, aktiverBereich);
 }
 
 function bereichWechseln(schluessel) {
-  if (!zeile || neuModus) return;
+  if (!zeile) return;
   aktiverBereich = schluessel;
   F.bereichWechseln(BEREICHE, schluessel);
 }
@@ -124,9 +115,7 @@ function verknuepft() { return !!zeile && !!String(zeile.MS_HardwareId || "").tr
 function statusWert() { return Modell.status(textWert("Status")); }
 
 function anzeigeName() {
-  const n = textWert("Title").trim();
-  if (neuModus && !n) return "Neue Kamera";
-  return n || "(ohne Namen)";
+  return textWert("Title").trim() || "(ohne Namen)";
 }
 
 function vorschlaege(feld) {
@@ -138,7 +127,7 @@ function vorschlaege(feld) {
   return werte.sort(Hilfe.vergleiche);
 }
 
-/* Gleichnamige Kameras (Warnung beim Erfassen). */
+/* Gleichnamige Kameras (Warnung beim Umbenennen). */
 function namensZwillinge() {
   const n = Modell.schluessel(textWert("Title"));
   if (!n) return [];
@@ -149,8 +138,6 @@ function namensZwillinge() {
 /* ==================================================================
    4. Felder
    ================================================================== */
-
-function feldVon(feld) { return UI.$("km-eingabe-" + feld); }
 
 function feldZeile(feld, o) {
   const s = SPALTE[feld];
@@ -175,7 +162,7 @@ function nameZeile() {
   return feldZeile("Title", {
     hinweis: "Wie in Milestone üblich: Raum und Bezeichnung, z. B. «10.300 Treppe Trakt 1».",
     zusatz: UI.hinweisPlatz({ id: "km-zwillinge" }),
-    beiEingabe: function () { zwillingeNachfuehren(true); ortVorschlagen(); }
+    beiEingabe: function () { zwillingeNachfuehren(true); }
   });
 }
 
@@ -186,19 +173,6 @@ function zwillingeNachfuehren(ausEingabe) {
       text: zw.length === 1 ? "Listen-ID " + zw[0].id + "." : zw.length + " Kameras heissen so.",
       knopf: zw.length === 1 ? UI.knopf({ text: "Öffnen", variante: "leise", href: UI.adresse.kamera(zw[0].id), fokus: "zwilling-oeffnen" }) : null });
   }, ausEingabe);
-}
-
-/* Beim Erfassen: Gebäude und Raum aus dem Namen vorschlagen, solange die
-   Felder leer sind (dieselbe Regel wie der Abgleich). */
-function ortVorschlagen() {
-  if (!neuModus) return;
-  const ort = Modell.kameraOrt(textWert("Title"));
-  for (const [feld, wert] of [["Gebaeude", ort.gebaeude], ["Raum", ort.raum]]) {
-    if (!wert || textWert(feld).trim()) continue;
-    entwurf.setzeWert(feld, wert);
-    const f = feldVon(feld);
-    if (f) f.value = wert;
-  }
 }
 
 const STATUS_HINWEISE = {
@@ -327,24 +301,6 @@ function bereichStammdaten(ziel) {
   statusNachfuehren(false);
 }
 
-function bereichNeu(ziel) {
-  const raster = UI.el("div", "karten");
-  const k = UI.karte({ titel: "Neue Kamera", breit: true,
-    unter: "Kameras in Milestone legt der Abgleich selbst an. Hier nur Kameras erfassen, die nicht in Milestone stehen – etwa eine Reserve im Lager." });
-  k.inhalt.appendChild(UI.datenzeilen([
-    nameZeile(),
-    feldZeile("Gebaeude", { eingabe: { vorschlaege: vorschlaege("Gebaeude"), schmal: true } }),
-    feldZeile("Raum", { eingabe: { vorschlaege: vorschlaege("Raum"), schmal: true } }),
-    statusZeile(),
-    gjZeile("Beschaffungsjahr", "z. B. 2025/2026"),
-    feldZeile("Bemerkung", { eingabe: { zeilen: 3 } })
-  ]));
-  raster.appendChild(k);
-  ziel.appendChild(raster);
-  statusNachfuehren(false);
-  zwillingeNachfuehren(false);
-}
-
 
 /* ==================================================================
    6. Bewertung
@@ -389,7 +345,6 @@ function bereichBerechtigungen(ziel) {
         unter: [e.rechte.join(", "), (r.__adGruppen || []).join(", "), UI.zahlText(personen) + (personen === 1 ? " Person" : " Personen")],
         href: UI.adresse.kamerarolle(r.id),
         sinnbild: "schild",
-        status: r.__ohneNachweis ? UI.status("Nachweis fehlt", "warnung") : null,
         fokus: "rolle-" + r.id
       });
     })));
@@ -425,21 +380,19 @@ function kopfZeichnen() {
   const unter = [];
   const status = [];
   const aktionen = [];
-  if (!neuModus) {
-    unter.push(textWert("Raum").trim());
-    unter.push(UI.text(zeile.MS_Modell).trim());
-    unter.push(UI.text(zeile.MS_Adresse).trim());
-    const s = statusWert();
-    if (s === "Lager") status.push(UI.status("Lager", "neutral", { sinnbild: "lager" }));
-    if (s === "Archiviert") status.push(UI.status("Archiviert", "neutral", { sinnbild: "archiv" }));
-    if (!verknuepft()) status.push(UI.status("Nicht in Milestone", "neutral"));
-    else if (!inMilestone()) status.push(UI.status("Nicht mehr in Milestone", "neutral"));
-    else {
-      if (!Hilfe.istJa(zeile.MS_Aktiv)) status.push(UI.status("Deaktiviert", "warnung", { sinnbild: "aus" }));
-      else if (!Hilfe.istJa(zeile.MS_Aufzeichnung)) status.push(UI.status("Keine Aufzeichnung", "warnung"));
-    }
-    if (!F.geloescht()) aktionen.push(loeschenKnopf());
+  unter.push(textWert("Raum").trim());
+  unter.push(UI.text(zeile.MS_Modell).trim());
+  unter.push(UI.text(zeile.MS_Adresse).trim());
+  const s = statusWert();
+  if (s === "Lager") status.push(UI.status("Lager", "neutral", { sinnbild: "lager" }));
+  if (s === "Archiviert") status.push(UI.status("Archiviert", "neutral", { sinnbild: "archiv" }));
+  if (!verknuepft()) status.push(UI.status("Nicht in Milestone", "neutral"));
+  else if (!inMilestone()) status.push(UI.status("Nicht mehr in Milestone", "neutral"));
+  else {
+    if (!Hilfe.istJa(zeile.MS_Aktiv)) status.push(UI.status("Deaktiviert", "warnung", { sinnbild: "aus" }));
+    else if (!Hilfe.istJa(zeile.MS_Aufzeichnung)) status.push(UI.status("Keine Aufzeichnung", "warnung"));
   }
+  if (!F.geloescht()) aktionen.push(loeschenKnopf());
   F.seitenkopf({ titel: anzeigeName(), unter: unter, status: status, aktionen: aktionen });
 }
 
@@ -488,16 +441,6 @@ function zeichnenAlles() {
   speicherleisteZeichnen();
 }
 
-function leereZeile() {
-  const z = {};
-  for (const s of SPALTEN) z[s.i] = "";
-  z.id = null;
-  z.Status = "Lager";
-  z.__kanaele = [];
-  z.__rollen = [];
-  return z;
-}
-
 async function datenLaden(still) {
   let anzahl = 0;
   if (!still) F.zeigeLaden(mockModus ? "Vorführdaten werden aufgebaut …" : "Daten werden aus SharePoint geladen …");
@@ -513,7 +456,6 @@ async function datenLaden(still) {
 }
 
 function zeileWaehlen() {
-  if (neuModus) { zeile = leereZeile(); return; }
   const treffer = alleKameras.filter(z => String(z.id) === String(elementId))[0];
   if (!treffer) {
     const fehler = new Error("In der Liste «Kameras» gibt es keine Zeile mit der Listen-ID " + elementId + ".");
@@ -554,8 +496,8 @@ function ladefehlerZeigen(fehler) {
 
 function pruefen() {
   const name = textWert("Title").trim();
-  if ((neuModus || entwurf.istGeaendert("Title")) && !name) return { feld: "Title", text: "Bitte einen Namen eingeben." };
-  if (neuModus || entwurf.istGeaendert("Status")) {
+  if (entwurf.istGeaendert("Title") && !name) return { feld: "Title", text: "Bitte einen Namen eingeben." };
+  if (entwurf.istGeaendert("Status")) {
     const st = textWert("Status").trim();
     if (st && Modell.STATUS_WERTE.indexOf(st) === -1) {
       return { feld: "Status", text: "«Status» muss «" + Modell.STATUS_WERTE.join("», «") + "» oder leer sein." };
@@ -563,7 +505,7 @@ function pruefen() {
   }
   for (const feld of ["Beschaffungsjahr", "ErsatzGeplant"]) {
     const w = textWert(feld).trim();
-    if ((neuModus || entwurf.istGeaendert(feld)) && w && !Modell.gjGueltig(w)) {
+    if (entwurf.istGeaendert(feld) && w && !Modell.gjGueltig(w)) {
       return { feld: feld, text: "Bitte als Geschäftsjahr schreiben, z. B. 2025/2026." };
     }
   }
@@ -578,25 +520,6 @@ function fuerGraph(feld, roh) {
   const t = (roh === null || roh === undefined) ? "" : String(roh);
   if (feld === "Verlauf") return t;
   return t.trim() === "" ? null : t;
-}
-
-async function anlegen() {
-  const felder = {};
-  for (const s of SPALTEN) {
-    if (!Modell.istBearbeitbar(s)) continue;
-    const w = fuerGraph(s.i, entwurf.wert(s.i));
-    if (w !== null && w !== "") felder[s.i] = w;
-  }
-  if (!felder.Verlauf) felder.Verlauf = Modell.verlaufSchreiben([Modell.verlaufEintrag("", "Im Frontend neu erfasst")]);
-  const neue = await Daten.anlegen("kamera", felder);
-  elementId = String(neue.id);
-  neuModus = false;
-  zeile = F.uebernehmen(Object.assign(leereZeile(), { id: elementId }), felder, neue);
-  entwurf.leeren();
-  aktiverBereich = "stammdaten";
-  history.replaceState(null, "", UI.adresse.kamera(elementId, { bereich: "stammdaten" }));
-  F.melden("kamera-neu", elementId);
-  return { neu: true };
 }
 
 async function aendern() {
@@ -622,17 +545,14 @@ async function aendern() {
 }
 
 function speichern() {
-  const neu = neuModus;
   return F.speicherAblauf({
-    immer: neu,
     anzahl: function () { return entwurf.anzahl(); },
     pruefen: pruefen,
-    schreiben: neu ? anlegen : aendern,
+    schreiben: aendern,
     nachladen: function () { return nachladenStill(); },
     zeichnen: zeichnenAlles,
-    fehlerText: neu ? "Anlegen fehlgeschlagen." : "Speichern fehlgeschlagen.",
+    fehlerText: "Speichern fehlgeschlagen.",
     erfolgText: function (e) {
-      if (e && e.neu) return "Kamera angelegt.";
       if (!e || !e.anzahl) return false;
       return e.anzahl === 1 ? "Änderung gespeichert." : e.anzahl + " Änderungen gespeichert.";
     }
@@ -640,7 +560,7 @@ function speichern() {
 }
 
 function verwerfen() {
-  return F.verwerfen({ anzahl: entwurf.anzahl(), neuModus: neuModus, danach: function () {
+  return F.verwerfen({ anzahl: entwurf.anzahl(), danach: function () {
     entwurf.leeren();
     zeichnenAlles();
   } });
@@ -652,7 +572,7 @@ function verwerfen() {
    ================================================================== */
 
 async function start() {
-  if (!neuModus) aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich;
+  aktiverBereich = F.hashBereich(BEREICHE) || aktiverBereich;
   navZeichnen();
   F.logoZeichnen("kameras");
   F.bandZeichnen(undefined, function () {
@@ -667,17 +587,13 @@ async function start() {
       await Auth.anmeldungSicherstellen();
     }
     F.kontoZeigen();
-    if (!neuModus && !elementId) {
+    if (!elementId) {
       F.zeigeFehler("Keine Kamera angegeben",
         "In der Adresse fehlt die Listen-ID, zum Beispiel kamera.html?id=5.",
         "", "Zur Liste", function () { F.zurListe(); });
       return;
     }
-    const ok = await neuLaden();
-    if (ok && neuModus) {
-      const f = feldVon("Title");
-      if (f) f.focus();
-    }
+    await neuLaden();
   } catch (fehler) {
     ladefehlerZeigen(fehler);
   }
@@ -693,7 +609,7 @@ F.ereignisse({
   }
 });
 
-F.autoStarten(function () { return !!zeile && !neuModus && !F.geloescht() && !entwurf.anzahl(); }, nachladenStill);
+F.autoStarten(function () { return !!zeile && !F.geloescht() && !entwurf.anzahl(); }, nachladenStill);
 
 start();
 

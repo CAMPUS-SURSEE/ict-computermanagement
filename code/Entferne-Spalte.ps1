@@ -1,7 +1,7 @@
 ﻿<#
 .SYNOPSIS
   Löscht eine Spalte aus einer der Listen «ADMIN-Clients», «EDU-Clients», «Benutzer»,
-  «Telefonnummern» oder «Software» –
+  «Telefonnummern», «Software» oder «Kamera-Rollen» –
   nach einer Sicherung ihrer Werte.
 
 .DESCRIPTION
@@ -14,9 +14,10 @@
 
   Erster Einsatz (2026-09-04): die manuelle Spalte «Seriennummer» der Client-Liste. Die
   Seriennummer kommt seither ausschliesslich aus SCCM (SCCM_SerialNumber).
+  2026-10-19: Zweck, BewilligtDurch und BewilligtAm der Kamera-Rollen (Nachweis abgeschafft).
 
 .PARAMETER Liste
-  Admin, Edu, Benutzer, Telefon oder Software.
+  Admin, Edu, Benutzer, Telefon, Software oder KameraRolle.
 
 .PARAMETER Spalte
   Interner Name der Spalte (wie in schema-*.json «internal»), z. B. Seriennummer.
@@ -34,7 +35,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Admin', 'Edu', 'Benutzer', 'Telefon', 'Software')]
+    [ValidateSet('Admin', 'Edu', 'Benutzer', 'Telefon', 'Software', 'KameraRolle')]
     [string]$Liste,
     [Parameter(Mandatory = $true)]
     [string]$Spalte,
@@ -71,6 +72,7 @@ $ListId = switch ($Liste) {
     'Benutzer' { $cfg.BenutzerListId }
     'Telefon'  { $cfg.TelefonListId }
     'Software' { $cfg.SoftwareListId }
+    'KameraRolle' { $cfg.KameraRolleListId }
 }
 if ("$ListId" -match '^<') { $ListId = '' }   # Platzhalter aus der Vorlage
 if (-not $ListId) { throw "Für die Liste «$Liste» steht keine Listen-Id in der Konfiguration." }
