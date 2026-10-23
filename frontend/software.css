@@ -1,20 +1,19 @@
-/* software.css — Seitenlayout des Softwarefensters (software.html).
+/* software.css – Seitenlayout des Softwarefensters (software.html).
 
    Wird NACH Dashboard-Style (ds.css), thema.css,
    bausteine.css und rahmen.css geladen. Rahmen,
    Seitenkopf, Karten, Kacheln, Datenzeilen, Felder, Listen, Speicherleiste,
    Meldungen und Dialoge kommen von dort (gebaut über UI.* und F.*); die
    Abstände zwischen den Karten geben .fenster-bereich und .karten vor.
-   Hier stehen nur Breiten – alle Werte Tokens. Der Hinweis mit Sinnbild
-   unter der Programm-ID ist UI.feldHinweis (bausteine.css .mit-sinnbild).
-   Eigene Klassen beginnen mit «sw-». */
+   Hier stehen nur Breiten, keine Schrift: Feldtext und seine Grösse
+   (16 px auf dem Telefon) gibt Dashboard-Style vor. Der
+   Hinweis mit Sinnbild unter der Programm-ID ist UI.feldHinweis
+   (bausteine.css .mit-sinnbild). Eigene Klassen beginnen mit «sw-». */
 
 
-/* Die Programm-ID ist der interne Spaltenname: kurz, technisch, in
-   Festbreitenschrift, damit sich Gross/Klein und Ziffern gut lesen. */
+/* Die Programm-ID ist der interne Spaltenname: kurz und technisch. */
 .sw-eingabe-id {
   width: min(100%, 320px);
-  font-family: var(--ds-font-mono);
 }
 
 .sw-eingabe-kategorie {

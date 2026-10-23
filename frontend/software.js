@@ -1,4 +1,4 @@
-/* software.js — Softwarefenster des ICT-Inventars (software.html).
+/* software.js – Softwarefenster des ICT-Inventars (software.html).
 
    Wird aus der Software-Liste der Hauptseite als software.html?id=… im
    selben Tab geöffnet und zeigt eine Zeile der Liste «Software» in zwei
@@ -33,9 +33,17 @@
    Gebaut wird nur über UI.* (bausteine.js, rahmen.js), Rahmen.*,
    Bewegung.* und das Gerüst der Detailseiten F (fenster.js, Präfix «sw»):
    Seitenkopf, Bereiche, Entwurf, Speicherablauf, Löschdialog, Nachladen.
-   Neu gezeichnet wird an Ort und Stelle (F.zeichneBereich hält Fokus,
-   Schreibmarke und Rollen); bewegt wird nur beim ersten Zeigen, beim
-   Bereichswechsel und bei Handlungen der Person, nie beim Nachladen.
+   Neu gezeichnet wird still (F.zeichneBereich gleicht den Bestand ab und
+   hält Fokus, Schreibmarke und Rollen); Zeilen und Kacheln tragen dafür
+   einen Schlüssel (data-ds-key). Ein Auftritt spielt nur beim ersten
+   Zeigen und beim Bereichswechsel; beim Nachladen zählen die Kennzahlen
+   vom gezeigten Wert (Bewegung.hochzaehlen), und Zeilen gleiten nur bei
+   Handlungen der Person (Bewegung.umordnen).
+
+   Die Bauer der Bereiche bekommen ihren Behälter (ziel) und suchen darin,
+   nicht im Dokument: er hängt beim Bauen nicht unbedingt schon in der
+   Seite. Was am Getippten hängt (Prüfung der ID, Vorschau der Gruppen),
+   führt nachZeichnen danach im gezeigten Bereich nach.
 
    Grundsätze wie überall: kein Framework, kein Inline-Script und niemals
    innerHTML mit Daten – jeder Wert geht über textContent in die Seite. */
@@ -87,6 +95,13 @@ const BEREICHE = [
   { k: "stammdaten", d: "Stammdaten", sinnbild: "dateiText", f: bereichStammdaten },
   { k: "berechtigte", d: "Berechtigte", sinnbild: "benutzerGruppe", f: bereichBerechtigte }
 ];
+
+/* Eine Kennzahl als Kachel mit Schlüssel: beim ersten Zeigen zählt sie
+   von 0 hoch (Bewegung.auftritt), nach einem stillen Neuzeichnen vom
+   gezeigten Wert zum neuen (Bewegung.kennzahlenStill in zeichneBereich). */
+function kennzahl(schluessel, zahl, optionen) {
+  return UI.kachel(Object.assign({}, optionen, { wert: UI.zahlText(zahl), zahl: zahl, schluessel: schluessel }));
+}
 
 function sichtbareBereiche() {
   // Ein noch nicht angelegtes Programm hat keine Berechtigten.
@@ -246,15 +261,18 @@ function nameGeaendert(w) {
   idPruefen();
 }
 
-/* Live-Vorschau der AD-Gruppen als neutrale Status-Chips (so, wie der
-   Sync die Zeilen liest: ohne Leerzeilen und Doppelte). Nichts darin ist
-   fokussierbar, darum darf sie bei jedem Tastendruck neu entstehen. */
+/* Live-Vorschau der AD-Gruppen, so wie der Abgleich die Zeilen liest
+   (ohne Leerzeilen und Doppelte): eine Meta-Zeile mit Teilen («2 Gruppen ·
+   MgmtS_MarKom · BLD_D&G»). Status-Chips
+   wären hier falsch – eine Gruppe ist kein Zustand. Bei jedem Tastendruck
+   gleicht UI.abgleichen nur den Text ab. */
 function gruppenVorschauZeichnen(zielKnoten) {
   const ziel = zielKnoten || $("sw-gruppen-vorschau");
   if (!ziel) return;
-  UI.leeren(ziel);
   const gruppen = adGruppen();
-  for (const g of gruppen) ziel.appendChild(UI.status(g, "neutral", { sinnbild: "benutzerGruppe" }));
+  UI.abgleichen(ziel, gruppen.length
+    ? [UI.teile([gruppen.length === 1 ? "1 Gruppe" : gruppen.length + " Gruppen"].concat(gruppen))]
+    : []);
   ziel.hidden = !gruppen.length;
 }
 
@@ -333,7 +351,7 @@ function idZeile() {
 
 function vergabeKarte() {
   const k = UI.karte({ titel: "Vergabe" });
-  const vorschau = el("div", "datenzeile-zeile");
+  const vorschau = el("div", "datenzeile-hinweis");
   vorschau.id = "sw-gruppen-vorschau";
   k.inhalt.appendChild(UI.datenzeilen([
     feldZeile("AdGruppen", {
@@ -352,7 +370,8 @@ function vergabeKarte() {
 
 function spaltenBanner() {
   const id = programmId();
-  const knopf = UI.knopf({ text: "Spalte anlegen", variante: "leise", beiKlick: spalteAnlegen, fokus: "sw-spalte-anlegen" });
+  const knopf = UI.knopf({ text: "Spalte anlegen", variante: "leise", beschaeftigt: "Spalte wird angelegt …",
+    beiKlick: spalteAnlegen, fokus: "sw-spalte-anlegen" });
   const b = UI.banner({
     ton: "warnung",
     titel: "Spalte nicht gefunden.",
@@ -365,38 +384,48 @@ function spaltenBanner() {
 }
 
 /* Legt die Spalte an (oder stellt fest, dass es sie schon gibt). Läuft in
-   F.beschaeftigt: Speicherleiste und Kopfaktionen sind so lange gesperrt,
-   danach wird still nachgeladen; das Banner blendet dabei aus. */
+   F.beschaeftigt: Speicherleiste und Kopfaktionen sind so lange gesperrt.
+   Der Knopf zeigt die Arbeit (UI.beschaeftigt); scheitert sie, ist er
+   sofort wieder frei und die Meldung nennt den Grund. Gelingt sie, geht
+   das Banner über Bewegung.umordnen (die Karten darunter rücken nach) und
+   es wird still nachgeladen. Der Fokus geht vorher an den Seitentitel,
+   nicht ins erste Feld. */
 async function spalteAnlegen(ev) {
   const id = programmId();
   if (!id || F.istBeschaeftigt()) return;
   const knopf = ev && ev.currentTarget;
-  if (knopf) UI.beschaeftigt(knopf, true, "Spalte wird angelegt …");
+  const schreiben = async function () {
+    const neu = await Daten.programmSpalteAnlegen(id, entwurf.textWert("Name").trim() || id);
+    spalteBestaetigen(id);
+    return neu;
+  };
   let erledigt = false;
-  await F.beschaeftigt(async function () {
-    try {
-      const neu = await Daten.programmSpalteAnlegen(id, entwurf.textWert("Name").trim() || id);
-      spalteBestaetigen(id);
+  try {
+    await F.beschaeftigt(async function () {
+      const neu = await UI.beschaeftigt(knopf, schreiben);
       erledigt = true;
       UI.meldung(neu ? "Spalte «" + id + "» in der Benutzer-Liste angelegt."
         : "Die Spalte «" + id + "» gibt es schon – sie ist nur überall leer.");
-    } catch (fehler) {
-      if (knopf) UI.beschaeftigt(knopf, false);
-      UI.meldung("Spalte konnte nicht angelegt werden. " + F.fehlerText(fehler), { ton: "fehler" });
-    }
-  }, {
-    nachladen: async function () {
-      const banner = $("sw-spalten-banner");
-      const fokusDrin = !!banner && banner.contains(document.activeElement);
-      if (erledigt && banner) await Bewegung.austreten(banner, "", { dann: "behalten" });
-      await nachladenStill();
-      // Der Knopf ist weg: der Fokus geht an den Seitentitel, nicht ins erste Feld.
-      if (fokusDrin && !$("sw-spalten-banner")) {
-        const titel = $("sw-titel");
-        if (titel) titel.focus({ preventScroll: true });
+    }, {
+      nachladen: async function () {
+        if (!erledigt) return;
+        await bannerEntfernen();
+        await nachladenStill();
       }
-    }
-  });
+    });
+  } catch (fehler) {
+    UI.meldung("Spalte konnte nicht angelegt werden. " + F.fehlerText(fehler), { ton: "fehler" });
+  }
+}
+
+function bannerEntfernen() {
+  const banner = $("sw-spalten-banner");
+  if (!banner) return Promise.resolve();
+  if (banner.contains(document.activeElement)) {
+    const titel = $("sw-titel");
+    if (titel) titel.focus({ preventScroll: true });
+  }
+  return Bewegung.umordnen(banner.parentNode, function () { banner.remove(); });
 }
 
 
@@ -421,13 +450,13 @@ function bereichBerechtigte(ziel) {
       fokus: "sw-benutzerliste" })]
   });
   k.inhalt.appendChild(UI.kacheln([
-    UI.kachel({ text: "Mit Berechtigung", wert: UI.zahlText(alle), zahl: alle,
+    kennzahl("sw-kz-alle", alle, { text: "Mit Berechtigung",
       unter: "von " + UI.zahlText(alleBenutzer.length) + " Benutzern" }),
-    UI.kachel({ text: "Aus AD-Gruppe (Stufe 2)", wert: UI.zahlText(stufe2.length), zahl: stufe2.length,
+    kennzahl("sw-kz-stufe2", stufe2.length, { text: "Aus AD-Gruppe (Stufe 2)",
       unter: gruppen.length ? "vom Abgleich gesetzt" : "keine AD-Gruppe hinterlegt" }),
-    UI.kachel({ text: "Von Hand (Stufe 1)", wert: UI.zahlText(stufe1.length), zahl: stufe1.length,
+    kennzahl("sw-kz-stufe1", stufe1.length, { text: "Von Hand (Stufe 1)",
       unter: "auf der Benutzerseite gesetzt" }),
-    UI.kachel({ text: "AD-Konto deaktiviert", wert: UI.zahlText(inaktiv), zahl: inaktiv, ton: inaktiv ? "gefahr" : undefined,
+    kennzahl("sw-kz-inaktiv", inaktiv, { text: "AD-Konto deaktiviert", ton: inaktiv ? "gefahr" : undefined,
       unter: inaktiv ? "Berechtigung noch nötig?" : "alle Konten aktiv" })
   ]));
   ziel.appendChild(k);
@@ -457,17 +486,32 @@ function personenKarte(stufe, liste, gruppen) {
   }
 
   const sichtbar = aufgeklappt[stufe] ? liste : liste.slice(0, PERSONEN_ANFANG);
-  k.inhalt.appendChild(UI.zeilenliste(sichtbar.map(function (b) { return personZeile(b, stufe); })));
+  const zeilen = UI.zeilenliste(sichtbar.map(function (b) { return personZeile(b, stufe); }));
+  zeilen.setAttribute("data-ds-key", "sw-personen-" + stufe);
+  k.inhalt.appendChild(zeilen);
   if (sichtbar.length < liste.length) {
-    // Die übrigen auf Klick; der Fokus landet danach auf der ersten neuen Zeile
-    // (F.zeichneBereich findet die Stelle über die Reihenfolge wieder).
-    const mehr = UI.knopf({ text: "Alle " + personenText(liste.length) + " zeigen", beiKlick: function () {
-      aufgeklappt[stufe] = true;
-      zeichneBereich();
-    }, fokus: "sw-alle-" + stufe });
-    k.inhalt.appendChild(mehr);
+    k.inhalt.appendChild(UI.knopf({ text: "Alle " + personenText(liste.length) + " zeigen",
+      beiKlick: function (ev) { alleZeigen(stufe, ev.currentTarget); }, fokus: "sw-alle-" + stufe }));
   }
   return k;
+}
+
+/* «Alle zeigen»: die übrigen Zeilen blenden unter den ersten ein
+   (Bewegung.umordnen), der Knopf geht, und der Fokus steht auf der ersten
+   neuen Zeile – dort liest man weiter. */
+function alleZeigen(stufe, mehr) {
+  aufgeklappt[stufe] = true;
+  const karte = mehr.closest(".karte-inhalt") || mehr.parentNode;
+  const liste = karte ? karte.querySelector('[data-ds-key="sw-personen-' + stufe + '"]') : null;
+  const alle = berechtigte(stufe);
+  if (!liste) { zeichneBereich(); return; }
+  Bewegung.umordnen(karte, function (o) {
+    UI.abgleichen(liste, alle.map(function (b) { return personZeile(b, stufe); }), o);
+    mehr.remove();
+  }, { eintraege: ".listen-zeile" });
+  const erste = alle[PERSONEN_ANFANG];
+  const neu = erste ? liste.querySelector('[data-ds-key="sw-person-' + stufe + "-" + erste.id + '"]') : null;
+  if (neu) neu.focus();
 }
 
 function leerStufe2(gruppen) {
@@ -506,6 +550,7 @@ function personZeile(b, stufe) {
     status: ad.aktiv ? null : UI.status(ad.text, ad.ton),
     fokus: "sw-person-" + stufe + "-" + b.id
   });
+  z.setAttribute("data-ds-key", "sw-person-" + stufe + "-" + b.id);
   return z;
 }
 
@@ -514,19 +559,23 @@ function personZeile(b, stufe) {
    6. Seitenkopf, Schublade, Speicherleiste
    ================================================================== */
 
-/* Kennzeichen als Chips mit Sinnbild (nie Farbe allein). */
-function statusChips() {
+/* Die Teile unter dem Titel: ID, Kategorie und wie vergeben wird. Ein
+   Status-Chip steht nur für die Abweichung (Spalte fehlt); die Zahl der
+   Gruppen und Berechtigten ist kein Zustand. */
+function kopfTeile() {
   if (neuModus) return [];
   const gruppen = adGruppen();
   const n = anzahlBerechtigte();
-  const chips = [
-    gruppen.length
-      ? UI.status(gruppen.length === 1 ? "1 AD-Gruppe" : gruppen.length + " AD-Gruppen", "neutral", { sinnbild: "benutzerGruppe" })
-      : UI.status("Nur von Hand vergeben", "neutral", { sinnbild: "bearbeiten" }),
-    UI.status(n ? personenText(n) + " berechtigt" : "Niemand berechtigt", "neutral", { sinnbild: "benutzer" })
+  return [
+    programmId(),
+    entwurf.textWert("Kategorie").trim(),
+    gruppen.length ? (gruppen.length === 1 ? "1 AD-Gruppe" : gruppen.length + " AD-Gruppen") : "Nur von Hand vergeben",
+    n ? personenText(n) + " berechtigt" : "Niemand berechtigt"
   ];
-  if (spalteFehlt()) chips.push(UI.status("Spalte nicht gefunden", "warnung"));
-  return chips;
+}
+
+function statusChips() {
+  return spalteFehlt() ? [UI.status("Spalte nicht gefunden", "warnung")] : [];
 }
 
 /* «Löschen …» steht im Kopf statt als roter Knopf in der Karte. Mit
@@ -542,7 +591,7 @@ function kopfAktionen() {
 function kopfZeichnen() {
   F.seitenkopf({
     titel: anzeigeName(),
-    unter: neuModus ? [] : [programmId(), entwurf.textWert("Kategorie").trim()],
+    unter: kopfTeile(),
     status: statusChips(),
     aktionen: kopfAktionen()
   });
@@ -558,16 +607,31 @@ function navZeichnen() {
   });
 }
 
+/* Still neu zeichnen: die Kennzahlen zählen vom gezeigten Wert, danach
+   führt nachZeichnen nach, was am Getippten hängt. */
 function zeichneBereich() {
-  aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich);
+  Bewegung.kennzahlenStill($("sw-bereich"), function () {
+    aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich);
+  });
+  nachZeichnen();
 }
 
-/* Fehler A4: replaceState statt location.hash (kein Verlaufseintrag je
-   Bereich), die Pille gleitet, der Bereich blendet durch. */
+/* Was am Entwurf hängt, im gezeigten Bereich nachführen (Prüfung der
+   Programm-ID, Vorschau der Gruppen). Läuft nach jedem Zeichnen: ein
+   abgeglichener Bereich behält seine Knoten, ihr Inhalt soll trotzdem zum
+   Entwurf passen. */
+function nachZeichnen() {
+  idPruefen();
+  gruppenVorschauZeichnen();
+}
+
+/* Bereichswechsel: replaceState statt location.hash (kein Verlaufseintrag
+   je Bereich), die Pille gleitet, der Bereich blendet durch. */
 function bereichWechseln(schluessel) {
   aktiverBereich = schluessel;
   return F.bereichWechseln(sichtbareBereiche(), schluessel).then(function (k) {
     if (k) aktiverBereich = k;
+    nachZeichnen();
     return k;
   });
 }
@@ -625,7 +689,7 @@ function zeileWaehlen() {
 }
 
 /* Still nachladen und neu zeichnen (Auto-Nachladen, nach dem Speichern,
-   nach F.beschaeftigt): ohne Ladezustand, ohne Bewegung. */
+   nach F.beschaeftigt): ohne Ladezustand und ohne Auftritt. */
 async function nachladenStill() {
   await datenLaden(true);
   zeileWaehlen();
@@ -645,7 +709,7 @@ async function neuLaden() {
   }
 }
 
-/* Fehler C6: Titel und Dokumenttitel nennen den Fehler (F.zeigeFehler). */
+/* Titel und Dokumenttitel nennen den Fehler, nicht «wird geladen» (F.ladefehler). */
 function ladefehlerZeigen(fehler) {
   F.ladefehler(fehler, { titel: "Programm nicht gefunden", knopfText: "Zur Software-Liste",
     hinweis: "Gelöschte Zeilen liegen 93 Tage im Papierkorb der SharePoint-Site und lassen sich dort zurückholen." });
@@ -707,12 +771,12 @@ async function anlegen() {
   const neu = await Daten.anlegen("software", felder);
   elementId = String(neu.id);
   neuModus = false;
-  // Lokal übernehmen: scheitert das Nachladen, steht trotzdem das Richtige da (A7).
+  // Lokal übernehmen: scheitert das Nachladen, steht trotzdem das Richtige da.
   zeile = Object.assign(leereZeile(), felder, neu);
   entwurf.leeren();
   idVonHand = false;
   aktiverBereich = "stammdaten";
-  // Fehler A2: die Adresse zeigt jetzt auf das angelegte Programm.
+  // Die Adresse zeigt jetzt auf das angelegte Programm: Neuladen und Teilen gehen.
   try { history.replaceState(null, "", UI.adresse.software(elementId, { bereich: "stammdaten" })); } catch (e) { /* file:// */ }
   F.melden("software-neu", elementId);
   return { neu: true };
@@ -732,15 +796,16 @@ async function aendern() {
     return { anzahl: 0 };
   }
   const antwort = await Daten.speichern("software", elementId, felder, zeile ? zeile.__etag : "");
-  // Felder UND das neue eTag in die lokale Zeile (sonst 412 beim nächsten Speichern, A7).
+  // Felder UND das neue eTag in die lokale Zeile (sonst 412 beim nächsten Speichern).
   F.uebernehmen(zeile, felder, antwort);
   entwurf.leeren();
   F.melden("software-geaendert", elementId);
   return { anzahl: anzahl };
 }
 
-/* Fehler A5/A7/A8: F.speicherAblauf tut nichts ohne Änderungen, trennt
-   Schreiben und Nachladen und sperrt Leiste und Kopfaktionen. */
+/* F.speicherAblauf tut nichts ohne Änderungen, trennt Schreiben und
+   Nachladen (scheitert das Nachladen, bleibt das Geschriebene gespeichert)
+   und sperrt Leiste und Kopfaktionen, solange es läuft. */
 function speichern() {
   const anlegenJetzt = neuModus;
   return F.speicherAblauf({
@@ -767,8 +832,8 @@ function verwerfen() {
   } });
 }
 
-/* Fehler A6: nach dem Löschen der Endzustand mit «Zur Software-Liste»
-   (gemerkte Listenadresse) statt window.close(). */
+/* Nach dem Löschen steht der Endzustand mit «Zur Software-Liste»
+   (gemerkte Listenadresse); das Fenster schliesst sich nicht selbst. */
 function loeschenDialog() {
   const id = programmId();
   const name = anzeigeName();

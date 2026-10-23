@@ -1,4 +1,4 @@
-/* app.js — Oberfläche der Hauptseite des ICT-Inventars.
+/* app.js – Oberfläche der Hauptseite des ICT-Inventars.
 
    Zehn Ansichten im gemeinsamen Rahmen (rahmen.js):
      Übersichten     Je Modul eine (Geräte, Verzeichnis, Videoüberwachung):
@@ -6,7 +6,7 @@
                      Zeitstrahl (Clients, Kameras), Verteilungen.
      ADMIN-Clients   Tabelle der Liste «ADMIN-Clients» mit Suche, Filtern,
                      Spaltenwahl. Diese Geräte haben einen Inhaber.
-     EDU-Clients     Dieselbe Tabelle für die Liste «EDU-Clients» —
+     EDU-Clients     Dieselbe Tabelle für die Liste «EDU-Clients» –
                      Schulungsgeräte, die bewusst niemandem gehören.
      Benutzer        Tabelle der Benutzer-Liste, mit Programm-Filter je Stufe.
      Telefonnummern  Tabelle der Telefonliste.
@@ -20,11 +20,23 @@
    der Zustand in der Adresse steht und wie die Ansichten zusammengesetzt
    sind.
 
-   Bewegung: Auftritte (Staffeln, Hochzählen, Säulen) gibt es nur beim
-   ersten Inhalt (Rahmen.zustand('inhalt')) und beim Ansichtswechsel
-   (Rahmen.wechseln). Jede Zeichenfunktion hier ist still; das automatische
-   Nachladen und Meldungen anderer Fenster zeichnen über Rahmen.stillZeichnen()
-   neu, das Fokus, Schreibmarke und Rollpositionen bewahrt.
+   Zeichnen und Bewegung (Dashboard-Style, docs/motion.md):
+     - Die Gerüste der Ansichten (Seitenkopf, Werkzeugleiste, Tabelle)
+       entstehen einmal beim Start. Jede Zeichenfunktion baut danach ihren
+       Inhalt neu als abgehängte Knoten und gleicht ihn mit UI.abgleichen
+       (DS.dom.morphChildren) dem Bestand an: was bleibt, bleibt derselbe
+       Knoten (Fokus, Rollstand, Zuhörer; kein Auftritt spielt noch einmal).
+       Zeilen und Karten tragen darum einen Schlüssel (data-ds-key), jedes
+       Bedienelement mit Zuhörer den seines data-fokus (schluesselSetzen):
+       ein behaltener Knoten gehört so immer zum selben Datensatz.
+     - Auftritte (Staffeln, Hochzählen, Balken) gibt es nur beim ersten
+       Zeigen einer Ansicht (Rahmen.zustand('inhalt'), Rahmen.wechseln über
+       DS.motion.transition und staggerOnce).
+     - Ändern Benutzer Sortierung, Suche oder Filter, gleiten Zeilen, Karten
+       und Chips an ihren neuen Platz (Bewegung.umordnen = DS.motion.flip);
+       das automatische Nachladen und Meldungen anderer Fenster tun es mit
+       live: true (gehalten, solange Zeiger oder Fokus in der Liste sind),
+       Kennzahlen zählen dabei vom gezeigten Wert (Bewegung.hochzaehlen).
 
    Aufbau der Datei:
      1. Spaltenwissen und Filterdefinitionen
@@ -41,8 +53,7 @@
     12. Start und Ereignisse
 
    Grundsätze: kein Framework, keine globalen Variablen ausser den
-   Namensräumen der anderen Dateien, kein Inline-Script, niemals innerHTML
-   mit Daten aus SharePoint. */
+   Namensräumen der anderen Dateien, kein Inline-Skript, niemals innerHTML. */
 
 "use strict";
 
@@ -62,19 +73,19 @@ const anhaengen = UI.anhaengen;
    SharePoint; modell.js und nachbereiten() rechnen sie beim Laden aus.
 
    Jede Kennzahl der Übersicht hat genau EIN Feld, aus dem sie zählt und
-   nach dem ihr Sprung in die Liste filtert (Fehler B1): wer «7 nicht in
+   nach dem ihr Sprung in die Liste filtert: wer «7 nicht in
    SCCM» anklickt, sieht genau diese sieben Zeilen. Darum gibt es die
    Ja/Nein-Felder unten, statt roh nach «SCCM_Found = Nein» zu filtern
    (leere Felder wären sonst gezählt, aber nicht gelistet). */
 const CLIENT_ZUSATZ = [
   { i: "__inhaberName",   d: "Inhaber", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   /* «Status» als abgeleitete Spalte, damit ein leeres Feld überall als
-     «Aktiv» erscheint — filtern, sortieren und exportieren inbegriffen. Sie
+     «Aktiv» erscheint – filtern, sortieren und exportieren inbegriffen. Sie
      ersetzt die rohe Spalte (ERSETZTE_SPALTEN). */
   { i: "__statusText",    d: "Status", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__ersatzText",    d: "Ersatzstatus", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
   { i: "__hatInhaber",    d: "Inhaber gesetzt", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
-  /* «In Domäne» als Text, damit ein leeres Feld überall als «Ja» erscheint —
+  /* «In Domäne» als Text, damit ein leeres Feld überall als «Ja» erscheint –
      so gilt für die ganze Altlast dasselbe wie für den Sync. Ersetzt die
      rohe Ja/Nein-Spalte, die leer als «Nein» zeigte. */
   { i: "__domaeneText",   d: "In Domäne", t: "Text", g: "Abgeleitet", q: "abgeleitet" },
@@ -159,7 +170,7 @@ const PROGRAMM_STUFEN = [
 ];
 
 /* Beschreibung der Tabellenansichten. Alles, was sich zwischen ihnen
-   unterscheidet, steht hier — der Rest des Codes ist für alle derselbe.
+   unterscheidet, steht hier – der Rest des Codes ist für alle derselbe.
    Die beiden Client-Listen entstehen aus einer gemeinsamen Beschreibung. */
 function clientTab(schluessel, mitInhaber, csvName) {
   const standard = ["Title", "__statusText", "__inhaberName", "GebaeudeStock",
@@ -397,14 +408,14 @@ function beschriftung(tab, schluessel) {
 }
 
 /* Die Spalten, die gezeigt werden. Unbekannte Namen bleiben im Zustand
-   stehen, solange die Liste «Software» nicht geladen werden konnte — es
-   könnten Programmspalten sein, die beim nächsten Laden wieder da sind
-   (Fehler B3). Gezeigt werden sie dann nicht. */
+   stehen, solange die Liste «Software» nicht geladen werden konnte – es
+   könnten Programmspalten sein, die beim nächsten Laden wieder da sind.
+   Gezeigt werden sie dann nicht. */
 function sichtbareSpalten(tab) {
   return zustand[tab].spalten.filter(k => !!spalte(tab, k));
 }
 
-/* Feste Reihenfolge der Spalten (Fehler B6): zuerst die Standardspalten in
+/* Feste Reihenfolge der Spalten: zuerst die Standardspalten in
    ihrer Reihenfolge (die Namensspalte vorne), dann alle übrigen wie in der
    Spaltenliste. Eine neu gewählte Spalte reiht sich so an ihrem Platz ein,
    statt die Tabelle umzustellen. */
@@ -433,7 +444,7 @@ const SPEICHER_ARCHIV  = "ictinventar.archiv.";    // + Client-Ansicht
 /* Der Wert der Statusspalte, der ein Gerät aus der Liste nimmt. */
 const ARCHIVIERT = "Archiviert";
 
-/* Leere Felder sind ein eigener Facettenwert (Fehler B1). In Chips, im
+/* Leere Felder sind ein eigener Facettenwert. In Chips, im
    Filterblatt und in der Adresse heisst er so. */
 const LEER_WERT = "(leer)";
 
@@ -507,7 +518,7 @@ function facettenWertLesen(w) { return w === LEER_WERT ? "" : w; }
    Dichte weg (ein Link in eine gefilterte Liste soll nur filtern).
 
    Der Archivschalter der Geräte steht IMMER in der Adresse, als ar=1 oder
-   ar=0 (Fehler B1): sonst gälte in einem neuen Tab, nach dem Neuladen oder
+   ar=0: sonst gälte in einem neuen Tab, nach dem Neuladen oder
    über den Zurück-Link einer Detailseite wieder die im Browser gemerkte
    Einstellung, und die Liste zeigte mehr Geräte, als die Zahl versprach,
    die hierher geführt hat. */
@@ -557,7 +568,7 @@ function hashSchreiben(alsVerlaufseintrag) {
 
   /* Ein Ansichtswechsel ist ein Schritt, den die Zurück-Taste rückgängig
      machen soll: pushState. Filter, Sortierung und Spaltenwahl ersetzen nur
-     den aktuellen Eintrag — sonst wäre die Zurück-Taste unbrauchbar. */
+     den aktuellen Eintrag – sonst wäre die Zurück-Taste unbrauchbar. */
   const adresse = location.pathname + location.search + neu;
   if (alsVerlaufseintrag) history.pushState(null, "", adresse);
   else history.replaceState(null, "", adresse);
@@ -572,7 +583,7 @@ function hashLesen() {
   zustand.ansicht = ANSICHTEN.indexOf(name) > -1 ? name : Rahmen.STARTZIEL;
   const a = zustand.ansicht;
 
-  /* Dichte gilt für alle Listen (Fehler B7): ein geteilter Link mit
+  /* Dichte gilt für alle Listen: ein geteilter Link mit
      «d=kompakt» macht nicht nur die eine Liste kompakt. */
   const d = p.get("d");
   if (d !== null) for (const tab of TABELLEN) zustand[tab].dicht = d === "kompakt";
@@ -666,7 +677,7 @@ function einstellungenMerken(tab) {
 }
 
 /* Unbekannte Spaltennamen entfernen (etwa ein umbenanntes Feld). Nur, wenn
-   die Programme sicher bekannt sind (Fehler B3). */
+   die Programme sicher bekannt sind. */
 function spaltenPruefen() {
   for (const tab of TABELLEN) {
     const z = zustand[tab];
@@ -732,7 +743,7 @@ function nachbereiten() {
 
 /* Nachzügler-Listen: «EDU-Clients», «Telefonnummern» und «Software» sind
    jünger als der Rest. Fehlt ihre Listen-ID oder die Liste, bleibt die
-   betroffene Ansicht leer und sagt, was zu tun ist — die übrigen laufen
+   betroffene Ansicht leer und sagt, was zu tun ist – die übrigen laufen
    normal weiter. */
 const listenHinweis = { edu: "", telefon: "", software: "", kamera: "", kamerarolle: "" };
 
@@ -753,7 +764,7 @@ function hinweisVon(tab) {
 }
 
 /* Der letzte gelungene Stand der Nachzügler-Listen (roh). Scheitert eine
-   davon beim stillen Nachladen, gilt er weiter (Fehler B3). */
+   davon beim stillen Nachladen, gilt er weiter. */
 const letzterStand = { edu: [], telefon: [], software: [], kamera: [], kamerarolle: [] };
 
 /* Liefert die Zeilen, [] mit Hinweis (fehlt/Fehler beim ersten Laden) oder
@@ -833,7 +844,7 @@ async function datenLaden(still) {
   programmSpalten = Modell.programmSpalten(software);
   spaltenIndexAufbauen();
   /* Nur wenn die Programme sicher bekannt sind, dürfen unbekannte Spalten
-     weg — sonst verlöre die Benutzerliste ihre Programmspalten für immer. */
+     weg – sonst verlöre die Benutzerliste ihre Programmspalten für immer. */
   if (rohSoftware !== null && !listenHinweis.software) spaltenPruefen();
 
   const ergebnis = Modell.anreichern(rohAdmin, rohBenutzer, software);
@@ -892,7 +903,7 @@ function speicherPasst(wert, stufe) {
 }
 
 /* Sind archivierte Geräte gerade sichtbar? Entweder weil der Schalter an
-   ist, oder weil ausdrücklich nach «Archiviert» gefiltert wird — sonst
+   ist, oder weil ausdrücklich nach «Archiviert» gefiltert wird – sonst
    führte dieser Filter in eine garantiert leere Liste. */
 function archivSichtbar(tab) {
   const z = zustand[tab];
@@ -1027,7 +1038,7 @@ function facetteSetzen(z, schluessel, wert) { z.facetten[schluessel] = [wert]; }
 
 /* Zählt die Werte einer Spalte, die häufigsten zuerst; "" = leer.
 
-   Solange archivierte Geräte ausgeblendet sind, zählen sie nicht mit —
+   Solange archivierte Geräte ausgeblendet sind, zählen sie nicht mit –
    sonst verspräche die Facette Zeilen, die die Liste nicht zeigt. Die
    Statusfacette zählt sie immer (sonst liesse sich «Archiviert» nie
    anwählen). «ohneArchiv» erzwingt das Weglassen (Übersicht: ihr Sprung
@@ -1086,8 +1097,8 @@ function sprungKlick(tab, setzen) {
 }
 
 /* In eine Liste springen, nur mit dem übergebenen Filter. Die archivierten
-   Geräte sind danach ausgeblendet — genau wie die Kennzahl, die den Sprung
-   ausgelöst hat, sie nicht mitzählt (Fehler B1). */
+   Geräte sind danach ausgeblendet – genau wie die Kennzahl, die den Sprung
+   ausgelöst hat, sie nicht mitzählt. */
 function springeMitFilter(tab, setzen) {
   if (istUebersicht(tab) || tab === "software") return ansichtWechseln(tab);
   if (tab === "kamerarechte") {
@@ -1117,24 +1128,16 @@ function springeMitFilter(tab, setzen) {
   return ansichtWechseln(tab);
 }
 
-/* Detailseiten öffnen im selben Tab; Ctrl-, Shift- oder Mittelklick öffnen
-   einen neuen. Vorher merkt sich die Seite die volle Listenadresse samt
-   Filtern, damit der Zurück-Link der Detailseite genau hierher führt. */
+/* Detailseiten sind echte Links: sie öffnen im selben Tab, Ctrl-, Shift-
+   oder Mittelklick in einem neuen. Vorher merkt sich die Seite die volle
+   Listenadresse samt Filtern, damit der Zurück-Link der Detailseite genau
+   hierher führt (tabellenGeruest, softwareKarte, rollenKarte). */
 function detailAdresse(tab, id) {
   if (tab === "benutzer") return UI.adresse.benutzer(id);
   if (tab === "telefone") return UI.adresse.telefon(id);
   if (tab === "kameras") return UI.adresse.kamera(id);
   if (tab === "kamerarechte") return UI.adresse.kamerarolle(id);
   return UI.adresse.client(tab, id);
-}
-
-function detailOeffnen(tab, id, neuerTab) {
-  if (id === null || id === undefined) return;
-  UI.adresse.listeMerken();
-  const adresse = detailAdresse(tab, id);
-  if (neuerTab) { window.open(adresse, "_blank", "noopener"); return; }
-  stelleMerken(id);
-  location.href = adresse;
 }
 
 /* ---------- Stelle in der Liste ----------
@@ -1241,7 +1244,7 @@ function knopfOffen(k, offen) {
 }
 
 /* Trefferzahl und «Neu …» bleiben zusammen am rechten Ende der Leiste,
-   auch wenn sie umbricht (Fehler E4: früher stand «Neu» dann links). */
+   auch wenn sie umbricht. */
 function leistenEnde(anzahl, neu) {
   return anhaengen(el("div", "werkzeugleiste-ende"), [anzahl, neu]);
 }
@@ -1272,64 +1275,57 @@ function tabellenGeruest(tab) {
   const leiste = anhaengen(el("div", "ds-action-bar"),
     [suchfeld, filterKnopf, spaltenKnopf, csvKnopf, leistenEnde(anzahl, neuKnopf(tab))]);
 
-  const chips = el("div", "ds-chips");
+  // Aktive Filter als Chips mit × (ICT) und «Alle Filter entfernen»: keine
+  // Filtergruppe von Dashboard-Style, darum .chip-zeile (UI.chips, §4.2);
+  // ohne Filter leer und ohne Platz.
+  const chips = el("div", "chip-zeile");
   chips.id = tab + "-chips";
 
-  const tabelle = el("table", "ds-table");
+  /* Jede Zeile öffnet ihren Datensatz (Dashboard-Style
+     .ds-table--interactive: Zeiger, Zustands- und Fokusebene, Fokusring
+     auf der Zeile). Ihr Link ist der Name (.ds-table__row-link); einen
+     Klick in die übrigen Zellen reicht UI.tabellenRahmen an ihn weiter
+     (die klebende erste Spalte begrenzt ihn auf seine Zelle). Vor einem
+     neuen Tab merkt sich die Seite die Liste für dessen Zurück-Link. */
+  const tabelle = el("table", "ds-table ds-table--interactive");
   tabelle.id = tab + "-tabelle";
   tabelle.appendChild(el("caption", "ds-sr", titel));
   const kopfZeile = el("thead");
   const koerper = el("tbody");
   koerper.id = tab + "-koerper";
   anhaengen(tabelle, [kopfZeile, koerper]);
-  const rahmen = UI.tabellenRahmen(tabelle, { id: tab + "-rahmen" });
+  const rahmen = UI.tabellenRahmen(tabelle, { id: tab + "-rahmen",
+    vorNeuemTab: function () { UI.adresse.listeMerken(); } });
   rahmen.setAttribute("data-rolle", tab + "-rahmen");
 
-  /* Der Leerzustand steht wie bei ChatBob in einer umrandeten Fläche an
-     der Stelle der Liste. */
+  /* Der Leerzustand steht in einer umrandeten Fläche an der Stelle der
+     Liste. */
   const leer = UI.karte({ klasse: "tabelle-leer", id: tab + "-leer" });
   leer.hidden = true;
 
   anhaengen(ansicht, [kopf, leiste, chips, rahmen, leer]);
 
-  /* EIN Zuhörer für alle Zeilen: ein Klick auf die Zeile öffnet den
-     Datensatz; ein Klick auf einen Link darin (Name, Inhaber) lässt den
-     Browser arbeiten, merkt aber vorher die Liste. */
-  koerper.addEventListener("click", function (ev) {
-    const tr = ev.target.closest ? ev.target.closest("tr[data-id]") : null;
+  /* EIN Zuhörer für alle Links der Zeilen (sie werden abgeglichen, nicht
+     neu gebaut): ein Link (Datensatz, Inhaber, Gerät, auch der von
+     UI.tabellenRahmen weitergereichte Zeilenklick) arbeitet wie jeder
+     Link; vorher merkt sich die Seite die Liste und, im selben Tab, die
+     Stelle darin. */
+  function linkGeoeffnet(ev) {
+    const link = ev.target.closest ? ev.target.closest("a[href]") : null;
+    const tr = link ? link.closest("tr[data-id]") : null;
     if (!tr) return;
-    if (ev.target.closest("a")) {
-      UI.adresse.listeMerken();
-      if (!modifiziert(ev)) stelleMerken(tr.getAttribute("data-id"));
-      return;
-    }
-    if (ev.target.closest("button, .ds-status[tabindex]")) return;
-    // Wer Text markiert hat, wollte kopieren, nicht öffnen.
-    const auswahl = window.getSelection ? String(window.getSelection()) : "";
-    if (auswahl && tr.contains(window.getSelection().anchorNode)) return;
-    detailOeffnen(tab, tr.getAttribute("data-id"), ev.ctrlKey || ev.metaKey || ev.shiftKey);
-  });
-  /* Unter Windows startet ein Mittelklick sonst das automatische Rollen –
-     dann kommt kein auxclick, und die Zeile öffnete sich nie im neuen Tab.
-     Links behalten ihr eigenes Verhalten. */
-  koerper.addEventListener("mousedown", function (ev) {
-    if (ev.button !== 1 || !ev.target.closest || ev.target.closest("a")) return;
-    if (ev.target.closest("tr[data-id]")) ev.preventDefault();
-  });
-  koerper.addEventListener("auxclick", function (ev) {
-    if (ev.button !== 1) return;
-    const tr = ev.target.closest ? ev.target.closest("tr[data-id]") : null;
-    if (!tr) return;
-    if (ev.target.closest("a")) { UI.adresse.listeMerken(); return; }
-    ev.preventDefault();
-    detailOeffnen(tab, tr.getAttribute("data-id"), true);
-  });
+    UI.adresse.listeMerken();
+    const neuerTab = ev.type === "auxclick" || ev.ctrlKey || ev.metaKey || ev.shiftKey;
+    if (!neuerTab) stelleMerken(tr.getAttribute("data-id"));
+  }
+  koerper.addEventListener("click", linkGeoeffnet);
+  koerper.addEventListener("auxclick", function (ev) { if (ev.button === 1) linkGeoeffnet(ev); });
 
   knoten[tab] = {
     ansicht: ansicht, kopf: kopf, suchfeld: suchfeld, filterKnopf: filterKnopf, filterZaehler: filterZaehler,
     spaltenKnopf: spaltenKnopf, spaltenZaehler: spaltenZaehler, anzahl: anzahl, chips: chips,
     tabelle: tabelle, kopfZeile: kopfZeile, kopfSignatur: null, koerper: koerper, rahmen: rahmen,
-    leer: leer, leerArt: null
+    leer: leer, leerArt: null, leerZeigt: false
   };
 }
 
@@ -1412,7 +1408,7 @@ function zelle(tab, zeile, schluessel) {
   const wert = zeile[schluessel];
   const td = el("td");
 
-  // Namensspalte: echter Link, damit Mittelklick und Ctrl-Klick wirken.
+  // Namensspalte: der Link der Zeile (.ds-table__row-link, siehe tabellenGeruest).
   if (schluessel === TAB[tab].namensSpalte) {
     td.className = "ds-nowrap";
     if (istClientTab(tab)) td.appendChild(onlineZeichen(zeile));
@@ -1420,7 +1416,7 @@ function zelle(tab, zeile, schluessel) {
     const text = String(wert || "").trim()
       || (tab === "benutzer" ? String(zeile.Title || "(ohne Namen)")
         : (tab === "telefone" ? (zeile.__kurzwahl || "(ohne Kurzwahl)") : "(ohne Namen)"));
-    const link = el("a", "name-link", text);
+    const link = el("a", "name-link ds-table__row-link", text);
     link.href = detailAdresse(tab, zeile.id);
     link.setAttribute("data-fokus", tab + "-zeile-" + zeile.id);
     td.appendChild(link);
@@ -1571,14 +1567,28 @@ function zelle(tab, zeile, schluessel) {
     return td;
   }
 
-  /* Das geplante Ersatzjahr in der Farbe seines Ersatzstatus: überfällig
-     rot, im laufenden Geschäftsjahr gelb, später grün. */
+  /* Das geplante Ersatzjahr als Chip in der Farbe seines Ersatzstatus:
+     überfällig als Gefahr, im laufenden Geschäftsjahr als Warnung mit
+     Kalender, später als Erfolg. Der grüne Chip für den Normalfall ist
+     eine bewusste Ausnahme (Entscheid vom 19.10.2026, STYLEGUIDE.md §4.3).
+     Nur ein Jahr ohne Ersatzstatus (ungültig, nicht erfasst) bleibt Text.
+     Das Statuswort steht für Screenreader im Chip (.ds-sr, wie beim
+     Online-Zeichen; Status nie nur über Farbe), sichtbar im Tooltip –
+     ohne Tabstopp je Zeile. */
   if (schluessel === "ErsatzGeplant" && String(wert || "").trim()) {
     const st = zeile.__ersatzStatus;
-    const ton = st === "ueberfaellig" ? "gefahr" : (st === "bald" ? "warnung" : (st === "ok" ? "erfolg" : "neutral"));
-    const marke = UI.status(String(wert).trim(), ton, st === "bald" ? { sinnbild: "kalender" } : undefined);
-    UI.tipp(marke, ERSATZ_TEXT[st] || ERSATZ_TEXT.unbekannt);
-    td.appendChild(marke);
+    const jahr = String(wert).trim();
+    const tipp = ERSATZ_TEXT[st] || ERSATZ_TEXT.unbekannt;
+    if (st === "ueberfaellig" || st === "bald" || st === "ok") {
+      const ton = st === "ueberfaellig" ? "gefahr" : (st === "bald" ? "warnung" : "erfolg");
+      const marke = UI.status(jahr, ton, st === "bald" ? { sinnbild: "kalender" } : undefined);
+      marke.insertBefore(el("span", "ds-sr", tipp + ": "), marke.querySelector(".status-text"));
+      UI.tipp(marke, tipp);
+      td.appendChild(marke);
+    } else {
+      td.textContent = jahr;
+      UI.tipp(td, tipp);
+    }
     return td;
   }
 
@@ -1620,10 +1630,48 @@ function zelle(tab, zeile, schluessel) {
 
 function sortierRichtung(tab) { return zustand[tab].sortAuf ? "auf" : "ab"; }
 
+/* Wie eine Zeichenfunktion ihre Änderung zeigt (Dashboard-Style,
+   docs/motion.md «Data motion»):
+     undefined   still abgleichen (erstes Zeichnen, Ansichtswechsel, neue
+                 Spalten, Sprung aus der Übersicht, Vor/Zurück)
+     'umordnen'  der Benutzer sortiert, sucht oder filtert: Zeilen, Karten
+                 und Chips gleiten an ihren neuen Platz, neue blenden ein
+     'live'      Daten kamen von selbst (Nachladen, anderes Fenster): wie
+                 'umordnen', aber gehalten, solange Zeiger oder Fokus in der
+                 Liste sind; Kennzahlen zählen vom gezeigten Wert */
+function zeigen(behaelter, neu, art, eintraege) {
+  if (!art) { UI.abgleichen(behaelter, neu); return; }
+  Bewegung.umordnen(behaelter, function (o) { UI.abgleichen(behaelter, neu, o); },
+    { eintraege: eintraege, live: art === "live" });
+}
+
+/* Jedes Bedienelement mit Zuhörer trägt einen data-fokus; als Schlüssel
+   (data-ds-key) sorgt er dafür, dass UI.abgleichen einen behaltenen Knoten
+   samt Zuhörer nur in sein eigenes Gegenstück patcht, nie in den Knopf
+   eines anderen Datensatzes (die Zuhörer der neuen Knoten verfallen). */
+function schluesselSetzen(knotenListe) {
+  for (const k of [].concat(knotenListe)) {
+    if (!k || !k.querySelectorAll) continue;
+    for (const f of [k].concat(Array.from(k.querySelectorAll("[data-fokus]")))) {
+      if (!f.hasAttribute("data-fokus") || f.hasAttribute("data-ds-key")) continue;
+      const fokus = f.getAttribute("data-fokus");
+      f.setAttribute("data-ds-key", fokus);
+      // Steht er allein in einem Listeneintrag (Verteilung, Kennwerte),
+      // trägt auch der Eintrag den Schlüssel: so gleitet die Zeile beim
+      // Umordnen als Ganzes an ihren neuen Platz.
+      const li = f.parentElement;
+      if (li && li.tagName === "LI" && li.children.length === 1 && !li.hasAttribute("data-ds-key")) {
+        li.setAttribute("data-ds-key", "zeile-" + fokus);
+      }
+    }
+  }
+  return knotenListe;
+}
+
 /* Kopf und Körper. Der Kopf entsteht nur neu, wenn sich die Spalten
-   ändern; sonst wird nur die Sortierung nachgeführt (Fokus bleibt auf dem
-   Sortierknopf, C3). Der Körper wird neu gezeichnet, ohne Bewegung. */
-function zeichneTabelle(tab) {
+   ändern; sonst wird nur die Sortierung nachgeführt (der Fokus bleibt auf
+   dem Sortierknopf). Der Körper wird abgeglichen (art wie bei zeigen). */
+function zeichneTabelle(tab, art) {
   const k = knoten[tab];
   const z = zustand[tab];
   const spalten = sichtbareSpalten(tab);
@@ -1640,33 +1688,38 @@ function zeichneTabelle(tab) {
         else { z.sortSpalte = schluessel; z.sortAuf = true; }
         k.kopfZeile.sortierungSetzen(z.sortSpalte, sortierRichtung(tab));
         neuBerechnen(tab);
-        koerperZeichnen(tab, sichtbareSpalten(tab));
+        koerperZeichnen(tab, sichtbareSpalten(tab), "umordnen");
         hashSchreiben();
       }
     });
     k.tabelle.replaceChild(neu, k.kopfZeile);
     k.kopfZeile = neu;
     k.kopfSignatur = signatur;
+    // Andere Spalten: die Zeilen gleiten nicht, sie ändern nur ihre Zellen.
+    art = undefined;
   } else {
     k.kopfZeile.sortierungSetzen(z.sortSpalte, sortierRichtung(tab));
   }
 
-  koerperZeichnen(tab, spalten);
+  koerperZeichnen(tab, spalten, art);
   UI.textSetzen(k.anzahl, trefferText(tab, false));
-  leerzustandZeigen(tab);
+  leerzustandZeigen(tab, art);
 }
 
-function koerperZeichnen(tab, spalten) {
+/* Eine Zeile je Datensatz, Schlüssel = Listen-ID: ein bleibender
+   Datensatz behält seine Zeile (Fokus, laufende Bewegung), auch wenn er
+   umsortiert wird. Über 50 bewegte Zeilen landet die Änderung ohne
+   Bewegung (DS.motion.flip). */
+function koerperZeichnen(tab, spalten, art) {
   const k = knoten[tab];
-  const teile = document.createDocumentFragment();
-  for (const zeile of sichtbar[tab]) {
+  const zeilen = sichtbar[tab].map(function (zeile) {
     const tr = el("tr");
+    tr.setAttribute("data-ds-key", String(zeile.id));
     tr.setAttribute("data-id", String(zeile.id));
     for (const schluessel of spalten) tr.appendChild(zelle(tab, zeile, schluessel));
-    teile.appendChild(tr);
-  }
-  leeren(k.koerper).appendChild(teile);
-  k.rahmen.classList.toggle("ds-table--dense", zustand[tab].dicht);
+    return tr;
+  });
+  zeigen(k.koerper, zeilen, art);
 }
 
 function trefferText(tab, mitEinheit) {
@@ -1711,31 +1764,48 @@ function leerzustandBauen(tab, art) {
       aktion: { text: "Archivierte anzeigen", fokus: tab + "-leer-aktion", beiKlick: function () {
         zustand[tab].archiv = true;
         einstellungenMerken(tab);
-        nachFilter(tab);
         knoten[tab].suchfeld.eingabe.focus();
+        nachFilter(tab);
       } } });
   } else {
     l = UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
       aktion: { text: "Filter zurücksetzen", fokus: tab + "-leer-aktion", beiKlick: function () {
         filterZuruecksetzen(tab, true);
         suchfeldAngleichen(tab);
-        nachFilter(tab);
         knoten[tab].suchfeld.eingabe.focus();
+        nachFilter(tab);
       } } });
   }
   return l;
 }
 
-function leerzustandZeigen(tab) {
+/* Der Leerzustand ersetzt die Liste an ihrer Stelle. Lässt ein Filter des
+   Benutzers nichts übrig, blendet er ein, sobald die Zeilen gegangen sind;
+   bringt das Zurücksetzen Zeilen zurück, tritt er aus, während sie
+   einblenden (Dashboard-Style, docs/components.md «Empty state»). Sonst
+   (erstes Zeichnen, Nachladen) wechselt er ohne Bewegung. Sein Inhalt
+   entsteht nur neu, wenn sich der Fall ändert (die Knöpfe der Fälle tun
+   Verschiedenes, darum ersetzt statt abgeglichen). */
+function leerzustandZeigen(tab, art) {
   const k = knoten[tab];
-  const art = leerArt(tab);
-  const schluessel = art === "konfig" ? art + hinweisVon(tab) : art;
-  k.rahmen.hidden = !!art;
-  k.leer.hidden = !art;
-  if (schluessel === k.leerArt) return;
-  k.leerArt = schluessel;
-  leeren(k.leer.inhalt);
-  if (art) k.leer.inhalt.appendChild(leerzustandBauen(tab, art));
+  const fall = leerArt(tab);
+  const schluessel = fall === "konfig" ? fall + hinweisVon(tab) : fall;
+  if (schluessel !== k.leerArt) {
+    k.leerArt = schluessel;
+    if (fall) leeren(k.leer.inhalt).appendChild(leerzustandBauen(tab, fall));
+  }
+  const bewegt = art === "umordnen";
+  if (fall && !k.leerZeigt) {
+    k.leerZeigt = true;
+    k.rahmen.hidden = true;
+    if (bewegt) Bewegung.eintreten(k.leer, "blenden");
+    else { Bewegung.abbrechen(k.leer); k.leer.hidden = false; }
+  } else if (!fall && k.leerZeigt) {
+    k.leerZeigt = false;
+    k.rahmen.hidden = false;
+    if (bewegt) Bewegung.austreten(k.leer, "", { dann: "verbergen", fokus: k.suchfeld.eingabe });
+    else { Bewegung.abbrechen(k.leer); k.leer.hidden = true; }
+  }
 }
 
 /* ---------- Chips und Zähler ---------- */
@@ -1763,23 +1833,23 @@ function filterName(tab, schluessel) {
   return f ? f.d : beschriftung(tab, schluessel);
 }
 
-/* Ein Chip je aktivem Filter aus dem Blatt («Hersteller: HP ×»). Entfernt
-   der Benutzer einen, wirkt das sofort; der Chip tritt kurz aus, der Fokus
-   geht an seinen Nachbarn (er stünde sonst im Nichts).
+/* Ein Chip je aktivem Filter aus dem Blatt («Hersteller: HP ×»), ICT-eigen
+   (UI.chip mit entfernen: Dashboard-Style hat keinen Chip mit ×). Entfernt
+   der Benutzer einen, wirkt das sofort: der Fokus geht an seinen Nachbarn,
+   der Chip tritt aus und die übrigen rücken nach (Bewegung.umordnen).
 
    Die Suche bekommt keinen Chip: ihr Text steht im Suchfeld, dessen ×
    leert sie. Ein Chip erschiene sonst beim ersten Tastendruck und schöbe
    die Tabelle unter der Schreibmarke nach unten (beim Leeren zurück). */
-function zeichneChips(tab) {
+function zeichneChips(tab, art) {
   const k = knoten[tab];
   const z = zustand[tab];
   const liste = [];
   let filterChips = 0;
 
   function chip(schluessel, text, entfernen, label) {
-    const c = UI.chip({ text: text, label: label, fokus: tab + "-chip-" + schluessel,
-      entfernen: function () { chipEntfernen(tab, c, entfernen); } });
-    liste.push(c);
+    liste.push(UI.chip({ text: text, label: label, fokus: tab + "-chip-" + schluessel,
+      entfernen: function (ev) { chipEntfernen(tab, ev.currentTarget, entfernen); } }));
   }
 
   for (const f of Object.keys(z.facetten)) {
@@ -1796,26 +1866,26 @@ function zeichneChips(tab) {
     if (!w) continue;
     filterChips++;
     const stufe = ZEITRAEUME.find(s => s.w === w);
-    chip("z-" + f, filterName(tab, f) + ": " + (stufe ? stufe.d : w), function () { delete z.zeit[f]; });
+    chip("z-" + f + "-" + w, filterName(tab, f) + ": " + (stufe ? stufe.d : w), function () { delete z.zeit[f]; });
   }
   if (z.speicher) {
     filterChips++;
     const stufe = SPEICHERSTUFEN.find(s => s.w === z.speicher);
-    chip("speicher", SPEICHER_NAME + ": " + (stufe ? stufe.d : z.speicher), function () { z.speicher = ""; });
+    chip("speicher-" + z.speicher, SPEICHER_NAME + ": " + (stufe ? stufe.d : z.speicher), function () { z.speicher = ""; });
   }
   if (z.programm) {
     filterChips++;
     // Eine Stufe aus einem von Hand gebauten Link kann unbekannt sein.
     const stufe = PROGRAMM_STUFEN.find(s => s.w === z.programmStufe);
     // «nur von Hand (1)» heisst im Chip nur «nur von Hand» (keine Doppelklammer).
-    chip("programm", "Berechtigung: " + beschriftung(tab, z.programm)
+    chip("programm-" + z.programm + "-" + z.programmStufe, "Berechtigung: " + beschriftung(tab, z.programm)
       + (z.programmStufe ? " · " + (stufe ? stufe.d.replace(/\s*\(\d\)$/, "") : z.programmStufe) : ""),
       function () { z.programm = ""; z.programmStufe = ""; });
   }
   if (z.rolle) {
     filterChips++;
     const r = kameraRollen.find(x => String(x.id) === z.rolle);
-    chip("rolle", ROLLE_FILTER_NAME + ": " + (r ? String(r.Title || "").trim() : "Rolle " + z.rolle), function () { z.rolle = ""; });
+    chip("rolle-" + z.rolle, ROLLE_FILTER_NAME + ": " + (r ? String(r.Title || "").trim() : "Rolle " + z.rolle), function () { z.rolle = ""; });
   }
   /* Der Archivschalter nimmt einen Filter WEG; als Chip steht er trotzdem
      hier, damit sichtbar ist, warum mehr Geräte in der Liste stehen. Er
@@ -1828,63 +1898,56 @@ function zeichneChips(tab) {
      und hat keinen Chip) – wie «Filter zurücksetzen» im Filterblatt. Der
      Knopf verschwindet dabei; der Fokus geht an den Filterknopf. */
   if (filterChips > 1) {
-    const alle = UI.knopf({ text: "Alle Filter entfernen", variante: "leise", klein: true, fokus: tab + "-chips-alle",
+    liste.push(UI.knopf({ text: "Alle Filter entfernen", variante: "leise", klein: true, fokus: tab + "-chips-alle",
       beiKlick: function () {
+        k.filterKnopf.focus({ preventScroll: true });
         filterZuruecksetzen(tab, false);
         nachFilter(tab);
-        k.filterKnopf.focus({ preventScroll: true });
-      } });
-    liste.push(alle);
+      } }));
   }
-  leeren(k.chips);
-  anhaengen(k.chips, liste);
+  zeigen(k.chips, schluesselSetzen(liste), art);
 }
 
+/* Der Schlüssel eines Chips nennt Filter und Wert: ein behaltener Chip
+   entfernt darum immer genau seinen Filter. */
 function chipEntfernen(tab, chip, entfernen) {
   const k = knoten[tab];
-  const alle = Array.from(k.chips.querySelectorAll(".chip"));
-  const i = alle.indexOf(chip);
-  const nachbar = alle[i + 1] || alle[i - 1] || null;
-  const hatteFokus = document.activeElement === chip;
+  if (document.activeElement === chip) {
+    const alle = Array.from(k.chips.querySelectorAll(".chip:not([data-ds-leaving])"));
+    const i = alle.indexOf(chip);
+    (alle[i + 1] || alle[i - 1] || k.filterKnopf).focus({ preventScroll: true });
+  }
   entfernen();
-  neuBerechnen(tab);
-  zeichneTabelle(tab);
-  zaehlerAnzeigen(tab);
-  hashSchreiben();
-  blattNachfuehren(tab);
-  if (hatteFokus) (nachbar || k.filterKnopf).focus({ preventScroll: true });
-  Bewegung.austreten(chip, "skalieren").then(function () {
-    Rahmen.stillZeichnen(k.chips, function () { zeichneChips(tab); });
-  });
+  nachFilter(tab);
 }
 
 /* ---------- Ganze Ansicht ---------- */
 
 function dichteAnwenden() {
-  for (const tab of TABELLEN) if (knoten[tab]) knoten[tab].rahmen.classList.toggle("ds-table--dense", zustand[tab].dicht);
+  for (const tab of TABELLEN) if (knoten[tab]) knoten[tab].tabelle.classList.toggle("ds-table--dense", zustand[tab].dicht);
 }
 
-function zeichneTabellenAnsicht(tab) {
+function zeichneTabellenAnsicht(tab, art) {
   const k = knoten[tab];
   k.suchfeld.setzen(zustand[tab].suche);
   dichteAnwenden();
   zaehlerAnzeigen(tab);
-  zeichneChips(tab);
-  zeichneTabelle(tab);
+  zeichneChips(tab, art);
+  zeichneTabelle(tab, art);
 }
 
-/* Nach jeder Änderung an Suche oder Filtern: Tabelle, Chips, Zähler und
-   Adresse nachführen. Keine Bewegung. */
+/* Nach jeder Änderung des Benutzers an Suche oder Filtern: Tabelle, Chips,
+   Zähler und Adresse nachführen; Zeilen und Chips gleiten. */
 function nachFilter(tab) {
   neuBerechnen(tab);
-  zeichneTabellenAnsicht(tab);
+  zeichneTabellenAnsicht(tab, "umordnen");
   hashSchreiben();
   blattNachfuehren(tab);
 }
 
 
 /* ==================================================================
-   7. Filter- und Spaltenblatt (Fehler E2, C4, C5, B5)
+   7. Filter- und Spaltenblatt
    ================================================================== */
 
 /* Das offene Blatt: { tab, art, blatt, nachfuehren() }. Es wird nie neu
@@ -1896,7 +1959,7 @@ function blattNachfuehren(tab) {
   if (offenesBlatt && offenesBlatt.tab === tab) offenesBlatt.nachfuehren();
 }
 
-/* Eine Facette als Gruppe von Kästchen (fieldset + legend, C4). */
+/* Eine Facette als Gruppe von Kästchen (fieldset + legend). */
 function facettenGruppe(tab, f) {
   const z = zustand[tab];
   const werte = werteZaehlen(tab, f.k);
@@ -1937,7 +2000,7 @@ function filterOeffnen(tab) {
     inhalt.push(archivGruppe);
   }
 
-  /* Zeiträume, Speicher und Programm: jede Auswahl mit Beschriftung (C4).
+  /* Zeiträume, Speicher und Programm: jede Auswahl mit Beschriftung.
      Sie stehen vor den langen Kästchenlisten, damit sie ohne Rollen
      erreichbar sind (der Programmfilter ist der häufigste der Benutzer). */
   const auswahlen = [];
@@ -2109,7 +2172,7 @@ function spaltenOeffnen(tab) {
     return m;
   });
 
-  /* Vorlagen setzen nur die Häkchen (C2): nichts wird neu gebaut. */
+  /* Vorlagen setzen nur die Häkchen: nichts wird neu gebaut. */
   const vorlagen = anhaengen(el("div", "ds-form-actions"), [
     UI.knopf({ text: "Standardspalten", variante: "leise", beiKlick: function () { setzen(TAB[tab].standard.slice()); } }),
     UI.knopf({ text: "Nur Name", variante: "leise", beiKlick: function () { setzen([name]); } }),
@@ -2142,7 +2205,7 @@ function spaltenOeffnen(tab) {
   offenesBlatt = { tab: tab, art: "spalten", blatt: blatt, nachfuehren: nachfuehren };
 }
 
-/* «Kompakt» gilt für alle Listen gleich (B7). */
+/* «Kompakt» gilt für alle Listen gleich. */
 function dichteSetzen(kompakt) {
   for (const t of TABELLEN) zustand[t].dicht = kompakt;
   dichteAnwenden();
@@ -2176,9 +2239,9 @@ function csvWert(tab, zeile, schluessel) {
 /* Ein Feld der CSV-Datei. Excel liest einen Wert, der mit = + - @ (oder
    Tabulator/Wagenrücklauf) beginnt, als Formel oder Zahl: «+41 41 926 22 01»
    wird zu #NAME?, «+491711234567» verliert das «+» und erscheint als
-   4.91712E+11, und ein Freitext könnte eine Formel einschleusen (Fehler
-   B8). Solche Werte bekommen ein vorangestelltes ' – ausser einer reinen
-   Zahl in einer Zahlenspalte («-5» bleibt dort eine Zahl). */
+   4.91712E+11, und ein Freitext könnte eine Formel einschleusen. Solche
+   Werte bekommen ein vorangestelltes ' – ausser einer reinen Zahl in einer
+   Zahlenspalte («-5» bleibt dort eine Zahl). */
 function csvFeld(text, zahlenSpalte) {
   let t = String(text === null || text === undefined ? "" : text);
   if (/^[=+\-@\t\r]/.test(t) && !(zahlenSpalte && /^[-+]?\d+([.,]\d+)?$/.test(t))) t = "'" + t;
@@ -2221,7 +2284,7 @@ function csvExport(tab) {
 
 /* Eine Kennzahl: { t: Text, w: Zahl, ton: 'warnung'|'gefahr', unter, setzen }.
    «setzen» bestimmt den Filter ihres Sprungs in die Liste; er zählt
-   dieselben Zeilen wie die Zahl (B1). Der Ton steht nie als Farbe auf der
+   dieselben Zeilen wie die Zahl. Der Ton steht nie als Farbe auf der
    Zahl, sondern als Sinnbild in der Beschriftung. */
 
 /* Offen ist eine Kennzahl mit Warn- oder Gefahrenton und einem Wert über
@@ -2382,6 +2445,7 @@ function rollenKennzahlen() {
 /* Ein Abschnitt der Übersicht: Titel (h2) mit optionaler Meta-Zeile rechts. */
 function abschnitt(id, titel, meta, inhalt) {
   const s = el("section", "uebersicht-abschnitt");
+  s.setAttribute("data-ds-key", "abschnitt-" + id);
   const kopf = el("div", "abschnitt-kopf");
   const h = el("h2", "ds-card__title", titel);
   h.id = id;
@@ -2419,9 +2483,9 @@ function syncHinweis() {
   return UI.hinweis("Letzter Abgleich mit SCCM, AD und Milestone: " + wann + ".");
 }
 
-/* Handlungsbedarf (Mapping 7.2 #14): eine Zeile je offener Kennzahl aus
-   den Listen des Moduls, Gefahr vor Warnung. Leer: Erfolgshinweis. Der
-   Sync-Zustand (syncHinweis) steht zuoberst. */
+/* Handlungsbedarf: eine Karte je offener Kennzahl aus den Listen des
+   Moduls, Gefahr vor Warnung; ab 2 × 360 px Platz in zwei Spalten. Leer:
+   Erfolgshinweis. Der Sync-Zustand (syncHinweis) steht zuoberst. */
 function handlungsbedarf(modul, punkte) {
   punkte.sort((a, b) => (TON_RANG[a.ton] ?? 9) - (TON_RANG[b.ton] ?? 9));
   const sync = syncHinweis();
@@ -2431,19 +2495,23 @@ function handlungsbedarf(modul, punkte) {
       UI.banner({ ton: "erfolg", text: "Keine offenen Punkte." })
     ]);
   }
-  const zeilen = punkte.map(function (p) {
-    return UI.listenZeile({
-      titel: p.t, unter: [Rahmen.zielText(p.tab), p.unter], marke: UI.zahlmarke(p.w, p.ton),
-      href: sprungAdresse(p.tab, p.setzen), beiKlick: sprungKlick(p.tab, p.setzen),
-      status: p.ton === "gefahr" ? UI.status("Dringend", "gefahr") : null,
-      fokus: "hb-" + p.tab + "-" + p.t
-    });
-  });
-  const liste = UI.zeilenliste(zeilen);
-  liste.classList.add("aufgaben");
+  const karten = anhaengen(el("div", "karten aufgaben"), punkte.map(aufgabenKarte));
   const n = punkte.length;
   return abschnitt(modul + "-handlungsbedarf", "Handlungsbedarf",
-    n === 1 ? "1 offener Punkt" : n + " offene Punkte", [sync, liste]);
+    n === 1 ? "1 offener Punkt" : n + " offene Punkte", [sync, karten]);
+}
+
+/* Ein Punkt als ganze klickbare Karte (UI.karte mit href: Dashboard-Style
+   .ds-card--interactive, der Titel ist der Link in die gefilterte Liste
+   und spannt sich über die Karte). Vorne die Zahlmarke in der Farbe ihrer
+   Dringlichkeit (marke), «Dringend» sagt sie zusätzlich als Wort. */
+function aufgabenKarte(p) {
+  const schluessel = "hb-" + p.tab + "-" + p.t;
+  const karte = UI.karte({ titel: p.t, ebene: 3, unter: UI.teile([Rahmen.zielText(p.tab), p.unter]),
+    aktionen: p.ton === "gefahr" ? [UI.status("Dringend", "gefahr")] : null, marke: UI.zahlmarke(p.w, p.ton),
+    href: sprungAdresse(p.tab, p.setzen), beiKlick: sprungKlick(p.tab, p.setzen), fokus: schluessel });
+  karte.setAttribute("data-ds-key", schluessel + "-karte");
+  return karte;
 }
 
 /* Die weiteren Kennzahlen einer Bestandskarte als klickbare Kennwerte
@@ -2453,6 +2521,7 @@ function kennwertListe(tab, liste) {
   return UI.kennwerte(liste.map(function (kz) {
     // Eine Kennzahl kann in eine andere Ansicht springen (kz.tab).
     const ziel = kz.tab || tab;
+    zahlMerken("kz-" + tab + "-" + kz.t, kz.w);
     return {
       name: kz.t, wert: kz.w, ton: istOffen(kz) ? kz.ton : undefined,
       href: kz.setzen ? sprungAdresse(ziel, kz.setzen) : undefined,
@@ -2463,16 +2532,18 @@ function kennwertListe(tab, liste) {
   }));
 }
 
-/* Bestandskarte (Mapping 7.2 #15): Kopf mit Sinnbild, Titel und «Liste
-   öffnen →»; die Hauptzahl als Kachel (zählt beim ersten Zeigen hoch),
-   darunter die weiteren Kennzahlen als klickbare Zeilen. */
+/* Bestandskarte: Kopf mit Sinnbild, Titel und «Liste öffnen →»; die
+   Hauptzahl als Kachel (zählt beim ersten Zeigen hoch, danach vom
+   gezeigten Wert), darunter die weiteren Kennzahlen als klickbare Zeilen. */
 function bestandKarte(tab, kennzahlen, hinweis, offen) {
   const titel = Rahmen.zielText(tab);
   const oeffnen = UI.knopf({ text: "Liste öffnen", variante: "leise", weiter: true, label: "Liste «" + titel + "» öffnen",
     href: sprungAdresse(tab, nichts), beiKlick: sprungKlick(tab, nichts), fokus: "bestand-" + tab + "-liste" });
   const karte = UI.karte({ titel: titel, sinnbild: SINNBILD[tab], ebene: 3, aktionen: [oeffnen], klasse: "bestand-karte" });
+  karte.setAttribute("data-ds-key", "bestand-" + tab);
 
   const [haupt, ...rest] = kennzahlen;
+  zahlMerken("bestand-" + tab + "-haupt", haupt.w);
   const kachel = UI.kachel({ text: haupt.t, wert: UI.zahlText(haupt.w), zahl: haupt.w, unter: haupt.unter,
     href: sprungAdresse(tab, haupt.setzen), beiKlick: sprungKlick(tab, haupt.setzen), fokus: "bestand-" + tab + "-haupt" });
   anhaengen(karte.inhalt, [kachel, kennwertListe(tab, rest), hinweis ? UI.hinweis(hinweis) : null]);
@@ -2481,7 +2552,7 @@ function bestandKarte(tab, kennzahlen, hinweis, offen) {
   return karte;
 }
 
-/* ---------- Ersatzplanung: Zeitstrahl je Client-Liste (Mapping 7.2 #11) ---------- */
+/* ---------- Ersatzplanung: Zeitstrahl je Liste mit Ersatzjahr ---------- */
 
 /* «2024/2025» → «2024/25»; die volle Bezeichnung steht im Tooltip. */
 function gjKurz(jahr) { return String(jahr).replace(/\/(\d\d)(\d\d)$/, "/$2"); }
@@ -2491,7 +2562,9 @@ function geraeteText(n) { return UI.zahlText(n) + (n === 1 ? " Gerät" : " Gerä
 /* Eine Säule: als Knopf, wenn Geräte dahinterstehen (Sprung in die Liste
    mit dem Jahr als Filter), sonst nur Platzhalter. Die Höhe ist ein
    scaleY über --anteil (.saeule-fuell): beim ersten Zeigen wächst sie
-   (Bewegung.aufziehen), beim Neuzeichnen springt sie. */
+   (Bewegung.aufziehen), danach gleitet sie zum neuen Wert (styles.css).
+   Druck mit Welle und Zustandsebene im Druckmodell von Dashboard-Style
+   (data-ds-ripple). */
 function zeitstrahlSaeule(tab, jahr, anzahl, hoechste, art, feld, beschreibung) {
   const s = el(anzahl ? "button" : "div", "zeitstrahl-saeule " + art);
   s.style.setProperty("--anteil", String(anzahl / hoechste));
@@ -2501,6 +2574,7 @@ function zeitstrahlSaeule(tab, jahr, anzahl, hoechste, art, feld, beschreibung) 
     return s;
   }
   s.type = "button";
+  s.setAttribute("data-ds-ripple", "");
   if (art === "ueberfaellig") s.appendChild(UI.sinnbild("achtung", 16, "zeitstrahl-marke"));
   s.setAttribute("aria-label", beschreibung + ". In der Liste zeigen.");
   s.setAttribute("data-fokus", "zs-" + tab + "-" + jahr + "-" + feld);
@@ -2548,6 +2622,7 @@ function zeitstrahl(tab) {
     const nE = ersatz.get(jahr) || 0;
     const v = Modell.gjVergleich(jahr, heute);
     const spalteJahr = el("div", "zeitstrahl-jahr" + (v === 0 ? " aktuell" : ""));
+    spalteJahr.setAttribute("data-ds-key", "gj-" + jahr);
     const saeulen = el("div", "zeitstrahl-saeulen");
     const ersatzArt = v < 0 ? "ueberfaellig" : (v === 0 ? "faellig" : "ersatz");
     anhaengen(saeulen, [
@@ -2570,7 +2645,7 @@ function zeitstrahl(tab) {
 }
 
 /* Legende unter einer Haarlinie: dieselben Klassen wie die Säulen, damit
-   Farbe und Bedeutung nie auseinanderlaufen (Inventar §8 Nr. 5). */
+   Farbe und Bedeutung nie auseinanderlaufen. */
 function zeitstrahlLegende() {
   const ul = el("ul", "zeitstrahl-legende");
   for (const [art, text] of [["beschafft", "Beschafft"], ["ersatz", "Ersatz geplant"],
@@ -2588,6 +2663,7 @@ function zeitstrahlLegende() {
 
 function planungKarte(tab) {
   const karte = UI.karte({ titel: Rahmen.zielText(tab), sinnbild: SINNBILD[tab], ebene: 3, klasse: "planung-karte" });
+  karte.setAttribute("data-ds-key", "planung-" + tab);
   const strahl = zeitstrahl(tab);
   if (strahl) anhaengen(karte.inhalt, [strahl, zeitstrahlLegende()]);
   else karte.inhalt.appendChild(UI.hinweis("Noch keine Beschaffungs- oder Ersatzjahre erfasst."));
@@ -2611,7 +2687,7 @@ function zeitstrahlAusrichten() {
   }
 }
 
-/* ---------- Verteilungen (Mapping 7.2 #12) ---------- */
+/* ---------- Verteilungen ---------- */
 
 /* Mehr als acht Zeilen macht eine Verteilung nicht lesbarer; der Rest
    steht als Summe darunter. */
@@ -2619,7 +2695,7 @@ const VERTEILUNG_ZEILEN = 8;
 
 function verteilungsKarte(tab, schluessel, titel) {
   const eintraege = werteZaehlen(tab, schluessel, true).map(([wert, n]) => ({ wert: wert, zahl: n }));
-  return verteilungsKarteAus(titel, eintraege, function (e) {
+  return verteilungsKarteAus("vt-" + tab + "-" + schluessel, titel, eintraege, function (e) {
     const setzen = z => facetteSetzen(z, schluessel, e.wert);
     return { text: e.wert === "" ? LEER_WERT : e.wert, zahl: e.zahl, fokus: "vt-" + tab + "-" + schluessel + "-" + e.wert,
       href: sprungAdresse(tab, setzen), beiKlick: sprungKlick(tab, setzen) };
@@ -2628,15 +2704,18 @@ function verteilungsKarte(tab, schluessel, titel) {
 
 /* Eine Verteilung aus fertig gezählten Einträgen ({zahl, …}, absteigend):
    «zeile» macht aus einem Eintrag die Zeile für UI.verteilung (nur für die
-   gezeigten), «summeText» nennt die Summe der weggelassenen. */
-function verteilungsKarteAus(titel, eintraege, zeile, summeText) {
+   gezeigten), «summeText» nennt die Summe der weggelassenen. Klickbare
+   Zeilen zählen beim Nachladen vom gezeigten Wert, ihr Balken gleitet mit. */
+function verteilungsKarteAus(schluessel, titel, eintraege, zeile, summeText) {
   const karte = UI.karte({ titel: titel, ebene: 3 });
+  karte.setAttribute("data-ds-key", schluessel);
   if (!eintraege.length) {
     karte.inhalt.appendChild(UI.hinweis("Keine Werte vorhanden."));
     return karte;
   }
-  const gezeigt = eintraege.slice(0, VERTEILUNG_ZEILEN);
-  karte.inhalt.appendChild(UI.verteilung(gezeigt.map(zeile), { max: eintraege[0].zahl }));
+  const zeilen = eintraege.slice(0, VERTEILUNG_ZEILEN).map(zeile);
+  for (const z of zeilen) if (z.fokus) zahlMerken(z.fokus, z.zahl);
+  karte.inhalt.appendChild(UI.verteilung(zeilen, { max: eintraege[0].zahl }));
   if (eintraege.length > VERTEILUNG_ZEILEN) {
     const rest = eintraege.slice(VERTEILUNG_ZEILEN);
     const summe = rest.reduce((s, e) => s + e.zahl, 0);
@@ -2656,7 +2735,7 @@ function programmVerteilung() {
     const e = zaehler.get(p.i);
     return { p: p, text: p.d, eins: e.eins, zwei: e.zwei, zahl: e.eins + e.zwei };
   }).filter(e => e.zahl > 0).sort(absteigend);
-  return verteilungsKarteAus("Programme nach Berechtigten", eintraege, function (e) {
+  return verteilungsKarteAus("vt-software-programme", "Programme nach Berechtigten", eintraege, function (e) {
     const setzen = function (z) { z.programm = e.p.i; };
     return { text: e.text, zahl: e.zahl, fokus: "vt-software-" + e.p.i,
       titel: e.text + ": " + UI.zahlText(e.eins) + " von Hand, " + UI.zahlText(e.zwei) + " aus AD",
@@ -2668,7 +2747,7 @@ function kategorieVerteilung() {
   const eintraege = Modell.programmKategorien(programmSpalten).map(k => ({
     text: k, zahl: zaehle(programmSpalten, p => p.g === k)
   })).sort(absteigend);
-  return verteilungsKarteAus("Programme nach Kategorie", eintraege, e => ({ text: e.text, zahl: e.zahl }),
+  return verteilungsKarteAus("vt-software-kategorien", "Programme nach Kategorie", eintraege, e => ({ text: e.text, zahl: e.zahl }),
     n => anzahlText("software", n));
 }
 
@@ -2731,13 +2810,40 @@ const MODUL = {
   }
 };
 
-/* Eine Modul-Übersicht: alles nach dem Seitenkopf wird neu gebaut, ohne
-   Bewegung (die macht nur Rahmen.wechseln bzw. Rahmen.zustand). */
-function zeichneUebersicht(modul) {
+/* Kennzahlen, die beim Nachzeichnen vom gezeigten Wert zählen: je
+   Schlüssel (data-fokus der Kachel bzw. Zeile) der Rohwert dieses Laufs
+   und der zuletzt gezeigte. Nie aus dem Markup gelesen. */
+let neueZahlen = new Map();
+const gezeigteZahlen = new Map();
+
+function zahlMerken(schluessel, wert) { neueZahlen.set(schluessel, wert); }
+
+/* Nach dem Abgleich: jede behaltene Kachel und Verteilungszeile, deren
+   Zahl sich geändert hat, zählt vom gezeigten zum neuen Wert (ihr Balken
+   gleitet in derselben Zeit). Neue Knoten zählen hier nicht: sie zeigen
+   ihren Wert, beim ersten Zeigen der Ansicht zählt Bewegung.auftritt. */
+function zahlenNachfuehren(wurzel, vorher) {
+  const da = new Map();
+  for (const n of wurzel.querySelectorAll("[data-ds-key]")) da.set(n.getAttribute("data-ds-key"), n);
+  for (const [schluessel, wert] of neueZahlen) {
+    const alt = gezeigteZahlen.get(schluessel);
+    gezeigteZahlen.set(schluessel, wert);
+    const n = da.get(schluessel);
+    if (alt === undefined || alt === wert || !n || !vorher.has(n)) continue;
+    const zahl = n.querySelector(".ds-tile__value, .verteilung-zahl");
+    if (zahl) Bewegung.hochzaehlen(zahl, wert, { von: alt });
+  }
+  neueZahlen = new Map();
+}
+
+/* Eine Modul-Übersicht: alles nach dem Seitenkopf wird neu gebaut und mit
+   dem Bestand abgeglichen (art wie bei zeigen): Karten, Zeilen und
+   Säulen bleiben, wo sie waren; nach dem Nachladen gleiten die Punkte des
+   Handlungsbedarfs und die Zeilen der Verteilungen an ihren neuen Platz. */
+function zeichneUebersicht(modul, art) {
   const m = MODUL[modul];
   const ansicht = knoten[modul].ansicht;
-  const kopf = knoten[modul].kopf;
-  while (kopf.nextSibling) kopf.nextSibling.remove();
+  neueZahlen = new Map();
 
   const offen = [];
   const bestand = anhaengen(el("div", "karten"), m.bestand(offen));
@@ -2746,13 +2852,20 @@ function zeichneUebersicht(modul) {
         "Laufendes Geschäftsjahr " + Modell.gjAktuell() + " · " + m.verteilungsMeta,
         [anhaengen(el("div", "karten planung"), m.planung.map(planungKarte))])
     : null;
-
-  anhaengen(ansicht, [
+  const neu = schluesselSetzen([
+    knoten[modul].kopf,
     handlungsbedarf(modul, offen),
     abschnitt(modul + "-bestand", "Bestand", null, [bestand]),
     planung,
     abschnitt(modul + "-verteilungen", "Verteilungen", m.verteilungsMeta, [anhaengen(el("div", "karten"), m.verteilungen())])
-  ]);
+  ].filter(Boolean));
+
+  const vorher = new Set(ansicht.querySelectorAll("[data-ds-key]"));
+  zeigen(ansicht, neu, art === "umordnen" ? undefined : art, ".aufgaben > .ds-card, .verteilung > li");
+  zahlenNachfuehren(ansicht, vorher);
+  // Ein behaltener Zeitstrahl trägt nach dem Abgleich die Attribute seiner
+  // losgelösten Vorlage, also keine Rollkanten: neu prüfen.
+  for (const r of ansicht.querySelectorAll(".zeitstrahl")) UI.rollKanten(r);
   if (!ansicht.hidden) zeitstrahlAusrichten();
 }
 
@@ -2775,7 +2888,7 @@ function softwareGeruest() {
     id: "software-suche", platzhalter: SUCH_PLATZHALTER.software, label: "Software durchsuchen", kuerzel: "/",
     beiEingabe: function (wert) {
       zustand.software.suche = wert;
-      zeichneSoftware();
+      zeichneSoftware("umordnen");
       hashSchreiben();
     }
   });
@@ -2790,7 +2903,7 @@ function softwareGeruest() {
 }
 
 /* «3 von Hand», «5 aus AD»: ein Text-Link in die Benutzerliste, gefiltert
-   auf genau diese Stufe — die Zahl stimmt so mit der Liste überein. */
+   auf genau diese Stufe – die Zahl stimmt so mit der Liste überein. */
 function berechtigtLink(p, anzahl, stufe, wort) {
   const text = UI.zahlText(anzahl) + " " + wort;
   if (!anzahl) return el("span", null, text);
@@ -2804,8 +2917,17 @@ function berechtigtLink(p, anzahl, stufe, wort) {
   return a;
 }
 
+/* Die AD-Gruppen einer Software oder Kamerarolle: eine Meta-Zeile mit
+   Teilen («2 AD-Gruppen · A · B», wie die Vorschau im Softwarefenster).
+   Eine Gruppe ist kein Zustand, darum kein Status-Chip. */
+function adGruppenZeile(gruppen) {
+  return UI.meta(UI.teile([gruppen.length === 1 ? "1 AD-Gruppe" : UI.zahlText(gruppen.length) + " AD-Gruppen"]
+    .concat(gruppen)));
+}
+
 function softwareKarte(p, e) {
   const karte = UI.karte({ titel: p.d, ebene: 3, klasse: "software-karte" });
+  karte.setAttribute("data-ds-key", "sw-karte-" + p.i);
   const h = karte.kopf.querySelector(".ds-card__title");
   leeren(h);
   const name = el("a", "name-link", p.d);
@@ -2822,29 +2944,27 @@ function softwareKarte(p, e) {
   zahlen.appendChild(UI.teile([berechtigtLink(p, e.eins, "1", "von Hand"), berechtigtLink(p, e.zwei, "2", "aus AD")]));
   /* Ohne AD-Gruppe nur eine leise Meta-Zeile (dieselben Worte wie im
      Softwarefenster): bei vielen Programmen sonst ein Wald gleicher Sätze. */
-  const gruppen = p.adGruppen.length
-    ? UI.chips(p.adGruppen.map(g => UI.status(g, "neutral", { sinnbild: "benutzerGruppe" })))
-    : UI.meta("Nur von Hand vergeben");
+  const gruppen = p.adGruppen.length ? adGruppenZeile(p.adGruppen) : UI.meta("Nur von Hand vergeben");
   anhaengen(karte.inhalt, [zahlen, gruppen, p.bemerkung ? UI.meta(p.bemerkung) : null]);
   return karte;
 }
 
-function zeichneSoftware() {
+/* Eine Karte je Programm, nach Kategorie in Abschnitten. Beim Suchen
+   gleiten die Karten (eine Kategorie ohne Treffer geht samt Titel). */
+function zeichneSoftware(art) {
   const k = knoten.software;
-  const ziel = k.liste;
-  leeren(ziel);
   const suche = zustand.software.suche.trim().toLowerCase();
 
   /* Fehlt die Liste «Software», sagt die Ansicht, was zu tun ist. */
   if (listenHinweis.software && !software.length) {
-    ziel.appendChild(UI.leerzustand({ sinnbild: "software", titel: "Liste «Software» nicht verfügbar",
-      text: listenHinweis.software }));
+    UI.abgleichen(k.liste, [UI.leerzustand({ sinnbild: "software", titel: "Liste «Software» nicht verfügbar",
+      text: listenHinweis.software })]);
     UI.textSetzen(k.anzahl, "");
     return;
   }
 
   const zaehler = programmZaehler();
-
+  const neu = [];
   let gezeigt = 0;
   for (const kategorie of Modell.programmKategorien(programmSpalten)) {
     const spalten = programmSpalten.filter(function (p) {
@@ -2857,33 +2977,33 @@ function zeichneSoftware() {
     gezeigt += spalten.length;
     const karten = anhaengen(el("div", "karten software-karten"),
       spalten.map(p => softwareKarte(p, zaehler.get(p.i) || { eins: 0, zwei: 0 })));
-    ziel.appendChild(abschnitt("sw-kat-" + kategorie.replace(/\W+/g, "-"), kategorie,
+    neu.push(abschnitt("sw-kat-" + kategorie.replace(/\W+/g, "-"), kategorie,
       anzahlText("software", spalten.length), [karten]));
   }
 
   if (!gezeigt) {
-    const leer = programmSpalten.length
+    neu.push(programmSpalten.length
       ? UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
           aktion: { text: "Suche zurücksetzen", fokus: "software-leer-aktion", beiKlick: function () {
             zustand.software.suche = "";
             suchfeldAngleichen("software");
-            zeichneSoftware();
-            hashSchreiben();
             k.suchfeld.eingabe.focus();
+            zeichneSoftware("umordnen");
+            hashSchreiben();
           } } })
       : UI.leerzustand({ sinnbild: "software", titel: "Noch keine Programme",
-          text: "Das erste Programm lässt sich über «Neues Programm» erfassen." });
-    ziel.appendChild(leer);
+          text: "Das erste Programm lässt sich über «Neues Programm» erfassen." }));
   }
+  zeigen(k.liste, schluesselSetzen(neu), art, ".software-karte, .abschnitt-kopf");
 
   UI.textSetzen(k.anzahl, gezeigt === programmSpalten.length
     ? anzahlText("software", programmSpalten.length)
     : UI.zahlText(gezeigt) + " von " + UI.zahlText(programmSpalten.length));
 }
 
-function zeichneSoftwareAnsicht() {
+function zeichneSoftwareAnsicht(art) {
   knoten.software.suchfeld.setzen(zustand.software.suche);
-  zeichneSoftware();
+  zeichneSoftware(art);
 }
 
 
@@ -2903,7 +3023,7 @@ function rechteGeruest() {
     id: "kamerarechte-suche", platzhalter: SUCH_PLATZHALTER.kamerarechte, label: "Kamerarechte durchsuchen", kuerzel: "/",
     beiEingabe: function (wert) {
       zustand.kamerarechte.suche = wert;
-      zeichneKamerarechte();
+      zeichneKamerarechte("umordnen");
       hashSchreiben();
     }
   });
@@ -2935,6 +3055,7 @@ function rollenKameraLink(r) {
 
 function rollenKarte(r) {
   const karte = UI.karte({ titel: String(r.Title || "").trim() || "(ohne Namen)", ebene: 3, klasse: "software-karte kamerarolle-karte" });
+  karte.setAttribute("data-ds-key", "kr-karte-" + r.id);
   const h = karte.kopf.querySelector(".ds-card__title");
   leeren(h);
   const name = el("a", "name-link", String(r.Title || "").trim() || "(ohne Namen)");
@@ -2946,38 +3067,35 @@ function rollenKarte(r) {
   });
   h.appendChild(name);
 
-  const status = [];
-  if (!r.__inMilestone) status.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
-  // Die Rolle der Administratoren sieht alles; heisst sie schon so, sagt der Titel es.
-  if (r.__admin && !/admin/i.test(String(r.Title || ""))) status.push(UI.status("Administratoren", "neutral", { sinnbild: "schloss" }));
+  // Ein Chip nur für die Abweichung; die Art der Rolle ist ein Teil der Zeile.
+  const status = r.__inMilestone ? null : UI.chips([UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" })]);
 
   const n = r.__personen.length + r.__unbekannt.length;
   const zahlen = el("p", "ds-muted");
-  zahlen.appendChild(UI.teile([rollenKameraLink(r), UI.zahlText(n) + (n === 1 ? " Person" : " Personen")]));
+  // Die Rolle der Administratoren sieht alles; heisst sie schon so, sagt der Titel es.
+  zahlen.appendChild(UI.teile([rollenKameraLink(r), UI.zahlText(n) + (n === 1 ? " Person" : " Personen"),
+    r.__admin && !/admin/i.test(String(r.Title || "")) ? "Administratoren" : null]));
 
   const gruppen = r.__adGruppen.length
-    ? UI.chips(r.__adGruppen.map(g => UI.status(g, "neutral", { sinnbild: "benutzerGruppe" })))
+    ? adGruppenZeile(r.__adGruppen)
     : UI.meta(r.__mitglieder.length ? r.__mitglieder.map(m => m.name).join(", ") : "Keine Mitglieder");
   const rechte = r.__rechte.length ? UI.meta("Rechte: " + r.__rechte.join(", ")) : null;
-  anhaengen(karte.inhalt, [status.length ? UI.chips(status) : null, zahlen, gruppen, rechte]);
+  anhaengen(karte.inhalt, [status, zahlen, gruppen, rechte]);
   return karte;
 }
 
-function zeichneKamerarechte() {
+/* Eine Karte je Rolle; beim Suchen gleiten die Karten. */
+function zeichneKamerarechte(art) {
   const k = knoten.kamerarechte;
   const z = zustand.kamerarechte;
-  leeren(k.liste);
-  leeren(k.stand);
 
-  if (listenHinweis.kamerarolle && !kameraRollen.length) {
-    k.liste.appendChild(UI.leerzustand({ sinnbild: "schild", titel: "Liste «Kamera-Rollen» nicht verfügbar",
-      text: listenHinweis.kamerarolle }));
-    UI.textSetzen(k.anzahl, "");
-    return;
-  }
   if (!kameraRollen.length) {
-    k.liste.appendChild(UI.leerzustand({ sinnbild: "schild", titel: "Noch keine Rollen",
-      text: "Der Abgleich liest die Rollen aus Milestone, sobald das Konto des Syncs sie lesen darf (README Abschnitt 7.5)." }));
+    UI.abgleichen(k.stand, []);
+    UI.abgleichen(k.liste, [listenHinweis.kamerarolle
+      ? UI.leerzustand({ sinnbild: "schild", titel: "Liste «Kamera-Rollen» nicht verfügbar",
+          text: listenHinweis.kamerarolle })
+      : UI.leerzustand({ sinnbild: "schild", titel: "Noch keine Rollen",
+          text: "Der Abgleich liest die Rollen aus Milestone, sobald das Konto des Syncs sie lesen darf (README Abschnitt 7.5)." })]);
     UI.textSetzen(k.anzahl, "");
     return;
   }
@@ -2988,8 +3106,8 @@ function zeichneKamerarechte() {
     const d = Hilfe.datum(r.MS_LetzterSync);
     if (d && (!juengster || d > juengster)) juengster = d;
   }
-  if (juengster) k.stand.appendChild(UI.hinweis("Rechte aus Milestone, zuletzt abgeglichen " + UI.zeitText(juengster)
-    + ". Geändert werden sie im Management Client von Milestone, nicht hier."));
+  UI.abgleichen(k.stand, juengster ? [UI.hinweis("Rechte aus Milestone, zuletzt abgeglichen " + UI.zeitText(juengster)
+    + ". Geändert werden sie im Management Client von Milestone, nicht hier.")] : []);
 
   const worte = z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const passend = kameraRollen.filter(function (r) {
@@ -3001,26 +3119,24 @@ function zeichneKamerarechte() {
     return Hilfe.vergleiche(a.Title, b.Title);
   });
 
-  if (!passend.length) {
-    k.liste.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
-      aktion: { text: "Filter zurücksetzen", fokus: "kamerarechte-leer-aktion", beiKlick: function () {
-        zustand.kamerarechte = leererRechteZustand();
-        k.suchfeld.eingabe.value = "";
-        zeichneKamerarechte();
-        hashSchreiben();
-        k.suchfeld.eingabe.focus();
-      } } }));
-  } else {
-    anhaengen(k.liste, passend.map(rollenKarte));
-  }
+  const neu = passend.length ? passend.map(rollenKarte)
+    : [UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
+        aktion: { text: "Suche zurücksetzen", fokus: "kamerarechte-leer-aktion", beiKlick: function () {
+          zustand.kamerarechte = leererRechteZustand();
+          suchfeldAngleichen("kamerarechte");
+          k.suchfeld.eingabe.focus();
+          zeichneKamerarechte("umordnen");
+          hashSchreiben();
+        } } })];
+  zeigen(k.liste, schluesselSetzen(neu), art);
   UI.textSetzen(k.anzahl, passend.length === kameraRollen.length
     ? anzahlText("kamerarechte", kameraRollen.length)
     : UI.zahlText(passend.length) + " von " + UI.zahlText(kameraRollen.length));
 }
 
-function zeichneKamerarechteAnsicht() {
+function zeichneKamerarechteAnsicht(art) {
   knoten.kamerarechte.suchfeld.setzen(zustand.kamerarechte.suche);
-  zeichneKamerarechte();
+  zeichneKamerarechte(art);
 }
 
 
@@ -3028,26 +3144,28 @@ function zeichneKamerarechteAnsicht() {
    11. Ansichten wechseln, Nachladen, Rundfunkkanal
    ================================================================== */
 
-/* Sichtbarkeit, feste Tafel und Titel der Ansicht — ohne zu zeichnen. */
+/* Sichtbarkeit, feste Tafel und Titel der Ansicht – ohne zu zeichnen. */
 function ansichtZeigen(name) {
   for (const a of ANSICHTEN) $("ansicht-" + a).hidden = a !== name;
   Rahmen.fest(TABELLEN.indexOf(name) > -1);
-  /* Im Fehlerzustand nennt der Titel den Fehler (C6), nicht die Ansicht,
+  /* Im Fehlerzustand nennt der Titel den Fehler, nicht die Ansicht,
      die erst nach «Erneut laden» erscheint. */
   if (Rahmen.zustandJetzt() !== "fehler") Rahmen.dokumentTitel(Rahmen.zielText(name));
 }
 
-function zeichneAnsicht() {
+/* Die aktuelle Ansicht zeichnen (art wie bei zeigen). */
+function zeichneAnsicht(art) {
   const a = zustand.ansicht;
-  if (istUebersicht(a)) zeichneUebersicht(a);
-  else if (a === "software") zeichneSoftwareAnsicht();
-  else if (a === "kamerarechte") zeichneKamerarechteAnsicht();
-  else zeichneTabellenAnsicht(a);
+  if (istUebersicht(a)) zeichneUebersicht(a, art);
+  else if (a === "software") zeichneSoftwareAnsicht(art);
+  else if (a === "kamerarechte") zeichneKamerarechteAnsicht(art);
+  else zeichneTabellenAnsicht(a, art);
 }
 
-/* Auf eine andere Ansicht umschalten. Die Pille gleitet, der alte Inhalt
-   blendet aus, der neue tritt ein (Rahmen.wechseln). Vor dem ersten
-   Inhalt wird nur gemerkt, was gezeigt werden soll. */
+/* Auf eine andere Ansicht umschalten. Die Pille gleitet, die Ansichten
+   wechseln im «fade-through» von Dashboard-Style (Rahmen.wechseln über
+   DS.motion.transition); ihre Raster staffeln nur beim ersten Zeigen. Vor
+   dem ersten Inhalt wird nur gemerkt, was gezeigt werden soll. */
 function ansichtWechseln(name, ausVerlauf) {
   if (ANSICHTEN.indexOf(name) === -1) return Promise.resolve(false);
   const gewechselt = zustand.ansicht !== name;
@@ -3073,13 +3191,14 @@ function ansichtWechseln(name, ausVerlauf) {
 }
 
 /* Still nachladen, ohne Filter, Sortierung, Rollposition, Fokus oder ein
-   offenes Blatt zu verlieren, und ohne jede Bewegung.
+   offenes Blatt zu verlieren und ohne einen Auftritt zu wiederholen: die
+   Ansicht gleicht ab, geänderte Zeilen gleiten (live, siehe zeigen),
+   Kennzahlen zählen vom gezeigten Wert.
 
    «leise» ist der automatische Takt: er meldet nichts. Ein Nachladen, das
    eine Änderung aus einem Detailfenster einsammelt, sagt kurz Bescheid.
    Kommt eine Meldung, während schon geladen wird, lädt die Seite danach
-   noch einmal (Fehler B2) — sonst ginge die Änderung bis zum nächsten
-   Takt verloren. */
+   noch einmal – sonst ginge die Änderung bis zum nächsten Takt verloren. */
 let ladeLaeuft = false;
 let nochmal = null;   // null | { leise }
 let letzteAktualisierung = Date.now();
@@ -3095,7 +3214,7 @@ async function stillNeuLaden(leise) {
   try {
     const fehlgeschlagen = await datenLaden(true);
     alleNeuBerechnen();
-    Rahmen.stillZeichnen(k ? k.ansicht : null, zeichneAnsicht);
+    Rahmen.stillZeichnen(k ? k.ansicht : null, function () { zeichneAnsicht("live"); });
     if (offenesBlatt) offenesBlatt.nachfuehren();
     if (!leise) {
       if (fehlgeschlagen.length) {
@@ -3256,7 +3375,7 @@ function suchfeldVon(name) {
    Fokus hat. Für die Fälle, in denen nicht das Tippen die Quelle ist: eine
    neue Adresse derselben Ansicht von aussen (eingefügter Link, Vor/Zurück)
    und ein ausdrückliches Zurücksetzen. suchfeld.setzen() schreibt dann
-   absichtlich nicht (Fehler B4: nie gegen das Tippen), darum hier direkt
+   absichtlich nicht (nie gegen das Tippen), darum hier direkt
    ins Feld. Eine noch wartende Eingabe meldet danach diesen Wert statt des
    alten. */
 function suchfeldAngleichen(name) {
@@ -3296,7 +3415,7 @@ function ereignisseVerbinden() {
   });
 
   /* Kommt die Seite über die Zurück-Taste aus dem Cache des Browsers, ist
-     sie so alt wie beim Verlassen — die Änderung aus der Detailseite fehlt.
+     sie so alt wie beim Verlassen – die Änderung aus der Detailseite fehlt.
      Darum still nachladen. */
   window.addEventListener("pageshow", function (e) {
     if (!e.persisted) return;
@@ -3321,7 +3440,7 @@ function ereignisseVerbinden() {
       ansichtWechseln(name, true);
     } else {
       suchfeldAngleichen(name);
-      Rahmen.stillZeichnen(knoten[name] ? knoten[name].ansicht : null, zeichneAnsicht);
+      Rahmen.stillZeichnen(knoten[name] ? knoten[name].ansicht : null, function () { zeichneAnsicht(); });
     }
   });
 

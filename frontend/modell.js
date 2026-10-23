@@ -1,4 +1,4 @@
-/* modell.js — gemeinsame Logik von Hauptseite, Clientfenster,
+/* modell.js – gemeinsame Logik von Hauptseite, Clientfenster,
    Benutzerfenster, Telefonfenster und Softwarefenster.
 
    Enthält:
@@ -165,7 +165,7 @@ const Modell = (function () {
 
   /* Die AD-Gruppen einer Software-Zeile: eine Gruppe je Zeile der
      Note-Spalte «AdGruppen», leere Zeilen und Doppelte fallen weg.
-     Dieselbe Umrechnung steht in Inventar-Gemeinsam.ps1 (ConvertTo-Programm) —
+     Dieselbe Umrechnung steht in Inventar-Gemeinsam.ps1 (ConvertTo-Programm) –
      beide Seiten müssen dasselbe lesen. */
   function adGruppen(wert) {
     const gefunden = [];
@@ -201,7 +201,7 @@ const Modell = (function () {
   }
 
   /**
-   * Spaltenobjekte für die Programme aus der Liste «Software» — dieselbe Form
+   * Spaltenobjekte für die Programme aus der Liste «Software» – dieselbe Form
    * wie die Einträge in spalten.js, plus «adGruppen», «reihenfolge» und die
    * Listen-Id der Software-Zeile (zum Öffnen des Softwarefensters).
    *
@@ -295,7 +295,7 @@ const Modell = (function () {
      ================================================================== */
 
   /* Die drei erlaubten Werte der Spalte «Status» der Client-Listen. Leer
-     oder unbekannt gilt als «Aktiv» — so war die Liste vor der Einführung
+     oder unbekannt gilt als «Aktiv» – so war die Liste vor der Einführung
      der Spalte, und so schreibt es auch der Sync. */
   const STATUS_WERTE = ["Aktiv", "Lager", "Archiviert"];
 
@@ -345,7 +345,7 @@ const Modell = (function () {
 
   const VERLAUF_QUELLEN = ["manuell", "sync"];
 
-  /** Heute als «JJJJ-MM-TT» in Ortszeit (nicht UTC — sonst kippt es abends). */
+  /** Heute als «JJJJ-MM-TT» in Ortszeit (nicht UTC – sonst kippt es abends). */
   function heuteIso() {
     const d = new Date();
     return d.getFullYear() + "-"
@@ -354,7 +354,7 @@ const Modell = (function () {
   }
 
   /* Jetzt als «JJJJ-MM-TTThh:mm:ssZ» (UTC, ohne Millisekunden). Genau diese
-     Form schreibt auch der Sync (ToIso in Inventar-Gemeinsam.ps1) — beide
+     Form schreibt auch der Sync (ToIso in Inventar-Gemeinsam.ps1) – beide
      Seiten sollen denselben Zeitstempel erzeugen, nicht zwei Varianten. */
   function jetztIso() {
     return new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -468,7 +468,7 @@ const Modell = (function () {
     };
   }
 
-  /** Nur die Texte eines Verlaufs — für den Volltextindex. */
+  /** Nur die Texte eines Verlaufs – für den Volltextindex. */
   function verlaufTexte(roh) {
     return verlaufLesen(roh).map(e => e.text).join("  ");
   }
@@ -550,7 +550,7 @@ const Modell = (function () {
   /* In welche Client-Liste gehört ein Name? Es gibt genau eine Regel: alles,
      was mit «EDU» beginnt, gehört zu den EDU-Clients, alles Übrige zu den
      ADMIN-Clients. Dieselbe Regel steht in Inventar-Gemeinsam.ps1
-     (Get-ClientListe) — der Sync teilt danach auf, das Frontend prüft damit
+     (Get-ClientListe) – der Sync teilt danach auf, das Frontend prüft damit
      nur, ob ein von Hand erfasster Name zur offenen Liste passt. */
   const EDU_PRAEFIX = "EDU";
 
@@ -564,7 +564,7 @@ const Modell = (function () {
     return n.toUpperCase().indexOf(EDU_PRAEFIX) === 0 ? "edu" : "admin";
   }
 
-  /* Die abgeleiteten Felder, die ein Client ganz für sich hat — ohne einen
+  /* Die abgeleiteten Felder, die ein Client ganz für sich hat – ohne einen
      Blick in die Benutzer-Liste. Sie gelten für beide Client-Listen gleich;
      die Inhaberschaft kommt nur bei den ADMIN-Clients dazu. */
   function clientGrundfelder(clients) {
@@ -593,7 +593,7 @@ const Modell = (function () {
   }
 
   /**
-   * Abgeleitete Felder für eine Client-Liste ohne Inhaberschaft — die
+   * Abgeleitete Felder für eine Client-Liste ohne Inhaberschaft – die
    * EDU-Clients. Sie sind Schulungsgeräte und gehören niemandem persönlich;
    * die Spalte «AdminClientId» der Benutzer-Liste zeigt bewusst nie auf sie.
    *
@@ -625,7 +625,7 @@ const Modell = (function () {
    *   __inhaberName   Anzeigename des Inhabers, sonst "" (Tabellenspalte
    *                   «Inhaber»)
    *   __inhaberAlle   alle Benutzerzeilen, deren «AdminClientId» die
-   *                   Listen-ID dieses Clients trägt — im Normalfall keine
+   *                   Listen-ID dieses Clients trägt – im Normalfall keine
    *                   oder genau eine
    *   __mehrfachInhaber true, wenn mehr als eine Person darauf zeigt; das
    *                   ist ein zu bereinigender Datenfehler, kein Zustand
@@ -705,7 +705,7 @@ const Modell = (function () {
       c.__inhaber = c.__inhaberAlle[0] || null;
       c.__inhaberName = c.__inhaber ? c.__inhaber.__name : "";
       c.__mehrfachInhaber = c.__inhaberAlle.length > 1;
-      /* Der Volltext kennt alle Namen, auch die überzähligen — sonst wäre
+      /* Der Volltext kennt alle Namen, auch die überzähligen – sonst wäre
          eine falsche Zuordnung nicht auffindbar. */
       c.__such = (suchtext(c, SPALTEN_CLIENT) + "  "
         + c.__inhaberAlle.map(b => b.__name).join(", ")).toLowerCase();
@@ -722,7 +722,7 @@ const Modell = (function () {
      Nummern (+41 41 926 23 73). Verglichen wird immer über die Ziffernfolge
      mit Landesvorwahl: 41419262373. Dieselben Regeln stehen in
      Inventar-Gemeinsam.ps1 (Get-TelefonZiffern, Format-Telefon,
-     Get-TelefonKurzwahl) — beide Seiten müssen dasselbe rechnen.
+     Get-TelefonKurzwahl) – beide Seiten müssen dasselbe rechnen.
      ================================================================== */
 
   /* Nummernblock des Hauses ohne Kurzwahl. Aus konfig.js, sonst Standard. */

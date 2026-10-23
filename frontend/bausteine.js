@@ -1,26 +1,36 @@
-/* bausteine.js — die Bausteine des Design-Systems (Namensraum «UI»).
+/* bausteine.js – die Bausteine des Design-Systems (Namensraum «UI») und
+   die deutsche Hülle um die Bewegung von Dashboard-Style («Bewegung»).
 
    Jeder Baustein hat hier genau EINEN Bauer: die gemeinsamen bauen das
-   Markup von Dashboard-Style (.ds-*-Klassen aus vendor/dashboard-style/
-   ds.css), die ICT-eigenen das aus bausteine.css. Seiten bauen nur über
-   UI.*, Rahmen.* (rahmen.js), Bewegung.* (unten, über DS.motion) und
-   F.* (fenster.js); Kopien von el/knopf/symbol/chip/karte gibt es nicht
-   mehr. rahmen.js hängt die Überlagerungen an UI an (UI.dialog,
-   UI.bestaetigen, UI.blatt, UI.meldung, UI.tipp, UI.adresse).
+   Markup von Dashboard-Style 1.6.2 (.ds-*-Klassen aus vendor/dashboard-
+   style/ds.css), die ICT-eigenen das aus bausteine.css. Seiten bauen nur
+   über UI.*, Rahmen.* (rahmen.js), Bewegung.* (unten, über DS.motion) und
+   F.* (fenster.js). rahmen.js hängt die Überlagerungen und weitere
+   Funktionen an UI an (UI.dialog, UI.bestaetigen, UI.blatt, UI.ebeneOffen,
+   UI.meldung, UI.meldungenFehlerSchliessen, UI.tipp, UI.speicherleiste,
+   UI.seitenkopf, UI.adresse; Signaturen im Kopfkommentar von rahmen.js).
 
    Grundsätze:
      - DOM nur über createElement/textContent; nie innerHTML mit Daten.
        Die Sinnbilder kommen aus Dashboard-Style (DS.icons) und entstehen
        über DS.icons.iconElement, ohne innerHTML.
      - Jeder Bauer gibt einen DOM-Knoten zurück und nimmt ein Objekt mit
-       Optionen; die alten Positionsparameter (F.karte, F.kachel, …)
-       funktionieren weiter.
+       Optionen.
      - Was sich an Ort und Stelle ändern muss (Schalter, Status, Chip,
        Fortschritt, Suche), bekommt Methoden am Knoten (.setzen …), damit
        Seiten nicht neu aufbauen müssen – Neuaufbau zerstört Fokus und
-       spielt Übergänge nicht.
+       spielt Übergänge nicht. Wo doch neu gezeichnet wird, gleicht
+       UI.abgleichen (DS.dom.morphChildren) den Bestand ab, statt zu leeren.
      - Sichtbare Texte Schweizer Hochdeutsch; Leerwert «–».
-     - Tooltips: Bauer setzen data-tipp; UI.tipp (rahmen.js) zeigt sie.
+     - Tooltips: Bauer setzen data-tip (DS.overlay.tooltips zeigt ihn, von
+       rahmen.js einmal je Seite gestartet). Ein Tooltip, der nur den
+       sichtbaren Text wiederholt (gekürzte Namen, Chips), steht in
+       data-tip-abgeschnitten; rahmen.js macht daraus beim Zeigen data-tip,
+       solange der Text wirklich abgeschnitten ist. Nie ein Browser-title.
+     - Drückbare ICT-Bausteine (Chip mit ×, Listenzeile, Verteilungszeile,
+       klickbare Kennwerte) tragen data-ds-ripple: DS.ripple (von rahmen.js
+       einmal je Seite gestartet) gibt ihnen die Welle und .ds-pressed,
+       bausteine.css die Zustandsebene im Druckmodell von Dashboard-Style.
 
    ------------------------------------------------------------------
    API
@@ -36,9 +46,19 @@
                                         ein Boolean ist nie gleich «leer»)
      UI.textSetzen(knoten, text)      → knoten (schreibt nur, wenn anders)
      UI.id(praefix = 'ui')            → eindeutige id («ui-feld-3»)
+     UI.abgleichen(behaelter, [knoten…], { ersetzen, reihenfolgeHalten,
+                   beiEinfuegen(knoten), beiEntfernen(knoten) → Promise? }) → behaelter
+                                        = DS.dom.morphChildren: die Kinder werden den neu
+                                        gebauten Knoten angeglichen, bleibende Knoten an Ort
+                                        und Stelle gepatcht (Fokus, Laufzeitklassen und
+                                        Zuhörer bleiben; darum Zuhörer am Behälter oder
+                                        data-ds-replace). Schlüssel: data-ds-key, sonst id.
+                                        Nimmt auch das Optionsobjekt von Bewegung.umordnen
+                                        unverändert (holdOrder, onInsert, onRemove).
      UI.kinderAbgleichen(behaelter, [knoten…]) → behaelter
-                                        Kinder auf die Liste bringen, ohne bleibende
-                                        Knoten zu bewegen (Fokus bleibt; Filter)
+                                        Kinder auf eine Teilfolge DERSELBEN Knoten bringen,
+                                        ohne bleibende zu bewegen (Fokus bleibt; Filter über
+                                        einer festen Grundliste)
 
    Für alle Bauer von Bedienelementen (knopf, chip, kachel, listenZeile,
    eingabe, schalter, Einträge von kennwerte/verteilung, leerzustand.aktion):
@@ -49,80 +69,98 @@
    Sinnbilder (EIN Set aus DS.icons, Lucide-Stil, siehe SINNBILDER unten)
      UI.sinnbild(name, groesse = 20, klasse?) → <svg class="icon …" aria-hidden>
      UI.SINNBILDER                    → { deutscher Name: Glyphe in DS.icons } (eingefroren)
-       Grössen: 20 Navigation/Icon-Knöpfe/Banner, 16 in Knöpfen/Chips/Listen,
-       18 Filter-Chip-Haken, 24 Leerzustand.
+       Grössen: 20 Navigation/Icon-Knöpfe/Banner, 16 in Knöpfen/Status-Chips/
+       Listen, 18 in Chips (führendes Sinnbild, Haken, ×), 24 Leerzustand.
 
    Knöpfe
-     UI.knopf(text, klasse?, beiKlick?)                 (kompatibel)
-     UI.knopf({ text, variante: 'primaer'|'tonal'|'leise'|'still'|'sinnbild',
+     UI.knopf({ text, variante: 'primaer'|'tonal'|'leise'|'still'|'scheibe'|'sinnbild',
                 sinnbild, klein, weiter, titel, label, beiKlick, typ = 'button',
-                id, href, gedrueckt, deaktiviert, gesperrt, fokus, klasse })  → button | a
+                id, href, gedrueckt, deaktiviert, gesperrt, fokus, klasse,
+                beschaeftigt, fertig })  → button | a  (.ds-btn)
        variante 'sinnbild' (oder sinnbild ohne text) = runder Icon-Knopf;
-       label/titel werden aria-label. titel = Tooltip (data-tipp).
-       weiter: true hängt einen Pfeil an, der beim Hover nachrückt.
+       'scheibe' (.ds-btn--disc, mit sinnbild ohne text) = runder Icon-Knopf,
+       hinter dessen Sinnbild beim Hover eine volle Scheibe einblendet;
+       label/titel werden aria-label. titel = Tooltip (data-tip).
+       weiter: true hängt einen Pfeil an (er bewegt sich beim Hover nicht).
        gesperrt: 'Grund' = gesperrt MIT Grund (aria-disabled, fokussierbar,
        der Tooltip nennt den Grund statt titel); deaktiviert = disabled ohne Grund.
+       beschaeftigt: 'Wird gespeichert …' (oder true) baut die Gesichter von
+       DS.motion.busy schon beim Bauen (.ds-btn__faces): der Knopf ist von
+       Anfang an so breit wie sein breitestes Gesicht und springt nie.
+       fertig: 'Gespeichert' dazu das Erfolgsgesicht (Häkchen + Text).
        Beispiel: UI.knopf({ text: 'Speichern', variante: 'primaer', beiKlick: speichern })
-     UI.knopfText(knopf, text)        Beschriftung ändern, Icon bleibt.
+     UI.knopfText(knopf, text)        Beschriftung ändern; Icon, Gesichter und
+                                      ein laufender Spinner bleiben.
      UI.knopfSperren(knopf, grund|'') → knopf
        Sperre mit Grund an Ort und Stelle setzen bzw. aufheben ('' hebt auf,
        der frühere Tooltip kehrt zurück). Darf bei jedem Tastendruck laufen.
-     UI.knopfSperre(knopf) → { grund, tipp }
-       Liest die Sperre mit Grund ('' = frei) und den Tooltip des freien
-       Knopfs, ohne etwas zu ändern (F.seitenkopf: Knopf bleibt stehen, nur
-       die Sperre wechselt).
      UI.knopfUebernehmen(alt, neu) → boolean
        Der stehende Knopf «alt» übernimmt den beiKlick-Handler von «neu»
        (F.seitenkopf); false, wenn «neu» ohne beiKlick gebaut wurde.
-     UI.beschaeftigt(knopf, an, text = 'Wird gespeichert …') → Promise
-       an = true: sofort gesperrt (aria-disabled + aria-busy, Fokus bleibt,
-       Klicks werden geschluckt), Spinner erst nach 200 ms in gleicher
-       Breite; schliesst Fehlermeldungen (UI.meldungenFehlerSchliessen,
-       falls rahmen.js sie anbietet).
-       an = false: hält einen sichtbaren Spinner mind. 450 ms, dann kehrt
-       die Beschriftung zurück (Promise löst danach auf).
-     UI.beschaeftigtAbwarten(knopf) → Promise
-       Wartet, bis der Spinner gehen darf (bricht einen noch nicht
-       sichtbaren ab); der Knopf bleibt gesperrt. Vor einem Neuaufbau.
+     UI.beschaeftigt(knopf, arbeit, { text = 'Wird gespeichert …', fertig }) → Promise<Ergebnis>
+       = DS.motion.busy: arbeit ist eine Funktion (→ Promise) oder ein
+       Promise. aria-busy sofort (Klicks werden geschluckt, der Fokus
+       bleibt), das Gesicht mit Spinner und text erst nach --ds-delay-loader
+       und dann mindestens --ds-hold-loader; mit fertig: 'Gespeichert'
+       danach das Erfolgsgesicht für --ds-hold-success. Texte zeigen die
+       Gesichter nur, wenn UI.knopf sie gebaut hat (beschaeftigt, fertig);
+       an einem Knopf ohne Gesichter entstehen sie beim Start nur mit
+       Spinner bzw. Häkchen, damit er nicht breiter wird. Scheitert die
+       Arbeit, ist der Knopf sofort wieder frei und das Promise wird mit dem
+       Fehler verworfen. Schliesst beim Start offene Fehlermeldungen
+       (UI.meldungenFehlerSchliessen, falls rahmen.js sie anbietet). Das
+       Ergebnis meldet die Seite selbst (UI.meldung).
 
    Status, Hinweise
-     UI.status(text, ton = 'neutral', { sinnbild, titel }) → span.ds-status
+     UI.status(text, ton = 'neutral', { sinnbild, titel, klasse }) → span.ds-status
        ton: 'erfolg' | 'warnung' | 'gefahr' | 'neutral' | 'laeuft' (Spinner)
-            | 'wartet' (Uhr) | 'aus' (Verbot); alte Töne 'info'/'leise'/'marke'
-            → neutral. Standard-Icons wie ChatBob: erfolg=check, warnung und
+            | 'wartet' (Uhr) | 'aus' (Verbot). Standard-Sinnbilder: erfolg=check, warnung und
             gefahr=achtung (Dreieck), neutral=info. sinnbild: Name oder false
             (nur wo der Text allein eindeutig ist). titel: Tooltip; der Chip
             wird dann ein Tabstopp (Tooltip auch per Tastatur).
-       .setzen(text, ton, optionen) aktualisiert an Ort und Stelle (ein
-       laufender Spinner dreht weiter).
-     UI.banner(textOderKnoten, ton?, knopfKnoten?, { rolle, sinnbild })  (kompatibel zu F.banner)
+       .setzen(text, ton, optionen) aktualisiert an Ort und Stelle: Farbe und
+       Sinnbild gleiten (status.css), ein laufender Spinner dreht weiter.
      UI.banner({ titel, text, ton, knopf: Knoten|Knoten[], rolle, sinnbild }) → div.ds-alert
        ton: 'info' (Standard, neutral) | 'erfolg' | 'warnung' | 'gefahr'.
        titel wird als <strong> vorangestellt. .textKnoten = div.ds-alert__text.
-     UI.leerzustand({ sinnbild = 'info', titel, text, aktion: { text, beiKlick,
-                      variante = 'tonal', sinnbild } | Knoten })     → div.ds-empty
-     UI.leerzustand(titel, text)                                    (kompatibel)
+       rolle: Standard 'alert' für gefahr, sonst 'status'; null = keine
+       (ein Hinweis, der mit der Seite steht und nicht angesagt werden soll).
+       Knöpfe werden kompakt (.ds-btn--sm). Kommen und Gehen eines Banners
+       über Bewegung.umordnen (flip) auf seinem Stapel.
+     UI.leerzustand({ sinnbild = 'info', titel, text, aktion: { text, beiKlick, href,
+                      variante = 'tonal', sinnbild, fokus } | Knoten, rolle })  → div.ds-empty
      UI.hinweis(text) → p.ds-muted      UI.meta(text) → p.ds-meta
      UI.teile([text|Knoten, …]) → span.ds-parts (Teile mit «·»; leere fallen weg)
 
-   Laden
-     UI.spinner(klein?) → span.ds-spinner[.ds-spinner--sm]
-     UI.ladezeile(text = 'Wird geladen …') → div.ds-loading (erscheint nach 200 ms)
+   Laden (Ladeanzeigen erscheinen erst nach --ds-delay-loader)
+     UI.spinner(klein?, { verzoegert }) → span.ds-spinner[.ds-spinner--sm]
+       Der Bogen-Spinner hat keine eigene Verzögerung: in .ds-loading, einem
+       Knopf oder einem Status-Chip wartet der Behälter; frei stehend mit
+       verzoegert: true (Hülle span.ds-enter.ds-enter--delayed).
+     UI.ladezeile(text = 'Wird geladen …') → div.ds-loading (Formen-Loader .ds-loader--sm)
      UI.skelettSeite({ karten = 2, text = 'Wird geladen …', kopf = true }) → div.ds-skeleton
-       role=status; erscheint nach 200 ms, pulsiert.
+       role=status; erscheint verzögert, dann läuft eine ruhige Welle.
 
    Karten, Kacheln
      UI.karte({ titel, unter, aktionen: [Knoten], fuss: [Knoten], sinnbild, breit,
-                gefuellt, ebene = 2, klasse, id }) → section.ds-card mit .inhalt
-                (div.karte-inhalt), .kopf, .aktionen (div.karte-kopf-aktionen | null),
-                .fuss (div.ds-card__links | null: Fusszeile unter einer Haarlinie;
-                im Kartenraster unten bündig). sinnbild: 20 px vor dem Titel.
-     UI.karte(titel, unter, breit)                                   (kompatibel)
-     UI.kachel({ text, wert, unter, ton, sinnbild, beiKlick, href, zahl, titel })
+                gefuellt, ebene = 2, href, beiKlick, fokus, marke, klasse, id }) → section.ds-card
+                mit .inhalt (div.karte-inhalt), .kopf, .aktionen (div.karte-kopf-aktionen
+                | null), .fuss (div.ds-card__links | null: Fusszeile unter einer
+                Haarlinie; im Kartenraster unten bündig). sinnbild: 20 px vor dem Titel.
+       href und/oder beiKlick: die ganze Karte öffnet etwas (.ds-card--interactive
+       von Dashboard-Style in der Form mit .ds-card__action): der Titel wird
+       der Link (href) bzw. Knopf, seine Fläche spannt sich über die Karte,
+       Aktionen und Links darin bleiben bedienbar. fokus gilt dem Titel.
+       marke: UI.zahlmarke(…) vor dem Titel, über Titel und Beschreibung
+       (.karte-marke; die Punkte des Handlungsbedarfs).
+     UI.kachel({ text, wert, unter, ton, sinnbild, beiKlick, href, zahl, schluessel, titel,
+                 fokus, klasse })
        → div|button|a.ds-tile. Leerer Wert = «–». ton ('erfolg'|'warnung'|
        'gefahr') setzt ein Icon in die Beschriftung, nie Farbe auf die Zahl.
-       zahl (Number) setzt data-zahl fürs Hochzählen beim ersten Zeigen.
-     UI.kachel(beschriftung, wertText, unter, ton)                  (kompatibel)
+       zahl (Number): Rohwert fürs Hochzählen beim ersten Zeigen (gemerkt
+       am Knoten, nie im Markup); es zählt im Format von wert.
+       schluessel: data-ds-key der Kachel; mit zahl zählt sie nach einem
+       stillen Neuzeichnen (Bewegung.kennzahlenStill) vom gezeigten Wert.
      UI.kacheln([kachel, …]) → div.ds-tiles
 
    Datenzeilen
@@ -130,35 +168,43 @@
      UI.feldZeile(name, wert, { neben, gesperrt, hinweis }) → div.datenzeile
        wert: Text oder Knoten; leer → «–». gesperrt: Schloss + Tooltip
        (hinweis oder Standardtext).
-     UI.feldGesperrt(name, wert, hinweis?)   → Schloss-Zeile   (kompatibel F.feldGesperrt)
-     UI.feldFrei(name, knoten, mitSchloss?, hinweis?)          (kompatibel F.feldFrei)
+     UI.feldGesperrt(name, wert, hinweis?)   → Schloss-Zeile
      UI.formZeile(beschriftung, feldKnoten, { geaendert, hinweis, zusatz })
-     UI.formZeile(beschriftung, feldKnoten, geaendert, hinweis, zusatz)   (kompatibel)
        → div.datenzeile.datenzeile-form; die Beschriftung ist ein <label>
        für das (erste) Feld; «(geändert)» für den Screenreader steckt im
        Label und erscheint nur mit .geaendert (Seiten schalten die Klasse
        an der Zeile um, wie bisher).
      UI.kennwerte([[name, wert], …]) → ul.ds-kv-list   (Wert rechts, leer «–»)
      UI.kennwerte([{ name, wert, href, beiKlick, ton, titel, fokus }, …])
-       → klickbare Kennwerte (Bestandskarte, Mapping 7.2 #15): Zeilen als
-       Link/Knopf mit 6-%-Ebene, Null leise, ton 'warnung'|'gefahr' als
-       Sinnbild vor dem Namen (nie Farbe auf der Zahl).
+       → klickbare Kennwerte (Bestandskarte der Übersicht): Zeilen als
+       Link/Knopf mit Zustandsebene und Welle, Null leise, ton
+       'warnung'|'gefahr' als Sinnbild vor dem Namen (nie Farbe auf der Zahl).
      UI.fakten([[name, wert|Knoten], …]) → dl.ds-facts
 
    Chips, Zähler
      UI.chip({ text, gewaehlt, beiKlick(gewaehlt, e), entfernen: fn, titel, label,
-               sinnbild, href, id, deaktiviert, umschalten = true }) → button.chip
-       gewaehlt gesetzt = Filter-Umschalter (aria-pressed + Häkchen; ein Klick
-       schaltet selbst um, beiKlick bekommt den neuen Zustand);
-       entfernen = aktiver Filter mit × (aria-label «Filter «…» entfernen»);
-       sonst Aktions-Chip. .setzen(gewaehlt), .istGewaehlt().
-       Höchstens so breit wie seine Zeile: ein langer Text endet mit «…»,
-       der Tooltip zeigt ihn dann ganz (ohne titel ist er der Text selbst).
-     UI.chips([chip, …]) → div.ds-chips
-     UI.zaehler(zahl, still?, { ploppen }) → span.zaehler (.setzen(zahl))
+               sinnbild, href, id, deaktiviert, art: 'kaestchen'|'radio', name, wert,
+               fokus, klasse })
+       gewaehlt gesetzt = Filter-Umschalter: label.ds-chip von Dashboard-Style
+       (input.ds-chip__input + .ds-chip__body mit Haken, der sich zeichnet).
+       Ein Klick schaltet selbst um, beiKlick bekommt den neuen Zustand.
+       art: 'radio' = genau einer der Gruppe ist gewählt (input[type=radio]
+       mit name und wert; beiKlick nur am neu gewählten). id, fokus und
+       deaktiviert gelten dem Kästchen; .eingabe = das Kästchen.
+       entfernen = aktiver Filter mit × (button.chip, aria-label «Filter «…»
+       entfernen»); sonst Aktions-Chip (button|a.chip). Beide ICT-eigen
+       (Dashboard-Style hat nur Chips auf Kästchen), mit Welle und dem
+       Druckmodell von Dashboard-Style; höchstens so breit wie ihre Zeile,
+       ein langer Text endet mit «…» und der Tooltip zeigt ihn dann ganz.
+       Alle: .setzen(gewaehlt), .istGewaehlt().
+     UI.chips([chip, …], { legende }) → Reihe von Filter-Chips: mit legende
+       eine Gruppe (fieldset.ds-chips von Dashboard-Style mit legend.ds-sr),
+       sonst div.ds-chips, sobald ein Umschalt-Chip oder eine Gruppe darin
+       steht. Jede andere Reihe (Status-Chips, Chips mit ×, Links) ist
+       div.chip-zeile (ICT); ohne Chip nimmt sie keinen Platz.
+     UI.zaehler(zahl, still?) → span.zaehler (.setzen(zahl))
        leer (null/"") = verborgen; .setzen von leer auf eine Zahl ploppt
-       einmal, Wert → Wert ohne Bewegung. ploppen: true ploppt schon beim
-       Bauen (nur für eine Plakette, die genau jetzt erscheint).
+       einmal, Wert → Wert ohne Bewegung.
 
    Formulare
      UI.eingabe({ art: 'text'|'zahl'|'datum'|'textbereich'|'auswahl'|'suche'|'mail'|'telefon',
@@ -167,7 +213,7 @@
                   vorschlaege: [texte] (datalist, bei jedem Aufruf aktualisiert), schmal,
                   gefuellt, zeilen, min, max, schritt, maxLaenge, pflicht, nurLesen,
                   gesperrt, klasse, beiEingabe(wert, feld), beiAenderung(wert, feld) })
-       → input | select | textarea.feld-eingabe. Eine Auswahl behält einen
+       → input | select | textarea.ds-input. Eine Auswahl behält einen
        unbekannten gespeicherten Wert als Option (.werteSetzen(werte, wert));
        eine Eingabe mit Vorschlägen hat .vorschlaegeSetzen(werte).
        Beispiel: UI.formZeile('Gebäude / Stock', UI.eingabe({ id: 'g-eingabe-GebaeudeStock',
@@ -180,9 +226,11 @@
        Hinweis mit Sinnbild an Ort und Stelle (Live-Prüfung «in Ordnung»);
        ohne Text verborgen. ton färbt nur das Sinnbild.
      UI.hinweisPlatz({ id, klasse }) → div.hinweis-platz
-       .setzen(schluessel, bauen() → Knoten, { aufdecken }) – Hinweis, der am
-       Getippten hängt: gebaut nur bei neuem Schlüssel, '' = leer und verborgen,
-       aufgedeckt nur, wenn er durch eine Eingabe erscheint; Fokus bleibt.
+       .setzen(schluessel, bauen() → Knoten, { ausEingabe }) – Hinweis, der am
+       Getippten hängt: gebaut nur bei neuem Schlüssel, '' = leer und verborgen;
+       mit ausEingabe kommt und geht er über FLIP auf seinem Stapel (darunter
+       gleitet, er blendet ein), sonst ruhig; Fokus bleibt.
+       .schluessel() → der gezeigte Schlüssel (steht am Knoten).
      UI.ankreuzen({ text, an, beiAenderung(an, kaestchen), id, name, wert,
                     art: 'checkbox'|'radio', gesperrt, klein, fokus }) → label.ds-check (.eingabe)
      UI.mehrfach({ legende, eintraege: [{ wert, text, zahl, an, gesperrt, fokus }], name,
@@ -190,8 +238,6 @@
                    beiAenderung(wert, an, gewaehlte) }) → fieldset.ds-field mit .mehrfach;
        .gewaehlt() → [werte], .setzen([werte]), .zahlenSetzen({ wert: zahl })
        (an Ort und Stelle, der Fokus bleibt).
-     UI.datenliste(id, werte) → datalist (anlegen oder aktualisieren)
-     UI.auswahlFuellen(select, werte, wert, leerText) → select
      UI.zahlText(n, nachkomma?) → «1’284», «7.5» (de-CH; ohne nachkomma höchstens
        eine Nachkommastelle, sonst genau so viele; Zahlen als Text gehen auch;
        leer → ""). Hilfe.zahlText (graph.js) führt hierher zurück.
@@ -200,246 +246,242 @@
    Suche, Schalter
      UI.suchfeld({ id, name, platzhalter, wert, label, kuerzel: '/', verzoegerung = 150,
                    beiEingabe(wert, feld), klasse }) → div.ds-search
-       .eingabe (input.suche), .wert(), .setzen(wert) (schreibt nie, während
+       .eingabe (input), .wert(), .setzen(wert) (schreibt nie, während
        getippt wird), .sofort() (wartende Eingabe sofort melden).
        Esc in einer gefüllten Suche leert sie und meldet das sofort
-       (preventDefault: die Seite behandelt dieses Esc nicht mehr).
-     UI.schalter({ an, gesperrt, deaktiviert, label, titel, beiWechsel(an, schalter), id, klasse })
-       → button.schalter[role=switch]. Ein Klick schaltet an Ort und Stelle um
-       (Übergang spielt); beiWechsel → false oder Promise(false)/Fehler setzt
-       zurück. .setzen(an, gesperrt?, titel?), .sperren(bool), .istAn(),
-       .istGesperrt(). Gesperrt = an + Schloss + aria-disabled (fokussierbar,
-       Tooltip). Feuert «schalterwechsel».
+       (preventDefault: die Seite und DS.overlay behandeln dieses Esc nicht mehr).
+     UI.schalter({ an, gesperrt, deaktiviert, label, titel, beiWechsel(an, schalter), id,
+                   fokus, klasse }) → label.ds-switch (Schalter von Dashboard-Style)
+       mit input[type=checkbox][role=switch] (.eingabe; id und fokus gelten
+       ihm). Ein Klick schaltet an Ort und Stelle um (der Griff gleitet);
+       beiWechsel → false oder Promise(false)/Fehler setzt zurück.
+       .setzen(an, gesperrt?, titel?), .sperren(bool), .istAn(),
+       .istGesperrt(). Gesperrt = an + Schloss im Griff + aria-disabled
+       (fokussierbar, Tooltip nennt den Grund; ICT-eigen, .schalter-gesperrt);
+       deaktiviert = aria-disabled im gesperrten Aussehen von Dashboard-
+       Style, ebenfalls fokussierbar. Feuert «schalterwechsel».
      UI.schalterZeile({ schalter | an/gesperrt/titel/beiWechsel, name, unter,
                         wort: true | { an, aus, gesperrt }, zusatz: [Knoten], kompakt })
-       → div.schalter-zeile (kompakt: .schalter-feld); Name = <label> des
-       Schalters; Zustandswort «Aktiv»/«Inaktiv» (gesperrt ebenfalls «Aktiv»,
-       das Schloss im Schalter zeigt die Sperre).
+       → div.schalter-zeile (kompakt: der Schalter selbst mit .schalter-feld);
+       Name = .ds-switch__label (benennt das Kästchen), Zustandswort
+       «Aktiv»/«Inaktiv» als .ds-switch__state mit beiden Wörtern
+       (Dashboard-Style blendet über; gesperrt ebenfalls «Aktiv», das
+       Schloss im Griff zeigt die Sperre). .schalter, .zusatz.
 
    Tabellen
      UI.tabelle(kopfzeilen, datenzeilen, { beschriftung, klasse }) → div.ds-table-wrap
        (kopfzeilen: Texte oder { text, zahl, klasse }; Zellen Text oder Knoten;
-       leer «–»; .tabelle = das table; mit rollKanten: Blende am Rand nur,
-       solange es seitlich weitergeht)
+       leer «–»; .tabelle = das table; die Randblende beim seitlichen Rollen
+       kommt von Dashboard-Style)
      UI.tabellenKopf([{ schluessel, text, sortierbar = true, zahl, klasse, titel }],
                      { sortiert, richtung: 'auf'|'ab', beiSortieren(schluessel, knopf) }) → thead
        aria-sort an allen sortierbaren th; .sortierungSetzen(schluessel, richtung).
-     UI.sortierKnopf(text, richtung?) → button.ds-table__sort (.richtungSetzen(r))
-     UI.tabellenRahmen(table, { id, klasse }) → div.tabelle-rahmen (mit rollKanten)
+       Der Pfeil (.ds-table__sort-arrow) steht nur an der sortierten Spalte;
+       «ab» dreht ihn über aria-sort am th auf der Feder statt zu springen.
+     UI.tabellenRahmen(table, { id, klasse, vorNeuemTab(link, zeile) }) → div.tabelle-rahmen
+       (mit rollKanten). Ist table .ds-table--interactive (je Zeile ein
+       a.ds-table__row-link), öffnet auch ein Klick in eine Zelle ohne eigenes
+       Bedienelement den Zeilenlink: schlicht über den Link selbst, Ctrl-,
+       Shift- und Mittelklick in einem neuen Tab (vorNeuemTab läuft davor);
+       mit markiertem Text nicht. Die klebende erste Spalte begrenzt den
+       Link von Dashboard-Style sonst auf die erste Zelle. Die Welle ist aus
+       (data-ds-ripple="off": sie bliebe in der ersten Zelle beschnitten),
+       gedrückt zeigt die Zeile die Druckebene.
      UI.rollKanten(element) → element; setzt data-gerollt-x / data-gerollt beim Rollen
        und data-mehr-rechts, solange rechts noch Inhalt liegt (auch nach Grössenwechseln),
        dazu --rollleiste (Breite einer senkrechten Rollleiste; die Blende lässt sie aus).
-       bausteine.css blendet .tabelle-rahmen / .ds-table-wrap daran aus.
+       Für ICT-eigene Roller (.tabelle-rahmen, der Zeitstrahl); .ds-table-wrap
+       blendet Dashboard-Style selbst aus. Ein erneuter Aufruf prüft die Kanten
+       nur neu: nach UI.abgleichen für jeden behaltenen Roller nötig (der
+       Abgleich gleicht seine Attribute der losgelösten Vorlage an).
 
    Listen
      UI.hinweisZeile({ ton: 'gefahr'|'warnung'|'info'|'erfolg', titel, text, sinnbild })
      UI.hinweise([zeile, …]) → div.hinweise
      UI.listenZeile({ titel, unter: Text|[Teile]|Knoten, href, beiKlick, aktionen: [Knöpfe],
-                      status: Knoten|[Knoten], aktuell, marke, sinnbild, titelTipp, pfeil,
-                      fokus, klasse })
-       → a | button | div.listen-zeile (ganze Zeile klickbar mit Pfeil, solange
-       keine Aktionen; sonst wird der Titel zum Link).
+                      status: Knoten|[Knoten], aktuell, sinnbild, titelTipp, fokus, klasse })
+       → a | button | div.listen-zeile (ganze Zeile klickbar mit Pfeil und
+       Welle, solange keine Aktionen; sonst wird der Titel zum Link).
      UI.zeilenliste([zeile, …]) → div.zeilenliste
-     UI.zahlmarke(zahl, ton?: 'warnung'|'gefahr') → span.zahlmarke (32-px-Pille vorne
-       in einer Listenzeile: UI.listenZeile({ marke: UI.zahlmarke(3, 'gefahr') }))
+     UI.zahlmarke(zahl, ton?: 'warnung'|'gefahr') → span.zahlmarke (32-px-Pille vor
+       dem Titel einer Karte: UI.karte({ marke: UI.zahlmarke(3, 'gefahr') }))
      UI.zeitachse([{ titel, zeit: Text|Knoten, zeitSinnbild, text, still, zusatz: [Knoten],
                      aktionen: [Knöpfe], klasse }]) → ol.zeitachse
        (zeitSinnbild: 16-px-Sinnbild vor der Meta-Zeile, z. B. 'sync' beim Abgleich)
 
    Diagramme
-     UI.balken(anteil 0..1, ton?: 'still'|'warnung'|'gefahr') → div.balken (.setzen(anteil))
+     UI.balken(anteil 0..1, ton?: 'still'|'warnung'|'gefahr') → div.balken (.setzen(anteil):
+       der Balken gleitet auf --ds-ease-value)
      UI.saeulen([zahl | { wert, titel, hervorgehoben }], { max, hervorheben: index, label })
        → div.saeulen[role=img]
-     UI.verteilung([{ text, zahl, anteil, titel, beiKlick, href }], { max, klasse })
-       → ul.verteilung (Name · Zahl · Balken; klickbare Zeilen mit 6-%-Ebene)
-     UI.fortschritt({ anteil, text, detail, unbestimmt, label }) → div.ds-progress
-       (.setzen({ … }) ändert nur, was sich ändert; der Balken gleitet weiter)
+     UI.verteilung([{ text, zahl, anteil, titel, beiKlick, href, fokus }], { max, klasse })
+       → ul.verteilung (Name · Zahl · Balken; klickbare Zeilen mit Zustandsebene und Welle)
+     UI.fortschritt({ anteil, text, detail, unbestimmt, wartet, flach, label }) → div.ds-progress
+       (.setzen({ … }) ändert nur, was sich ändert; --ds-progress steht auf
+       .ds-progress, der Balken gleitet weiter. unbestimmt: zwei Segmente,
+       aria-valuetext statt aria-valuenow; wartet: nur der Text; flach:
+       ohne Welle, für dichte Zellen)
    ------------------------------------------------------------------ */
 
 "use strict";
 
 /* ==================================================================
-   Bewegung — die deutsche Hülle um DS.motion und DS.indicator
-   (vendor/dashboard-style/ds.js). Früher bewegung.js; die Klassen und
-   Keyframes kommen jetzt aus Dashboard-Style (.ds-enter, .ds-leave,
-   .ds-stagger …), die Zeiten aus seinen Tokens. Hier steht nur, was ICT
-   darüber hinaus braucht: Varianten mit deutschen Namen, ein Ein- oder
-   Austritt wartet auf ALLE eigenen Animationen (siehe eintreten), das
-   Hochzählen in Schweizer Schreibweise und der erste Auftritt einer
-   Ansicht (auftritt).
+   Bewegung – die deutsche Hülle um DS.motion und DS.indicator
+   (vendor/dashboard-style/ds.js, Dashboard-Style 1.6.2). Jede Funktion
+   reicht an genau eine Funktion von Dashboard-Style weiter; Zeiten,
+   Kurven, Unterbrechung (ein späterer Aufruf übernimmt vom aktuellen
+   Stand), inert und Fokus regelt Dashboard-Style. Hier stehen nur die
+   deutschen Namen der Varianten, das Hochzählen in Schweizer Schreibweise
+   und der erste Auftritt einer Ansicht (auftritt). Bewegung ist auf jedem
+   Gerät gleich.
 
    Grundregeln:
-     - Auftritte werden AUSDRÜCKLICH ausgelöst (erstes Zeigen, Wechsel der
-       Ansicht), nie von Zeichenfunktionen selbst. Aktualisierte Daten
-       (Auto-Nachladen, BroadcastChannel) animieren nie.
-     - Ladeanzeigen erscheinen erst nach LADE_VERZOEGERUNG_MS und bleiben
-       dann mindestens LADE_MINDESTENS_MS stehen.
-     - Reduzierte Bewegung läuft über die Tokens (1 ms); hier zählen nur
-       hochzaehlen (zeigt sofort das Ziel) und weiches Rollen.
+     - Auftritte werden AUSDRÜCKLICH ausgelöst (erstes Zeigen einer Ansicht),
+       nie von Zeichenfunktionen selbst. Aktualisierte Daten (Auto-
+       Nachladen, BroadcastChannel) spielen nie einen Auftritt: sie gleichen
+       ab (UI.abgleichen), gleiten (umordnen) und zählen vom gezeigten Wert.
+     - Ladeanzeigen erscheinen erst nach --ds-delay-loader und bleiben dann
+       mindestens --ds-hold-loader stehen (ladeAbwarten).
 
-   API (unverändert)
-     Bewegung.LADE_VERZOEGERUNG_MS  200  (= DS.motion.LOADER_DELAY_MS = --ds-delay-loader)
-     Bewegung.LADE_MINDESTENS_MS    450  (= DS.motion.LOADER_MIN_VISIBLE_MS)
-     Bewegung.ZAEHLEN_MS            600  (= DS.motion.COUNT_UP_MS = --ds-dur-glide)
-     Bewegung.STAFFEL_MAX           5    (= DS.motion.STAGGER_MAX, Stufen 0…5)
-     Bewegung.reduziert() → boolean
-     Bewegung.staffeln(elemente, { ab = 0, max = STAFFEL_MAX })   (--ds-i über das CSSOM)
-     Bewegung.wiederholen(el, ...klassen)
-     Bewegung.abgeschlossen(el, { zeit = 1000, ereignis = 'animationend', eigenschaft }) → Promise
-     Bewegung.eintreten(el, variante = '') → Promise
+   API (Dashboard-Style rechts)
+     Bewegung.eintreten(el, variante = '') → Promise                    = DS.motion.enter
        '' | 'blenden' | 'skalieren' | 'schieben' | 'tausch' | 'verzoegert' |
        'ploppen' | 'aufziehen' | 'aufrichten'
-       (= .ds-enter mit --fade, --scale, --slide, --swap, --delayed, --pop,
-       --fill-x, --fill-y)
-     Bewegung.austreten(el, variante = '', { dann = 'entfernen' | 'verbergen' | 'behalten' }) → Promise
-       '' | 'sinken' | 'skalieren' | 'schieben'  (= .ds-leave --sink, --scale, --slide)
-     Bewegung.aufdecken(el) → Promise   (Inhalt ersetzt seinen Platzhalter)
-     Bewegung.ladeHaltenMs(start, jetzt) → ms     Bewegung.ladeAbwarten(start, jetzt) → Promise
-     Bewegung.kurveAusgleiten(t) → 0…1  (ease-out cubic)
-     Bewegung.hochzaehlen(el, ziel, { format, dauer = 600 })   (Standardformat de-CH, «1’284»)
-     Bewegung.zahlenHochzaehlen(behaelter)   jedes [data-zahl], behält « %» usw.
+       (= '', fade, scale, slide, swap, delayed, pop, fill-x, fill-y)
+       Hebt hidden und inert auf.
+     Bewegung.austreten(el, variante = '', { dann = 'entfernen' | 'verbergen' | 'behalten', fokus })
+       → Promise                                                         = DS.motion.leave
+       '' | 'sinken' | 'skalieren' | 'schieben' | 'ploppen'
+       (= '', sink, scale, slide, pop). Ein Fokus darin geht vorher auf
+       fokus (Element oder Funktion), sonst zum Auslöser; das Element wird
+       inert. dann: entfernen = remove, verbergen = hidden, behalten = bleibt
+       unsichtbar und inert bis eintreten/abbrechen.
+     Bewegung.abbrechen(el)                                              = DS.motion.cancel
+     Bewegung.abgeschlossen(el, { zeit, ereignis, eigenschaft, uebergaenge, namen, unterbaum })
+       → Promise                                                         = DS.motion.settled
+       (ohne zeit rechnet Dashboard-Style die Frist selbst)
+     Bewegung.aufdecken(el) → Promise   Inhalt ersetzt seinen Platzhalter:
+       bricht Laufendes ab und spielt den Tausch-Eintritt (cancel + enter 'swap')
+     Bewegung.auftritt(behaelter, { wurzel = true })   erstes Zeigen einer Ansicht:
+       staffelt .karten, .ds-grid-2, .ds-stack, .ds-tiles, .zeilenliste
+       (DS.motion.staggerOnce: nur beim ersten Mal, nur Sichtbares), zählt
+       Kacheln hoch und zieht Balken auf (jedes Element nur einmal).
+     Bewegung.hochzaehlen(el, ziel, { format, dauer, von }) → { cancel(), finished }
+                                                                         = DS.motion.countUp
+       zählt vom gezeigten Wert; Standardformat de-CH («1’284»).
+     Bewegung.kennzahlenStill(wurzel, zeichnen) → Ergebnis von zeichnen()
+       Stilles Neuzeichnen mit Kennzahlen: jede Kachel in wurzel, die mit
+       schluessel und zahl gebaut ist (UI.kachel), zählt danach vom
+       gezeigten Wert zum neuen, wenn sich ihre Zahl geändert hat; eine
+       neue Kachel zeigt ihren Wert. Beim ersten Zeigen zählt auftritt.
      Bewegung.aufziehen(behaelter)   .balken-fuell und .saeule-fuell wachsen einmal
-     Bewegung.auftritt(behaelter, { wurzel = true })   staffelt .karten, .ds-grid-2,
-       .ds-stack, .ds-tiles, .zeilenliste, zählt hoch, zieht Balken auf (erstes Zeigen)
-     Bewegung.indikator(spur, { aktiv, klasse }) → { aktualisieren(), zerstoeren() }
-       (= DS.indicator.createIndicator)
+     Bewegung.ladeAbwarten(start, { element, verzoegerung, mindestens }) → Promise
+                                                                         = DS.motion.settleLoader
+       (mit element liest Dashboard-Style die Zeiten aus dessen Tokens)
+     Bewegung.umordnen(behaelter, aendern(optionen), { eintraege, live, max, halten }) → Promise
+                                                                         = DS.motion.flip
+       Einträge gleiten an ihren neuen Platz, neue blenden ein, entfernte
+       aus. aendern bekommt das Optionsobjekt von Dashboard-Style; es geht
+       unverändert an UI.abgleichen: Bewegung.umordnen(liste, o => UI.abgleichen(liste, neu, o)).
+       live: true hält eine Umordnung aus Abfragedaten an, solange Zeiger
+       oder Fokus in der Liste sind (höchstens halten ms).
+     Bewegung.wechseln(aktualisieren, { art = 'durchblenden' | 'vor' | 'zurueck' | 'behaelter', von })
+       → Promise                                                         = DS.motion.transition
+       Nur Navigation (Ansichtswechsel), nie Daten.
+     Bewegung.indikator(spur, { aktiv, klasse, beobachten = true, name }) → { aktualisieren(), zerstoeren() }
+                                                                         = DS.indicator.createIndicator
+       Die Pille folgt aria-current/-pressed/-selected/-checked selbst;
+       aktualisieren() braucht es nur mit beobachten: false.
+     Bewegung.kachelZahlMerken(wertKnoten, ziel, wertText, schluessel)   nur für UI.kachel:
+       merkt den Rohwert fürs Hochzählen (am Knoten bzw. je Schlüssel) und
+       zählt im Format von wertText (Text davor und danach, Nachkommastellen).
    ================================================================== */
 
 const Bewegung = (function () {
 
-  if (typeof DS === "undefined" || !DS.motion || !DS.indicator) {
+  if (typeof DS === "undefined" || !DS.motion || !DS.indicator || !DS.dom) {
     throw new Error("bausteine.js braucht vendor/dashboard-style/ds.js (vorher laden).");
   }
   const M = DS.motion;
 
-  /** Längste Animation des Systems (--ds-dur-glide) plus Reserve. */
-  const STANDARD_FRIST_MS = 1000;
-
   const EINTRITT_VARIANTEN = { blenden: "fade", skalieren: "scale", schieben: "slide", tausch: "swap",
     verzoegert: "delayed", ploppen: "pop", aufziehen: "fill-x", aufrichten: "fill-y" };
-  const AUSTRITT_VARIANTEN = { sinken: "sink", skalieren: "scale", schieben: "slide" };
+  const AUSTRITT_VARIANTEN = { sinken: "sink", skalieren: "scale", schieben: "slide", ploppen: "pop" };
+  const DANACH = { entfernen: "remove", verbergen: "hide", behalten: "keep" };
+  const WECHSEL_ARTEN = { durchblenden: "fade-through", vor: "forward", zurueck: "back", behaelter: "container" };
 
   /* Raster, deren Kinder beim ersten Zeigen gestaffelt einblenden. */
   const STAFFEL_RASTER = ".karten, .ds-grid-2, .ds-stack, .ds-tiles, .zeilenliste";
 
-  const zahlFormat = (function () {
-    try { return new Intl.NumberFormat("de-CH"); } catch (e) { return null; }
-  })();
+  const zahlFormate = new Map();
 
-  function zahlText(wert) {
-    const gerundet = Math.round(wert);
-    return zahlFormat ? zahlFormat.format(gerundet) : String(gerundet);
+  /* de-CH mit genau «nachkomma» Stellen («1’284», «15.7»). */
+  function zahlText(wert, nachkomma) {
+    const n = nachkomma || 0;
+    if (!zahlFormate.has(n)) {
+      let f = null;
+      try { f = new Intl.NumberFormat("de-CH", { minimumFractionDigits: n, maximumFractionDigits: n }); } catch (e) { f = null; }
+      zahlFormate.set(n, f);
+    }
+    const f = zahlFormate.get(n);
+    return f ? f.format(wert) : Number(wert).toFixed(n);
   }
 
-  function reduziert() { return M.prefersReducedMotion(); }
-
-  function staffeln(elemente, optionen) {
-    const o = optionen || {};
-    M.stagger(Array.from(elemente || []), { from: o.ab || 0, max: o.max });
+  /* Format, in dem eine Kachel zählt: so wie ihr Wert gebaut wurde, mit
+     dem Text davor und danach («88 %» zählt 88 und behält « %») und
+     ebenso vielen Nachkommastellen («15.7 GB» endet nicht als «16 GB»). */
+  function kachelFormat(wertText) {
+    const t = String(wertText);
+    const erste = t.search(/\d/);
+    if (erste === -1) return function (n) { return zahlText(n); };
+    const letzte = t.length - 1 - t.split("").reverse().join("").search(/\d/);
+    const zahl = t.slice(erste, letzte + 1);
+    const punkt = zahl.lastIndexOf(".");
+    const nachkomma = punkt === -1 ? 0 : zahl.length - punkt - 1;
+    const vor = t.slice(0, erste);
+    const nach = t.slice(letzte + 1);
+    return function (n) { return vor + zahlText(n, nachkomma) + nach; };
   }
 
-  function wiederholen(element) {
-    M.replay.apply(null, arguments);
-  }
-
-  function abgeschlossen(element, optionen) {
-    if (!element) return Promise.resolve();
-    const o = optionen || {};
-    return M.settled(element, { timeout: o.zeit || STANDARD_FRIST_MS, event: o.ereignis, property: o.eigenschaft });
-  }
-
-  function eintrittKlassen(variante) {
-    const v = EINTRITT_VARIANTEN[variante];
-    return v ? ["ds-enter", "ds-enter--" + v] : ["ds-enter"];
-  }
-
-  function austrittKlassen(variante) {
-    const v = AUSTRITT_VARIANTEN[variante];
-    return v ? ["ds-leave", "ds-leave--" + v] : ["ds-leave"];
-  }
-
-  function alleAustrittKlassen() {
-    return ["ds-leave"].concat(Object.keys(AUSTRITT_VARIANTEN).map(function (v) { return "ds-leave--" + AUSTRITT_VARIANTEN[v]; }));
-  }
-
-  /* Ein Eintritt besteht aus ZWEI Animationen (Deckkraft und Bewegung).
-     DS.motion.enter wartet auf das erste animationend; ein gleich danach
-     gestarteter Austritt hielte das zweite für sein eigenes Ende und
-     entfernte das Element ohne Bewegung. Darum wartet ein Ein- oder
-     Austritt hier auf ALLE eigenen Animationen (Web Animations API, mit
-     Frist), und eine Laufnummer pro Element sorgt dafür, dass ein
-     überholter Lauf die Klassen eines neueren nicht wegnimmt (aufdecken
-     während eines laufenden Eintritts). */
-  const EINTRITT_KEYFRAMES = ["ds-fade-in", "ds-lift-in", "ds-grow-in", "ds-shift-in", "ds-roll-in",
-    "ds-pop-in", "ds-draw", "ds-fill-x", "ds-fill-y"];
-  const AUSTRITT_KEYFRAMES = ["ds-fade-out", "ds-sink-out", "ds-scale-out", "ds-slide-out", "ds-roll-out"];
-  const laeufe = new WeakMap();
-
-  function neuerLauf(element) {
-    const nr = (laeufe.get(element) || 0) + 1;
-    laeufe.set(element, nr);
-    return nr;
-  }
-
-  function animationenAbwarten(element, namen) {
-    const eigene = element.getAnimations
-      ? element.getAnimations().filter(function (a) { return namen.indexOf(a.animationName) !== -1; })
-      : [];
-    // Ohne Animation (verborgen, ausgehängt, kein Web-Animations-API): Ereignis mit Frist.
-    if (!eigene.length) return abgeschlossen(element);
-    return Promise.race([
-      Promise.all(eigene.map(function (a) { return a.finished.catch(function () {}); })),
-      new Promise(function (r) { setTimeout(r, STANDARD_FRIST_MS); })
-    ]);
+  /* Nur gesetzte Optionen weitergeben: ein undefined überschriebe die
+     Vorgabe von Dashboard-Style (etwa die selbst gerechnete Frist). */
+  function optionen(paare) {
+    const o = {};
+    for (const k of Object.keys(paare)) if (paare[k] !== undefined) o[k] = paare[k];
+    return o;
   }
 
   function eintreten(element, variante) {
-    if (!element) return Promise.resolve();
-    const lauf = neuerLauf(element);
-    const klassen = eintrittKlassen(variante);
-    element.classList.remove.apply(element.classList, alleAustrittKlassen());
-    wiederholen.apply(null, [element].concat(klassen));
-    return animationenAbwarten(element, EINTRITT_KEYFRAMES).then(function () {
-      if (laeufe.get(element) === lauf) element.classList.remove.apply(element.classList, klassen);
-    });
+    return M.enter(element, EINTRITT_VARIANTEN[variante] || "");
   }
 
-  function austreten(element, variante, optionen) {
-    if (!element) return Promise.resolve();
-    const lauf = neuerLauf(element);
-    const dann = (optionen && optionen.dann) || "entfernen";
-    const klassen = austrittKlassen(variante);
-    element.classList.remove("ds-enter");
-    element.classList.add.apply(element.classList, klassen);
-    return animationenAbwarten(element, AUSTRITT_KEYFRAMES).then(function () {
-      if (laeufe.get(element) !== lauf) return;   // ein neuerer Ein- oder Austritt gilt
-      if (dann === "entfernen") {
-        element.remove();
-      } else if (dann === "verbergen") {
-        element.hidden = true;
-        element.classList.remove.apply(element.classList, klassen);
-      }
-    });
+  function austreten(element, variante, o) {
+    const w = o || {};
+    return M.leave(element, AUSTRITT_VARIANTEN[variante] || "",
+      optionen({ then: DANACH[w.dann] || "remove", focus: w.fokus }));
   }
 
-  /* Frisch geladener Inhalt ersetzt seinen Platzhalter: bricht einen noch
-     laufenden Eintritt im selben Takt ab (kein Bild mit halber Deckkraft)
-     und spielt den Tausch-Eintritt. */
+  function abbrechen(element) {
+    if (element) M.cancel(element);
+  }
+
+  function abgeschlossen(element, o) {
+    const w = o || {};
+    return M.settled(element, optionen({
+      timeout: w.zeit, event: w.ereignis, property: w.eigenschaft,
+      transitions: w.uebergaenge, names: w.namen, subtree: w.unterbaum
+    }));
+  }
+
   function aufdecken(element) {
     if (!element) return Promise.resolve();
-    if (element.classList.contains("ds-enter") && element.getAnimations) {
-      element.getAnimations().forEach(function (a) { a.cancel(); });
-    }
-    return eintreten(element, "tausch");
+    M.cancel(element);
+    return M.enter(element, "swap");
   }
 
-  function ladeHaltenMs(start, jetzt) { return M.loaderHoldMs(start, jetzt === undefined ? Date.now() : jetzt); }
-
-  function ladeAbwarten(start, jetzt) { return M.settleLoader(start, jetzt === undefined ? Date.now() : jetzt); }
-
-  function hochzaehlen(element, ziel, optionen) {
-    const o = optionen || {};
-    M.countUp(element, ziel, { format: o.format || zahlText, duration: o.dauer });
+  function hochzaehlen(element, ziel, o) {
+    const w = o || {};
+    return M.countUp(element, ziel, optionen({ format: w.format || zahlText, duration: w.dauer, from: w.von }));
   }
 
   function mitSelbst(behaelter, selektor) {
@@ -449,53 +491,114 @@ const Bewegung = (function () {
     return liste;
   }
 
+  /* Kennzahlen der Kacheln (UI.kachel mit zahl). Beim ersten Zeigen zählt
+     eine Kachel von 0 hoch (auftritt). Zeichnet die Seite still neu
+     (kennzahlenStill), zählt eine Kachel mit Schlüssel, deren Zahl sich
+     geändert hat, vom gezeigten Wert zum neuen – kein Sprung, kein
+     Auftritt von 0. Die Rohwerte stehen am Knoten bzw. je Schlüssel, nie
+     im Markup. */
+  const kachelZahlen = new WeakMap();     // Wertknoten → { ziel, format } fürs erste Zeigen
+  const gezeigteKennzahlen = new Map();   // Schlüssel → zuletzt gebaute Zahl
+  let stillGezeigt = null;                // während kennzahlenStill: Schlüssel → gezeigte Zahl
+  let stillOffen = [];                    // während kennzahlenStill: [{ schluessel, von, ziel, format }]
+
+  function kachelZahlMerken(wertKnoten, ziel, wertText, schluessel) {
+    const format = kachelFormat(wertText);
+    if (schluessel) {
+      const vorher = stillGezeigt ? stillGezeigt.get(schluessel) : undefined;
+      gezeigteKennzahlen.set(schluessel, ziel);
+      if (vorher !== undefined) {
+        // Die Kachel steht schon da: kein erstes Zeigen, sondern nachzählen.
+        if (vorher !== ziel) stillOffen.push({ schluessel: schluessel, von: vorher, ziel: ziel, format: format });
+        return;
+      }
+    }
+    kachelZahlen.set(wertKnoten, { ziel: ziel, format: format });
+  }
+
   function zahlenHochzaehlen(behaelter) {
-    for (const wert of mitSelbst(behaelter, "[data-zahl]")) {
-      const ziel = Number(wert.getAttribute("data-zahl"));
-      if (!isFinite(ziel)) continue;
-      // «88 %» zählt 88 und behält « %».
-      const nachsatz = /\d/.test(wert.textContent) ? wert.textContent.replace(/^.*\d/, "") : "";
-      hochzaehlen(wert, ziel, { format: function (z) { return zahlText(z) + nachsatz; } });
+    for (const wert of mitSelbst(behaelter, ".ds-tile__value")) {
+      const z = kachelZahlen.get(wert);
+      if (!z) continue;
+      kachelZahlen.delete(wert);   // nur beim ersten Zeigen
+      hochzaehlen(wert, z.ziel, { format: z.format });
     }
   }
 
-  function aufziehen(behaelter) {
-    for (const f of mitSelbst(behaelter, ".balken-fuell")) eintreten(f, "aufziehen");
-    for (const f of mitSelbst(behaelter, ".saeule-fuell")) eintreten(f, "aufrichten");
+  function kennzahlenStill(wurzel, zeichnen) {
+    const gezeigt = new Map();
+    if (wurzel) {
+      for (const t of wurzel.querySelectorAll(".ds-tile[data-ds-key]")) {
+        const s = t.getAttribute("data-ds-key");
+        if (gezeigteKennzahlen.has(s)) gezeigt.set(s, gezeigteKennzahlen.get(s));
+      }
+    }
+    const aussen = [stillGezeigt, stillOffen];
+    stillGezeigt = gezeigt;
+    stillOffen = [];
+    try {
+      return zeichnen();
+    } finally {
+      const offen = stillOffen;
+      stillGezeigt = aussen[0];
+      stillOffen = aussen[1];
+      for (const z of offen) {
+        const wert = wurzel ? wurzel.querySelector('.ds-tile[data-ds-key="' + CSS.escape(z.schluessel) + '"] > .ds-tile__value') : null;
+        if (wert) hochzaehlen(wert, z.ziel, { von: z.von, format: z.format });
+      }
+    }
   }
 
-  /* Laufnummer der Staffelung pro Raster: eine Ansicht, die während ihrer
-     Staffelung verborgen und gleich wieder gezeigt wird, startet eine neue;
-     die Frist der alten darf die Klasse dann nicht mitten darin entfernen. */
-  const staffelLaeufe = new WeakMap();
+  /* Balken und Säulen wachsen nur beim ersten Zeigen ihres Elements. */
+  const aufgezogen = new WeakSet();
 
-  function auftritt(behaelter, optionen) {
+  function aufziehen(behaelter) {
+    for (const [selektor, variante] of [[".balken-fuell", "fill-x"], [".saeule-fuell", "fill-y"]]) {
+      for (const f of mitSelbst(behaelter, selektor)) {
+        if (aufgezogen.has(f)) continue;
+        aufgezogen.add(f);
+        M.enter(f, variante);
+      }
+    }
+  }
+
+  function auftritt(behaelter, o) {
     if (!behaelter) return;
     // Rahmen ruft den Auftritt für die ganze Ansicht auf und staffelt nur
     // die Raster DARIN; Seitenkopf, Banner und Werkzeugleiste erscheinen
     // mit der Ansicht selbst (wurzel: false).
-    const mitWurzel = !optionen || optionen.wurzel !== false;
+    const mitWurzel = !o || o.wurzel !== false;
     const raster = mitWurzel ? mitSelbst(behaelter, STAFFEL_RASTER)
       : (behaelter.querySelectorAll ? Array.from(behaelter.querySelectorAll(STAFFEL_RASTER)) : []);
-    for (const r of raster) {
-      if (!r.lastElementChild) continue;
-      const lauf = (staffelLaeufe.get(r) || 0) + 1;
-      staffelLaeufe.set(r, lauf);
-      staffeln(r.children);
-      // wiederholen: stand die Klasse noch (zweiter Auftritt in der Frist), spielt die Staffelung neu.
-      wiederholen(r, "ds-stagger");
-      // Später eingefügte Kinder (Nachladen, «Mehr laden») blenden nicht erneut ein.
-      abgeschlossen(r.lastElementChild).then(function () {
-        if (staffelLaeufe.get(r) === lauf) r.classList.remove("ds-stagger");
-      });
-    }
+    // staggerOnce merkt sich jedes Raster (data-ds-staggered): ein zweiter
+    // Auftritt derselben Ansicht staffelt nicht noch einmal.
+    for (const r of raster) if (r.firstElementChild) M.staggerOnce(r);
     zahlenHochzaehlen(behaelter);
     aufziehen(behaelter);
   }
 
-  function indikator(spur, optionen) {
-    const o = optionen || {};
-    const i = DS.indicator.createIndicator(spur, { active: o.aktiv, className: o.klasse || "" });
+  function ladeAbwarten(start, o) {
+    // Früher (start, jetzt): eine Zahl als zweites Argument gilt weiter.
+    if (typeof o === "number") return M.settleLoader(start, o);
+    const w = o || {};
+    return M.settleLoader(start, optionen({ element: w.element, delay: w.verzoegerung, minVisible: w.mindestens }));
+  }
+
+  function umordnen(behaelter, aendern, o) {
+    const w = o || {};
+    return M.flip(behaelter, aendern, optionen({ items: w.eintraege, live: w.live, max: w.max, hold: w.halten }));
+  }
+
+  function wechseln(aktualisieren, o) {
+    const w = o || {};
+    return M.transition(aktualisieren, optionen({ type: WECHSEL_ARTEN[w.art] || "fade-through", from: w.von }));
+  }
+
+  function indikator(spur, o) {
+    const w = o || {};
+    const i = DS.indicator.createIndicator(spur, {
+      active: w.aktiv, className: w.klasse || "", observe: w.beobachten !== false, name: w.name || ""
+    });
     return {
       aktualisieren: function () { i.update(); },
       zerstoeren: function () { i.destroy(); }
@@ -503,25 +606,21 @@ const Bewegung = (function () {
   }
 
   return Object.freeze({
-    LADE_VERZOEGERUNG_MS: M.LOADER_DELAY_MS,
-    LADE_MINDESTENS_MS: M.LOADER_MIN_VISIBLE_MS,
-    ZAEHLEN_MS: M.COUNT_UP_MS,
-    STAFFEL_MAX: M.STAGGER_MAX,
-    reduziert: reduziert,
-    staffeln: staffeln,
-    wiederholen: wiederholen,
-    abgeschlossen: abgeschlossen,
     eintreten: eintreten,
     austreten: austreten,
+    abbrechen: abbrechen,
+    abgeschlossen: abgeschlossen,
     aufdecken: aufdecken,
-    ladeHaltenMs: ladeHaltenMs,
-    ladeAbwarten: ladeAbwarten,
-    kurveAusgleiten: M.easeOutCubic,
-    hochzaehlen: hochzaehlen,
-    zahlenHochzaehlen: zahlenHochzaehlen,
-    aufziehen: aufziehen,
     auftritt: auftritt,
-    indikator: indikator
+    hochzaehlen: hochzaehlen,
+    kennzahlenStill: kennzahlenStill,
+    aufziehen: aufziehen,
+    ladeAbwarten: ladeAbwarten,
+    umordnen: umordnen,
+    wechseln: wechseln,
+    indikator: indikator,
+    /* Nur für UI.kachel (siehe kachelZahlMerken). */
+    kachelZahlMerken: kachelZahlMerken
   });
 })();
 
@@ -590,6 +689,17 @@ const UI = (function () {
     return (praefix || "ui") + "-" + laufnummer;
   }
 
+  /* id eines Teils (Name, Hinweis) eines Bedienelements: abgeleitet von
+     dessen id bzw. data-fokus, damit ein neu gebautes Element dieselben
+     ids trägt wie das gezeigte – sonst ersetzte UI.abgleichen es bei jedem
+     Neuzeichnen (aria-labelledby/-describedby wichen ab). Nur ohne beides
+     eine laufende Nummer. */
+  function teilId(steuer, teil) {
+    const basis = steuer && (steuer.id || (steuer.getAttribute("data-fokus")
+      ? "ui-" + steuer.getAttribute("data-fokus").replace(/\s+/g, "-") : ""));
+    return basis ? basis + "-" + teil : id("ui-" + teil);
+  }
+
   /* Text oder Knoten in einen Behälter: Knoten werden eingehängt, alles
      andere als Text gesetzt. */
   function inhaltSetzen(behaelter, inhalt) {
@@ -618,6 +728,34 @@ const UI = (function () {
       const da = behaelter.children[i];
       if (da !== knoten) behaelter.insertBefore(knoten, da || null);
     });
+    return behaelter;
+  }
+
+  /* Stilles Nachzeichnen (DS.dom.morphChildren): die Kinder des Behälters
+     werden den neu gebauten, noch nicht eingehängten Knoten angeglichen.
+     Bleibende Knoten werden an Ort und Stelle gepatcht statt ersetzt:
+     Fokus, Schreibmarke, Laufzeitklassen von Dashboard-Style und Zuhörer
+     bleiben, ein Status-Sinnbild spielt seinen Auftritt nicht noch einmal.
+     Zuhörer darum am Behälter (Delegation) oder data-ds-replace auf dem
+     Knoten, dessen Teilbaum frisch sein muss. Zeilen bekommen einen
+     Schlüssel (data-ds-key, sonst gilt die id). Die Optionen nimmt es
+     deutsch oder so, wie Bewegung.umordnen (DS.motion.flip) sie übergibt. */
+  function abgleichen(behaelter, knoten, o) {
+    if (!behaelter) return behaelter;
+    const w = o || {};
+    const ds = {};
+    const replace = w.ersetzen !== undefined ? w.ersetzen : w.replace;
+    const holdOrder = w.reihenfolgeHalten !== undefined ? w.reihenfolgeHalten : w.holdOrder;
+    const onInsert = w.beiEinfuegen || w.onInsert;
+    const onRemove = w.beiEntfernen || w.onRemove;
+    if (replace !== undefined) ds.replace = !!replace;
+    if (holdOrder !== undefined) ds.holdOrder = !!holdOrder;
+    if (onInsert) ds.onInsert = onInsert;
+    if (onRemove) ds.onRemove = onRemove;
+    const liste = (knoten && knoten.nodeType ? [knoten] : Array.from(knoten || []))
+      .filter(function (k) { return k !== null && k !== undefined && k !== false && k !== ""; })
+      .map(function (k) { return typeof k === "string" ? document.createTextNode(k) : k; });
+    DS.dom.morphChildren(behaelter, liste, ds);
     return behaelter;
   }
 
@@ -690,9 +828,7 @@ const UI = (function () {
       leer.setAttribute("aria-hidden", "true");
       return leer;
     }
-    const svg = DS.icons.iconElement(glyphe, groesse || 20, "icon" + (klasse ? " " + klasse : ""));
-    svg.setAttribute("focusable", "false");
-    return svg;
+    return DS.icons.iconElement(glyphe, groesse || 20, "icon" + (klasse ? " " + klasse : ""));
   }
 
 
@@ -710,8 +846,10 @@ const UI = (function () {
   /* Varianten von UI.knopf → Modifikatoren von .ds-btn (Dashboard-Style). */
   const KNOPF_VARIANTEN = { primaer: "ds-btn--primary", tonal: "ds-btn--tonal", leise: "ds-btn--text", still: "ds-btn--quiet", scheibe: "ds-btn--disc" };
 
-  function knopf(a, klasse, beiKlick) {
-    const o = istOptionen(a) ? a : { text: a, klasse: klasse, beiKlick: beiKlick };
+  const BESCHAEFTIGT_TEXT = "Wird gespeichert …";
+
+  function knopf(optionen) {
+    const o = optionen || {};
     const k = el(o.href ? "a" : "button");
     const klassen = ["ds-btn"];
     const nurSinnbild = o.variante === "sinnbild" || (!!o.sinnbild && istLeer(o.text));
@@ -721,7 +859,6 @@ const UI = (function () {
     if (variante) klassen.push(variante);
     else if (nurSinnbild) klassen.push("ds-btn--quiet");
     if (o.klein) klassen.push("ds-btn--sm");
-    if (o.weiter) klassen.push("knopf-weiter");
     if (o.klasse) klassen.push(o.klasse);
     k.className = klassen.join(" ");
 
@@ -729,16 +866,19 @@ const UI = (function () {
     else k.type = o.typ || "button";
     if (o.id) k.id = o.id;
 
-    if (o.sinnbild) k.appendChild(sinnbild(o.sinnbild, o.sinnbildGroesse || (nurSinnbild ? (o.klein ? 18 : 20) : 16)));
+    if (o.sinnbild) k.appendChild(sinnbild(o.sinnbild, nurSinnbild ? (o.klein ? 18 : 20) : 16));
     if (!istLeer(o.text)) {
       if (o.sinnbild || o.weiter) k.appendChild(el("span", null, o.text));
       else k.appendChild(document.createTextNode(String(o.text)));
     }
     if (o.weiter) k.appendChild(sinnbild("pfeilRechts", 16));
+    if (o.beschaeftigt || o.fertig) {
+      gesichterSichern(k, typeof o.beschaeftigt === "string" ? o.beschaeftigt : BESCHAEFTIGT_TEXT, o.fertig);
+    }
 
     const name = o.label || (nurSinnbild ? o.titel : "");
     if (name) k.setAttribute("aria-label", name);
-    if (o.titel) k.setAttribute("data-tipp", o.titel);
+    if (o.titel) k.setAttribute("data-tip", o.titel);
     fokusSetzen(k, o.fokus);
     if (o.gedrueckt !== undefined) k.setAttribute("aria-pressed", o.gedrueckt ? "true" : "false");
     if (o.deaktiviert) {
@@ -753,50 +893,37 @@ const UI = (function () {
     return k;
   }
 
-  /* Gesperrt MIT Grund (api.md §9.9): aria-disabled statt disabled, damit
-     der Knopf fokussierbar bleibt und der Tooltip den Grund nennt – auch
-     per Tastatur. Klicks schluckt der Zuhörer unten (Fangphase). Ein
-     leerer Grund hebt die Sperre auf; der frühere Tooltip (titel) kehrt
-     zurück. An Ort und Stelle: aufrufbar bei jedem Tastendruck. */
+  /* Gesperrt MIT Grund: aria-disabled statt disabled, damit der Knopf
+     fokussierbar bleibt und der Tooltip den Grund nennt – auch per
+     Tastatur. Klicks schluckt der Zuhörer unten (Fangphase). Ein leerer
+     Grund hebt die Sperre auf; der frühere Tooltip (titel) kehrt zurück.
+     An Ort und Stelle: aufrufbar bei jedem Tastendruck. */
   const freieTipps = new WeakMap();
 
   function tippSchreiben(k, t) {
-    if (typeof UI.tipp === "function") UI.tipp(k, t || null);
-    else if (t) k.setAttribute("data-tipp", t);
-    else k.removeAttribute("data-tipp");
+    if (t) k.setAttribute("data-tip", t);
+    else k.removeAttribute("data-tip");
   }
 
   function knopfSperren(k, grund) {
     if (!k) return k;
     const gesperrt = freieTipps.has(k);
     if (grund) {
-      if (!gesperrt) freieTipps.set(k, k.getAttribute("data-tipp") || "");
+      if (!gesperrt) freieTipps.set(k, k.getAttribute("data-tip") || "");
       if (k.getAttribute("aria-disabled") !== "true") k.setAttribute("aria-disabled", "true");
-      if (k.getAttribute("data-tipp") !== String(grund)) tippSchreiben(k, String(grund));
+      if (k.getAttribute("data-tip") !== String(grund)) tippSchreiben(k, String(grund));
     } else if (gesperrt) {
       const frei = freieTipps.get(k);
       freieTipps.delete(k);
       k.removeAttribute("aria-disabled");
-      if ((k.getAttribute("data-tipp") || "") !== frei) tippSchreiben(k, frei);
+      if ((k.getAttribute("data-tip") || "") !== frei) tippSchreiben(k, frei);
     }
     return k;
   }
 
-  /* Die Sperre mit Grund eines Knopfs, ohne sie zu ändern: { grund, tipp }
-     – grund "" heisst nicht gesperrt (über knopfSperren), tipp ist der
-     Tooltip des freien Knopfs (der gesperrte zeigt stattdessen den Grund).
-     F.seitenkopf vergleicht damit die Gestalt eines Kopfknopfs ohne seine
-     Sperre und schaltet nur sie um, statt den Knopf neu zu bauen. */
-  function knopfSperre(k) {
-    if (!k || !k.getAttribute) return { grund: "", tipp: "" };
-    if (freieTipps.has(k)) return { grund: k.getAttribute("data-tipp") || "", tipp: freieTipps.get(k) || "" };
-    return { grund: "", tipp: k.getAttribute("data-tipp") || "" };
-  }
-
   /* data-fokus: der stabile Schlüssel, über den F.zeichneBereich,
      Rahmen.stillZeichnen und der Rückfokus der Ebenen ein neu gebautes
-     Bedienelement wiederfinden (api.md §8). Jedes Bedienelement ohne id
-     braucht einen. */
+     Bedienelement wiederfinden. Jedes Bedienelement ohne id braucht einen. */
   function fokusSetzen(k, schluessel) {
     if (k && !istLeer(schluessel)) k.setAttribute("data-fokus", String(schluessel));
     return k;
@@ -815,89 +942,102 @@ const UI = (function () {
     return true;
   }
 
-  /* Ändert nur die Beschriftung; ein Icon und ein laufender Spinner bleiben. */
+  /* Das Gesicht in Ruhe (die Beschriftung) eines Knopfs mit Gesichtern. */
+  function ruheGesicht(k) {
+    return k.querySelector(":scope > .ds-btn__faces > .ds-btn__face:not(.ds-btn__face--busy, .ds-btn__face--done)");
+  }
+
+  /* Ändert nur die Beschriftung; Icon, Gesichter und ein laufender
+     Spinner bleiben. */
   function knopfText(k, neuerText) {
     if (!k) return k;
-    const huelle = k.querySelector(":scope > .ds-btn__swap");
-    const ziel = huelle || k;
-    const span = ziel.querySelector(":scope > span:not(.ds-sr):not(.zaehler):not(.ds-spinner)");
+    const ziel = ruheGesicht(k) || k;
+    const span = ziel.querySelector(":scope > span:not(.ds-sr, .zaehler, .ds-spinner, .ds-btn__faces, .ds-press-ripple)");
     if (span) textSetzen(span, neuerText);
-    else if (!ziel.querySelector(":scope > svg")) textSetzen(ziel, neuerText);
+    else if (!ziel.querySelector(":scope > svg, :scope > .zaehler")) textSetzen(ziel, neuerText);
     else {
       for (const n of Array.from(ziel.childNodes)) if (n.nodeType === 3) n.remove();
-      ziel.appendChild(el("span", null, neuerText));
+      const neu = el("span", null, neuerText);
+      const zaehlerKnoten = ziel.querySelector(":scope > .zaehler");
+      ziel.insertBefore(neu, zaehlerKnoten || ziel.querySelector(":scope > svg:last-child:not(:first-child)") || null);
     }
     return k;
   }
 
-  /* --- Beschäftigt (ChatBob setBusy/settleBusy) --- */
+  /* --- Beschäftigt (DS.motion.busy) --- */
 
-  const beschaeftigtZustaende = new WeakMap();
+  /* Die Gesichter von DS.motion.busy (button.css «Faces»): die Beschriftung
+     wandert in das Ruhegesicht, dazu das Gesicht mit Spinner und Text und,
+     mit fertigText, das Erfolgsgesicht. Alle liegen in EINER Rasterzelle,
+     der Knopf ist so breit wie das breiteste. Ein Icon-Knopf zeigt nur
+     Spinner bzw. Häkchen. Steht das Gerüst schon, ändern sich nur die
+     Texte, die gegeben sind (sonst bleibt der Text vom Bauen).
+     spaet: das Gerüst entsteht erst beim Start der Arbeit (UI.beschaeftigt
+     an einem Knopf ohne Gesichter). Dann tragen die neuen Gesichter nur
+     Spinner bzw. Häkchen, ohne Text: ein Text verbreiterte den Knopf mitten
+     im Klick. Gesichter mit Text baut UI.knopf({ beschaeftigt, fertig }). */
+  function gesichterSichern(k, beschaeftigtText, fertigText, spaet) {
+    const nurSinnbild = spaet || k.classList.contains("ds-btn--icon");
+    let gesichter = k.querySelector(":scope > .ds-btn__faces");
+    if (!gesichter) {
+      const ruhe = el("span", "ds-btn__face");
+      for (const n of Array.from(k.childNodes)) {
+        // Welle und andere Knoten von Dashboard-Style bleiben am Knopf.
+        if (n.nodeType === 1 && n.hasAttribute("data-ds-keep")) continue;
+        ruhe.appendChild(n);
+      }
+      gesichter = el("span", "ds-btn__faces");
+      gesichter.appendChild(ruhe);
+      k.insertBefore(gesichter, k.firstChild);
+    }
+    let arbeit = gesichter.querySelector(":scope > .ds-btn__face--busy");
+    if (!arbeit) {
+      arbeit = el("span", "ds-btn__face ds-btn__face--busy");
+      arbeit.setAttribute("aria-hidden", "true");
+      arbeit.appendChild(spinner(true));
+      if (!nurSinnbild) arbeit.appendChild(el("span", null, beschaeftigtText || BESCHAEFTIGT_TEXT));
+      gesichter.appendChild(arbeit);
+    } else if (beschaeftigtText) {
+      const t = arbeit.querySelector(":scope > span:not(.ds-spinner)");
+      if (t) textSetzen(t, beschaeftigtText);
+    }
+    if (fertigText) {
+      let fertig = gesichter.querySelector(":scope > .ds-btn__face--done");
+      if (!fertig) {
+        fertig = el("span", "ds-btn__face ds-btn__face--done");
+        fertig.setAttribute("aria-hidden", "true");
+        fertig.appendChild(sinnbild("check", 16));
+        if (!nurSinnbild) fertig.appendChild(el("span"));
+        gesichter.appendChild(fertig);
+      }
+      const t = fertig.querySelector(":scope > span");
+      if (t) textSetzen(t, fertigText);
+    }
+    return gesichter;
+  }
 
-  /* Gesperrte und beschäftigte Knöpfe bleiben fokussierbar (ein disabled-
-     Knopf verliert den Fokus) und behalten die Zeigerereignisse (für den
-     Tooltip mit dem Grund). EIN Zuhörer in der Fangphase schluckt darum
-     ihre Klicks – auch den synthetischen Klick, den Enter in einem
-     Formular auslöst. */
+  /* Gesperrte, beschäftigte und gerade erfolgreiche Knöpfe bleiben
+     fokussierbar (ein disabled-Knopf verliert den Fokus) und behalten die
+     Zeigerereignisse (für den Tooltip mit dem Grund). Dashboard-Style
+     überlässt das Ignorieren ihrer Klicks der Seite: EIN Zuhörer in der
+     Fangphase schluckt sie – auch den synthetischen Klick, den Enter in
+     einem Formular oder ein Label (Schalter) auslöst. */
   document.addEventListener("click", function (e) {
     const ziel = e.target instanceof Element
-      ? e.target.closest('button[aria-disabled="true"], a[aria-disabled="true"], [role="switch"][aria-disabled="true"], [role="button"][aria-disabled="true"], .ds-btn[aria-busy="true"]')
+      ? e.target.closest('button[aria-disabled="true"], a[aria-disabled="true"], input[aria-disabled="true"], [role="button"][aria-disabled="true"], .ds-btn[aria-busy="true"], .ds-btn--done')
       : null;
     if (!ziel) return;
     e.preventDefault();
     e.stopImmediatePropagation();
   }, true);
 
-  /* Tauscht den Inhalt mit einem kurzen Einblenden (150 ms). Die
-     zurückkehrende Beschriftung verlässt ihre Hülle danach wieder. */
-  function inhaltTauschen(k, knoten, auspacken) {
-    const huelle = el("span", "ds-btn__swap");
-    anhaengen(huelle, knoten);
-    leeren(k).appendChild(huelle);
-    return Bewegung.eintreten(huelle, "blenden").then(function () {
-      if (auspacken && huelle.parentNode === k) {
-        while (huelle.firstChild) k.insertBefore(huelle.firstChild, huelle);
-        huelle.remove();
-      }
-    });
-  }
-
-  function beschaeftigtAbwarten(k) {
-    const zustand = k ? beschaeftigtZustaende.get(k) : null;
-    if (!zustand) return Promise.resolve();
-    clearTimeout(zustand.uhr);
-    return zustand.gezeigtAb
-      ? Bewegung.ladeAbwarten(zustand.gezeigtAb - Bewegung.LADE_VERZOEGERUNG_MS)
-      : Promise.resolve();
-  }
-
-  function beschaeftigt(k, an, beschriftung) {
-    if (!k) return Promise.resolve();
-    if (an) {
-      if (beschaeftigtZustaende.has(k) || k.disabled) return Promise.resolve();
-      if (typeof UI.meldungenFehlerSchliessen === "function") UI.meldungenFehlerSchliessen();
-      k.setAttribute("aria-disabled", "true");
-      k.setAttribute("aria-busy", "true");
-      const zustand = { gezeigtAb: 0, uhr: 0, inhalt: null };
-      zustand.uhr = setTimeout(function () {
-        zustand.gezeigtAb = Date.now();
-        zustand.inhalt = Array.from(k.childNodes);
-        k.style.width = k.offsetWidth + "px";
-        inhaltTauschen(k, [spinner(true), el("span", "ds-sr", beschriftung || "Wird gespeichert …")], false);
-      }, Bewegung.LADE_VERZOEGERUNG_MS);
-      beschaeftigtZustaende.set(k, zustand);
-      return Promise.resolve();
-    }
-    const zustand = beschaeftigtZustaende.get(k);
-    if (!zustand) return Promise.resolve();
-    return beschaeftigtAbwarten(k).then(function () {
-      if (beschaeftigtZustaende.get(k) !== zustand) return;
-      beschaeftigtZustaende.delete(k);
-      if (zustand.inhalt) inhaltTauschen(k, zustand.inhalt, true);
-      k.style.width = "";
-      k.removeAttribute("aria-disabled");
-      k.removeAttribute("aria-busy");
-    });
+  function beschaeftigt(k, arbeit, o) {
+    const w = istOptionen(o) ? o : {};
+    if (!k) return Promise.resolve(typeof arbeit === "function" ? arbeit() : arbeit);
+    const fertigText = w.fertig || null;
+    gesichterSichern(k, w.text, fertigText, true);
+    if (typeof UI.meldungenFehlerSchliessen === "function") UI.meldungenFehlerSchliessen();
+    return DS.motion.busy(k, arbeit, { done: !!(fertigText || k.querySelector(":scope > .ds-btn__faces > .ds-btn__face--done")) });
   }
 
 
@@ -907,30 +1047,39 @@ const UI = (function () {
 
   const STATUS_TOENE = {
     erfolg: "erfolg", warnung: "warnung", gefahr: "gefahr", neutral: "neutral", laeuft: "laeuft",
-    wartet: "neutral", aus: "neutral",
-    // Kompatibilität mit den alten Chip-Tönen (kein Blau mehr):
-    info: "neutral", leise: "neutral", marke: "neutral", fehler: "gefahr", ok: "erfolg"
+    wartet: "neutral", aus: "neutral"
   };
 
-  /* Wie ChatBob statusBadge: Warnung UND Fehler tragen das Dreieck; die
-     beiden unterscheiden Fläche und Text. Der Kreis (achtungKreis) gehört
-     zu Bannern und Meldungen. */
+  /* Warnung UND Fehler tragen das Dreieck; die beiden unterscheiden
+     Fläche und Text. Der Kreis (achtungKreis) gehört zu Bannern und
+     Meldungen. */
   const STATUS_SINNBILDER = {
     erfolg: "check", warnung: "achtung", gefahr: "achtung", neutral: "info",
-    wartet: "uhr", aus: "aus", info: "info", leise: "info", marke: "check", fehler: "achtung", ok: "check"
+    wartet: "uhr", aus: "aus"
   };
 
   /* Töne → Modifikatoren von .ds-status; neutral hat keinen. */
   const STATUS_KLASSEN = { erfolg: "ds-status--ok", warnung: "ds-status--warning", gefahr: "ds-status--error", laeuft: "ds-status--running" };
 
+  /* Klassen nur über classList: className überschriebe die Laufzeitklassen
+     von Dashboard-Style (ds-enter*, ds-pressed). Die Farbe gleitet dann
+     über --ds-dur-medium (status.css). */
+  const eigeneStatusKlassen = new WeakMap();
+
   function statusSetzen(s, beschriftung, ton, optionen) {
     const o = optionen || {};
     const roh = ton || "neutral";
     const t = STATUS_TOENE[roh] || "neutral";
-    const klasse = "ds-status" + (STATUS_KLASSEN[t] ? " " + STATUS_KLASSEN[t] : "") + (o.klasse ? " " + o.klasse : "");
-    if (s.className !== klasse) s.className = klasse;
+    s.classList.add("ds-status");
+    for (const k of Object.keys(STATUS_KLASSEN)) s.classList.toggle(STATUS_KLASSEN[k], k === t);
+    const alteKlassen = eigeneStatusKlassen.get(s) || [];
+    const neueKlassen = o.klasse ? String(o.klasse).split(/\s+/).filter(Boolean) : [];
+    for (const k of alteKlassen) if (neueKlassen.indexOf(k) === -1) s.classList.remove(k);
+    for (const k of neueKlassen) s.classList.add(k);
+    eigeneStatusKlassen.set(s, neueKlassen);
 
-    // Das Symbol nur tauschen, wenn es sich ändert: ein laufender Spinner dreht weiter.
+    // Das Symbol nur tauschen, wenn es sich ändert: ein laufender Spinner
+    // dreht weiter. Ein neues Sinnbild blendet über @starting-style ein.
     const symbol = o.sinnbild === false ? ""
       : t === "laeuft" ? "#spinner"
         : (o.sinnbild || STATUS_SINNBILDER[roh] || STATUS_SINNBILDER[t]);
@@ -950,12 +1099,12 @@ const UI = (function () {
     textSetzen(beschriftungsKnoten, beschriftung);
 
     // Ein Chip mit Erklärung ist ein Tabstopp: der Tooltip erscheint mit
-    // der Tastatur sofort (UI.tipp), sonst wäre er nur mit der Maus zu lesen.
+    // der Tastatur sofort, sonst wäre er nur mit der Maus zu lesen.
     if (o.titel) {
-      s.setAttribute("data-tipp", o.titel);
+      s.setAttribute("data-tip", o.titel);
       s.tabIndex = 0;
     } else if (o.titel !== undefined) {
-      s.removeAttribute("data-tipp");
+      s.removeAttribute("data-tip");
       s.removeAttribute("tabindex");
     }
     return s;
@@ -977,11 +1126,16 @@ const UI = (function () {
   const BANNER_KLASSEN = { erfolg: "ds-alert--success", warnung: "ds-alert--warning", gefahr: "ds-alert--error" };
   const BANNER_SINNBILDER = { info: "info", erfolg: "checkKreis", warnung: "achtung", gefahr: "achtungKreis" };
 
-  function banner(a, ton, knopfKnoten, optionen) {
-    const o = istOptionen(a) ? a : Object.assign({ text: a, ton: ton, knopf: knopfKnoten }, optionen || {});
+  /* Banner (.ds-alert): role=alert für Fehler, sonst status (alert.css);
+     rolle: null lässt die Rolle weg. Die Aktion ist ein kompakter Knopf
+     (.ds-btn--sm), den Dashboard-Style über und unter die Textzeile ragen
+     lässt; mehrere stehen in .banner-knoepfe. */
+  function banner(optionen) {
+    const o = optionen || {};
     const t = BANNER_TOENE[o.ton] || "info";
     const b = el("div", "ds-alert" + (BANNER_KLASSEN[t] ? " " + BANNER_KLASSEN[t] : ""));
-    if (o.rolle) b.setAttribute("role", o.rolle);
+    const rolle = o.rolle === undefined ? (t === "gefahr" ? "alert" : "status") : o.rolle;
+    if (rolle) b.setAttribute("role", rolle);
     b.appendChild(sinnbild(o.sinnbild || BANNER_SINNBILDER[t], 20));
 
     const textKnoten = el("div", "ds-alert__text");
@@ -993,8 +1147,10 @@ const UI = (function () {
     else if (!istLeer(o.text)) textKnoten.appendChild(document.createTextNode(String(o.text)));
     b.appendChild(textKnoten);
 
+    const knoepfe = (Array.isArray(o.knopf) ? o.knopf : [o.knopf]).filter(Boolean);
+    for (const k of knoepfe) if (k.classList && k.classList.contains("ds-btn")) k.classList.add("ds-btn--sm");
     if (Array.isArray(o.knopf)) {
-      if (o.knopf.length) b.appendChild(anhaengen(el("div", "banner-knoepfe"), o.knopf));
+      if (knoepfe.length) b.appendChild(anhaengen(el("div", "banner-knoepfe"), knoepfe));
     } else if (o.knopf) {
       b.appendChild(o.knopf);
     }
@@ -1002,8 +1158,8 @@ const UI = (function () {
     return b;
   }
 
-  function leerzustand(a, textZeile) {
-    const o = istOptionen(a) ? a : { titel: a, text: textZeile };
+  function leerzustand(optionen) {
+    const o = optionen || {};
     const l = el("div", "ds-empty");
     const scheibe = el("span", "ds-empty__disc");
     scheibe.setAttribute("aria-hidden", "true");
@@ -1042,16 +1198,26 @@ const UI = (function () {
      Laden
      ================================================================== */
 
-  function spinner(klein) {
+  /* Bogen-Spinner für Zeilen, Zellen und Knöpfe. Er hat keine eigene
+     Verzögerung: frei stehend wartet er mit verzoegert in einer Hülle
+     .ds-enter--delayed (nie .ds-enter auf dem Spinner selbst, das ersetzte
+     seine Schleife). */
+  function spinner(klein, o) {
     const s = el("span", "ds-spinner" + (klein ? " ds-spinner--sm" : ""));
     s.setAttribute("aria-hidden", "true");
-    return s;
+    if (!o || !o.verzoegert) return s;
+    const huelle = el("span", "ds-enter ds-enter--delayed");
+    huelle.appendChild(s);
+    return huelle;
   }
 
+  /* Ladezeile mit dem Formen-Loader (Block-Loader von Dashboard-Style). */
   function ladezeile(beschriftung) {
     const z = el("div", "ds-loading");
     z.setAttribute("role", "status");
-    z.appendChild(spinner());
+    const loader = el("span", "ds-loader ds-loader--sm");
+    loader.setAttribute("aria-hidden", "true");
+    z.appendChild(loader);
     z.appendChild(el("span", null, beschriftung || "Wird geladen …"));
     return z;
   }
@@ -1088,9 +1254,11 @@ const UI = (function () {
      Karten und Kacheln
      ================================================================== */
 
-  function karte(a, unter, breit) {
-    const o = istOptionen(a) ? a : { titel: a, unter: unter, breit: breit };
+  function karte(optionen) {
+    const o = optionen || {};
+    const offen = !istLeer(o.titel) && !!(o.href || o.beiKlick);
     const k = el("section", "ds-card"
+      + (offen ? " ds-card--interactive" : "") + (o.marke ? " karte-marke" : "")
       + (o.breit ? " karte-breit" : "") + (o.gefuellt ? " ds-card--filled" : "")
       + (o.klasse ? " " + o.klasse : ""));
     if (o.id) k.id = o.id;
@@ -1101,11 +1269,23 @@ const UI = (function () {
     const aktionen = (o.aktionen || []).filter(Boolean);
     if (!istLeer(o.titel) || aktionen.length) {
       const kopf = el("div", "ds-card__row");
+      if (o.marke) kopf.appendChild(o.marke);
       if (!istLeer(o.titel)) {
         const h = el("h" + (o.ebene || 2), "ds-card__title");
-        // Sinnbild vor dem Titel (Bestandskarten, Mapping 7.2 #15).
+        // Sinnbild vor dem Titel (Bestandskarten der Übersicht).
         if (o.sinnbild) h.appendChild(sinnbild(o.sinnbild, 20));
-        h.appendChild(document.createTextNode(String(o.titel)));
+        if (offen) {
+          // Die Form mit .ds-card__action: ihre Fläche (::after) spannt sich
+          // über die Karte, die übrigen Bedienelemente bleiben darüber.
+          const ziel = el(o.href ? "a" : "button", "ds-card__action", o.titel);
+          if (o.href) ziel.href = o.href;
+          else ziel.type = "button";
+          if (o.beiKlick) ziel.addEventListener("click", o.beiKlick);
+          fokusSetzen(ziel, o.fokus);
+          h.appendChild(ziel);
+        } else {
+          h.appendChild(document.createTextNode(String(o.titel)));
+        }
         kopf.appendChild(h);
       }
       if (aktionen.length) {
@@ -1133,18 +1313,19 @@ const UI = (function () {
 
   const KACHEL_SINNBILDER = { erfolg: "checkKreis", warnung: "achtung", gefahr: "achtungKreis" };
 
-  function kachel(a, wertText, unter, ton) {
-    const o = istOptionen(a) ? a : { text: a, wert: wertText, unter: unter, ton: ton };
+  function kachel(optionen) {
+    const o = optionen || {};
     const tag = o.href ? "a" : (o.beiKlick ? "button" : "div");
     const k = el(tag, "ds-tile" + (o.klasse ? " " + o.klasse : ""));
     if (tag === "button") k.type = "button";
     if (o.href) k.href = o.href;
     if (o.beiKlick) k.addEventListener("click", o.beiKlick);
     if (o.titel) {
-      k.setAttribute("data-tipp", o.titel);
+      k.setAttribute("data-tip", o.titel);
       if (tag === "div") k.tabIndex = 0;   // Tooltip auch per Tastatur
     }
     fokusSetzen(k, o.fokus);
+    if (!istLeer(o.schluessel)) k.setAttribute("data-ds-key", String(o.schluessel));
 
     // Spans statt p: in button und a ist nur Phrasierungsinhalt erlaubt.
     const beschriftung = el("span", "ds-tile__label");
@@ -1155,7 +1336,11 @@ const UI = (function () {
 
     const leer = istLeer(o.wert);
     const wert = el("span", "ds-tile__value" + (leer ? " leer" : ""), leer ? "–" : String(o.wert));
-    if (!leer && typeof o.zahl === "number" && isFinite(o.zahl)) wert.setAttribute("data-zahl", String(o.zahl));
+    // Der Rohwert fürs Hochzählen (Bewegung.auftritt beim ersten Zeigen,
+    // Bewegung.kennzahlenStill danach); «88 %» zählt 88 und behält « %».
+    if (!leer && typeof o.zahl === "number" && isFinite(o.zahl)) {
+      Bewegung.kachelZahlMerken(wert, o.zahl, String(o.wert), istLeer(o.schluessel) ? "" : String(o.schluessel));
+    }
     k.appendChild(wert);
 
     if (o.unter && o.unter.nodeType) k.appendChild(anhaengen(el("span", "ds-tile__note"), o.unter));
@@ -1179,7 +1364,7 @@ const UI = (function () {
     const t = hinweisText || SCHLOSS_TEXT;
     s.setAttribute("role", "img");
     s.setAttribute("aria-label", "Gesperrt: " + t);
-    s.setAttribute("data-tipp", t);
+    s.setAttribute("data-tip", t);
     s.appendChild(sinnbild("schloss", 16));
     return s;
   }
@@ -1211,12 +1396,8 @@ const UI = (function () {
     return feldZeile(name, wert, { gesperrt: true, hinweis: hinweisText });
   }
 
-  function feldFrei(name, knoten, mitSchloss, hinweisText) {
-    return feldZeile(name, knoten || "", { gesperrt: !!mitSchloss, hinweis: hinweisText });
-  }
-
-  function formZeile(beschriftung, feld, a, hinweisText, zusatz) {
-    const o = istOptionen(a) ? a : { geaendert: !!a, hinweis: hinweisText, zusatz: zusatz };
+  function formZeile(beschriftung, feld, optionen) {
+    const o = optionen || {};
     const z = el("div", "datenzeile datenzeile-form");
 
     // Die Beschriftung ist das Label des (ersten) Felds.
@@ -1225,7 +1406,7 @@ const UI = (function () {
       : null;
     const name = el(steuer ? "label" : "div", "datenzeile-name", beschriftung);
     if (steuer) {
-      if (!steuer.id) steuer.id = id("ui-feld");
+      if (!steuer.id) steuer.id = teilId(steuer, "feld");
       name.htmlFor = steuer.id;
     }
     name.appendChild(el("span", "geaendert-text ds-sr", " (geändert)"));
@@ -1242,11 +1423,11 @@ const UI = (function () {
     return z;
   }
 
-  /* Kennwerte: [[name, wert], …] → ul.kennwerte (Wert rechts, leer «–»).
+  /* Kennwerte: [[name, wert], …] → ul.ds-kv-list (Wert rechts, leer «–»).
      Mit Objekten [{ name, wert, href, beiKlick, ton, titel, fokus }] die
-     klickbare Fassung der Bestandskarte (Mapping 7.2 #15): Zeilen mit Ziel
-     sind Links bzw. Knöpfe mit 6-%-Ebene und Fokusring (dieselben Klassen
-     wie UI.verteilung, ohne Balken), der Wert steht rechts (500,
+     klickbare Fassung der Bestandskarte (Übersicht): Zeilen mit Ziel
+     sind Links bzw. Knöpfe mit Zustandsebene, Welle und Fokusring
+     (dieselben Klassen wie UI.verteilung, ohne Balken), der Wert steht rechts (500,
      tabellarisch), eine Null leise. ton ('warnung'|'gefahr') setzt ein
      Sinnbild vor den Namen und sagt dem Screenreader «(zu prüfen)» bzw.
      «(dringend)» – die Zahl wird nie gefärbt. titel = Tooltip; eine Zeile
@@ -1276,10 +1457,11 @@ const UI = (function () {
       const z = el(tag, "verteilung-zeile");
       if (tag === "a") z.href = e.href;
       if (tag === "button") z.type = "button";
+      if (tag !== "div") z.setAttribute("data-ds-ripple", "");
       if (e.beiKlick) z.addEventListener("click", e.beiKlick);
       fokusSetzen(z, e.fokus);
       if (e.titel) {
-        z.setAttribute("data-tipp", e.titel);
+        z.setAttribute("data-tip", e.titel);
         if (tag === "div") z.tabIndex = 0;
       }
       const name = el("span", "verteilung-name");
@@ -1319,18 +1501,21 @@ const UI = (function () {
      Filter-Chips und Zähler
      ================================================================== */
 
-  /* Filter-Chip. Mit «gewaehlt» ein Umschalter (aria-pressed, Häkchen);
-     mit «entfernen» ein aktiver Filter mit ×, der sich beim Klick
-     entfernt; ohne beides ein einfacher Aktions-Chip. */
+  /* Filter-Chip. Mit «gewaehlt» ein Umschalter: der Chip von Dashboard-
+     Style auf einem Kästchen (label.ds-chip > input.ds-chip__input +
+     .ds-chip__body mit dem Haken, der sich zeichnet, und dem Platz, der
+     sich öffnet). Mit «entfernen» ein aktiver Filter mit ×, ohne beides
+     ein Aktions-Chip: beide sind Knöpfe bzw. Links (button|a.chip), die
+     es in Dashboard-Style nicht gibt. */
   function chip(a) {
     const o = istOptionen(a) ? a : { text: a };
+    if (typeof o.entfernen !== "function" && o.gewaehlt !== undefined) return umschaltChip(o);
     const entfernbar = typeof o.entfernen === "function";
-    const umschalter = !entfernbar && o.gewaehlt !== undefined;
     const c = el(o.href ? "a" : "button", "chip" + (entfernbar ? " chip-entfernbar" : "") + (o.klasse ? " " + o.klasse : ""));
     if (o.href) c.href = o.href;
     else c.type = "button";
     if (o.id) c.id = o.id;
-    if (umschalter) c.appendChild(sinnbild("check", 18, "chip-haken"));
+    c.setAttribute("data-ds-ripple", "");
     if (o.sinnbild) c.appendChild(sinnbild(o.sinnbild, 18));
     c.appendChild(el("span", "chip-text", o.text));
     if (entfernbar) {
@@ -1340,34 +1525,70 @@ const UI = (function () {
     } else if (o.label) {
       c.setAttribute("aria-label", o.label);
     }
-    // Ohne titel trägt der Chip seinen eigenen Text als Tooltip: UI.tipp
-    // zeigt ihn nur, wenn der Text gekürzt ist («…», bausteine.css .chip-text).
-    if (o.titel || !istLeer(o.text)) c.setAttribute("data-tipp", o.titel || text(o.text));
+    // Ein titel ist immer ein Tooltip; ohne titel zeigt der Chip seinen
+    // eigenen Text nur, solange er mit «…» gekürzt ist.
+    if (o.titel) c.setAttribute("data-tip", o.titel);
+    else if (!istLeer(o.text)) c.setAttribute("data-tip-abgeschnitten", text(o.text));
     fokusSetzen(c, o.fokus);
-    if (o.deaktiviert) c.disabled = true;
-
-    let gewaehlt = !!o.gewaehlt;
-    function zeigen() { if (umschalter) c.setAttribute("aria-pressed", gewaehlt ? "true" : "false"); }
-    c.setzen = function (an) { gewaehlt = !!an; zeigen(); return c; };
-    c.istGewaehlt = function () { return gewaehlt; };
-    if (o.beiKlick) {
-      c.addEventListener("click", function (e) {
-        if (umschalter && o.umschalten !== false) { gewaehlt = !gewaehlt; zeigen(); }
-        o.beiKlick(umschalter ? gewaehlt : undefined, e);
-      });
+    if (o.deaktiviert) {
+      if (o.href) c.setAttribute("aria-disabled", "true");
+      else c.disabled = true;
     }
-    zeigen();
+    if (o.beiKlick) c.addEventListener("click", function (e) { o.beiKlick(undefined, e); });
+    c.setzen = function () { return c; };
+    c.istGewaehlt = function () { return false; };
     return c;
   }
 
-  function chips(liste) { return anhaengen(el("div", "ds-chips"), liste || []); }
+  function umschaltChip(o) {
+    const c = el("label", "ds-chip" + (o.klasse ? " " + o.klasse : ""));
+    const k = el("input", "ds-chip__input");
+    const radio = o.art === "radio";
+    k.type = radio ? "radio" : "checkbox";
+    if (o.name) k.name = o.name;
+    if (o.wert !== undefined) k.value = text(o.wert);
+    if (o.id) k.id = o.id;
+    if (o.label) k.setAttribute("aria-label", o.label);
+    fokusSetzen(k, o.fokus);
+    k.checked = !!o.gewaehlt;
+    if (o.deaktiviert) k.disabled = true;
+    const koerper = el("span", "ds-chip__body");
+    koerper.appendChild(sinnbild("check", 18, "ds-chip__check"));
+    if (o.sinnbild) koerper.appendChild(sinnbild(o.sinnbild, 18));
+    koerper.appendChild(el("span", null, o.text));
+    anhaengen(c, [k, koerper]);
+    if (o.titel) c.setAttribute("data-tip", o.titel);
+    // Ein Radio meldet change nur am neu gewählten Chip (genau einer der
+    // Gruppe ist gewählt; Dashboard-Style lässt beide Plätze zugleich gleiten).
+    k.addEventListener("change", function (e) { if (o.beiKlick) o.beiKlick(k.checked, e); });
+    c.eingabe = k;
+    c.setzen = function (an) { k.checked = !!an; return c; };
+    c.istGewaehlt = function () { return k.checked; };
+    return c;
+  }
 
-  /* Zahl-Plakette (Mapping 7.2 #16). Leer (null, "") ist sie verborgen.
-     Erscheint sie (.setzen von leer auf eine Zahl), ploppt sie einmal
-     (.6 → 1); ein neuer Wert ändert sich ohne Bewegung. Beim Bauen bleibt
-     sie ruhig, weil ein Bauer auch beim Neuzeichnen läuft – ausser mit
-     { ploppen: true } für eine Plakette, die genau jetzt erscheint. */
-  function zaehler(zahl, still, optionen) {
+  /* Eine Reihe von Filter-Chips ist .ds-chips von Dashboard-Style (DS.ripple
+     lässt ihre Chips beim Umschalten gleiten): mit legende eine benannte
+     Gruppe (fieldset mit legend.ds-sr), sonst div.ds-chips, sobald ein
+     Umschalt-Chip (.ds-chip) oder eine Gruppe darin steht. Jede andere
+     Reihe (Status-Chips, Links) ist keine Filtergruppe: div.chip-zeile
+     (bausteine.css). */
+  function chips(liste, o) {
+    const w = o || {};
+    const filter = (liste || []).some(function (k) {
+      return !!k && !!k.classList && (k.classList.contains("ds-chip") || k.classList.contains("ds-chips"));
+    });
+    if (istLeer(w.legende)) return anhaengen(el("div", filter ? "ds-chips" : "chip-zeile"), liste || []);
+    const gruppe = el("fieldset", "ds-chips");
+    gruppe.appendChild(el("legend", "ds-sr", w.legende));
+    return anhaengen(gruppe, liste || []);
+  }
+
+  /* Zahl-Plakette (Zähler an «Filter» und «Spalten»). Leer (null, "") ist
+     sie verborgen. Erscheint sie (.setzen von leer auf eine Zahl), ploppt
+     sie einmal (.6 → 1); ein neuer Wert ändert sich ohne Bewegung. Beim
+     Bauen bleibt sie ruhig, weil ein Bauer auch beim Neuzeichnen läuft. */
+  function zaehler(zahl, still) {
     const z = el("span", "zaehler" + (still ? " zaehler-still" : ""), zahl);
     z.setzen = function (n) {
       const warLeer = z.textContent === "";
@@ -1375,7 +1596,6 @@ const UI = (function () {
       if (warLeer && z.textContent !== "") Bewegung.eintreten(z, "ploppen");
       return z;
     };
-    if (optionen && optionen.ploppen && z.textContent !== "") Bewegung.eintreten(z, "ploppen");
     return z;
   }
 
@@ -1387,8 +1607,8 @@ const UI = (function () {
   const EINGABE_TYPEN = { text: "text", zahl: "number", datum: "date", suche: "search", mail: "email", telefon: "tel" };
 
   /* Vorschlagslisten (<datalist>) liegen gesammelt in einem verborgenen
-     Behälter. Jeder Aufruf aktualisiert die Liste – früher wurde sie
-     einmal gebaut und nie mehr erneuert (Inventar §8 Nr. 10). */
+     Behälter. Jeder Aufruf aktualisiert die Liste: neue Werte (ein eben
+     gespeicherter Standort) erscheinen sofort als Vorschlag. */
   function datenlisteSetzen(listenId, werte, ohneFeldId) {
     let liste = $(listenId);
     if (!liste) {
@@ -1540,14 +1760,14 @@ const UI = (function () {
       : null;
     const label = el(steuer ? "label" : "span", "ds-field__label", beschriftung);
     if (steuer) {
-      if (!steuer.id) steuer.id = id("ui-feld");
+      if (!steuer.id) steuer.id = teilId(steuer, "feld");
       label.htmlFor = steuer.id;
     }
     f.appendChild(label);
     if (feldKnoten) f.appendChild(feldKnoten);
     if (!istLeer(o.hinweis)) {
       const h = el("p", "ds-field__hint", o.hinweis);
-      h.id = id("ui-hinweis");
+      h.id = steuer ? teilId(steuer, "hinweis") : id("ui-hinweis");
       f.appendChild(h);
       if (steuer) beschreibungHinzu(steuer, h.id);
     }
@@ -1567,9 +1787,10 @@ const UI = (function () {
     else steuer.removeAttribute("aria-describedby");
   }
 
-  /* Feldfehler (ChatBob setFieldError): Fehlerrahmen, Meldung mit Icon
-     unter dem Feld (nie in einem <label>), aria-invalid und
-     aria-describedby. Die erste Eingabe löscht ihn; "" löscht ausdrücklich. */
+  /* Feldfehler: Fehlerrahmen, Meldung mit Icon unter dem Feld (nie in
+     einem <label>), aria-invalid und aria-describedby; Dashboard-Style
+     blendet die Meldung ein und öffnet ihr den Platz. Die erste Eingabe
+     löscht ihn; "" löscht ausdrücklich. */
   function feldFehler(steuer, meldung) {
     if (!steuer) return;
     const altId = steuer.getAttribute("data-fehler-id");
@@ -1587,7 +1808,7 @@ const UI = (function () {
     const meldungsId = id("ui-fehler");
     const m = el("p", "ds-field__hint ds-field__hint--error");
     m.id = meldungsId;
-    m.appendChild(sinnbild("achtung", 16));
+    m.appendChild(sinnbild("achtungKreis", 16));
     m.appendChild(el("span", null, meldung));
     const anker = steuer.closest("label, .ds-search, .ds-inline-form") || steuer;
     anker.insertAdjacentElement("afterend", m);
@@ -1616,39 +1837,60 @@ const UI = (function () {
 
   /* Platz für einen Hinweis, der am Getippten hängt (Banner unter einem
      Feld: «Name schon vergeben», «Diese Kurzwahl gibt es schon»).
-     .setzen(schluessel, bauen, { aufdecken }) baut nur, wenn sich der
+     .setzen(schluessel, bauen, { ausEingabe }) baut nur, wenn sich der
      Schlüssel ändert: Tippen ohne neue Lage lässt den Hinweis stehen (kein
      Flackern, keine neue Ansage). Ein leerer Schlüssel leert und verbirgt
-     ihn. aufdecken: true deckt ihn auf, wenn er dadurch ERSCHEINT (eine
-     Eingabe hat ihn gebracht, api.md §9.1); beim Neuzeichnen steht er
+     ihn. ausEingabe: true – eine Eingabe hat ihn gebracht, geändert oder
+     weggenommen: dann wie ein Banner, das kommt oder geht, über FLIP auf
+     seinem Stapel (Dashboard-Style, Alert: DS.motion.flip; nie
+     .ds-enter--swap pro Tastendruck). Stapel ist die Liste der Zeilen um
+     seine .datenzeile (sonst sein Elternelement): was darunter steht,
+     gleitet, der Hinweis blendet ohne Hub ein. Beim Neuzeichnen steht er
      ruhig da. Stand der Fokus darin, geht er auf das erste Bedienelement
-     des neuen Inhalts, sonst auf das Feld seiner Zeile. */
+     des neuen Inhalts, sonst auf das Feld seiner Zeile. Der Schlüssel
+     steht am Knoten (data-hinweis-schluessel): ein Platz, den
+     UI.abgleichen stehen lässt, übernimmt ihn mit dem Inhalt aus dem
+     neuen Bau. */
   function hinweisPlatz(optionen) {
     const o = optionen || {};
     const p = el("div", "hinweis-platz" + (o.klasse ? " " + o.klasse : ""));
     if (o.id) p.id = o.id;
     p.hidden = true;
-    let schluessel = "";
+    const schluessel = function () { return p.getAttribute("data-hinweis-schluessel") || ""; };
     p.setzen = function (neu, bauen, optionenSetzen) {
       const s = text(neu);
-      if (s === schluessel) return p;
-      const warLeer = !schluessel;
-      schluessel = s;
+      if (s === schluessel()) return p;
+      const warLeer = !schluessel();
+      if (s) p.setAttribute("data-hinweis-schluessel", s);
+      else p.removeAttribute("data-hinweis-schluessel");
       const fokusDrin = p.contains(document.activeElement);
-      leeren(p);
-      p.hidden = !s;
-      const knoten = s && typeof bauen === "function" ? bauen() : null;
-      if (knoten) anhaengen(p, knoten);
-      if (knoten && knoten.nodeType && warLeer && optionenSetzen && optionenSetzen.aufdecken) Bewegung.aufdecken(knoten);
+      let knoten = null;
+      function fuellen() {
+        leeren(p);
+        p.hidden = !s;
+        knoten = s && typeof bauen === "function" ? bauen() : null;
+        if (knoten) anhaengen(p, knoten);
+      }
+      const zeile = p.closest(".datenzeile");
+      const stapel = zeile && zeile.parentElement ? zeile.parentElement : p.parentElement;
+      if (optionenSetzen && optionenSetzen.ausEingabe && stapel && p.isConnected) {
+        // Verborgene Einträge zählen nicht: ein Platz, der direkt im Stapel
+        // steht, ist beim Erscheinen neu (FLIP blendet ihn ein), nie ein
+        // Eintrag, der von der Ecke oben links her gleitet.
+        Bewegung.umordnen(stapel, fuellen, { eintraege: ":scope > :not([hidden])" });
+        if (knoten && knoten.nodeType && warLeer && p.parentElement !== stapel) Bewegung.eintreten(knoten, "blenden");
+      } else {
+        fuellen();
+      }
       if (fokusDrin) {
-        const zeile = p.closest(".datenzeile, .ds-field");
+        const feldZeile = p.closest(".datenzeile, .ds-field");
         const ziel = p.querySelector("button, a[href]")
-          || (zeile ? zeile.querySelector("input, select, textarea") : null);
+          || (feldZeile ? feldZeile.querySelector("input, select, textarea") : null);
         if (ziel) ziel.focus();
       }
       return p;
     };
-    p.schluessel = function () { return schluessel; };
+    p.schluessel = schluessel;
     return p;
   }
 
@@ -1764,9 +2006,9 @@ const UI = (function () {
      Suche
      ================================================================== */
 
-  /* Gefüllte Pille mit EINEM Icon (Fehler E6). beiEingabe kommt verzögert
-     (Standard 150 ms). setzen() schreibt nie in ein Feld, in dem gerade
-     getippt wird (Fehler B4); sofort() löst eine wartende Eingabe aus. */
+  /* Gefüllte Pille mit der Lupe vorne. beiEingabe kommt verzögert (Standard 150 ms). setzen() schreibt nie in
+     ein Feld, in dem gerade getippt wird (sonst sprängen Text und
+     Schreibmarke); sofort() löst eine wartende Eingabe aus. */
   function suchfeld(optionen) {
     const o = optionen || {};
     const huelle = el("div", "ds-search" + (o.klasse ? " " + o.klasse : ""));
@@ -1800,8 +2042,10 @@ const UI = (function () {
     /* Esc leert eine gefüllte Suche – immer, nicht nur solange nichts
        anderes auf der Seite Esc beansprucht (eine Detailseite fragte mit
        offenem Entwurf sonst «Änderung verwerfen?»). preventDefault sagt
-       den Seiten (F.ereignisse), dass Esc erledigt ist; erst Esc in der
-       leeren Suche geht weiter. Offene Ebenen fängt rahmen.js vorher ab. */
+       den Seiten (F.ereignisse) und DS.overlay (das ein Esc mit
+       defaultPrevented übergeht), dass Esc erledigt ist: eine Suche in einem
+       Blatt leert sich, das Blatt bleibt offen. Erst Esc in der leeren Suche
+       geht weiter. */
     f.addEventListener("keydown", function (ev) {
       if (ev.key !== "Escape" || ev.defaultPrevented || ev.isComposing || f.value === "") return;
       ev.preventDefault();
@@ -1832,41 +2076,64 @@ const UI = (function () {
 
   const SCHALTER_WOERTER = { an: "Aktiv", aus: "Inaktiv", gesperrt: "Aktiv" };
 
-  /* button[role=switch]. Ein Klick schaltet an Ort und Stelle um (der
-     Übergang spielt), dann kommt beiWechsel(an, schalter). Gibt beiWechsel
-     false zurück oder ein Promise, das false liefert oder scheitert,
-     springt der Schalter zurück. Gesperrt = an + aria-disabled (bleibt
-     fokussierbar, Tooltip nennt den Grund). */
+  /* Schalter von Dashboard-Style (label.ds-switch > input[role=switch] +
+     .ds-switch__track): der Griff gleitet und wächst auf der Feder, Halo
+     und Fokusring kommen von dort. Ein Klick schaltet an Ort und Stelle
+     um, dann kommt beiWechsel(an, schalter). Gibt beiWechsel false zurück
+     oder ein Promise, das false liefert oder scheitert, springt der
+     Schalter zurück.
+     ICT-eigen ist nur die Sperre: gesperrt = an + Schloss im Griff +
+     aria-disabled (fokussierbar, der Tooltip nennt den Grund: ein Wert aus
+     dem Abgleich), deaktiviert = aria-disabled im gesperrten Aussehen.
+     Beide bleiben fokussierbar (disabled verlöre Fokus und Tooltip); ihre
+     Klicks schluckt der Zuhörer bei den Knöpfen (input[aria-disabled]). */
   function schalter(optionen) {
     const o = optionen || {};
-    const s = el("button", "schalter" + (o.klasse ? " " + o.klasse : ""));
-    s.type = "button";
-    s.setAttribute("role", "switch");
-    if (o.id) s.id = o.id;
-    fokusSetzen(s, o.fokus);
-    if (o.label) s.setAttribute("aria-label", o.label);
-    let an = !!o.an;
-    let gesperrt = !!o.gesperrt;
-    let deaktiviert = !!o.deaktiviert;
-    let tipp = o.titel || "";
+    const s = el("label", "ds-switch" + (o.klasse ? " " + o.klasse : ""));
+    const k = el("input");
+    k.type = "checkbox";
+    k.setAttribute("role", "switch");
+    if (o.id) k.id = o.id;
+    fokusSetzen(k, o.fokus);
+    if (o.label) k.setAttribute("aria-label", o.label);
+    const spur = el("span", "ds-switch__track");
+    spur.setAttribute("aria-hidden", "true");
+    const schlossKnoten = sinnbild("schloss", 12, "schalter-schloss");
+    spur.appendChild(schlossKnoten);
+    anhaengen(s, [k, spur]);
 
-    function zeigen() {
-      s.setAttribute("aria-checked", (an || gesperrt) ? "true" : "false");
-      s.classList.toggle("gesperrt", gesperrt);
-      if (gesperrt || deaktiviert) s.setAttribute("aria-disabled", "true");
-      else s.removeAttribute("aria-disabled");
-      if (tipp) s.setAttribute("data-tipp", tipp);
-      else s.removeAttribute("data-tipp");
+    /* Der Zustand steht im DOM (data-an, .schalter-gesperrt, data-
+       deaktiviert, data-tip), nicht in dieser Funktion: ein Schalter, den
+       UI.abgleichen stehen lässt, übernimmt ihn so mit den Attributen aus
+       dem neuen Bau, und seine Methoden lesen den gezeigten Stand. */
+    const istAnRoh = function () { return s.getAttribute("data-an") === "true"; };
+    const istGesperrt = function () { return s.classList.contains("schalter-gesperrt"); };
+    const istDeaktiviert = function () { return s.hasAttribute("data-deaktiviert"); };
+
+    function zeigen(an, gesperrt, deaktiviert, tipp) {
+      s.setAttribute("data-an", an ? "true" : "false");
+      s.classList.toggle("schalter-gesperrt", gesperrt);
+      s.toggleAttribute("data-deaktiviert", deaktiviert);
+      k.checked = an || gesperrt;
+      if (gesperrt || deaktiviert) k.setAttribute("aria-disabled", "true");
+      else k.removeAttribute("aria-disabled");
+      // Der Tooltip hängt am Kästchen (Tastatur) und an der Spur (Zeiger):
+      // in einer Schalterzeile hat das Label keinen eigenen Kasten.
+      for (const t of [k, spur]) {
+        if (tipp) t.setAttribute("data-tip", tipp);
+        else t.removeAttribute("data-tip");
+      }
       s.dispatchEvent(new CustomEvent("schalterwechsel", { detail: { an: an || gesperrt, gesperrt: gesperrt } }));
     }
 
-    s.addEventListener("click", function () {
-      if (gesperrt || deaktiviert) return;
-      const neu = !an;
-      an = neu;
-      zeigen();
+    function tippJetzt() { return k.getAttribute("data-tip") || ""; }
+
+    k.addEventListener("change", function () {
+      if (istGesperrt() || istDeaktiviert()) { zeigen(istAnRoh(), istGesperrt(), istDeaktiviert(), tippJetzt()); return; }
+      const neu = k.checked;
+      zeigen(neu, false, false, tippJetzt());
       if (!o.beiWechsel) return;
-      const zurueck = function () { if (an === neu) { an = !neu; zeigen(); } };
+      const zurueck = function () { if (istAnRoh() === neu) zeigen(!neu, istGesperrt(), istDeaktiviert(), tippJetzt()); };
       const ergebnis = o.beiWechsel(neu, s);
       if (ergebnis === false) zurueck();
       else if (ergebnis && typeof ergebnis.then === "function") {
@@ -1874,53 +2141,79 @@ const UI = (function () {
       }
     });
 
+    s.eingabe = k;
     s.setzen = function (neuAn, neuGesperrt, neuerTipp) {
-      an = !!neuAn;
-      if (neuGesperrt !== undefined && neuGesperrt !== null) gesperrt = !!neuGesperrt;
-      if (neuerTipp !== undefined) tipp = neuerTipp || "";
-      zeigen();
+      zeigen(!!neuAn,
+        neuGesperrt !== undefined && neuGesperrt !== null ? !!neuGesperrt : istGesperrt(),
+        istDeaktiviert(),
+        neuerTipp !== undefined ? (neuerTipp || "") : tippJetzt());
       return s;
     };
-    s.sperren = function (aus) { deaktiviert = !!aus; zeigen(); return s; };
-    s.istAn = function () { return an || gesperrt; };
-    s.istGesperrt = function () { return gesperrt; };
-    zeigen();
+    s.sperren = function (aus) { zeigen(istAnRoh(), istGesperrt(), !!aus, tippJetzt()); return s; };
+    s.istAn = function () { return istAnRoh() || istGesperrt(); };
+    s.istGesperrt = istGesperrt;
+    zeigen(!!o.an, !!o.gesperrt, !!o.deaktiviert, o.titel || "");
     return s;
   }
 
   /* Zeile mit Schalter, Name (+ Unterzeile), Zustandswort und Zusatz
-     (Chips) rechts. Der Name ist ein <label> für den Schalter. */
+     (Chips). Name und Wort gehören in das Label des Schalters
+     (.ds-switch__label, .ds-switch__state mit beiden Wörtern: Dashboard-
+     Style blendet sie über). In der vollen Zeile ordnet .schalter-zeile
+     die Teile neu (das Label hat dort keinen eigenen Kasten): das Wort
+     ganz rechts, der Zusatz links davon. Der Name benennt das Kästchen
+     (aria-labelledby), die Unterzeile beschreibt es. */
   function schalterZeile(optionen) {
     const o = optionen || {};
     const s = o.schalter || schalter({ an: o.an, gesperrt: o.gesperrt, titel: o.titel, beiWechsel: o.beiWechsel });
-    const z = el("div", (o.kompakt ? "schalter-feld" : "schalter-zeile") + (o.klasse ? " " + o.klasse : ""));
-    z.appendChild(s);
+    const k = s.eingabe;
 
-    const textKnoten = el("div", "schalter-text");
-    const name = el("label", "schalter-name", o.name);
-    if (!s.id) s.id = id("ui-schalter");
-    name.htmlFor = s.id;
+    const textKnoten = el("span", "ds-switch__label schalter-text");
+    const name = el("span", "schalter-name", o.name);
+    name.id = teilId(k, "name");
     textKnoten.appendChild(name);
-    if (o.unter && o.unter.nodeType) textKnoten.appendChild(anhaengen(el("span", "schalter-unter"), o.unter));
-    else if (!istLeer(o.unter)) textKnoten.appendChild(el("span", "schalter-unter", o.unter));
-    z.appendChild(textKnoten);
+    if (k && !k.hasAttribute("aria-label")) k.setAttribute("aria-labelledby", name.id);
+    const unter = o.unter && o.unter.nodeType ? anhaengen(el("span", "schalter-unter"), o.unter)
+      : (!istLeer(o.unter) ? el("span", "schalter-unter", o.unter) : null);
+    if (unter) {
+      unter.id = teilId(k, "unter");
+      textKnoten.appendChild(unter);
+      if (k) beschreibungHinzu(k, unter.id);
+    }
+    s.appendChild(textKnoten);
 
     if (o.wort) {
       const woerter = Object.assign({}, SCHALTER_WOERTER, istOptionen(o.wort) ? o.wort : {});
-      const w = el("span", "schalter-wort");
-      w.setAttribute("aria-hidden", "true");   // der Zustand steht schon in aria-checked
+      const wort = el("span", "ds-switch__state");
+      wort.setAttribute("aria-hidden", "true");   // der Zustand steht schon im Schalter
+      const wortAn = el("span", "ds-switch__on", woerter.an);
+      anhaengen(wort, [wortAn, el("span", "ds-switch__off", woerter.aus)]);
+      // Gesperrt ist der Schalter an; ein eigenes Wort dafür ersetzt «an».
       const nachfuehren = function () {
-        textSetzen(w, s.istGesperrt && s.istGesperrt() ? woerter.gesperrt
-          : (s.getAttribute("aria-checked") === "true" ? woerter.an : woerter.aus));
+        textSetzen(wortAn, s.istGesperrt && s.istGesperrt() ? woerter.gesperrt : woerter.an);
       };
       s.addEventListener("schalterwechsel", nachfuehren);
       nachfuehren();
-      z.appendChild(w);
+      s.appendChild(wort);
     }
 
     const zusatz = el("div", "schalter-zusatz");
     anhaengen(zusatz, o.zusatz || []);
-    if (zusatz.firstChild) z.appendChild(zusatz);
+    let z;
+    if (o.kompakt) {
+      // Kompakt in einer Kopfzeile («ICT-Ablage  Aktiv»): der Schalter selbst.
+      s.classList.add("schalter-feld");
+      if (o.klasse) s.classList.add.apply(s.classList, String(o.klasse).split(/\s+/).filter(Boolean));
+      z = s;
+      if (zusatz.firstChild) {
+        z = el("div", "schalter-feld-huelle");
+        anhaengen(z, [s, zusatz]);
+      }
+    } else {
+      z = el("div", "schalter-zeile" + (o.klasse ? " " + o.klasse : ""));
+      z.appendChild(s);
+      if (zusatz.firstChild) z.appendChild(zusatz);
+    }
     z.schalter = s;
     z.zusatz = zusatz;
     return z;
@@ -1943,7 +2236,8 @@ const UI = (function () {
 
   /* Schlichte Tabelle in einer Karte (läuft bis an den Kartenrand).
      kopfzeilen: Texte oder { text, zahl, klasse }; Zellen dürfen Knoten
-     sein; leere Zellen zeigen «–». */
+     sein; leere Zellen zeigen «–». Die Blende an den Rändern, solange es
+     seitlich weitergeht, setzt Dashboard-Style (rollgebunden). */
   function tabelle(kopfzeilen, datenzeilen, optionen) {
     const o = optionen || {};
     const spalten = (kopfzeilen || []).map(spalteLesen);
@@ -1971,22 +2265,23 @@ const UI = (function () {
     t.appendChild(koerper);
     rahmen.appendChild(t);
     rahmen.tabelle = t;
-    // Blende nur, solange es seitlich weitergeht (data-mehr-rechts / data-gerollt-x).
-    return rollKanten(rahmen);
+    return rahmen;
   }
 
   const SORT_ARIA = { auf: "ascending", ab: "descending", ascending: "ascending", descending: "descending" };
 
-  /* Sortierknopf im th; der 16-px-Pfeil steht nur an der sortierten Spalte. */
+  /* Sortierknopf im th. Der 16-px-Pfeil (.ds-table__sort-arrow) steht nur
+     an der sortierten Spalte und zeigt immer nach oben; aria-sort=
+     "descending" am th dreht ihn auf der Feder (table.css). Jeder
+     Sortierknopf hält den Platz des Pfeils frei: nichts verschiebt sich. */
   function sortierKnopf(beschriftung, richtung) {
     const k = el("button", "ds-table__sort");
     k.type = "button";
     k.appendChild(el("span", null, beschriftung));
     k.richtungSetzen = function (r) {
-      const alt = k.querySelector(":scope > svg");
-      if (alt) alt.remove();
-      const aria = SORT_ARIA[r];
-      if (aria) k.appendChild(sinnbild(aria === "ascending" ? "pfeilHoch" : "pfeilRunter", 16));
+      const pfeil = k.querySelector(":scope > .ds-table__sort-arrow");
+      if (!SORT_ARIA[r]) { if (pfeil) pfeil.remove(); }
+      else if (!pfeil) k.appendChild(sinnbild("pfeilHoch", 16, "ds-table__sort-arrow"));
       return k;
     };
     k.richtungSetzen(richtung);
@@ -2013,14 +2308,14 @@ const UI = (function () {
         if (s.titel) {
           const t = el("span", "tabelle-kopf-text", s.text);
           t.tabIndex = 0;
-          t.setAttribute("data-tipp", s.titel);
+          t.setAttribute("data-tip", s.titel);
           th.appendChild(t);
         } else {
           th.textContent = text(s.text);
         }
       } else {
         const k = sortierKnopf(s.text, null);
-        if (s.titel) k.setAttribute("data-tipp", s.titel);
+        if (s.titel) k.setAttribute("data-tip", s.titel);
         k.addEventListener("click", function () { if (o.beiSortieren) o.beiSortieren(s.schluessel, k); });
         th.appendChild(k);
         knoepfe[s.schluessel] = { th: th, knopf: k };
@@ -2040,12 +2335,13 @@ const UI = (function () {
     return kopf;
   }
 
-  /* Rollkanten: data-gerollt-x (seitlich gerollt → Haarlinie an der
-     klebenden ersten Spalte), data-gerollt (nach unten gerollt) und
-     data-mehr-rechts (rechts liegt noch Inhalt → z. B. eine Ausblende-Maske
-     am rechten Rand, die nur steht, solange es dort wirklich weitergeht).
-     Ändert sich die Grösse des Rollers oder seines Inhalts (erstes Kind),
-     wird neu geprüft. */
+  /* Rollkanten für ICT-eigene Roller (.tabelle-rahmen, Zeitstrahl):
+     data-gerollt-x (seitlich gerollt → Haarlinie an der klebenden ersten
+     Spalte), data-gerollt (nach unten gerollt) und data-mehr-rechts
+     (rechts liegt noch Inhalt → eine Ausblende-Maske am rechten Rand, die
+     nur steht, solange es dort wirklich weitergeht). Ändert sich die
+     Grösse des Rollers oder seines Inhalts (erstes Kind), wird neu
+     geprüft. Die .ds-table-wrap blendet Dashboard-Style selbst aus. */
   const beobachteteRoller = new WeakSet();
   const rollerVon = new WeakMap();
   const groessenBeobachter = typeof ResizeObserver === "function"
@@ -2078,28 +2374,77 @@ const UI = (function () {
     }
   }
 
+  /* Ein zweiter Aufruf auf demselben Roller prüft nur neu: nach einem
+     Abgleich (UI.abgleichen) steht der gezeigte Roller noch, trägt aber
+     die Attribute seiner losgelösten Vorlage, also keine Kanten. Ein
+     losgelöster Roller misst nichts (alles 0); der Grössenbeobachter
+     meldet ihn, sobald er eingehängt ist. */
   function rollKanten(element) {
-    if (!element || beobachteteRoller.has(element)) return element;
-    beobachteteRoller.add(element);
-    element.addEventListener("scroll", function () { kantenPruefen(element); }, { passive: true });
-    if (groessenBeobachter) {
-      for (const k of [element, element.firstElementChild]) {
-        if (!k) continue;
-        rollerVon.set(k, element);
-        groessenBeobachter.observe(k);
+    if (!element) return element;
+    if (!beobachteteRoller.has(element)) {
+      beobachteteRoller.add(element);
+      element.addEventListener("scroll", function () { kantenPruefen(element); }, { passive: true });
+      if (groessenBeobachter) {
+        for (const k of [element, element.firstElementChild]) {
+          if (!k) continue;
+          rollerVon.set(k, element);
+          groessenBeobachter.observe(k);
+        }
       }
     }
-    kantenPruefen(element);
+    if (element.isConnected) kantenPruefen(element);
     return element;
   }
 
   /* Rahmen einer seitenfüllenden Liste (eigener Scroller, klebender Kopf
-     und erste Spalte). */
+     und erste Spalte). Klickbare Zeilen (.ds-table--interactive): der
+     Zeilenlink von Dashboard-Style spannt sich über seine Zelle, und die
+     klebt beim seitlichen Rollen (sie ist selbst positioniert); über die
+     ganze Zeile gezogen läge er über den übrigen Links der Zeile. Darum
+     reicht EIN Zuhörer am Rahmen einen Klick in eine Zelle ohne eigenes
+     Bedienelement an ihn weiter. Wer Text markiert hat, wollte kopieren. */
+  const EIGENE_BEDIENUNG = "a[href], button, input, select, textarea, label, [tabindex]";
+
+  function zeilenKlickWeiterleiten(r, vorNeuemTab) {
+    function zeileUndLink(ev) {
+      const ziel = ev.target instanceof Element ? ev.target : null;
+      const tr = ziel ? ziel.closest("tbody tr") : null;
+      if (!tr || !r.contains(tr)) return null;
+      const bedienung = ziel.closest(EIGENE_BEDIENUNG);
+      if (bedienung && tr.contains(bedienung)) return null;
+      const link = tr.querySelector(".ds-table__row-link");
+      return link ? { tr: tr, link: link } : null;
+    }
+    function oeffnen(ev) {
+      if (ev.type === "click" && ev.button !== 0) return;
+      const t = zeileUndLink(ev);
+      if (!t) return;
+      const auswahl = window.getSelection ? window.getSelection() : null;
+      if (auswahl && String(auswahl) && t.tr.contains(auswahl.anchorNode)) return;
+      const neuerTab = ev.type === "auxclick" || ev.ctrlKey || ev.metaKey || ev.shiftKey;
+      ev.preventDefault();
+      if (!neuerTab) { t.link.click(); return; }
+      if (vorNeuemTab) vorNeuemTab(t.link, t.tr);
+      window.open(t.link.href, "_blank", "noopener");
+    }
+    r.addEventListener("click", oeffnen);
+    r.addEventListener("auxclick", function (ev) { if (ev.button === 1) oeffnen(ev); });
+    // Unter Windows startet ein Mittelklick ausserhalb eines Links sonst das
+    // automatische Rollen – dann kommt kein auxclick.
+    r.addEventListener("mousedown", function (ev) { if (ev.button === 1 && zeileUndLink(ev)) ev.preventDefault(); });
+  }
+
   function tabellenRahmen(tabellenKnoten, optionen) {
     const o = optionen || {};
     const r = el("div", "tabelle-rahmen" + (o.klasse ? " " + o.klasse : ""));
     if (o.id) r.id = o.id;
-    if (tabellenKnoten) r.appendChild(tabellenKnoten);
+    if (tabellenKnoten) {
+      r.appendChild(tabellenKnoten);
+      if (tabellenKnoten.classList.contains("ds-table--interactive")) {
+        tabellenKnoten.setAttribute("data-ds-ripple", "off");
+        zeilenKlickWeiterleiten(r, o.vorNeuemTab);
+      }
+    }
     return rollKanten(r);
   }
 
@@ -2126,8 +2471,9 @@ const UI = (function () {
   function hinweise(zeilen) { return anhaengen(el("div", "hinweise"), zeilen || []); }
 
   /* Zeile einer umrandeten Liste: Titel 500 + Unterzeile. Ohne Aktionen
-     ist die ganze Zeile der Link (href) oder Knopf (beiKlick) mit Pfeil;
-     mit Aktionen ist sie ein div, der Titel wird zum Link. */
+     ist die ganze Zeile der Link (href) oder Knopf (beiKlick) mit Pfeil,
+     Zustandsebene und Welle; mit Aktionen ist sie ein div, der Titel wird
+     zum Link. */
   function listenZeile(optionen) {
     const o = optionen || {};
     const aktionen = (o.aktionen || []).filter(Boolean);
@@ -2136,13 +2482,13 @@ const UI = (function () {
     const z = el(tag, "listen-zeile" + (o.aktuell ? " aktuell" : "") + (o.klasse ? " " + o.klasse : ""));
     if (tag === "a") z.href = o.href;
     if (tag === "button") z.type = "button";
+    if (ganz) z.setAttribute("data-ds-ripple", "");
     if (ganz && o.beiKlick) z.addEventListener("click", o.beiKlick);
     if (o.aktuell) z.setAttribute("aria-current", "true");
-    if (o.titelTipp) z.setAttribute("data-tipp", o.titelTipp);
+    if (o.titelTipp) z.setAttribute("data-tip", o.titelTipp);
     if (ganz) fokusSetzen(z, o.fokus);
 
-    // Vorne: eine Zahlmarke (UI.zahlmarke) oder ein Sinnbild.
-    if (o.marke) z.appendChild(o.marke);
+    // Vorne ein Sinnbild.
     if (o.sinnbild) z.appendChild(sinnbild(o.sinnbild, 20, "t-leise"));
     const t = el("span", "listen-zeile-text");
     const titel = el("span", "listen-zeile-titel");
@@ -2168,7 +2514,7 @@ const UI = (function () {
     if (ganz) {
       const pfeil = el("span", "listen-zeile-pfeil");
       pfeil.setAttribute("aria-hidden", "true");
-      pfeil.appendChild(sinnbild(o.pfeil || "pfeilRechts", 16));
+      pfeil.appendChild(sinnbild("pfeilRechts", 16));
       z.appendChild(pfeil);
     }
     return z;
@@ -2176,11 +2522,10 @@ const UI = (function () {
 
   function zeilenliste(zeilen) { return anhaengen(el("div", "zeilenliste"), zeilen || []); }
 
-  /* Zahlmarke (Mapping 7.2 #14, Handlungsbedarf): 32-px-Pille mit der
-     Zahl vorne in einer Listenzeile (UI.listenZeile({ marke })), tonal
-     nach Dringlichkeit ('warnung' | 'gefahr', sonst neutral). Die
-     Dringlichkeit steht immer auch als Wort in der Zeile (Status
-     «Dringend»), nie nur in der Farbe. */
+  /* Zahlmarke (Handlungsbedarf): 32-px-Pille mit der Zahl vor dem Titel
+     einer Karte (UI.karte({ marke })), tonal nach Dringlichkeit ('warnung' | 'gefahr', sonst
+     neutral). Die Dringlichkeit steht immer auch als Wort in der Karte
+     (Status «Dringend»), nie nur in der Farbe. */
   function zahlmarke(zahl, ton) {
     const t = ton === "warnung" || ton === "gefahr" ? " ton-" + ton : "";
     return el("span", "zahlmarke" + t, typeof zahl === "number" ? zahlFormat(zahl) : text(zahl));
@@ -2195,7 +2540,7 @@ const UI = (function () {
       if (!istLeer(e.titel)) kopf.appendChild(el("span", "zeitachse-titel", e.titel));
       const zeitKnoten = !!e.zeit && (!!e.zeit.nodeType || Array.isArray(e.zeit));
       if (zeitKnoten || !istLeer(e.zeit) || e.zeitSinnbild) {
-        // Meta-Zeile; ein Sinnbild davor (Abgleich: «sync», Mapping 7.2 #13).
+        // Meta-Zeile; ein Sinnbild davor (Abgleich: «sync»).
         const zeit = el("span", "zeitachse-zeit");
         if (e.zeitSinnbild) zeit.appendChild(sinnbild(e.zeitSinnbild, 16));
         if (zeitKnoten) anhaengen(zeit, e.zeit);
@@ -2226,7 +2571,8 @@ const UI = (function () {
   }
 
   /* 4-px-Balken für Verteilungen; der Wert steht immer daneben als Zahl,
-     der Balken ist darum für den Screenreader verborgen. */
+     der Balken ist darum für den Screenreader verborgen. Ein neuer Anteil
+     am stehenden Balken gleitet (bausteine.css, --ds-ease-value). */
   function balken(anteil, ton) {
     const b = el("div", "balken" + (ton === "still" ? " still" : (ton ? " ton-" + ton : "")));
     b.setAttribute("aria-hidden", "true");
@@ -2248,7 +2594,7 @@ const UI = (function () {
     if (o.label) s.setAttribute("aria-label", o.label);
     liste.forEach(function (w, i) {
       const saeule = el("div", "saeule" + ((w.hervorgehoben || o.hervorheben === i) ? " hervorgehoben" : ""));
-      if (w.titel) saeule.setAttribute("data-tipp", w.titel);
+      if (w.titel) saeule.setAttribute("data-tip", w.titel);
       const f = el("span", "saeule-fuell");
       f.style.setProperty("--anteil", String(anteilBegrenzen((Number(w.wert) || 0) / max)));
       saeule.appendChild(f);
@@ -2257,11 +2603,12 @@ const UI = (function () {
     return s;
   }
 
-  /* Verteilung (Mapping 7.2 #12): Zeilen mit Name, Zahl und Balken.
-     eintraege: [{ text, zahl, anteil?, titel?, beiKlick?, href? }]; der
-     Anteil ist sonst zahl / grösste Zahl (oder optionen.max). Der Name
-     steht einzeilig, der ganze Name im Tooltip. Die Balken wachsen nur mit
-     Bewegung.auftritt (erstes Zeigen), neu gezeichnete springen. */
+  /* Verteilung: Zeilen mit Name, Zahl und Balken.
+     eintraege: [{ text, zahl, anteil?, titel?, beiKlick?, href?, fokus? }];
+     der Anteil ist sonst zahl / grösste Zahl (oder optionen.max). Der Name
+     steht einzeilig; der ganze Name erscheint als Tooltip, solange er
+     gekürzt ist (ein titel immer). Die Balken wachsen beim ersten Zeigen
+     (Bewegung.auftritt); .setzen an einem stehenden Balken gleitet. */
   function verteilung(eintraege, optionen) {
     const o = optionen || {};
     const liste = (eintraege || []).filter(Boolean);
@@ -2274,9 +2621,11 @@ const UI = (function () {
       const z = el(tag, "verteilung-zeile");
       if (tag === "a") z.href = e.href;
       if (tag === "button") z.type = "button";
+      if (tag !== "div") z.setAttribute("data-ds-ripple", "");
       if (e.beiKlick) z.addEventListener("click", e.beiKlick);
       if (tag !== "div") fokusSetzen(z, e.fokus);
-      z.setAttribute("data-tipp", e.titel || text(e.text));
+      if (e.titel) z.setAttribute("data-tip", e.titel);
+      else z.setAttribute("data-tip-abgeschnitten", text(e.text));
       z.appendChild(el("span", "verteilung-name", e.text));
       z.appendChild(el("span", "verteilung-zahl", zahlFormat(Number(e.zahl) || 0)));
       z.appendChild(balken(e.anteil !== undefined ? e.anteil : (Number(e.zahl) || 0) / groesste));
@@ -2286,16 +2635,20 @@ const UI = (function () {
     return ul;
   }
 
-  /* Fortschritt (linear): anteil 0..1 oder unbestimmt; Text und Detail
-     darunter. setzen() ändert nur, was sich ändert – der Balken gleitet
-     weiter, statt neu zu beginnen. */
+  /* Fortschritt (linear, progress.css): anteil 0..1 oder unbestimmt; Text
+     und Detail darunter. --ds-progress steht auf .ds-progress selbst: Spur,
+     Lücke, Stopppunkt und Balken lesen den geerbten Wert und gleiten
+     zusammen. setzen() ändert nur, was sich ändert – der Balken gleitet
+     weiter, statt neu zu beginnen; wer unbestimmt aufhebt, gibt den ersten
+     Anteil im selben Aufruf mit. wartet: nur der Text (die Spur hält ihren
+     Platz); flach: ohne Welle, für dichte Zellen. */
   function fortschritt(optionen) {
     const g = el("div", "ds-progress");
     const spur = el("div", "ds-progress__track");
     spur.setAttribute("role", "progressbar");
     spur.setAttribute("aria-valuemin", "0");
     spur.setAttribute("aria-valuemax", "100");
-    const balkenKnoten = el("span", "ds-progress__bar");
+    const balkenKnoten = el("div", "ds-progress__bar");
     spur.appendChild(balkenKnoten);
     const textKnoten = el("p", "ds-progress__label");
     textKnoten.setAttribute("aria-live", "polite");
@@ -2306,15 +2659,20 @@ const UI = (function () {
       o = o || {};
       if (o.label !== undefined) spur.setAttribute("aria-label", o.label);
       if (o.unbestimmt !== undefined) g.classList.toggle("ds-progress--indeterminate", !!o.unbestimmt);
-      if (g.classList.contains("ds-progress--indeterminate")) {
-        spur.removeAttribute("aria-valuenow");
-      } else if (o.anteil !== undefined) {
-        const a = anteilBegrenzen(o.anteil);
-        balkenKnoten.style.setProperty("--ds-progress", String(a));
-        spur.setAttribute("aria-valuenow", String(Math.round(a * 100)));
-      }
+      if (o.wartet !== undefined) g.classList.toggle("ds-progress--waiting", !!o.wartet);
+      if (o.flach !== undefined) g.classList.toggle("ds-progress--flat", !!o.flach);
       if (o.text !== undefined) textSetzen(textKnoten, o.text);
       if (o.detail !== undefined) textSetzen(detail, o.detail);
+      if (o.anteil !== undefined) g.style.setProperty("--ds-progress", String(anteilBegrenzen(o.anteil)));
+      // Ohne bekannten Anteil sagt der Text, was läuft (aria-valuetext).
+      if (g.classList.contains("ds-progress--indeterminate") || g.classList.contains("ds-progress--waiting")) {
+        spur.removeAttribute("aria-valuenow");
+        spur.setAttribute("aria-valuetext", textKnoten.textContent || "Wird geladen …");
+      } else {
+        spur.removeAttribute("aria-valuetext");
+        const a = anteilBegrenzen(g.style.getPropertyValue("--ds-progress"));
+        spur.setAttribute("aria-valuenow", String(Math.round(a * 100)));
+      }
       return g;
     };
     g.setzen(Object.assign({ anteil: 0 }, optionen || {}));
@@ -2324,19 +2682,20 @@ const UI = (function () {
 
   /* ==================================================================
      Öffentliche Schnittstelle. rahmen.js hängt UI.dialog, UI.bestaetigen,
-     UI.blatt, UI.meldung, UI.tipp und UI.adresse an dieses Objekt an.
+     UI.blatt, UI.ebeneOffen, UI.meldung, UI.meldungenFehlerSchliessen,
+     UI.tipp, UI.speicherleiste, UI.seitenkopf und UI.adresse an dieses
+     Objekt an.
      ================================================================== */
 
   return {
     // DOM
     $: $, el: el, leeren: leeren, anhaengen: anhaengen, text: text, gleichwertig: gleichwertig,
-    textSetzen: textSetzen, id: id, kinderAbgleichen: kinderAbgleichen,
+    textSetzen: textSetzen, id: id, abgleichen: abgleichen, kinderAbgleichen: kinderAbgleichen,
     // Sinnbilder
     sinnbild: sinnbild, SINNBILDER: SINNBILDER,
     // Knöpfe
     knopf: knopf, knopfText: knopfText, knopfUebernehmen: knopfUebernehmen, knopfSperren: knopfSperren,
-    knopfSperre: knopfSperre,
-    beschaeftigt: beschaeftigt, beschaeftigtAbwarten: beschaeftigtAbwarten,
+    beschaeftigt: beschaeftigt,
     // Status, Hinweise
     status: status, banner: banner, leerzustand: leerzustand, hinweis: hinweis, meta: meta, teile: teile,
     // Laden
@@ -2344,19 +2703,18 @@ const UI = (function () {
     // Karten, Kacheln
     karte: karte, kachel: kachel, kacheln: kacheln,
     // Datenzeilen
-    datenzeilen: datenzeilen, feldZeile: feldZeile, feldGesperrt: feldGesperrt, feldFrei: feldFrei,
+    datenzeilen: datenzeilen, feldZeile: feldZeile, feldGesperrt: feldGesperrt,
     formZeile: formZeile, kennwerte: kennwerte, fakten: fakten,
     // Chips, Zähler
     chip: chip, chips: chips, zaehler: zaehler,
     // Formulare
     eingabe: eingabe, feld: feld, feldFehler: feldFehler, feldHinweis: feldHinweis, hinweisPlatz: hinweisPlatz,
     ankreuzen: ankreuzen, mehrfach: mehrfach,
-    datenliste: datenlisteSetzen, auswahlFuellen: auswahlFuellen, zahlText: zahlFormat, zeitText: zeitText,
+    zahlText: zahlFormat, zeitText: zeitText,
     // Suche, Schalter
     suchfeld: suchfeld, schalter: schalter, schalterZeile: schalterZeile,
     // Tabellen
-    tabelle: tabelle, tabellenKopf: tabellenKopf, sortierKnopf: sortierKnopf,
-    tabellenRahmen: tabellenRahmen, rollKanten: rollKanten,
+    tabelle: tabelle, tabellenKopf: tabellenKopf, tabellenRahmen: tabellenRahmen, rollKanten: rollKanten,
     // Listen
     hinweisZeile: hinweisZeile, hinweise: hinweise, listenZeile: listenZeile, zeilenliste: zeilenliste,
     zahlmarke: zahlmarke, zeitachse: zeitachse,

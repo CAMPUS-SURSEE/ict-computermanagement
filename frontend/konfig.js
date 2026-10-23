@@ -1,4 +1,4 @@
-/* konfig.js — zentrale Einstellungen für das ICT-Inventar.
+/* konfig.js – zentrale Einstellungen für das ICT-Inventar.
 
    Diese Datei enthält KEINE Geheimnisse. Mandanten- und Client-ID sind bei
    Single-Page-Applications öffentlich sichtbar; der Schutz kommt aus der
@@ -61,7 +61,7 @@ const KONFIG = {
 
   /* ---- Automatisches Nachladen ----
      Es gibt keinen Knopf «Neu laden» mehr. Stattdessen holen sich die Liste
-     und die Detailfenster ihre Daten in diesem Abstand still selbst nach —
+     und die Detailfenster ihre Daten in diesem Abstand still selbst nach –
      aber nur, wenn das Fenster sichtbar ist und nichts Ungespeichertes offen
      steht. Wer sofort einen frischen Stand will, lädt die Seite neu. */
   autoTaktMs: 5 * 60 * 1000,
@@ -72,7 +72,7 @@ const KONFIG = {
   autoPruefTaktMs: 30 * 1000
 };
 
-/* Listen-ID nach Name. «liste» ist einer dieser fünf Namen; alles andere
+/* Listen-ID nach Name. «liste» ist einer dieser sieben Namen; alles andere
    gilt als «admin», damit ein Tippfehler nicht in eine falsche Liste
    schreibt, sondern in die, aus der ohnehin gelesen wird. */
 KONFIG.listId = function (liste) {

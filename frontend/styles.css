@@ -1,13 +1,15 @@
-/* styles.css — Seitenlayout der Hauptseite (index.html).
+/* styles.css – Seitenlayout der Hauptseite (index.html).
 
    Alles Gemeinsame steht im Fundament: Tokens, Bausteine und Bewegung in
    Dashboard-Style (vendor/dashboard-style/ds.css) mit dem Campus-Thema
    (thema.css), die ICT-eigenen Bausteine in bausteine.css (auch Zahlmarke
    und klickbare Kennwerte), Rahmen und Ebenen in rahmen.css. Hier steht
    nur, wie die Ansichten der Hauptseite angeordnet sind, dazu das Einzige,
-   was es nur hier gibt: der Zeitstrahl der Ersatzplanung.
-   Werte nur über Tokens; keine Keyframes (die Säulen wachsen über
-   .saeule-fuell und Bewegung.aufziehen, nicht über eigene Regeln).
+   was es nur hier gibt: der Zeitstrahl der Ersatzplanung (ICT-eigen,
+   Dashboard-Style hat kein Diagramm dafür). Werte nur über Tokens; keine
+   Keyframes: die Säulen wachsen beim ersten Zeigen über .saeule-fuell und
+   Bewegung.aufziehen (DS.motion), gedrückt wird im Druckmodell von
+   Dashboard-Style (data-ds-ripple, .ds-pressed, --ds-dur-micro).
 
    Gerüst: rahmen.css macht die sichtbare Tabellenansicht (Rahmen.fest)
    zur Spalte, in der .tabelle-rahmen selbst rollt. Übersicht und Software
@@ -24,7 +26,7 @@
 
 /* Trefferzahl und Primäraktion «Neuer …» stehen als Gruppe ganz rechts;
    bricht die Leiste um, rückt die Gruppe rechtsbündig auf die nächste
-   Zeile (Fehler E4: Klasse statt der alten id #knopf-neu). */
+   Zeile. */
 .werkzeugleiste-ende {
   display: flex;
   flex-wrap: wrap;
@@ -58,7 +60,8 @@
 .blatt-vorlagen { margin-left: calc(-1 * var(--ds-space-3)); }
 
 /* Schmale Bahn: die Suche nimmt eine eigene Zeile, darunter die Knöpfe;
-   Zahl und «Neu» bleiben rechts. */
+   Zahl und «Neu» bleiben rechts. Nur Anordnung des DS-Bausteins in
+   .ds-action-bar, nicht sein Aussehen. */
 @container ds-content (max-width: 600px) {
   .ds-action-bar > .ds-search {
     flex-basis: 100%;
@@ -95,35 +98,20 @@
 
 
 /* ==================================================================
-   3. Handlungsbedarf (Mapping 7.2 #14)
-   Jeder Punkt ist eine eigene umrandete Karte mit Zahlmarke
-   (UI.listenZeile({ marke: UI.zahlmarke(…) })); ab 2 × 360 px Platz in
-   zwei Spalten. Die Liste selbst trägt keinen Rahmen und keine Fläche –
-   ein Rahmen um die Karten herum sähe aus wie eine Karte in der Karte.
-   Seitenlayout dieser einen Liste, darum hier und nicht im Fundament.
+   3. Handlungsbedarf
+   Jeder Punkt ist eine klickbare Karte von Dashboard-Style mit Zahlmarke
+   (UI.karte({ href, marke }), app.js aufgabenKarte; die Anordnung darin
+   steht in bausteine.css, .karte-marke). Hier nur das Raster: ab
+   2 × 360 px Platz in zwei Spalten.
    ================================================================== */
 
-.zeilenliste.aufgaben {
+.karten.aufgaben {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   gap: var(--ds-space-3);
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
 }
-
-.zeilenliste.aufgaben > .listen-zeile {
-  width: auto;
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-surface);
-}
-
-/* Die Hover- und Druckebene folgt der Rundung der Karte. */
-.zeilenliste.aufgaben > .listen-zeile::before { border-radius: inherit; }
 
 /* ==================================================================
-   4. Ersatzplanung: Zeitstrahl je Client-Liste (Mapping 7.2 #11)
+   4. Ersatzplanung: Zeitstrahl je Liste mit Ersatzjahr (ICT-eigen)
    Je Geschäftsjahr zwei Säulen (beschafft, Ersatz geplant), die Höhe ist
    ein scaleY über --anteil (.saeule-fuell, bausteine.css). Das laufende
    Geschäftsjahr steht auf einer ruhigen Fläche, sein Jahr 500. Der Strahl
@@ -194,6 +182,7 @@
 .zeitstrahl-saeule {
   position: relative;
   isolation: isolate;
+  container-type: size;
   display: flex;
   align-items: flex-end;
   width: 16px;
@@ -218,17 +207,28 @@
 .zeitstrahl-saeule.faellig > .saeule-fuell { background: var(--diagramm-warnung); }
 .zeitstrahl-saeule.ueberfaellig > .saeule-fuell { background: var(--diagramm-gefahr); }
 
-/* Überfällig zusätzlich mit Sinnbild über der Säule. */
+/* Überfällig zusätzlich mit Sinnbild über der Säule. Es steht über
+   translate auf der Höhe ihres Anteils (die Säule ist ein Grössen-Container,
+   100cqh = ihre Höhe) und gleitet so mit ihr: Dashboard-Style animiert nur
+   transform, translate & Co., nie eine Layout-Eigenschaft wie bottom. */
 .zeitstrahl-marke {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--anteil, 0) * 100% + var(--ds-space-1));
+  bottom: var(--ds-space-1);
   color: var(--ds-error);
-  transform: translateX(-50%);
+  translate: -50% calc(var(--anteil, 0) * -100cqh);
   pointer-events: none;
+  transition: translate var(--ds-dur-glide) var(--ds-ease-value);
 }
 
-/* Klickbare Säule: 6-%-Ebene etwas breiter als die Säule, Fokusring. */
+/* Nach dem ersten Zeigen gleitet eine Säule zu ihrem neuen Wert (Nachladen),
+   auf derselben Kurve wie Balken und Zahlen. */
+.zeitstrahl-saeule > .saeule-fuell { transition: transform var(--ds-dur-glide) var(--ds-ease-value); }
+
+/* Klickbare Säule: Ebene der grossen Ziele, etwas breiter als die Säule,
+   Fokusring von .ds-base. Gedrückt im Druckmodell von Dashboard-Style: die
+   Ebene in --ds-dur-micro, mit DS.ripple (data-ds-ripple) trägt die Welle
+   den Druck und die Ebene bleibt beim Hover. */
 button.zeitstrahl-saeule {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -250,9 +250,20 @@ button.zeitstrahl-saeule::before {
   button.zeitstrahl-saeule:hover::before { opacity: var(--ds-state-hover-lg); }
 }
 
-button.zeitstrahl-saeule:active::before {
+button.zeitstrahl-saeule:focus-visible::before {
+  opacity: var(--ds-state-focus);
+  transition-duration: 0s;
+}
+
+button.zeitstrahl-saeule:is(:active, .ds-pressed)::before {
   opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-instant);
+  transition-duration: var(--ds-dur-micro);
+}
+
+.ds-ripples button.zeitstrahl-saeule:is(:active, .ds-pressed)::before { opacity: 0; }
+
+@media (hover: hover) {
+  .ds-ripples button.zeitstrahl-saeule:is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover-lg); }
 }
 
 .zeitstrahl-label {
@@ -269,7 +280,7 @@ button.zeitstrahl-saeule:active::before {
 }
 
 /* Legende unter einer Haarlinie: 10-px-Quadrate in denselben Farben wie
-   die Säulen (dieselben Klassen, Inventar §8 Nr. 5). */
+   die Säulen (dieselben Klassen). */
 .zeitstrahl-legende {
   display: flex;
   flex-wrap: wrap;
@@ -327,7 +338,8 @@ button.zeitstrahl-saeule:active::before {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
 }
 
-/* Der Programmname ist ein Link; ein langer Name bricht um. */
+/* Der Programmname ist ein Link; ein langer Name bricht um (Umbruch im
+   DS-Kartentitel, nur Anordnung). */
 .software-karte .ds-card__title { overflow-wrap: anywhere; }
 
 /* Kamerarechte: dieselben Karten wie die Software; der Hinweis zum Stand

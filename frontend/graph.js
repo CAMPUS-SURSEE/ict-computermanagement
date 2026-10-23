@@ -1,9 +1,9 @@
-/* graph.js — Daten für das ICT-Inventar.
+/* graph.js – Daten für das ICT-Inventar.
 
    Drei Teile:
-     1. Hilfe   — Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
-     2. Daten   — Lesen und Schreiben der fünf SharePoint-Listen über Microsoft Graph.
-     3. Mock    — Fantasie-Datensatz für den Modus ?mock=1.
+     1. Hilfe   – Formatierung von Datum, Zahlen, Ja/Nein und mehrzeiligem Text.
+     2. Daten   – Lesen und Schreiben der sieben SharePoint-Listen über Microsoft Graph.
+     3. Mock    – Fantasie-Datensatz für den Modus ?mock=1.
 
    Die Berechtigung ist delegiert (Sites.ReadWrite.All): das Token kann genau
    das, was die angemeldete Person in SharePoint ohnehin darf.
@@ -40,7 +40,7 @@
 
 
 /* ==================================================================
-   1. Hilfe — Formatierung
+   1. Hilfe – Formatierung
    ================================================================== */
 
 const Hilfe = (function () {
@@ -144,7 +144,7 @@ const Hilfe = (function () {
 
 
 /* ==================================================================
-   2. Daten — Microsoft Graph
+   2. Daten – Microsoft Graph
    ================================================================== */
 
 const Daten = (function () {
@@ -175,7 +175,7 @@ const Daten = (function () {
   function warten(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
 
   /* Eine Anfrage an Graph. Bei Drosselung (429) oder kurzer Störung (503,
-     504) wird bis zu dreimal gewartet und wiederholt — so lange, wie Graph
+     504) wird bis zu dreimal gewartet und wiederholt – so lange, wie Graph
      es im Kopf «Retry-After» verlangt, sonst 2, 4, 6 Sekunden. Ein POST
      wird nie wiederholt: er könnte sonst eine zweite Zeile anlegen. */
   async function anfrage(pfad, einstellungen) {
@@ -293,13 +293,13 @@ const Daten = (function () {
      Ein Programm ohne Spalte ist wirkungslos: die Berechtigungsstufe steht
      je Person in einer eigenen Textspalte der Benutzer-Liste, deren interner
      Name die Programm-Id ist. Deshalb legt das Softwarefenster die Spalte
-     gleich beim Erfassen an — sonst müsste jemand von Hand
+     gleich beim Erfassen an – sonst müsste jemand von Hand
      Ergaenze-Spalten.ps1 nachschieben.
 
      Der Sync legt weiterhin nie eine Spalte an; das hier tut ein Mensch mit
      seinen eigenen Rechten (delegiert Sites.ReadWrite.All).
 
-     Gibt es die Spalte schon, ist das kein Fehler — dann war sie von einem
+     Gibt es die Spalte schon, ist das kein Fehler – dann war sie von einem
      früheren Versuch übrig. */
   async function programmSpalteAnlegen(id, name) {
     if (mockModus) return Mock.programmSpalteAnlegen(id, name);
@@ -336,17 +336,17 @@ const Daten = (function () {
 
      «etagErwartet» ist das eTag der Zeile, wie sie geladen wurde (__etag).
      Ist es gesetzt, wird vor dem Schreiben nachgesehen, ob die Zeile noch
-     dieselbe ist — sonst hätte die zweite Person die Änderung der ersten
+     dieselbe ist – sonst hätte die zweite Person die Änderung der ersten
      stillschweigend überschrieben. Bei Abweichung kommt Fehler 412 zurück:
      neu laden, dann noch einmal.
 
      Zwischen Nachsehen und Schreiben könnte trotzdem jemand schreiben. Der
      PATCH trägt darum zusätzlich «If-Match»: dann prüft Graph selbst, im
-     selben Schritt, und antwortet bei einem Konflikt mit 412 (Fehler A9).
+     selben Schritt, und antwortet bei einem Konflikt mit 412.
      Weil sich das gegen das echte SharePoint nicht vorab prüfen lässt, ist
      der Kopf nur ein Zusatz: scheitert der PATCH mit If-Match aus einem
      anderen Grund als einem bestätigten Konflikt (412 und das eTag hat sich
-     wirklich geändert), wird er einmal ohne den Kopf wiederholt — schlimmstens
+     wirklich geändert), wird er einmal ohne den Kopf wiederholt – schlimmstens
      also das Verhalten von vorher. */
   async function speichern(liste, id, felder, etagErwartet) {
     if (mockModus) return Mock.speichern(liste, id, felder);
@@ -446,7 +446,7 @@ const Daten = (function () {
 
 
 /* ==================================================================
-   3. Mock — Fantasie-Daten für ?mock=1
+   3. Mock – Fantasie-Daten für ?mock=1
 
    Damit lässt sich die Seite ohne Anmeldung anschauen und vorführen. Alle
    Namen und Geräte sind erfunden, die Zahlen stammen aus einem
@@ -646,7 +646,7 @@ const Mock = (function () {
      Kurzwahlen 200 … 259 gehören den Benutzern 1 … 60 (siehe benutzerZeile),
      dazu Dienste, Räume und HelpFons wie in der echten Liste. Ein paar
      Nummern sind frei, ein paar inaktiv, und bei einigen weicht die
-     Person in der Liste vom AD ab — damit die Hinweise zu sehen sind. */
+     Person in der Liste vom AD ab – damit die Hinweise zu sehen sind. */
 
   function kurzwahlVoll(kurz) {
     const k = String(kurz).padStart(3, "0").slice(-3);
@@ -672,7 +672,7 @@ const Mock = (function () {
                  ["267", "Itin Giulia"], ["318", "Auviso (Ersatz B+T)"], ["396", "Hecht Mathias"]];
 
   function telefonZeile(r, nr, kurz, name, typ, status, benutzerLogin, hinweis, frueher) {
-    /* «frueher»: wer die Nummer vorher hatte — steht wie in der echten Liste
+    /* «frueher»: wer die Nummer vorher hatte – steht wie in der echten Liste
        als Verlaufseintrag (Migration vom 2026-09), nicht in einer Spalte. */
     const z = leereZeile(SPALTEN_TELEFON);
     z.id = String(nr);
@@ -724,7 +724,7 @@ const Mock = (function () {
     for (const [kurz, frueher] of FREIE) {
       liste.push(telefonZeile(r, nr++, kurz, "", "", "Frei", "", "frei - sofort vergebbar", frueher));
     }
-    // Zwei Nummern ohne jede Angabe: weder Name noch Benutzer — nicht zugewiesen.
+    // Zwei Nummern ohne jede Angabe: weder Name noch Benutzer – nicht zugewiesen.
     liste.push(telefonZeile(r, nr++, "398", "", "Person", "", "", "", ""));
     liste.push(telefonZeile(r, nr++, "399", "", "", "", "", "Apparat im Lager", ""));
     return liste;
@@ -892,7 +892,7 @@ const Mock = (function () {
 
      Die Spalte «Verlauf» der beiden Listen enthält ein JSON-Array; das
      Format steht in modell.js. Hier entstehen ein paar glaubwürdige
-     Einträge, damit sich die Zeitachse im Vorführmodus anschauen lässt —
+     Einträge, damit sich die Zeitachse im Vorführmodus anschauen lässt –
      gemischt aus «sync» (vom Abgleich) und «manuell» (von Hand). */
 
   const VERLAUF_SYNC = [
@@ -947,7 +947,7 @@ const Mock = (function () {
 
   /* Ein Client. «praefix» entscheidet über den Namen und damit über die
      Liste: «CAMPUS-9xx» gehört zu den ADMIN-Clients, «EDU-9xx» zu den
-     EDU-Clients. Die Zeilen sind sonst gleich gebaut — die beiden Listen
+     EDU-Clients. Die Zeilen sind sonst gleich gebaut – die beiden Listen
      haben dieselben Spalten. */
   function geraet(r, nummer, praefix) {
     const z = leereZeile(SPALTEN_CLIENT);
@@ -959,12 +959,12 @@ const Mock = (function () {
     z.Bemerkung = r() < 0.15 ? "Ersatzgerät, Rückgabe offen" : "";
 
     /* «In Domäne»: der Normalfall ist Ja. Bei den EDU-Clients steht rund jedes
-       dritte Gerät ausserhalb der Domäne (Gäste- und Prüfungsnotebooks) — nur so
+       dritte Gerät ausserhalb der Domäne (Gäste- und Prüfungsnotebooks) – nur so
        lässt sich im Vorführmodus anschauen, wie solche Zeilen aussehen. */
     z.InDomaene = (praefix === "EDU-") ? (r() > 0.35) : true;
 
     /* Status: die grosse Mehrheit ist im Einsatz, ein paar liegen im Lager,
-       ein paar sind archiviert. Bewusst bleibt ein Teil der Zeilen leer —
+       ein paar sind archiviert. Bewusst bleibt ein Teil der Zeilen leer –
        so wird geprüft, dass ein leerer Wert als «Aktiv» durchgeht. */
     const wStatus = r();
     if (wStatus < 0.08) z.Status = "Archiviert";
@@ -973,7 +973,7 @@ const Mock = (function () {
     else z.Status = "";
 
     /* Verlauf: manche Geräte haben Einträge, gemischt aus Abgleich und
-       Handarbeit — sonst liesse sich die Zeitachse nie anschauen. */
+       Handarbeit – sonst liesse sich die Zeitachse nie anschauen. */
     z.Verlauf = mockVerlauf(r, z.Status === "Archiviert");
 
     // Rund jedes achte Gerät hat kein Beschaffungsjahr: alter Bestand.
@@ -986,7 +986,7 @@ const Mock = (function () {
       else z.ErsatzGeplant = Modell.gjPlus(z.Beschaffungsjahr, 5);
     }
 
-    /* Rund jedes zehnte Gerät ist nicht in SCCM — und ein Gerät ausserhalb der
+    /* Rund jedes zehnte Gerät ist nicht in SCCM – und ein Gerät ausserhalb der
        Domäne ist es nie: Der Abgleich fasst diese Zeilen gar nicht erst an. */
     const inSccm = z.InDomaene && r() > 0.1;
     z.SCCM_Found = inSccm ? "Ja" : "Nein";
@@ -1010,7 +1010,7 @@ const Mock = (function () {
     z.SCCM_LastConsoleUse = vorTagen(aktivVorTagen, 7);
     /* Die Benutzerkonten (PrimaryUser, LastLogonUser, CurrentLogonUser,
        TopConsoleUser, ConsoleUsers) setzt benutzerkontenAbgleichen(), sobald
-       die Benutzerzeilen stehen — sie werden aus deren Logins abgeleitet. */
+       die Benutzerzeilen stehen – sie werden aus deren Logins abgeleitet. */
 
     z.SCCM_ClientVersion = "5.00.9132.1000";
     z.SCCM_ClientActive = aktivVorTagen < 30 ? "Ja" : "Nein";
@@ -1119,7 +1119,7 @@ const Mock = (function () {
     z.Vorgesetzter = waehle(r, VORNAMEN) + " " + waehle(r, NACHNAMEN);
     /* Telefon: die meisten haben eine Kurzwahl aus dem Hausblock (Mock-
        Telefonliste weiter unten), ein paar gar keine, ein paar eine
-       Mobilnummer — so lassen sich alle Fälle der Telefonansicht anschauen. */
+       Mobilnummer – so lassen sich alle Fälle der Telefonansicht anschauen. */
     const wTel = r();
     if (wTel < 0.1) z.Telefon = "";
     else if (wTel < 0.18) z.Telefon = "+41 79 " + (300 + Math.floor(r() * 600)) + " "
@@ -1151,7 +1151,7 @@ const Mock = (function () {
       if (hatGruppe && w < 0.12) z[id] = "2";
       else if (w < 0.3) z[id] = "1";
     }
-    // Microsoft 365 hat praktisch jeder — und zwar über die AD-Gruppe.
+    // Microsoft 365 hat praktisch jeder – und zwar über die AD-Gruppe.
     if (r() < 0.85) z.Microsoft365 = "2";
     return z;
   }
@@ -1160,13 +1160,13 @@ const Mock = (function () {
 
      Im echten SCCM stehen in SCCM_PrimaryUser, SCCM_LastLogonUser und
      SCCM_CurrentLogonUser die Konten, die an diesem Gerät wirklich
-     arbeiten — also normalerweise der Inhaber, geschrieben als
+     arbeiten – also normalerweise der Inhaber, geschrieben als
      «DOMAENE\login». Umgekehrt meldet SMS_UserMachineRelationship für jede
      Person ihr Primärgerät; das landet in SCCMPrimaerGeraet.
 
      SCCM schreibt die Inhaberschaft nie: die Felder hier sind Beobachtung,
      die Spalte «AdminClientId» bleibt Handarbeit. Bei rund jedem zehnten
-     Datensatz weicht darum ein Feld ab — Handwechsel nicht nachgeführt,
+     Datensatz weicht darum ein Feld ab – Handwechsel nicht nachgeführt,
      Support-Anmeldung, Zweitgerät. Genau diese Abweichungen erzeugen im
      Frontend die Hinweise «Primärer Benutzer ist nicht der Inhaber» und
      «SCCM meldet ein anderes Primärgerät». Ohne sie wären die Hinweise nie
@@ -1316,7 +1316,7 @@ const Mock = (function () {
     for (let i = 0; i < 42; i++) benutzer.push(benutzerZeile(r, nr++, admin[i], ids));
     /* Zwei Altlasten: hier trägt eine zweite Person dasselbe Gerät. Ein
        Gerät hat genau einen Inhaber, darum zeigt das Frontend darauf den
-       Fehler «Mehr als ein Inhaber» — ohne solche Zeilen wäre er im
+       Fehler «Mehr als ein Inhaber» – ohne solche Zeilen wäre er im
        Vorführmodus nie zu sehen. */
     for (let i = 0; i < 2; i++) benutzer.push(benutzerZeile(r, nr++, admin[i * 3], ids));
     // Zwölf Personen ohne Gerät. Die Geräte 43..50 bleiben ohne Inhaber.

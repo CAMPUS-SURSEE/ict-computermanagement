@@ -1,4 +1,4 @@
-/* telefon.js — Telefonfenster des ICT-Inventars.
+/* telefon.js – Telefonfenster des ICT-Inventars.
 
    Wird von der Hauptseite als telefon.html?id=… im selben Tab geöffnet und
    zeigt eine Zeile der Liste «Telefonnummern» in zwei Bereichen:
@@ -12,7 +12,7 @@
    Mit ?neu=1 wird eine neue Nummer erfasst: ein Formular ohne Bereiche,
    «Anlegen» statt «Speichern». Die Telefonnummer folgt der Kurzwahl
    (konfig.js: telefonPraefix), solange niemand sie von Hand ändert – aber
-   nur bei passender Länge (Fehler D3): mit dem Präfix «+41 41 926 2» genau
+   nur bei passender Länge: mit dem Präfix «+41 41 926 2» genau
    drei Ziffern; sonst bleibt sie leer und die Kurzwahl bekommt einen
    Feldhinweis. Eine kaputte Nummer wird nie gebildet und nie gespeichert.
    Mit ?neu=1&benutzer=<Listen-ID> («Nummer erfassen» auf der Benutzerseite)
@@ -24,8 +24,14 @@
    Gebaut wird nur über UI.*, Rahmen.*, F.* und Bewegung.*. Beim Tippen
    ändert sich nichts ausser dem, was am getippten Wert hängt (Zwillinge,
    Person, Hinweise, Kopf) – an Ort und Stelle, ohne Neuaufbau des
-   Formulars, damit Fokus und Schreibmarke bleiben. Kein innerHTML mit
-   Daten: jeder Wert geht über textContent. */
+   Formulars, damit Fokus und Schreibmarke bleiben. Neu gezeichnet
+   (Speichern, Verwerfen, Nachladen) wird still: F.zeichneBereich gleicht
+   den Bestand ab. Die Bauer suchen darum in ihrem Behälter, nicht im
+   Dokument (er hängt beim Bauen nicht unbedingt schon in der Seite), und
+   nachZeichnen führt danach im gezeigten Bereich nach, was am Entwurf
+   hängt. Knöpfe in Hinweisen lesen den Stand beim Klick, nicht beim
+   Bauen: ein abgeglichener Knopf behält seinen ersten Zuhörer. Kein
+   innerHTML mit Daten: jeder Wert geht über textContent. */
 
 "use strict";
 
@@ -51,7 +57,7 @@ const SPALTE = {};
 for (const s of SPALTEN) SPALTE[s.i] = s;
 
 
-/* Grund für gesperrte Schnellaktionen bei ungespeicherten Änderungen (D4):
+/* Grund für gesperrte Schnellaktionen bei ungespeicherten Änderungen:
    «Freigeben» speicherte sonst alles andere mit, «Löschen» verwürfe es. */
 const GRUND_ENTWURF = "Zuerst speichern oder verwerfen.";
 
@@ -70,7 +76,7 @@ let alleTelefone = [];      // Liste «Telefonnummern», angereichert
 let alleBenutzer = [];      // Liste «Benutzer», angereichert
 let zeile = null;           // die Zeile dieses Fensters
 
-/* Leer gespeicherter Status gilt als «Aktiv» und wird so gezeigt (D1):
+/* Leer gespeicherter Status gilt als «Aktiv» und wird so gezeigt:
    ein Hin und Her auf «Aktiv» ist darum keine Änderung. Beim Anlegen
    (neu) zeigen die Felder keinen Punkt «geändert» – dort ist alles neu. */
 const entwurf = F.entwurf(function () { return zeile; }, {
@@ -80,7 +86,8 @@ const entwurf = F.entwurf(function () { return zeile; }, {
 });
 
 /* Wurde die Telefonnummer von Hand gesetzt? Solange nicht, folgt sie der
-   Kurzwahl. Immer aus dem gespeicherten Stand bestimmt (Fehler D2). */
+   Kurzwahl. Immer aus dem gespeicherten Stand bestimmt, auch nach
+   «Verwerfen» (nummerVonHandBestimmen). */
 let nummerVonHand = false;
 
 /* Während «Nummer freigeben» speichert: keine automatischen
@@ -104,7 +111,7 @@ const BEREICHE_NEU = [
 function bereiche() { return neuModus ? BEREICHE_NEU : BEREICHE; }
 
 /* Jede Änderung am Entwurf: Kopf (Titel, Status, Sperre der
-   Schnellaktionen, D4) und Speicherleiste – nie das Formular. */
+   Schnellaktionen) und Speicherleiste – nie das Formular. */
 function nachAenderung() {
   kopfZeichnen();
   speicherleisteZeichnen();
@@ -121,17 +128,18 @@ function navZeichnen() {
 
 function zeichneBereich() {
   aktiverBereich = F.zeichneBereich(bereiche(), aktiverBereich);
+  nachZeichnen();
 }
 
 function bereichWechseln(schluessel) {
   if (!zeile || neuModus) return;
   aktiverBereich = schluessel;
-  F.bereichWechseln(BEREICHE, schluessel);
+  F.bereichWechseln(BEREICHE, schluessel).then(nachZeichnen);
 }
 
 
 /* ==================================================================
-   3. Kurzwahl und Nummer (Fehler D3)
+   3. Kurzwahl und Nummer
    ================================================================== */
 
 const ZAHLWOERTER = ["", "eine", "zwei", "drei", "vier"];
@@ -172,7 +180,7 @@ function kurzwahlHinweis() {
 /* Weicht die gespeicherte Nummer vom Vorschlag der gespeicherten Kurzwahl
    ab, hat sie jemand bewusst gesetzt – dann überschreibt die Kurzwahl sie
    nicht mehr. Aus dem gespeicherten Stand, nie aus dem Entwurf: so stimmt
-   es auch nach «Verwerfen» (Fehler D2). */
+   es auch nach «Verwerfen». */
 function nummerVonHandBestimmen() {
   const gespeichert = String((zeile && zeile.Telefonnummer) || "").trim();
   const vorschlag = vollAusKurzwahl(String((zeile && zeile.Title) || "").trim());
@@ -212,7 +220,7 @@ function person() { return personAusAd() || personAusSpalte(); }
 
 function statusWert() { return Modell.telefonStatus(textWert("Status")); }
 
-/* Was die Auswahl zeigt (D1): leer gilt als «Aktiv» und steht auch so da;
+/* Was die Auswahl zeigt: leer gilt als «Aktiv» und steht auch so da;
    ein unbekannter alter Wert bleibt sichtbar, statt still verloren zu gehen. */
 function statusAnzeige() {
   const roh = textWert("Status").trim();
@@ -254,7 +262,15 @@ function vorschlaege(feld) {
    5. Felder und Hinweise an Ort und Stelle
    ================================================================== */
 
-function feldVon(feld) { return UI.$("tf-eingabe-" + feld); }
+/* Beim Bauen eines Bereichs der Behälter, in dem gesucht wird (er hängt
+   dann nicht unbedingt schon im Dokument), sonst null: dann das Dokument. */
+let bauWurzel = null;
+
+function knoten(id) {
+  return (bauWurzel && bauWurzel.querySelector("#" + CSS.escape(id))) || UI.$(id);
+}
+
+function feldVon(feld) { return knoten("tf-eingabe-" + feld); }
 
 /* Ein Feld zeigt einen neuen Wert, der nicht getippt wurde (Kurzwahl →
    Nummer, «Name aus AD übernehmen»): schreibt nur, wenn anders – die
@@ -281,11 +297,11 @@ function feldZeile(feld, o) {
 
 /* Hinweise, die am Getippten hängen (Banner unter einem Feld), stehen in
    einem UI.hinweisPlatz: gebaut wird nur, wenn sich der Inhalt ändert
-   (schluessel); erscheint er durch eine Eingabe, deckt er sich auf, beim
-   Zeichnen steht er ruhig da. Ein anderer Bereich zeigt den Platz nicht. */
+   (schluessel); kommt oder geht er durch eine Eingabe, gleitet sein Stapel
+   (FLIP), beim Zeichnen steht er ruhig da. Ein anderer Bereich zeigt den Platz nicht. */
 function hinweisSetzen(id, schluessel, bauen, ausEingabe) {
-  const platz = UI.$(id);
-  if (platz) platz.setzen(schluessel, bauen, { aufdecken: ausEingabe });
+  const platz = knoten(id);
+  if (platz) platz.setzen(schluessel, bauen, { ausEingabe: ausEingabe });
 }
 
 /* Zwillinge: dieselbe Kurzwahl steht schon in der Liste. */
@@ -305,16 +321,24 @@ function zwillingeNachfuehren(ausEingabe) {
   }, ausEingabe);
 }
 
+/* Der Name der Person, die im AD diese Nummer hat ("" ohne). */
+function adName() {
+  const b = person();
+  return b ? String(b.__name || "").trim() : "";
+}
+
 /* Name und AD-Person verschieden? Dann ist die Liste veraltet. */
 function nameAdNachfuehren(ausEingabe) {
-  const b = person();
   const name = textWert("Name").trim();
-  const adName = b ? String(b.__name || "").trim() : "";
-  const zeigen = !!adName && Modell.schluessel(name) !== Modell.schluessel(adName);
-  hinweisSetzen("tf-name-ad", zeigen ? "name|" + adName + "|" + name : "", function () {
+  const ad = adName();
+  const zeigen = !!ad && Modell.schluessel(name) !== Modell.schluessel(ad);
+  hinweisSetzen("tf-name-ad", zeigen ? "name|" + ad + "|" + name : "", function () {
     const knopf = UI.knopf({ text: "Name aus AD übernehmen", variante: "leise", beiKlick: function () {
-      entwurf.setzeWert("Name", adName);
-      feldZeigen("Name", adName);
+      // Der Stand beim Klick zählt, nicht der beim Bauen des Knopfs.
+      const neuerName = adName();
+      if (!neuerName) return;
+      entwurf.setzeWert("Name", neuerName);
+      feldZeigen("Name", neuerName);
       if (!textWert("Typ").trim()) { entwurf.setzeWert("Typ", "Person"); feldZeigen("Typ", "Person"); }
       if (statusWert() === "Frei") { entwurf.setzeWert("Status", "Aktiv"); feldZeigen("Status", "Aktiv"); }
       statusHinweisNachfuehren();
@@ -325,8 +349,8 @@ function nameAdNachfuehren(ausEingabe) {
     return UI.banner({
       ton: "warnung",
       text: name
-        ? "In der Liste steht «" + name + "», im AD hat «" + adName + "» diese Nummer."
-        : "Im AD steht die Nummer bei «" + adName + "».",
+        ? "In der Liste steht «" + name + "», im AD hat «" + ad + "» diese Nummer."
+        : "Im AD steht die Nummer bei «" + ad + "».",
       knopf: knopf
     });
   }, ausEingabe);
@@ -335,11 +359,10 @@ function nameAdNachfuehren(ausEingabe) {
 /* «Frei», aber im AD bei jemandem hinterlegt (nur, wenn der Name schon
    stimmt – sonst setzt «Name aus AD übernehmen» den Status gleich mit). */
 function statusAdNachfuehren(ausEingabe) {
-  const b = person();
-  const adName = b ? String(b.__name || "").trim() : "";
-  const nameStimmt = !adName || Modell.schluessel(textWert("Name").trim()) === Modell.schluessel(adName);
-  const zeigen = !!adName && nameStimmt && statusWert() === "Frei";
-  hinweisSetzen("tf-status-ad", zeigen ? "frei|" + adName : "", function () {
+  const ad = adName();
+  const nameStimmt = !ad || Modell.schluessel(textWert("Name").trim()) === Modell.schluessel(ad);
+  const zeigen = !!ad && nameStimmt && statusWert() === "Frei";
+  hinweisSetzen("tf-status-ad", zeigen ? "frei|" + ad : "", function () {
     const knopf = UI.knopf({ text: "Auf «Aktiv» setzen", variante: "leise", beiKlick: function () {
       entwurf.setzeWert("Status", "Aktiv");
       feldZeigen("Status", "Aktiv");
@@ -350,7 +373,7 @@ function statusAdNachfuehren(ausEingabe) {
     }, fokus: "status-aktiv" });
     return UI.banner({
       ton: "warnung",
-      text: "Die Nummer steht auf «Frei», ist im AD aber bei «" + adName + "» hinterlegt.",
+      text: "Die Nummer steht auf «Frei», ist im AD aber bei «" + ad + "» hinterlegt.",
       knopf: knopf
     });
   }, ausEingabe);
@@ -362,7 +385,7 @@ const STATUS_HINWEISE = {
 };
 
 function statusHinweisNachfuehren() {
-  const h = UI.$("tf-status-hinweis");
+  const h = knoten("tf-status-hinweis");
   if (h) UI.textSetzen(h, STATUS_HINWEISE[statusWert()] || "");
 }
 
@@ -440,7 +463,7 @@ function stammdatenKarte() {
     }),
     feldZeile("Status", {
       art: "auswahl",
-      // Leer gespeichert zeigt die Auswahl «Aktiv» (D1).
+      // Leer gespeichert zeigt die Auswahl «Aktiv».
       eingabe: { werte: Modell.TELEFON_STATUS_WERTE, wert: statusAnzeige(), schmal: true },
       hinweis: statusHinweis,
       zusatz: UI.hinweisPlatz({ id: "tf-status-ad" }),
@@ -486,14 +509,19 @@ function personSchluessel() {
   return "leer|" + textWert("Benutzer").trim();
 }
 
+/* Der Inhalt der Personenkarte. Jeder Teil trägt einen Schlüssel: kommt
+   eine andere Person oder ein Leerzustand, wird er ersetzt statt
+   umgebaut. Ein Chip steht nur für die Abweichung (Konto deaktiviert,
+   gefunden über die Spalte statt über das AD-Feld) – ein aktives Konto ist
+   der Normalfall. */
 function personInhalt() {
   const b = person();
   const teile = [];
   if (!b && ohneNummer()) {
-    teile.push(UI.leerzustand({
+    teile.push(geschluesselt(UI.leerzustand({
       sinnbild: "telefon",
       titel: "Noch keine Nummer"
-    }));
+    }), "person-ohne-nummer"));
   } else if (b) {
     const ausAd = !!personAusAd();
     const z = UI.listenZeile({
@@ -503,60 +531,64 @@ function personInhalt() {
       sinnbild: "benutzer",
       fokus: "person-" + b.id
     });
-    teile.push(UI.zeilenliste([z]));
+    teile.push(geschluesselt(UI.zeilenliste([z]), "person-" + b.id));
     /* Die Chips stehen unter der Zeile: in der halben Kartenbreite
        drückten sie sonst den Namen zusammen. */
-    teile.push(UI.chips([
-      b.__adAktiv ? UI.status("AD-Konto aktiv", "erfolg") : UI.status("AD-Konto deaktiviert", "gefahr"),
+    const chips = [
+      b.__adAktiv ? null : UI.status("AD-Konto deaktiviert", "gefahr"),
       ausAd ? null : UI.status("Über Spalte «Benutzer (AD)»", "neutral", {
         sinnbild: "verknuepfung",
         titel: "Im AD-Feld «Telefon» dieser Person steht die Nummer nicht."
       })
-    ]));
+    ].filter(Boolean);
+    if (chips.length) teile.push(geschluesselt(UI.chips(chips), "person-chips"));
     /* Ohne Schloss: die ganze Karte kommt aus dem AD, das sagt ihr Titel
        einmal (Schlösser nur, wo gesperrte und änderbare Felder gemischt
        stehen – wie auf der Benutzer- und der Geräteseite). */
-    teile.push(UI.datenzeilen([
+    teile.push(geschluesselt(UI.datenzeilen([
       UI.feldZeile("Telefon im AD", b.Telefon),
       UI.feldZeile("Letzter AD-Abgleich", UI.zeitText(zeile ? zeile.ADLetzterSync : ""))
-    ]));
+    ]), "person-daten"));
   } else {
-    teile.push(UI.leerzustand({
+    teile.push(geschluesselt(UI.leerzustand({
       sinnbild: "benutzer",
       titel: "Im AD hat niemand diese Nummer",
       text: "Für Dienste, Räume und HelpFons ist das normal. Bei einer Person fehlt die Nummer im AD-Feld «Telefon»."
-    }));
+    }), "person-niemand"));
     const benutzerSpalte = textWert("Benutzer").trim();
     if (benutzerSpalte) {
-      teile.push(UI.datenzeilen([UI.feldZeile("Benutzer (AD)", benutzerSpalte,
-        { neben: "nicht (mehr) in der Benutzer-Liste" })]));
+      teile.push(geschluesselt(UI.datenzeilen([UI.feldZeile("Benutzer (AD)", benutzerSpalte,
+        { neben: "nicht (mehr) in der Benutzer-Liste" })]), "person-spalte"));
     }
   }
   return teile;
 }
 
+function geschluesselt(knotenTeil, schluessel) {
+  knotenTeil.setAttribute("data-ds-key", schluessel);
+  return knotenTeil;
+}
+
+/* Die Personenkarte folgt der Nummer: UI.abgleichen tauscht nur, was sich
+   geändert hat (der Schlüssel steht als Attribut am Behälter: ein
+   abgeglichener Bereich übernimmt ihn mit dem Inhalt). Ändert die Eingabe
+   die Lage, läuft der Abgleich über FLIP (Bewegung.umordnen, wie ein
+   Banner, das kommt oder geht): eine andere Person (anderer Schlüssel
+   ihrer Zeile) blendet ein, die alte aus, was bleibt, gleitet. Kein
+   Tausch-Eintritt pro Tastendruck; beim Zeichnen ohne Bewegung. */
 function personNachfuehren(ausEingabe) {
-  const ziel = UI.$("tf-person");
+  const ziel = knoten("tf-person");
   if (!ziel) return;
   const sig = personSchluessel();
   if (ziel.getAttribute("data-schluessel") === sig) return;
   const neu = ziel.hasAttribute("data-schluessel");
-  const altePerson = personAusSchluessel(ziel.getAttribute("data-schluessel"));
   ziel.setAttribute("data-schluessel", sig);
-  UI.leeren(ziel);
-  UI.anhaengen(ziel, personInhalt());
-  /* Aufgedeckt wird nur, wenn durch die Eingabe eine ANDERE Person
-     erscheint – nicht bei jedem Zwischenstand des Tippens und nicht, wenn
-     dieselbe Person nur über einen anderen Weg gefunden wird. */
-  const neuePerson = personAusSchluessel(sig);
-  if (ausEingabe && neu && neuePerson && neuePerson !== altePerson) Bewegung.aufdecken(ziel);
+  if (ausEingabe && neu) Bewegung.umordnen(ziel, o => UI.abgleichen(ziel, personInhalt(), o));
+  else UI.abgleichen(ziel, personInhalt());
 }
 
-function personAusSchluessel(sig) {
-  return sig && sig.indexOf("p|") === 0 ? sig.split("|")[1] : "";
-}
-
-/* Nach dem Bauen: Hinweise und Person ruhig füllen (ohne Auftritt). */
+/* Hinweise und Person ruhig füllen (ohne Auftritt): beim Bauen im neuen
+   Behälter, nach dem Zeichnen im gezeigten Bereich. */
 function stammdatenFuellen() {
   statusHinweisNachfuehren();
   abhaengigeNachfuehren(false);
@@ -567,7 +599,7 @@ function bereichStammdaten(ziel) {
   raster.appendChild(stammdatenKarte());
   raster.appendChild(personKarte());
   ziel.appendChild(raster);
-  stammdatenFuellen();
+  imBehaelter(ziel, stammdatenFuellen);
 }
 
 function bereichNeu(ziel) {
@@ -576,7 +608,20 @@ function bereichNeu(ziel) {
   raster.appendChild(personKarte());
   raster.appendChild(hinweisKarte(true));
   ziel.appendChild(raster);
-  stammdatenFuellen();
+  imBehaelter(ziel, stammdatenFuellen);
+}
+
+function imBehaelter(ziel, fn) {
+  const vorher = bauWurzel;
+  bauWurzel = ziel;
+  try { fn(); } finally { bauWurzel = vorher; }
+}
+
+/* Nach jedem Zeichnen: was am Entwurf hängt, im gezeigten Bereich. Ein
+   abgeglichener Bereich behält seine Knoten (und deren Zustand); ihr
+   Inhalt kam aus dem neuen Bau – hier stimmen beide wieder überein. */
+function nachZeichnen() {
+  if (aktiverBereich === "stammdaten") stammdatenFuellen();
 }
 
 
@@ -643,8 +688,6 @@ function kopfZeichnen() {
       if (s === "Inaktiv") status.push(UI.status("Inaktiv", "neutral", { sinnbild: "aus" }));
       if (!istZugewiesen()) status.push(UI.status("Nicht zugewiesen", "warnung"));
     }
-    const b = person();
-    if (b) status.push(UI.status(b.__name || b.Title, "neutral", { sinnbild: "benutzer" }));
 
     if (!F.geloescht()) aktionen.push.apply(aktionen, schnellaktionen());
   }
@@ -652,7 +695,7 @@ function kopfZeichnen() {
 }
 
 /* «Nummer freigeben» und «Löschen …». Beide sind bei ungespeicherten
-   Änderungen gesperrt und nennen den Grund (Fehler D4). Ob es «Freigeben»
+   Änderungen gesperrt und nennen den Grund. Ob es «Freigeben»
    gibt, entscheidet der GESPEICHERTE Stand – sonst sprängen die Knöpfe beim
    Tippen. */
 function schnellaktionen() {
@@ -906,7 +949,7 @@ async function anlegen() {
   entwurf.leeren();
   nummerVonHandBestimmen();
   aktiverBereich = "stammdaten";
-  // Fehler A2: die Adresse zeigt gleich auf die neue Zeile (Neuladen geht).
+  // Die Adresse zeigt gleich auf die neue Zeile (Neuladen und Teilen gehen).
   history.replaceState(null, "", UI.adresse.telefon(elementId, { bereich: "stammdaten" }));
   F.melden("telefon-neu", elementId);
   return { neu: true };
@@ -951,7 +994,7 @@ async function aendern() {
   }
   const antwort = await Daten.speichern("telefon", elementId, felder, zeile.__etag);
   // Den geschriebenen Stand samt neuem eTag übernehmen: scheitert das
-  // Nachladen, zeichnet die Seite aus ihm (A7), und der nächste
+  // Nachladen, zeichnet die Seite aus ihm, und der nächste
   // Speicherversuch meldet keinen falschen Konflikt (412).
   F.uebernehmen(zeile, felder, antwort);
   entwurf.leeren();
@@ -986,7 +1029,7 @@ function speichern() { return speichernMit({}); }
 function verwerfen() {
   return F.verwerfen({ anzahl: entwurf.anzahl(), neuModus: neuModus, danach: function () {
     entwurf.leeren();
-    nummerVonHandBestimmen();   // Fehler D2: wie beim Laden, nicht pauschal «false»
+    nummerVonHandBestimmen();   // wie beim Laden, nicht pauschal «false»
     if (neuModus) nummerVonHand = false;
     zeichnenAlles();
   } });

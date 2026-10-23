@@ -1,12 +1,12 @@
-/* telefon.css — Seitenlayout des Telefonfensters.
+/* telefon.css – Seitenlayout des Telefonfensters.
 
    Wird NACH Dashboard-Style (ds.css), thema.css,
    bausteine.css und rahmen.css geladen. Alles, was
    dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Karten,
    Datenzeilen mit Formularfeldern, Banner, Listenzeile der Person,
-   Leerzustand. Raster und Abstände kommen aus .karten und .ds-stack
-   (bausteine.css, Dashboard-Style), der Bereich aus .fenster-bereich (rahmen.css); schmale
-   Felder (Kurzwahl, Auswahlen) aus .eingabe-schmal.
+   Leerzustand. Raster und Abstände kommen aus .karten (bausteine.css) und
+   .ds-stack (Dashboard-Style), der Bereich aus .fenster-bereich
+   (rahmen.css); schmale Felder (Kurzwahl, Auswahlen) aus .eingabe-schmal.
 
    Bewusst leer gelassen statt gelöscht: die Datei bleibt der Ort für ein
    künftiges Seitenlayout (nur Raster, Breiten, Positionen – mit Tokens,

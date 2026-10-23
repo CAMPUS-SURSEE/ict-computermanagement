@@ -1,24 +1,54 @@
-/* fenster.js — gemeinsames Gerüst der vier Detailseiten (Client, Benutzer,
-   Telefonnummer, Software), gebaut auf Rahmen (rahmen.js) und UI
-   (bausteine.js).
+/* fenster.js – gemeinsames Gerüst der sechs Detailseiten (Client, Benutzer,
+   Telefonnummer, Software, Kamera, Kamerarolle), gebaut auf Rahmen
+   (rahmen.js), UI und Bewegung (bausteine.js) und darunter Dashboard-Style
+   (DS.dom, DS.motion, DS.overlay).
 
    Die Seiten teilen sich: Seitenkopf mit Zurück-Link, Titel, Teile-Zeile,
    Status und Schnellaktionen; die Bereiche in der Schublade; Lade-, Fehler-
    und Endzustand; Speicherleiste; Meldungen; Dialoge; Vorführ-Hinweis;
    automatisches Nachladen; Tastatur (Ctrl/Cmd+S, Esc) und den Schutz vor
    dem Verlassen mit ungespeicherten Änderungen. Das steht einmal hier.
-   Dazu die Helfer, die früher in jeder Seite kopiert standen: Entwurf,
-   Feld am Entwurf, Speicherablauf, Übernahme nach dem Schreiben (eTag),
-   Löschdialog mit Eintippen, «beschäftigt».
+   Dazu die Helfer, die sonst in jeder Seite stünden: Entwurf, Feld am
+   Entwurf, Speicherablauf, Übernahme nach dem Schreiben (eTag), Arbeit
+   aus einem Dialog, Löschdialog mit Eintippen, «beschäftigt».
 
    Was hier NICHT steht: die Bereiche und alles Fachliche. Das bleibt in
    der Seite; sie reicht dem Gerüst Rückrufe und Zustände hinein.
 
-   HTML der Seite (Präfix z. B. «g»): body[data-seite] mit dem Rahmen-Gerüst
-   (siehe rahmen.js) und in der Bahn
+   HTML der Seite (Präfix z. B. «g»): div.ds-app[data-seite] mit dem
+   Rahmen-Gerüst (siehe rahmen.js) und in der Bahn (#inhalt)
        <header class="ds-page-head" id="g-kopf"></header>
        <div class="fenster-bereich" id="g-bereich"></div>
    Dialog, Meldung und Speicherleiste baut das Gerüst selbst.
+
+   Neu zeichnen heisst abgleichen: Kopf und Bereich werden bei jedem Aufruf
+   frisch gebaut und dann mit dem Gezeigten abgeglichen (UI.abgleichen =
+   DS.dom.morphChildren). Was gleich bleibt, bleibt stehen – mit Fokus,
+   Schreibmarke, Rollstand, Tooltip und laufendem Spinner –, und kein
+   Auftritt (das Sinnbild eines Status-Chips) spielt noch einmal. Für die
+   Seiten heisst das:
+     - Ein Knoten, den der Bauer eines Bereichs baut, ist nur bis zum
+       nächsten F.zeichneBereich der gezeigte: danach kann es sein
+       Vorgänger sein, der stehen geblieben ist. Wer später an Ort und
+       Stelle nachführt, sucht den Knoten über seine id (UI.$) bzw.
+       data-fokus, statt ihn festzuhalten – oder setzt data-ds-replace auf
+       den Teilbaum, der immer frisch sein muss (dann spielt er aber auch
+       seine Auftritte).
+     - Ein stehen gebliebenes Bedienelement behält seine Zuhörer vom ersten
+       Bauen. Handler lesen darum den aktuellen Stand (Modul-Variablen,
+       Entwurf), statt Werte eines Bauens einzuschliessen; wo das nicht
+       geht, hört der Behälter (Delegation) oder data-ds-replace hilft.
+       Bedienelemente (Knöpfe, Links, Felder, Schalter, Chips) markiert das
+       Gerüst im Bereich mit data-ds-replace: weicht eines in seinen
+       Attributen ab (andere id, anderes data-fokus, anderer Text in einem
+       Attribut), wird es ersetzt, nie zu einem anderen umgedeutet – es
+       trüge sonst die Zuhörer eines anderen Felds. Das fokussierte bleibt
+       immer stehen.
+     - Werte von Feldern (value, checked) gleicht das Gerüst der Vorlage
+       nach, auch im fokussierten Feld (mit Schreibmarke) – ausser in einem
+       fokussierten Suchfeld, das verzögert meldet.
+     - Kopfknöpfe nur mit beiKlick bauen: der stehende Knopf übernimmt den
+       beiKlick des neu gebauten (UI.knopfUebernehmen).
 
    ------------------------------------------------------------------
    API:  const F = Fenster.erstellen(praefix, { neuLaden, nachladen, liste })
@@ -27,11 +57,10 @@
    nachladen()  lädt still nach und zeichnet neu (nach F.beschaeftigt, nach
                 «Neu laden» bei einem Speicherkonflikt)
    liste        Schlüssel der Liste für den Zurück-Link («admin», «edu»,
-                «benutzer», «telefone», «software»)
+                «benutzer», «telefone», «software», «kameras», «kamerarechte»)
 
-   Bauen tun die Seiten über UI.* (bausteine.js, rahmen.js); die früheren
-   Hüllen F.el, F.knopf, F.toast, F.dialogOeffnen … gibt es nicht mehr
-   (kein Baustein zweimal).
+   Bauen tun die Seiten über UI.*, Rahmen.* und Bewegung.* (bausteine.js,
+   rahmen.js); F.* hüllt keinen Baustein ein.
      F.melden(typ, id)                    BroadcastChannel an Hauptseite und Fenster
      F.verlaufAnhaengen(verlaufRoh, text) Eintrag von heute an einen Verlauf hängen
    Zustände:
@@ -45,13 +74,27 @@
      F.fehlerText(fehler) → Text
    Kopf und Navigation:
      F.seitenkopf({pfad:{text, href}|listenSchluessel|null, titel, lead, unter:[teile]|text,
-                   status:[knoten], aktionen:[knöpfe]})       an Ort und Stelle
+                   status:[knoten], aktionen:[knöpfe]})
+                                         gleicht an Ort und Stelle ab (darf bei jedem
+                                         Tastendruck laufen): Teile und Status über
+                                         UI.abgleichen (ein Status-Chip, der bleibt, spielt
+                                         seinen Auftritt nicht noch einmal, ein neuer Ton
+                                         gleitet); Knöpfe mit Schlüssel (data-ds-key aus
+                                         data-fokus, id oder Text), ein stehender übernimmt
+                                         Sperre und beiKlick des neuen
      F.logoZeichnen(listenSchluessel)    Standard für den Zurück-Link
-     F.navZeichnen(bereiche, aktiv, beiKlick, {verstecken, zusatz(b) → Zahl|Knoten})
+     F.navZeichnen(bereiche, aktiv, beiKlick, {verstecken, label, zusatz(b) → Zahl|Knoten})
                                          zuoberst der Zurück-Eintrag zur gemerkten Liste
-     F.zeichneBereich(bereiche, aktiv) → schluessel   (hält Fokus, Schreibmarke, Rollen:
-                                                      Rahmen.stillZeichnen)
-     F.bereichWechseln(bereiche, schluessel) → Promise<schluessel>   (replaceState + Fade-through)
+     F.zeichneBereich(bereiche, aktiv) → schluessel
+                                         bereiche: [{k, d, f(ziel), gruppe?, sinnbild?}].
+                                         Ein anderer Bereich wird frisch gebaut; derselbe wird
+                                         still abgeglichen (siehe oben; Rahmen.stillZeichnen hält
+                                         Tafel, Roller und einen verschwundenen Fokus). Der Bauer
+                                         f(ziel) baut dabei in eine verborgene Vorlage vor dem
+                                         Bereich: UI.$(id) findet beim Bauen schon die neuen Knoten.
+     F.bereichWechseln(bereiche, schluessel) → Promise<schluessel>
+                                         replaceState, Pille (Rahmen.aktiv) und Rahmen.wechseln
+                                         (DS.motion.transition, fade-through; Raster staffeln)
      F.hashBereich(bereiche)
    Speichern:
      F.entwurf(zeileHolen, {beiAenderung, leer: {Feld: Wert}, neu}) → {wert, textWert, setzeWert, anzahl,
@@ -67,13 +110,25 @@
                 Angabe als Nein; .feld = das Kästchen
      F.uebernehmen(zeile, felder, antwort) → zeile   nach Daten.speichern: Felder UND
                 das neue eTag (antwort.__etag) in die lokale Zeile
-     F.speicherleisteZeichnen({neuModus, geloescht, speichertGerade, speicherFehler, anzahl, neuText, meta})
+     F.speicherleisteZeichnen({neuModus, anzahl, neuText})
      F.speicherAblauf({pruefen, schreiben, nachladen, erfolgText, fehlerText, anzahl, zeichnen, immer})
-                → Promise<boolean>   (immer: auch ohne Änderungen, z. B. «Anlegen»)
+                → Promise<boolean>   (immer: auch ohne Änderungen, z. B. «Anlegen»; der
+                Speichern-Knopf ist beschäftigt, solange schreiben() läuft:
+                speicherleiste().beschaeftigt → DS.motion.busy)
      F.beschaeftigt(fn, {nachladen}) → Promise   F.istBeschaeftigt()
+                sperrt Kopfaktionen (mit Grund im Tooltip), Speicherleiste, Ctrl+S und Esc,
+                solange fn läuft; verwirft fn, wird das Promise verworfen
+     F.imDialog(dialog, knopf, arbeit, {fehlerText, grund, nachladen}) → Promise<boolean>
+                Arbeit aus einem offenen UI.dialog: knopf beschäftigt (UI.beschaeftigt; seine
+                Gesichter baut UI.knopf({beschaeftigt: 'Wird gespeichert …'})), die übrigen
+                Knöpfe des Dialogs gesperrt, Esc und Schleier schliessen nicht (sperren), dazu
+                F.beschaeftigt. Gelungen: der Dialog schliesst (grund, Standard 'ja'), true.
+                Gescheitert: er bleibt offen, Fehlermeldung (fehlerText + Grund), false.
      F.verwerfen({anzahl, neuModus, danach}) → Promise<boolean>   Rückfrage mit einheitlichen
                 Worten («2 Änderungen verwerfen?» / «Formular leeren?»), danach() und leise Meldung
-     F.loeschenDialog({titel, text, warnung, wort, knopfText, beiLoeschen, ende:{titel, text, hinweis}})
+     F.loeschenDialog({titel, text, warnung, wort, knopfText, fehlerText, beiLoeschen, ende:{titel, text, hinweis}})
+                → dialog   «Löschen» ist gesperrt (mit Grund), bis wort eingetippt ist; dann
+                über F.imDialog («Wird gelöscht …»), danach der Endzustand
      F.geloescht()
    Rahmen:
      F.bandZeichnen(text, beiZuruecksetzen)   F.kontoZeigen(konto?)   F.zurListe()
@@ -81,7 +136,8 @@
                 Tab gelöscht) zeigt den Endzustand «Inzwischen gelöscht»
      F.ereignisse({speichern, verwerfen, anzahlAenderungen, verlassenFrei, beiHash})
                 Leiste, Ctrl/Cmd+S, Esc, Hash, Schutz vor dem Verlassen (auch mit
-                halb getipptem Verlauf-Eintrag, Verlauf.offeneEingabe)
+                halb getipptem Verlauf-Eintrag, Verlauf.offeneEingabe). Esc und Ctrl+S
+                fragen UI.ebeneOffen(): eine offene Überlagerung hat die Taste für sich.
 
    Grundsätze wie überall: kein Framework, kein innerHTML mit Daten. */
 
@@ -90,13 +146,21 @@
 const Fenster = (function () {
 
   /* Kurzformen für das Gerüst selbst (keine Ausgabe an die Seiten: die
-     bauen über UI.*; die früheren Hüllen F.el, F.knopf … sind entfallen). */
+     bauen über UI.*). */
   const $ = UI.$;
   const el = UI.el;
   const leeren = UI.leeren;
-  const anhaengen = UI.anhaengen;
   const text = UI.text;
   const gleichwertig = UI.gleichwertig;
+
+  /** Grund im Tooltip der Kopfaktionen, solange F.beschaeftigt läuft. */
+  const GRUND_BESCHAEFTIGT = "Wird gespeichert … Gleich wieder möglich.";
+
+  /** Formularfelder, deren Wert das Gerüst nach dem Abgleich nachführt. */
+  const STEUERELEMENTE = "input, select, textarea";
+  /** Was im Bereich beim Abgleich ersetzt statt umgedeutet wird (Zuhörer,
+      Methoden am Knoten): Knöpfe, Links, Felder, Kästchen, Schalter, Chips. */
+  const BEDIENELEMENTE = "button, a[href], input, select, textarea, label.ds-check, label.ds-switch, label.ds-chip";
 
   /* Einen Eintrag von heute an einen Verlauf anhängen; gibt den neuen
      Spaltentext zurück (automatische Einträge: Statuswechsel, Inhaber …). */
@@ -120,6 +184,55 @@ const Fenster = (function () {
 
   function fehlerText(fehler) {
     return fehler && fehler.message ? fehler.message : String(fehler || "");
+  }
+
+  /* ---------- Abgleichen ---------- */
+
+  /* Die Formularfelder unter den Knoten, in Dokumentreihenfolge. */
+  function steuerelemente(knoten) {
+    const liste = [];
+    for (const k of knoten) {
+      if (!k || k.nodeType !== 1) continue;
+      if (k.matches(STEUERELEMENTE)) liste.push(k);
+      for (const s of k.querySelectorAll(STEUERELEMENTE)) liste.push(s);
+    }
+    return liste;
+  }
+
+  /* Nach dem Abgleich steht unter dem Behälter dieselbe Folge von Feldern
+     wie in der Vorlage; ein Feld, das stehen geblieben ist, übernimmt den
+     Wert seiner Vorlage (value und checked sind keine Attribute, die
+     DS.dom.morphChildren angleicht). Die Vorlage kommt aus dem Entwurf,
+     und jede Eingabe geht sofort dorthin: darum auch das fokussierte Feld
+     (nach «Verwerfen» steht der Fokus wieder darin, der Wert muss zurück),
+     mit seiner Schreibmarke. Nur ein fokussiertes Suchfeld nicht: es meldet
+     verzögert (UI.suchfeld), die Vorlage kennt das Letzte noch nicht.
+     Stimmt die Folge nicht (ein Feld in einem austretenden Teil), bleibt
+     alles, wie es ist. */
+  function werteNachfuehren(behaelter, vorlage) {
+    const gezeigt = Array.from(behaelter.querySelectorAll(STEUERELEMENTE))
+      .filter(function (k) { return !k.closest("[data-ds-leaving]"); });
+    if (gezeigt.length !== vorlage.length) return;
+    const aktiv = document.activeElement;
+    gezeigt.forEach(function (k, i) {
+      const v = vorlage[i];
+      if (k === v || k.tagName !== v.tagName || k.type !== v.type) return;
+      if (k === aktiv && k.closest(".ds-search")) return;
+      if (k.type === "checkbox" || k.type === "radio") {
+        if (k.checked !== v.checked) k.checked = v.checked;
+        if (k.indeterminate !== v.indeterminate) k.indeterminate = v.indeterminate;
+      } else if (k.type !== "file" && k.value !== v.value) {
+        let auswahl = null;
+        try {
+          if (k === aktiv && typeof k.selectionStart === "number") auswahl = [k.selectionStart, k.selectionEnd];
+        } catch (e) { auswahl = null; }   // Feldart ohne Schreibmarke (Datum, Zahl)
+        k.value = v.value;
+        if (auswahl) {
+          const n = k.value.length;
+          try { k.setSelectionRange(Math.min(auswahl[0], n), Math.min(auswahl[1], n)); } catch (e) { /* ohne Schreibmarke */ }
+        }
+      }
+    });
   }
 
   /* ==================================================================
@@ -166,11 +279,10 @@ const Fenster = (function () {
       Rahmen.zustand("laden", { fortschritt: textZeile || "" });
     };
 
-    /* Fehler C6: Titel und Dokumenttitel nennen den Fehler, nicht mehr
-       «… wird geladen …». Ohne Datensatz gibt es keine Bereiche: die Seite
-       steht ohne Schublade da wie im Neu-Modus (Tafel volle Breite) – eine
-       leere Schublade bzw. ein Menüknopf, der eine leere öffnet, hülfe
-       niemandem. */
+    /* Titel und Dokumenttitel nennen den Fehler, nicht «… wird geladen …».
+       Ohne Datensatz gibt es keine Bereiche: die Seite steht ohne Schublade
+       da wie im Neu-Modus (Tafel volle Breite) – eine leere Schublade bzw.
+       ein Menüknopf, der eine leere öffnet, hülfe niemandem. */
     F.zeigeFehler = function (titel, meldung, hinweis, knopfText, beiKlick) {
       UI.speicherleiste().setzen({ sichtbar: false });
       F.navZeichnen([], null, null, { verstecken: true });
@@ -204,13 +316,6 @@ const Fenster = (function () {
        ================================================================== */
 
     let kopf = null;
-    /** Knöpfe, die bei gleicher Gestalt stehen bleiben, übernehmen den
-        beiKlick-Handler des zuletzt übergebenen Knopfs (UI.knopfUebernehmen:
-        ev.currentTarget ist dann der sichtbare Knopf). Nur wo das nicht geht
-        (Handler per addEventListener statt beiKlick), leiten sie den Klick an
-        den übergebenen Knopf weiter – dort ist ev.currentTarget der
-        unsichtbare neue Knopf (api.md §8). */
-    const weiterleitung = new WeakMap();
 
     function kopfSichern() {
       if (kopf) return kopf;
@@ -224,29 +329,10 @@ const Fenster = (function () {
       }
       // Der Bauer ist derselbe wie für die Ansichten der Hauptseite
       // (UI.seitenkopf, rahmen.js); hier wird er nur an Ort und Stelle
-      // nachgeführt (Signaturen unten), statt ihn neu zu bauen.
+      // abgeglichen, statt ihn neu zu bauen.
       const k0 = UI.seitenkopf({ element: wurzel, titelId: p + "titel" }).knoten;
-      const pfad = k0.pfad, pfadText = k0.pfadText, titel = k0.titel, unter = k0.unter;
-      const status = k0.status, aktionen = k0.aktionen;
-
-      aktionen.addEventListener("click", function (ev) {
-        const k = ev.target && ev.target.closest ? ev.target.closest("button, a") : null;
-        if (!k || !aktionen.contains(k)) return;
-        if (beschaeftigtZahl > 0) {   // Fehler A8: keine Aktion, solange geschrieben wird
-          ev.preventDefault();
-          ev.stopPropagation();
-          return;
-        }
-        const ziel = weiterleitung.get(k);
-        if (ziel && ziel !== k && k.tagName === "BUTTON") {
-          ev.preventDefault();
-          ev.stopPropagation();
-          ziel.click();
-        }
-      }, true);
-
-      kopf = { wurzel: wurzel, pfad: pfad, pfadText: pfadText, titel: titel, unter: unter,
-        status: status, aktionen: aktionen, unterSig: null, statusSig: null, pfadGesetzt: false };
+      kopf = { wurzel: wurzel, pfad: k0.pfad, pfadText: k0.pfadText, titel: k0.titel, unter: k0.unter,
+        status: k0.status, aktionen: k0.aktionen, pfadGesetzt: false };
       return kopf;
     }
 
@@ -268,79 +354,38 @@ const Fenster = (function () {
       k.pfad.hidden = false;
     }
 
-    /* Die Gestalt eines Kopfknopfs OHNE seine Sperre: weder die Sperre mit
-       Grund (UI.knopfSperren – aria-disabled und der Grund als Tooltip)
-       noch die eigene von F.beschaeftigt (data-f-gesperrt) zählen. Beide
-       wechseln an Ort und Stelle (sperreUebernehmen, sperrenAnwenden);
-       sonst baute jede erste Taste in einem Feld («Löschen …» wird
-       gesperrt) die Knöpfe neu, und ein Fokus darauf ginge verloren. Ein
-       aria-disabled, das die Seite selbst setzt (ohne Grund), zählt weiter. */
-    function knopfSignatur(k) {
-      const sperre = UI.knopfSperre(k);
-      const ariaAus = k.hasAttribute("data-f-gesperrt") || sperre.grund ? "" : (k.getAttribute("aria-disabled") || "");
-      return [k.tagName, k.className, k.textContent, k.disabled ? "1" : "0", ariaAus,
-        k.getAttribute("title") || sperre.tipp,
-        k.getAttribute("aria-pressed") || "", k.getAttribute("href") || "", k.hidden ? "1" : "0"].join("|");
+    /* Der Schlüssel eines Kopfknopfs für den Abgleich: dieselbe Aktion
+       bleibt derselbe Knopf, eine andere («Ins Lager legen» → «Ausgeben
+       an …») ist ein neuer, auch an derselben Stelle. */
+    function aktionsSchluessel(k) {
+      return k.getAttribute("data-fokus") || k.id || "text-" + k.textContent.trim();
     }
 
-    /* Der stehende Knopf übernimmt die Sperre mit Grund des neuen (oder gibt
-       sie auf). Hatte F.beschaeftigt ihn gesperrt, gehört aria-disabled ab
-       jetzt der Seite – sonst höbe das Ende der Arbeit ihre Sperre mit auf.
-       Ist noch Arbeit im Gang, sperrt sperrenAnwenden danach wieder. */
-    function sperreUebernehmen(alt, neu) {
-      const grund = UI.knopfSperre(neu).grund;
-      if (grund && alt.hasAttribute("data-f-gesperrt")) alt.removeAttribute("data-f-gesperrt");
-      UI.knopfSperren(alt, grund);
-    }
-
-    /* Knöpfe nur neu, wenn sich ihre Menge oder Gestalt ändert (nicht bei
-       jedem Tastendruck, nicht beim Wechsel der Sperre); sonst bleiben die
-       alten stehen — mit Fokus, Tooltip und Zustandsebene —, übernehmen die
-       Handler der neuen und schalten nur ihre Sperre um. */
+    /* Die Knöpfe werden frisch gebaut (bei jedem Tastendruck) und mit den
+       gezeigten abgeglichen: ein Knopf, der bleibt, behält Fokus, Tooltip
+       und Zustandsebene; seine Sperre mit Grund (aria-disabled, data-tip)
+       gleicht UI.abgleichen an, den beiKlick übernimmt er vom neuen
+       (UI.knopfUebernehmen). Ein Knopf ohne beiKlick wird ersetzt. Ging der
+       Fokus mit einem Knopf, geht er zur ersten freien Aktion, sonst zum
+       Titel. */
     function aktionenAbgleichen(behaelter, neue) {
       const liste = (neue || []).filter(Boolean);
-      const alte = Array.from(behaelter.children);
-      const gleich = alte.length === liste.length && alte.every(function (a, i) {
-        return knopfSignatur(a) === knopfSignatur(liste[i]);
+      for (const k of liste) if (!k.hasAttribute("data-ds-key")) k.setAttribute("data-ds-key", aktionsSchluessel(k));
+      const aktiv = document.activeElement;
+      const fokusDrin = !!aktiv && aktiv !== behaelter && behaelter.contains(aktiv);
+      UI.abgleichen(behaelter, liste);
+      Array.from(behaelter.children).forEach(function (gezeigt, i) {
+        const neu = liste[i];
+        if (!neu || gezeigt === neu || UI.knopfUebernehmen(gezeigt, neu)) return;
+        const hatteFokus = gezeigt === document.activeElement;
+        gezeigt.replaceWith(neu);
+        if (hatteFokus) neu.focus({ preventScroll: true });
       });
-      if (gleich) {
-        alte.forEach(function (a, i) {
-          if (UI.knopfUebernehmen(a, liste[i])) weiterleitung.delete(a);
-          else weiterleitung.set(a, liste[i]);
-          sperreUebernehmen(a, liste[i]);
-        });
-      } else {
-        const aktiv = document.activeElement;
-        const fokusText = aktiv && behaelter.contains(aktiv) ? aktiv.textContent : null;
-        leeren(behaelter);
-        anhaengen(behaelter, liste);
-        if (fokusText !== null) {
-          const nachfolger = liste.filter(function (k) { return k.textContent === fokusText && !k.disabled; })[0]
-            || liste.filter(function (k) { return !k.disabled; })[0];
-          if (nachfolger) nachfolger.focus({ preventScroll: true });
-          else $(p + "titel").focus({ preventScroll: true });
-        }
-      }
       sperrenAnwenden();
-    }
-
-    /* Gestalt eines Knotens samt Kindern: Tag, Attribute, Text – so genau
-       wie sein Markup, aber ohne die Markup-Schnittstellen (innerHTML,
-       outerHTML …), die im ganzen Frontend nicht vorkommen sollen
-       (code\Pruefe-Frontend.ps1). */
-    function knotenGestalt(k) {
-      if (!k || !k.nodeType) return String(k);
-      if (k.nodeType === 3) return k.nodeValue;
-      if (k.nodeType !== 1) return "";
-      let s = "<" + k.tagName;
-      for (const a of Array.from(k.attributes)) s += " " + a.name + "=" + a.value;
-      s += ">";
-      for (const c of Array.from(k.childNodes)) s += knotenGestalt(c);
-      return s + "</" + k.tagName + ">";
-    }
-
-    function knotenSignatur(liste) {
-      return (liste || []).filter(Boolean).map(knotenGestalt).join("\u0000");
+      if (fokusDrin && !behaelter.contains(document.activeElement)) {
+        const nachfolger = Array.from(behaelter.children).filter(function (k) { return !k.disabled; })[0];
+        (nachfolger || $(p + "titel")).focus({ preventScroll: true });
+      }
     }
 
     F.seitenkopf = function (w) {
@@ -357,21 +402,9 @@ const Fenster = (function () {
       if (s.unter !== undefined) {
         const teile = Array.isArray(s.unter) ? s.unter.filter(function (t) { return t !== null && t !== undefined && t !== ""; })
           : (s.unter ? [s.unter] : []);
-        const sig = teile.map(function (t) { return t && t.nodeType ? t.textContent : String(t); }).join("\u0000");
-        if (sig !== k.unterSig) {
-          k.unterSig = sig;
-          leeren(k.unter);
-          if (teile.length) k.unter.appendChild(UI.teile(teile));
-        }
+        UI.abgleichen(k.unter, teile.length ? [UI.teile(teile)] : []);
       }
-      if (s.status !== undefined) {
-        const sig = knotenSignatur(s.status);
-        if (sig !== k.statusSig) {
-          k.statusSig = sig;
-          leeren(k.status);
-          anhaengen(k.status, (s.status || []).filter(Boolean));
-        }
-      }
+      if (s.status !== undefined) UI.abgleichen(k.status, (s.status || []).filter(Boolean));
       if (s.aktionen !== undefined) aktionenAbgleichen(k.aktionen, s.aktionen);
       return k.wurzel;
     };
@@ -422,40 +455,88 @@ const Fenster = (function () {
     };
 
     let gezeigterBereich = null;
+    /** Der zuletzt angefragte Bereich (F.bereichWechseln): solange ein
+        Wechsel noch nicht gebaut hat, ist er nicht der gezeigte. */
+    let angefragterBereich = null;
 
-    /* Zeichnet den aktiven Bereich und gibt seinen Schlüssel zurück. Wird
-       derselbe Bereich neu gezeichnet (Tippen, Schalter, Nachladen), läuft
-       das über Rahmen.stillZeichnen: Fokus (über data-fokus ODER id, sonst
-       dieselbe Stelle), Schreibmarke und Rollpositionen (Tafel und innere
-       Roller mit id/data-fokus/data-rolle) kommen zurück — Fehler C2. Kein
-       Auftritt: animiert wird nur beim Bereichswechsel (F.bereichWechseln). */
+    /* Zeilen aus F.feld, die zu keinem gezeigten Knoten mehr gehören
+       (ersetzt, oder die Vorlage eines Abgleichs, deren Vorgänger blieb),
+       vergessen. */
+    function feldZeilenAufraeumen() {
+      feldZeilen = feldZeilen.filter(function (e) { return e.zeile.isConnected; });
+    }
+
+    /* Der Bauer f(ziel) baut in eine verborgene Vorlage, die kurz VOR dem
+       Bereich steht: so findet UI.$(id) beim Bauen schon die neuen Knoten
+       (die Bauer füllen Teile über ihre id), nicht die gezeigten. */
+    function vorlageBauen(ziel, bereich) {
+      const vorlage = el("div");
+      vorlage.hidden = true;
+      vorlage.inert = true;
+      ziel.parentNode.insertBefore(vorlage, ziel);
+      try {
+        bereich.f(vorlage);
+      } finally {
+        vorlage.remove();
+      }
+      ersetzenMarkieren(vorlage);
+      return Array.from(vorlage.childNodes);
+    }
+
+    /* Bedienelemente werden beim Abgleich ersetzt statt umgedeutet, sobald
+       sie abweichen (data-ds-replace, DS.dom.morphChildren). Nicht der
+       ganze Bereich: Karten und Raster tragen nach dem ersten Zeigen
+       Laufzeit-Attribute von Dashboard-Style (Staffelung) und blieben sonst
+       nie stehen – mit ihnen spielten alle Auftritte darin noch einmal. */
+    function ersetzenMarkieren(behaelter) {
+      for (const k of behaelter.querySelectorAll(BEDIENELEMENTE)) k.setAttribute("data-ds-replace", "");
+    }
+
+    /* Zeichnet den aktiven Bereich und gibt seinen Schlüssel zurück. Ein
+       anderer Bereich (Wechsel, erstes Zeigen) wird frisch gebaut; derselbe
+       (Tippen, Schalter, Nachladen, Speichern) still abgeglichen:
+       Rahmen.stillZeichnen bekommt die Knoten der Vorlage, gleicht sie mit
+       DS.dom.morphChildren ab und hält Tafel, innere Roller und einen
+       verschwundenen Fokus; danach die Feldwerte. Kein Auftritt: animiert
+       wird nur beim Bereichswechsel (F.bereichWechseln). */
     F.zeichneBereich = function (bereiche, aktiv) {
       const ziel = bereichEl();
       const bereich = (bereiche || []).filter(function (b) { return b.k === aktiv; })[0] || (bereiche || [])[0];
       const schluessel = bereich ? bereich.k : null;
       const derselbe = schluessel !== null && schluessel === gezeigterBereich;
-      const bauen = function () {
+      if (derselbe) {
+        let werte = [];
+        Rahmen.stillZeichnen(ziel, function () {
+          const knoten = vorlageBauen(ziel, bereich);
+          werte = steuerelemente(knoten);
+          // Ein leeres style-Attribut bleibt, wo Dashboard-Style seine
+          // Laufzeit-Eigenschaften (Staffelung, Hochzählen) wieder entfernt
+          // hat; die Vorlage hat keines. Ein Bedienelement (data-ds-replace)
+          // gälte sonst als abweichend und würde ersetzt.
+          for (const k of ziel.querySelectorAll("[style=\"\"]")) k.removeAttribute("style");
+          return knoten;
+        });
+        werteNachfuehren(ziel, werte);
+        feldZeilenAufraeumen();
+      } else {
         leeren(ziel);
-        // Die alten Zeilen aus F.feld sind jetzt ausgehängt: vergessen.
-        feldZeilen = feldZeilen.filter(function (e) { return e.zeile.isConnected; });
-        if (bereich) bereich.f(ziel);
-      };
-      if (derselbe) Rahmen.stillZeichnen(ziel, bauen);
-      else bauen();
+        feldZeilenAufraeumen();
+        if (bereich) {
+          bereich.f(ziel);
+          ersetzenMarkieren(ziel);
+        }
+      }
       gezeigterBereich = schluessel;
       return schluessel;
     };
 
-    /** Wechsel, deren Ausblenden (100 ms) noch läuft: so lange ist der
-        gezeichnete Bereich nicht der, der gleich zu sehen sein wird. */
-    let offeneWechsel = 0;
-
-    /* Bereichswechsel (Fehler A4): replaceState statt neuem Verlaufseintrag,
-       die Pille gleitet, der Bereich blendet durch und staffelt seine Karten.
-       Hin und gleich zurück (A → B → A innerhalb des Ausblendens): auch der
-       gezeigte Bereich geht dann durch Rahmen.wechseln – dessen Marke
-       verwirft den Wechsel nach B, sonst stünde B im Inhalt, Pille und
-       Adresse aber auf A. */
+    /* Bereichswechsel: replaceState statt neuem Verlaufseintrag (Zurück
+       führt zur Liste, nicht durch die Bereiche), die Pille gleitet, der
+       Bereich blendet durch (Rahmen.wechseln, DS.motion.transition) und
+       staffelt seine Karten. Hin und gleich zurück (A → B → A, bevor B
+       gebaut ist): auch der gezeigte Bereich geht dann durch Rahmen.wechseln
+       – der neuere Aufruf überholt den Wechsel nach B, sonst stünde B im
+       Inhalt, Pille und Adresse aber auf A. */
     F.bereichWechseln = function (bereiche, schluessel) {
       const gueltig = (bereiche || []).some(function (b) { return b.k === schluessel; });
       const k = gueltig ? schluessel : ((bereiche || [])[0] || {}).k;
@@ -464,19 +545,14 @@ const Fenster = (function () {
         history.replaceState(history.state, "", location.pathname + location.search + "#" + k);
       } catch (e) { /* file:// u. ä. */ }
       Rahmen.aktiv(k);
-      if (k === gezeigterBereich && offeneWechsel === 0) return Promise.resolve(k);
+      const unterwegs = angefragterBereich !== null && angefragterBereich !== gezeigterBereich;
+      angefragterBereich = k;
+      if (k === gezeigterBereich && !unterwegs) return Promise.resolve(k);
       const ziel = bereichEl();
-      offeneWechsel += 1;
       return Rahmen.wechseln(function () {
         F.zeichneBereich(bereiche, k);
         return ziel;
-      }, { alt: ziel }).then(function () {
-        offeneWechsel -= 1;
-        return k;
-      }, function (fehler) {
-        offeneWechsel -= 1;
-        throw fehler;
-      });
+      }, { alt: ziel }).then(function () { return k; });
     };
 
     F.hashBereich = function (bereiche) {
@@ -485,7 +561,7 @@ const Fenster = (function () {
     };
 
     /* ==================================================================
-       Entwurf (früher viermal kopiert)
+       Entwurf
        ================================================================== */
 
     /* oe.leer: { Feld: Wert } – wofür ein LEERER gespeicherter Wert steht
@@ -559,11 +635,12 @@ const Fenster = (function () {
     };
 
     /* ==================================================================
-       Feld am Entwurf (früher je Seite kopiert: formFeld/textEingabe,
-       feldEingabe, eingabeFuer/auswahlFuer, inline)
+       Feld am Entwurf
        ================================================================== */
 
-    /** Zeilen aus F.feld, deren Punkt «geändert» dem Entwurf folgt. */
+    /** Zeilen aus F.feld, deren Punkt «geändert» dem Entwurf folgt. Nach
+        einem Abgleich bleibt der Eintrag der gezeigten Zeile (die
+        stehen gebliebene alte oder die neu eingesetzte). */
     let feldZeilen = [];
 
     function feldNeu(eintrag) {
@@ -583,17 +660,19 @@ const Fenster = (function () {
     }
 
     /* Ein Feld der Liste, an den Entwurf gebunden: das Steuerelement über
-       UI.eingabe mit der id «<p>-eingabe-<Feld>» (Fokus beim Neuzeichnen,
-       Feldfehler aus F.speicherAblauf), Wert aus dem Entwurf, jede Eingabe
-       in den Entwurf; die Zeile (UI.formZeile) zeigt den Punkt «geändert»
-       an Ort und Stelle – im Neu-Modus nie (dort ist alles neu).
+       UI.eingabe mit der id «<p>-eingabe-<Feld>» (Abgleich, Fokus beim
+       Neuzeichnen, Feldfehler aus F.speicherAblauf), Wert aus dem Entwurf,
+       jede Eingabe in den Entwurf; die Zeile (UI.formZeile) zeigt den
+       Punkt «geändert» an Ort und Stelle – im Neu-Modus nie (dort ist
+       alles neu).
        of: { beschriftung, art = 'text' ('auswahl' meldet beim Ändern),
              hinweis, zusatz, eingabe: { weitere Optionen für UI.eingabe:
              werte, leer, vorschlaege, platzhalter, zeilen, schmal, … },
              beiEingabe(wert, feldKnoten) nach dem Eintrag in den Entwurf,
              entwurf (Standard: der zuletzt erstellte), neu (true|fn; Standard:
              Option «neu» des Entwurfs) }
-       → div.datenzeile-form mit .feld (das Steuerelement).
+       → div.datenzeile-form mit .feld (das Steuerelement; nur bis zum
+       nächsten Abgleich das gezeigte, danach UI.$(id)).
        Ein Zahlenfeld mit unlesbarer Eingabe («1e», «-») meldet "" – das
        heisst nicht «leer»: der Entwurf behält dann den letzten lesbaren
        Wert (die Seite prüft das Feld in pruefen()).
@@ -668,8 +747,8 @@ const Fenster = (function () {
       if (!letzteLeiste) return;
       const z = letzteLeiste;
       const anzahl = z.anzahl || 0;
-      const speichert = !!z.speichertGerade || speichertIntern;
-      const zeigen = !geloescht && !z.geloescht && (!!z.neuModus || anzahl > 0 || speichert);
+      const speichert = speichertIntern;
+      const zeigen = !geloescht && (!!z.neuModus || anzahl > 0 || speichert);
       let t;
       if (speichert) t = "Wird gespeichert …";
       else if (z.neuModus) {
@@ -678,40 +757,50 @@ const Fenster = (function () {
       } else {
         t = anzahl === 1 ? "1 Änderung" : anzahl + " Änderungen";
       }
-      const fehler = !!z.speicherFehler || fehlerOffen;
+      const fehler = fehlerOffen;
+      // Beschäftigt zeigt der Speichern-Knopf selbst (speicherleiste().beschaeftigt
+      // in F.speicherAblauf); hier stehen nur Texte und Sperren.
       leiste().setzen({
         text: t,
-        meta: z.meta || "",
         speichernText: fehler ? "Nochmals speichern" : (z.neuModus ? "Anlegen" : "Speichern"),
         verwerfenText: z.neuModus ? "Formular leeren" : "Verwerfen",
-        beschaeftigt: speichert,
         speichernAus: (!z.neuModus && anzahl === 0) || (beschaeftigtZahl > 0 && !speichert),
         verwerfenAus: speichert || anzahl === 0 || beschaeftigtZahl > 0,
         sichtbar: zeigen
       });
     }
 
-    /* z: { neuModus, geloescht, speichertGerade, speicherFehler, anzahl, neuText, meta }.
+    /* z: { neuModus, anzahl, neuText }.
        Wird bei jedem Tastendruck aufgerufen: ändert nur Texte und Zustände;
        Ein- und Austritt spielen nur, wenn die Leiste kommt oder geht. Fehler
-       stehen nicht rot in der Leiste, sondern als Meldung darüber (E1). */
+       stehen nicht rot in der Leiste, sondern als Meldung darüber. */
     F.speicherleisteZeichnen = function (z) {
       letzteLeiste = Object.assign({}, z || {});
       leisteZeichnen();
     };
 
+    /* Solange F.beschaeftigt läuft, sind die Kopfaktionen gesperrt – mit
+       Grund im Tooltip, fokussierbar (bausteine.js schluckt ihre Klicks).
+       data-f-gesperrt merkt sich den Tooltip des freien Knopfs; eine Sperre,
+       die die Seite selbst gesetzt hat, bleibt unberührt. Ein Abgleich des
+       Kopfs nimmt die Sperre mit den Attributen der Vorlage weg; danach
+       läuft sperrenAnwenden wieder. */
     function sperrenAnwenden() {
       const gesperrt = beschaeftigtZahl > 0;
       if (kopf) {
         for (const k of Array.from(kopf.aktionen.querySelectorAll("button, a"))) {
           if (gesperrt) {
             if (k.getAttribute("aria-disabled") !== "true") {
+              k.setAttribute("data-f-gesperrt", k.getAttribute("data-tip") || "");
               k.setAttribute("aria-disabled", "true");
-              k.setAttribute("data-f-gesperrt", "");
+              k.setAttribute("data-tip", GRUND_BESCHAEFTIGT);
             }
           } else if (k.hasAttribute("data-f-gesperrt")) {
-            k.removeAttribute("aria-disabled");
+            const frei = k.getAttribute("data-f-gesperrt");
             k.removeAttribute("data-f-gesperrt");
+            k.removeAttribute("aria-disabled");
+            if (frei) k.setAttribute("data-tip", frei);
+            else k.removeAttribute("data-tip");
           }
         }
       }
@@ -720,10 +809,10 @@ const Fenster = (function () {
 
     F.istBeschaeftigt = function () { return beschaeftigtZahl > 0; };
 
-    /* Sperrt Schnellaktionen und Speicherleiste, solange fn läuft (Fehler
-       A8), und lädt danach still nach — auch nach einem Fehler, damit kein
-       veraltetes eTag stehen bleibt. Ein zweiter Aufruf während des ersten
-       wird verworfen (Doppelklick). */
+    /* Sperrt Schnellaktionen und Speicherleiste, solange fn läuft, und lädt
+       danach still nach – auch nach einem Fehler, damit kein veraltetes
+       eTag stehen bleibt. Ein zweiter Aufruf während des ersten wird
+       verworfen (Doppelklick): er löst mit undefined auf. */
     F.beschaeftigt = async function (fn, optionenB) {
       const ob = optionenB || {};
       if (beschaeftigtZahl > 0) return undefined;
@@ -801,10 +890,13 @@ const Fenster = (function () {
                               geschriebenen Werte in die lokale Zeile übernehmen)
          nachladen(ergebnis)→ Promise (still nachladen und neu zeichnen)
          erfolgText         Text | fn(ergebnis) | false
-         anzahl()           Zahl der Änderungen: 0 → nichts tun (Fehler A5)
-       Schreiben und Nachladen sind getrennt (Fehler A7): nach erfolgreichem
-       Schreiben kommt immer die Erfolgsmeldung; scheitert nur das Nachladen,
-       folgt ein leiser Hinweis und zeichnen() zeichnet aus dem lokalen Stand.
+         anzahl()           Zahl der Änderungen: 0 → nichts tun (auch kein Ctrl+S)
+       Der Speichern-Knopf ist beschäftigt, solange schreiben() läuft
+       (speicherleiste().beschaeftigt, DS.motion.busy: sofort gesperrt, das
+       Gesicht «Wird gespeichert …» erst nach einer kurzen Verzögerung).
+       Schreiben und Nachladen sind getrennt: nach erfolgreichem Schreiben
+       kommt immer die Erfolgsmeldung; scheitert nur das Nachladen, folgt
+       ein leiser Hinweis und zeichnen() zeichnet aus dem lokalen Stand.
        «Nochmals speichern» heisst der Knopf nur nach einem gescheiterten
        Schreiben – nicht nach einer Feldprüfung (es wurde nie geschrieben).
        Nach einem Konflikt (409/412: inzwischen anderswo geändert) hülfe
@@ -825,10 +917,9 @@ const Fenster = (function () {
       speichertIntern = true;
       fehlerOffen = false;
       await F.beschaeftigt(async function () {
-        leisteZeichnen();
         let ergebnis;
         try {
-          ergebnis = await a.schreiben();
+          ergebnis = await leiste().beschaeftigt(function () { return a.schreiben(); });
           geschrieben = true;
         } catch (fehler) {
           const konflikt = !!fehler && (fehler.status === 409 || fehler.status === 412);
@@ -892,8 +983,7 @@ const Fenster = (function () {
     };
 
     /* Der Verlauf (verlauf.js) hält offene Formulare je Einbauort selbst.
-       Mit typeof: Seiten ohne Verlauf (Software) und ältere Fassungen von
-       verlauf.js ohne diese Schnittstelle gehen weiter. */
+       Mit typeof: Seiten ohne Verlauf (Software) laden verlauf.js nicht. */
     function verlaufOffen() {
       return typeof Verlauf !== "undefined" && typeof Verlauf.offeneEingabe === "function"
         && !!Verlauf.offeneEingabe();
@@ -903,7 +993,46 @@ const Fenster = (function () {
       if (typeof Verlauf !== "undefined" && typeof Verlauf.zuruecksetzen === "function") Verlauf.zuruecksetzen();
     }
 
-    /* ---------- Löschen mit Eintippen (früher dreimal kopiert) ---------- */
+    /* ---------- Arbeit aus einem Dialog ---------- */
+
+    /* Ein Vorgang, den ein Knopf in einem offenen Dialog auslöst (Löschen,
+       Schnellaktionen): der Knopf ist beschäftigt (UI.beschaeftigt →
+       DS.motion.busy), die übrigen Knöpfe des Dialogs sind gesperrt, Esc
+       und Schleier schliessen nicht (d.sperren), und der Vorgang läuft in
+       F.beschaeftigt – Leiste, Ctrl+S und Schnellaktionen bleiben gesperrt,
+       danach lädt die Seite still nach (nachladen: false lässt das aus).
+       Erst wenn alles fertig ist, schliesst der Dialog; bei einem Fehler
+       bleibt er offen und die Meldung steht darüber. */
+    F.imDialog = async function (d, knopf, arbeit, optionenDialog) {
+      const od = optionenDialog || {};
+      if (beschaeftigtZahl > 0) {
+        UI.meldung("Es wird gerade gespeichert. Bitte gleich noch einmal versuchen.", { ton: "info" });
+        return false;
+      }
+      const andere = Array.from(d.knoepfe.querySelectorAll("button")).filter(function (k) {
+        return k !== knopf && k.getAttribute("aria-disabled") !== "true";
+      });
+      d.sperren(true);
+      for (const k of andere) UI.knopfSperren(k, "Bitte warten, bis der Vorgang abgeschlossen ist.");
+      const frei = function () {
+        d.sperren(false);
+        for (const k of andere) UI.knopfSperren(k, "");
+      };
+      try {
+        await UI.beschaeftigt(knopf, function () {
+          return F.beschaeftigt(arbeit, { nachladen: od.nachladen });
+        });
+      } catch (fehler) {
+        frei();
+        UI.meldung((od.fehlerText || "Speichern fehlgeschlagen.") + " " + fehlerText(fehler), { ton: "fehler" });
+        return false;
+      }
+      frei();
+      await d.schliessen(od.grund || "ja");
+      return true;
+    };
+
+    /* ---------- Löschen mit Eintippen ---------- */
 
     /* Endzustand nach dem Löschen (oder wenn der Datensatz inzwischen
        anderswo gelöscht wurde): ohne Schublade wie der Fehlerzustand, mit
@@ -918,13 +1047,17 @@ const Fenster = (function () {
         text: ende.text || "",
         hinweis: ende.hinweis || "",
         knopfText: ende.knopfText || "Zur Liste",
-        // Fehler A6: zurück zur gemerkten Liste statt window.close().
+        // Zurück zur gemerkten Liste: das Detailfenster ist ein Tab wie jeder andere.
         beiKlick: function () { F.zurListe(); },
         fokus: mitFokus !== false,
         pfad: listenPfad()
       });
     }
 
+    /* Löschen gibt es erst, wenn das Wort eingetippt ist: bis dahin ist der
+       Knopf gesperrt mit Grund (fokussierbar, der Tooltip sagt, was fehlt).
+       Gelöscht wird über F.imDialog; nach dem Schliessen des Dialogs steht
+       der Endzustand da und bekommt den Fokus. */
     F.loeschenDialog = function (ol) {
       const wort = String(ol.wort || "").trim();
       const d = UI.dialog({ titel: ol.titel || "Löschen", breit: true });
@@ -936,49 +1069,32 @@ const Fenster = (function () {
       feld.spellcheck = false;
       d.inhalt.appendChild(UI.feld("Zur Bestätigung «" + wort + "» eingeben", feld, { klasse: "dialog-bestaetigung" }));
 
+      const grund = "Zur Bestätigung «" + wort + "» eingeben.";
       const abbrechen = UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
-      const loeschen = UI.knopf({ text: ol.knopfText || "Löschen", variante: "primaer" });
-      loeschen.disabled = true;
+      const loeschen = UI.knopf({ text: ol.knopfText || "Löschen", variante: "primaer",
+        beschaeftigt: "Wird gelöscht …", gesperrt: grund });
       d.knoepfe.appendChild(abbrechen);
       d.knoepfe.appendChild(loeschen);
 
+      let laeuft = false;
       function passt() { return !!wort && feld.value.trim().toLowerCase() === wort.toLowerCase(); }
-      feld.addEventListener("input", function () { loeschen.disabled = !passt(); });
+      feld.addEventListener("input", function () {
+        if (!laeuft) UI.knopfSperren(loeschen, passt() ? "" : grund);
+      });
       feld.addEventListener("keydown", function (ev) {
         if (ev.key === "Enter" && passt()) { ev.preventDefault(); loeschen.click(); }
       });
 
-      /* Während gelöscht wird, schliessen Esc und Schleier den Dialog nicht
-         (er ist gesperrt), und der Vorgang läuft in F.beschaeftigt: Leiste,
-         Ctrl+S und Schnellaktionen bleiben gesperrt – sonst liesse sich
-         noch auf den Datensatz speichern, der gerade gelöscht wird. */
-      let laeuft = false;
       loeschen.addEventListener("click", async function () {
         if (laeuft || !passt() || beschaeftigtZahl > 0) return;
         laeuft = true;
-        d.sperren(true);
-        UI.beschaeftigt(loeschen, true, "Wird gelöscht …");
-        abbrechen.disabled = true;
-        let fehlschlag = null;
-        await F.beschaeftigt(async function () {
-          try {
-            await ol.beiLoeschen();
-          } catch (fehler) {
-            fehlschlag = { fehler: fehler };
-          }
-        }, { nachladen: false });
-        if (fehlschlag) {
-          laeuft = false;
-          d.sperren(false);
-          abbrechen.disabled = false;
-          await UI.beschaeftigt(loeschen, false);
-          UI.meldung((ol.fehlerText || "Löschen fehlgeschlagen.") + " " + fehlerText(fehlschlag.fehler), { ton: "fehler" });
-          return;
-        }
-        await UI.beschaeftigtAbwarten(loeschen);
-        d.sperren(false);
-        d.schliessen("geloescht");
-        geloeschtZeigen(ol.ende || {});
+        feld.readOnly = true;
+        const ok = await F.imDialog(d, loeschen, ol.beiLoeschen, {
+          nachladen: false, grund: "geloescht", fehlerText: ol.fehlerText || "Löschen fehlgeschlagen."
+        });
+        laeuft = false;
+        feld.readOnly = false;
+        if (ok) geloeschtZeigen(ol.ende || {});
       });
       feld.focus();
       return d;
@@ -1003,7 +1119,7 @@ const Fenster = (function () {
       });
     };
 
-    /* Detailfenster zeigen jetzt auch Konto und «Abmelden» (Inventar §8 Nr. 9). */
+    /* Konto und «Abmelden» im Kopf, wie auf der Hauptseite. */
     F.kontoZeigen = function (konto) {
       if (mockModus) {
         Rahmen.konto({ name: "Vorführmodus" });
@@ -1019,11 +1135,12 @@ const Fenster = (function () {
        ================================================================== */
 
     /* Statt eines Knopfes «Neu laden» holt sich die Seite den Stand in
-       ruhigen Abständen selbst — still, ohne Animation. Übersprungen wird,
-       sobald Nachladen mehr stören als nützen würde: erlaubt() sagt es
-       (Entwurf, Anlegen …), dazu nie bei offener Ebene, während der Arbeit,
-       nach dem Löschen, in einem Hintergrund-Tab und während der Fokus in
-       einem Eingabefeld steht (C2). */
+       ruhigen Abständen selbst – still, ohne Animation (die Seite zeichnet
+       über F.seitenkopf und F.zeichneBereich, die abgleichen). Übersprungen
+       wird, sobald Nachladen mehr stören als nützen würde: erlaubt() sagt
+       es (Entwurf, Anlegen …), dazu nie bei offener Ebene, während der
+       Arbeit, nach dem Löschen, in einem Hintergrund-Tab und während der
+       Fokus in einem Eingabefeld steht (dort könnte gleich getippt werden). */
     let autoLetzte = Date.now();
     let autoLaeuft = false;
     /** Promise des laufenden stillen Nachladens (F.beschaeftigt wartet darauf). */
@@ -1080,18 +1197,24 @@ const Fenster = (function () {
         if (h && e.beiHash) e.beiHash(h);
       });
 
+      /* Eine offene Überlagerung (Dialog, Blatt, modale Schublade, Menü)
+         hat Esc und Ctrl+S für sich: das sagt UI.ebeneOffen(). Nicht
+         defaultPrevented – DS.overlay meldet seinen Esc-Zuhörer erst beim
+         ersten Öffnen an, also nach diesem; er kommt hier zu spät. Was
+         defaultPrevented trotzdem abfängt: Esc, das ein Teil der Seite schon
+         verbraucht hat (eine gefüllte Suche leert sich). */
       document.addEventListener("keydown", function (ev) {
-        // Ctrl+S bzw. Cmd+S: nur, wenn es etwas zu speichern gibt (A5).
+        // Ctrl+S bzw. Cmd+S: nur, wenn es etwas zu speichern gibt.
         if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === "s" || ev.key === "S")) {
           ev.preventDefault();
           if (UI.ebeneOffen() || !leiste().speicherbar()) return;
           e.speichern();
           return;
         }
-        // Esc: offene Ebenen und die modale Schublade fängt rahmen.js vorher ab.
-        // Während geschrieben wird, ist «Verwerfen» gesperrt – Esc auch.
-        if (ev.key === "Escape" && !ev.defaultPrevented && !UI.ebeneOffen() && !geloescht
-          && beschaeftigtZahl === 0 && !speichertIntern && !(letzteLeiste && letzteLeiste.speichertGerade)) {
+        // Esc verwirft (mit Rückfrage). Während geschrieben wird, ist
+        // «Verwerfen» gesperrt – Esc auch.
+        if (ev.key === "Escape" && !ev.isComposing && !ev.defaultPrevented && !UI.ebeneOffen() && !geloescht
+          && beschaeftigtZahl === 0 && !speichertIntern) {
           if (e.anzahlAenderungen()) { ev.preventDefault(); e.verwerfen(); }
         }
       });

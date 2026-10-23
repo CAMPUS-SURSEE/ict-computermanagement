@@ -1,4 +1,4 @@
-/* kamera.js — Kamerafenster des ICT-Inventars.
+/* kamera.js – Kamerafenster des ICT-Inventars.
 
    Wird von der Hauptseite als kamera.html?id=… im selben Tab geöffnet und
    zeigt eine Zeile der Liste «Kameras» (eine Hardware in Milestone) in vier
@@ -150,7 +150,7 @@ function feldZeile(feld, o) {
 
 function hinweisSetzen(id, schluessel, bauen, ausEingabe) {
   const platz = UI.$(id);
-  if (platz) platz.setzen(schluessel, bauen, { aufdecken: ausEingabe });
+  if (platz) platz.setzen(schluessel, bauen, { ausEingabe: ausEingabe });
 }
 
 /* Name: aus Milestone gesperrt, sonst frei (mit Warnung bei Zwillingen). */
@@ -234,23 +234,27 @@ function stammdatenKarte() {
 
 function jaNein(wert) { return Hilfe.istJa(wert) ? "Ja" : (String(wert || "").trim() ? "Nein" : ""); }
 
+/* Ja/Nein aus Milestone, bei dem «Nein» eine Abweichung ist: dann als
+   Status-Chip, aber nur, solange die Kamera in Milestone steht (sonst
+   sagt das der Chip im Kartenkopf). */
+function jaNeinAbweichung(wert, sinnbild) {
+  const text = jaNein(wert);
+  return text === "Nein" && inMilestone() ? UI.status("Nein", "warnung", { sinnbild: sinnbild }) : text;
+}
+
 /* Was Milestone über die Hardware weiss – alles gesperrt; das sagt die
-   Karte einmal in ihrem Untertitel. */
+   Karte einmal in ihrem Untertitel. Status-Chips nur für Abweichungen:
+   «Nicht mehr in Milestone» im Kartenkopf, «deaktiviert» und «keine
+   Aufzeichnung» an ihrem Wert. */
 function milestoneKarte() {
   const k = UI.karte({ titel: "Aus Milestone",
-    unter: inMilestone() ? "Vom Abgleich gesetzt und hier nicht änderbar." : "" });
+    unter: inMilestone() ? "Vom Abgleich gesetzt und hier nicht änderbar." : "",
+    aktionen: verknuepft() && !inMilestone() ? [UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" })] : [] });
   if (!verknuepft()) {
     k.inhalt.appendChild(UI.leerzustand({ sinnbild: "kamera", titel: "Nicht in Milestone",
       text: "Diese Kamera ist nur hier erfasst. Taucht sie in Milestone auf (gleiche IP-Adresse), verknüpft der Abgleich sie von selbst." }));
     return k;
   }
-  const status = [];
-  if (!inMilestone()) status.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
-  else {
-    if (!Hilfe.istJa(zeile.MS_Aktiv)) status.push(UI.status("In Milestone deaktiviert", "warnung", { sinnbild: "aus" }));
-    if (!Hilfe.istJa(zeile.MS_Aufzeichnung)) status.push(UI.status("Keine Aufzeichnung", "warnung"));
-  }
-  if (status.length) k.inhalt.appendChild(UI.chips(status));
   k.inhalt.appendChild(UI.datenzeilen([
     UI.feldZeile("IP-Adresse", UI.text(zeile.MS_Adresse)),
     UI.feldZeile("MAC-Adresse", UI.text(zeile.MS_Mac)),
@@ -258,8 +262,8 @@ function milestoneKarte() {
     UI.feldZeile("Hersteller", UI.text(zeile.MS_Hersteller)),
     UI.feldZeile("Modell", UI.text(zeile.MS_Modell)),
     UI.feldZeile("Firmware", UI.text(zeile.MS_Firmware)),
-    UI.feldZeile("In Milestone aktiv", jaNein(zeile.MS_Aktiv)),
-    UI.feldZeile("Aufzeichnung", jaNein(zeile.MS_Aufzeichnung)),
+    UI.feldZeile("In Milestone aktiv", jaNeinAbweichung(zeile.MS_Aktiv, "aus")),
+    UI.feldZeile("Aufzeichnung", jaNeinAbweichung(zeile.MS_Aufzeichnung)),
     UI.feldZeile("Recording Server", UI.text(zeile.MS_RecordingServer)),
     UI.feldZeile("Hardware-Name", UI.text(zeile.MS_HardwareName)),
     UI.feldZeile("In Milestone geändert", UI.zeitText(zeile.MS_Geaendert)),

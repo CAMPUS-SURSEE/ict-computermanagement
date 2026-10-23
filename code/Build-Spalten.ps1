@@ -74,11 +74,11 @@ foreach ($s in ($client + $benutzer + $telefon + $software + $kamera + $kameraRo
 }
 
 $kopf = @'
-/* spalten.js — Spaltendefinition der SharePoint-Listen «ADMIN-Clients», «EDU-Clients»,
+/* spalten.js – Spaltendefinition der SharePoint-Listen «ADMIN-Clients», «EDU-Clients»,
    «Benutzer», «Telefonnummern», «Software», «Kameras» und «Kamera-Rollen». Erzeugt aus
    code/schema-client.json, code/schema-benutzer.json, code/schema-telefon.json,
    code/schema-software.json, code/schema-kamera.json und code/schema-kamerarolle.json
-   durch code/Build-Spalten.ps1 — nicht von Hand bearbeiten.
+   durch code/Build-Spalten.ps1 – nicht von Hand bearbeiten.
 
    i = interner Name in Graph, d = Anzeigename, t = Typ
    (Title|Text|Note|Boolean|Number|DateTime), g = Gruppe,

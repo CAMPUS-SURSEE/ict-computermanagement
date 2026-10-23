@@ -5,15 +5,15 @@ Kamera-Rollen) mit SCCM-, AD- und Milestone-Synchronisation.
 Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 
 > **Umbau vom 08.09.2026.** Die Liste «Computer» heisst neu **«ADMIN-Clients»**. Alle SCCM-Geräte,
-> deren Name mit `EDU` beginnt, stehen in der neuen Liste **«EDU-Clients»** — gleiche Spalten,
+> deren Name mit `EDU` beginnt, stehen in der neuen Liste **«EDU-Clients»** – gleiche Spalten,
 > gleiches Frontend, nur ohne Inhaberschaft. Die Programmliste ist von der Datei
 > `programme.json` in die neue SharePoint-Liste **«Software»** gezogen und wird jetzt im Frontend
 > gepflegt. Den Umbau in SharePoint macht `Migriere-Clients.ps1` (Abschnitt 9).
 >
 > **Excel-Abgleich vom 08.09.2026.** Die beiden Excel-Inventare («Computer und User Inventar.xlsx»,
-> «Telefonnummerm S4B.xlsx») sind einmalig in die Listen übernommen worden — `Abgleich-Excel.ps1`
+> «Telefonnummerm S4B.xlsx») sind einmalig in die Listen übernommen worden – `Abgleich-Excel.ps1`
 > (Abschnitt 10; seit dem 13.10.2026 nur noch in der Git-Historie). Dabei neu: die Spalte **«In Domäne»** in beiden Client-Listen. Steht sie auf
-> Nein, lässt der SCCM-Abgleich die Zeile vollständig in Ruhe — das ist der Weg für die 94
+> Nein, lässt der SCCM-Abgleich die Zeile vollständig in Ruhe – das ist der Weg für die 94
 > Gäste- und Prüfungsnotebooks ohne Domäne, die es in SCCM nie geben wird.
 >
 > **Umstellung vom 13.10.2026.** Die Inhaberschaft hängt an der **Hardware**, nicht mehr am PC-Namen:
@@ -45,7 +45,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine AD-Gruppe an ein Programm hängen** | Programmseite → Feld **«AD-Gruppen»**, eine Gruppe je Zeile → speichern (Abschnitt 3) |
 | **ein Gerät ohne Domäne erfassen** | Geräteseite → Bereich «Stammdaten» → Häkchen **«In Domäne»** wegnehmen. Der SCCM-Abgleich holt für das Gerät danach keine Daten mehr aus SCCM und archiviert es nie (Abschnitt 2.2) |
 | **eine Spalte hinzufügen oder umbenennen** | `schema-client.json` bzw. `schema-benutzer.json` ändern, Spalte in SharePoint anlegen, `Build-Spalten.ps1` (Abschnitt 4) |
-| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` — erwartet `439 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` — erwartet `alle 9 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| **nach einer Änderung prüfen, ob alles hält** | Skripte: `powershell -ExecutionPolicy Bypass -File .\Test-Inventar.ps1` – erwartet `439 bestanden, 0 fehlgeschlagen`. Frontend: `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` – erwartet `alle 14 Prüfungen OK` (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | **eine Telefonnummer freigeben** | Telefonseite → **«Nummer freigeben»** rechts im Seitenkopf: Status «Frei», der bisherige Name kommt in den Verlauf. Steht die Nummer im AD bei jemandem, ist der Knopf gesperrt; sein Tooltip nennt die Person |
 | **eine Telefonnummer erfassen oder ändern** | Frontend → Navigation links **«Telefonnummern»** → **«Neue Telefonnummer»** bzw. Klick auf eine Zeile; Nummern in Betrieb ohne Person tragen in der Spalte «Zugewiesen» den Status **«Nicht zugewiesen»** (Warnung); freie Nummern zeigen den neutralen Status «Frei» (Abschnitt 2.7) |
 | **wissen, wer eine Nummer hat** | Spalte **«Person (AD)»** in der Telefonliste: kommt live aus dem AD-Feld «Telefon» der Benutzer-Liste; der Sync schreibt den Login zusätzlich in `Benutzer` |
@@ -199,8 +199,8 @@ ausserdem als `Inventar/sync-status.json` in die Dokumentbibliothek der Site; de
 | `Migriere-Inhaberschaft.ps1` | einmalig: stellt die Inhaberschaft vom PC-Namen («Computer») auf die Listen-ID des Geräts («AdminClientId») um, auf Wunsch löscht es danach «Computer» (Abschnitt 11) |
 | `Installiere-Sync.ps1` | bringt `code/server/` auf `adminsrv319` und richtet die geplante Aufgabe ein: Tests, Sicherung, Kopie mit Prüfsumme, Probelauf als SYSTEM, Aufgabe alle 30 Minuten (Abschnitt 2.5) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
-| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung: Tokens, Keyframes, Literale im eigenen CSS, kein Inline-Skript, MSAL-Prüfsumme, Altlasten, unveränderte Kopie von Dashboard-Style, Ladereihenfolge (Abschnitt 1, «Dateien im Ordner `frontend`») |
-| `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends |
+| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung, 14 Prüfungen: Tokens, Keyframes und Bewegungs-Tokens, Literale im eigenen CSS, kein `innerHTML` & Co., kein Inline-Skript, MSAL-Prüfsumme, Altlasten, unveränderte Kopie von Dashboard-Style, Ladereihenfolge, Aufrufe gegen die Schnittstelle der Kopie, veraltete Namen von Dashboard-Style, Seitengerüst, Seiten-CSS nur Layout, kein Geviertstrich (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends, mit den Headern aus `frontend/_headers` (Windows PowerShell 5.1 und PowerShell 7) |
 
 Die Arbeitsplatz-Skripte laden `Inventar-Gemeinsam.ps1` und die Konfiguration aus `server/` – es gibt
 keine zweite Kopie. Auf dem Server liegt alles flach nebeneinander, dort greift derselbe Code über
@@ -212,15 +212,16 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 ### Dateien im Ordner `frontend`
 
-Stand 19.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
-mit je einem Namensraum und kein einziges Inline-Skript (die Inhaltsrichtlinie in `_headers` verbietet sie).
-**Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)**, das gemeinsame Design-System
-(dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung und Sinnbilder liegen als unveränderte, mit Prüfsummen
-festgenagelte Kopie in `frontend/vendor/dashboard-style/`. Darauf setzt ICT-Inventar nur das Campus-Thema
-(`thema.css`) und die Bausteine, die es nur hier gibt (Speicherleiste, Zeitachse, Diagramme, Wortmarke …). **Die
-Regeln stehen in [`frontend/STYLEGUIDE.md`](frontend/STYLEGUIDE.md)** (Thema, eigene Bausteine, Abweichungen,
-Bewegung, Barrierefreiheit, Vorgehen für neue Seiten, Aktualisieren von Dashboard-Style), die lebende Übersicht aller
-Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
+Stand 23.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
+mit je einem Namensraum, kein einziges Inline-Skript und kein `<style>` (die Inhaltsrichtlinie in `_headers` verbietet
+beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 1.6.2, das gemeinsame
+Design-System (dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung, Überlagerungen und Sinnbilder liegen als
+unveränderte, mit Prüfsummen festgenagelte Kopie in `frontend/vendor/dashboard-style/`. Darauf setzt ICT-Inventar nur
+das Campus-Thema (`thema.css`), ein paar Grundregeln darunter (`grund.css`) und die Bausteine, die es nur hier gibt
+(Speicherleiste, Zeitachse, Diagramme, Wortmarke …). **Die Regeln stehen in
+[`frontend/STYLEGUIDE.md`](frontend/STYLEGUIDE.md)** (Thema, eigene Bausteine, Abweichungen, Bewegung,
+Überlagerungen, Barrierefreiheit, Vorgehen für neue Seiten, Aktualisieren von Dashboard-Style), die lebende Übersicht
+aller Bausteine in `frontend/styleguide.html` (ohne Anmeldung, ohne Daten).
 
 Jede Seite hat denselben Rahmen: oben die Kopfzeile (links die Wortmarke «ICT.INVENTAR» als Weg zur Übersicht,
 rechts eine umrandete Kapsel mit Konto und «Abmelden»; alle Seiten laden alle 5 Minuten still nach), links die
@@ -232,45 +233,61 @@ Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas 
 
 | Datei | Zweck |
 |---|---|
-| `vendor/dashboard-style/` | Dashboard-Style: `ds.css` (alle Bausteine), `ds.js` (`DS`: Bewegung, Indikator, Sinnbilder), Google Sans mit Lizenz, `VERSION`, `SHA256SUMS` – **nie von Hand ändern**, nur mit `vendor.ps1` ersetzen (`STYLEGUIDE.md`, Abschnitt 11) |
+| `vendor/dashboard-style/` | Dashboard-Style: `ds.css` (alle Bausteine, in Kaskaden-Ebenen `@layer ds.*`), `css/optional/view-transitions.css` (Seitenübergänge zwischen den HTML-Seiten), `ds.js` (`DS`: `motion` Bewegung, `indicator` gleitende Pille, `dom` stilles Abgleichen, `ripple` Druckwelle, `icons` Sinnbilder, `overlay` Dialoge, Blätter, Meldungen, Tooltips), Google Sans mit Lizenz, `VERSION`, `SHA256SUMS` – **nie von Hand ändern**, nur mit `vendor.ps1` ersetzen (`STYLEGUIDE.md`, Abschnitt 11) |
+| `grund.css` | Grundregeln, die keinen Baustein von Dashboard-Style schlagen dürfen (Überschriften, Ränder 0), in der Ebene `@layer grund` vor `ds`; als erste Stilvorlage geladen |
 | `thema.css` | Campus-Thema: Farben von Campus Sursee auf den Rollen von Dashboard-Style, die eigenen Tokens, Schrift der Wortmarke |
 | `schriften/` | Archivo für die Wortmarke, selbst gehostet (Lizenz SIL OFL 1.1, `OFL.txt` daneben) |
 | `bausteine.css`, `bausteine.js` | die eigenen Bausteine und ein Bauer je Baustein (gemeinsame bauen das Markup von Dashboard-Style): Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`), dazu `Bewegung` über `DS.motion` |
-| `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Seitenwechsel) und die Ebenen Dialog, Seitenblatt, Meldung, Tooltip, Speicherleiste (`Rahmen`, ergänzt `UI`) |
+| `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Ansichtswechsel), Dialog, Seitenblatt, Meldung und Tooltip über `DS.overlay`, dazu die Speicherleiste (`Rahmen`, ergänzt `UI`) |
 | `fenster.js` | gemeinsames Gerüst der Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
-| `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer- und Telefonseite (`Verlauf`) |
-| `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software |
+| `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer-, Telefon-, Kamera- und Kamerarollen-Seite (`Verlauf`) |
+| `index.html`, `app.js`, `styles.css` | Hauptseite: Übersicht, Listen, Software, Kamerarechte |
 | `client.*`, `benutzer.*`, `telefon.*`, `software.*`, `kamera.*`, `kamerarolle.*` | die Detailseiten eines Datensatzes (die `.css` nur mit Seitenlayout) |
-| `styleguide.html`, `styleguide.js` | lebende Übersicht aller Bausteine in allen Zuständen |
+| `styleguide.html`, `styleguide.js`, `styleguide.css` | lebende Übersicht aller Bausteine in allen Zuständen |
 | `STYLEGUIDE.md` | Regeln des Frontends auf Dashboard-Style |
 | `konfig.js` | Mandant, Client-ID, Listen-IDs, Takt des Nachladens – keine Geheimnisse (Abschnitt 7.4) |
 | `auth.js` | Anmeldung über MSAL (`Auth`) |
 | `graph.js` | Lesen und Schreiben über Microsoft Graph, erfundene Daten für `?mock=1` (`Daten`, `Mock`) |
 | `modell.js` | Fachlogik: Geschäftsjahr, Status, Programmstufen, Verknüpfungen (`Modell`) |
 | `spalten.js` | **generiert** von `Build-Spalten.ps1`, nie von Hand ändern (Abschnitt 4) |
-| `_headers` | Sicherheitsheader und Inhaltsrichtlinie (Abschnitt 7.4) |
+| `_headers` | Sicherheitsheader und Inhaltsrichtlinie, mit einer Erklärung je Regel (Abschnitt 7.4) |
 
-**Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: `<html class="ds-theme ds-base">`; Stilvorlagen
-`vendor/dashboard-style/fonts/fonts.css` → `vendor/dashboard-style/ds.css` → `thema.css` → `bausteine.css` →
-`rahmen.css` → die eigene Seitenvorlage (+ `verlauf.css`); Skripte `konfig.js` → `vendor/dashboard-style/ds.js` →
-`bausteine.js` → `rahmen.js` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` → `modell.js` →
-auf den Detailseiten `verlauf.js` und `fenster.js` → das Skript der Seite. Dazu steht im `<head>` jeder Seite die Zeile
-`<style>@view-transition { navigation: auto; }</style>` für die ruhigen Seitenübergänge. Die vollständige Vorlage
-steht in `STYLEGUIDE.md`, Abschnitt 12. Ausser MSAL und dem Favicon lädt das Frontend nichts von fremden Servern,
-auch keine Schriften.
+**Ladereihenfolge** – auf jeder Seite gleich, und sie ist wichtig: `<html class="ds-theme ds-base">`; im `<head>`
+zuerst `<link rel="expect" href="#rahmen-gebaut" blocking="render">` (das erste Bild wartet, bis `rahmen.js` Kopf und
+Schublade gebaut hat, nicht aber auf MSAL; sonst bricht Chrome den Seitenübergang ab), dann die Stilvorlagen
+`grund.css` → `vendor/dashboard-style/fonts/fonts.css` → `vendor/dashboard-style/ds.css` →
+`vendor/dashboard-style/css/optional/view-transitions.css` → `thema.css` → `bausteine.css` → `rahmen.css` → auf Seiten
+mit Verlauf `verlauf.css` → die eigene Seitenvorlage. Im `<body>` das Gerüst `div.ds-app[data-seite]` und danach die
+Meldungsregion `div.ds-toasts`; Skripte `konfig.js` → `vendor/dashboard-style/ds.js` → `bausteine.js` → `rahmen.js` →
+`<div id="rahmen-gebaut" hidden>` → MSAL (vom CDN, mit Prüfsumme) → `spalten.js` → `auth.js` → `graph.js` →
+`modell.js` → auf den Detailseiten `verlauf.js` (ausser Software) und `fenster.js` → das Skript der Seite. Die
+vollständige Vorlage steht in `STYLEGUIDE.md`, Abschnitte 10.1 und 12. Ausser MSAL und dem Favicon lädt das Frontend
+nichts von fremden Servern, auch keine Schriften.
 
-Lokal ansehen: `.\serve.ps1` im Ordner `code` (läuft auch mit PowerShell 7, `pwsh`), dann `http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen
-Daten; `&fehler=1` zeigt den Fehlerzustand) oder `http://localhost:8123/styleguide.html`.
+**Inhaltsrichtlinie** (`_headers`, je Regel dort erklärt): Skripte nur aus eigenen Dateien und MSAL von
+`cdn.jsdelivr.net`; Stile nur aus eigenen Stilvorlagen (`style-src 'self'`, kein `<style>`), dazu
+`style-src-attr 'unsafe-inline'` allein für `style`-Attribute, die Dashboard-Style beim stillen Abgleichen
+(`DS.dom.morphChildren`) anpasst; Bilder von `'self'`, `data:` (Masken in `ds.css`) und campus-sursee.ch (Favicon);
+Schriften nur von `'self'`; Verbindungen nur zum eigenen Ursprung, zu Microsoft Graph und zur Anmeldung von Microsoft. Eine neue fremde
+Adresse kommt nur mit Grund dazu, und zwar nur in `_headers`.
+
+Lokal ansehen: `.\serve.ps1` im Ordner `code` (Windows PowerShell 5.1 oder PowerShell 7, `pwsh`), dann
+`http://localhost:8123/?mock=1` (Vorführmodus mit erfundenen Daten; `&fehler=1` zeigt den Fehlerzustand) oder
+`http://localhost:8123/styleguide.html`. Der Testserver schickt wie Cloudflare Pages die Header aus `_headers` mit;
+ein Verstoss gegen die Inhaltsrichtlinie zeigt sich so schon lokal in der Konsole.
 
 **Nach jeder Änderung prüfen:** `powershell -ExecutionPolicy Bypass -File .\Pruefe-Frontend.ps1` im Ordner `code`
 (Windows PowerShell 5.1 oder PowerShell 7, ohne Browser und ohne Netz; mit `pwsh` läuft es auch in der nächtlichen
-Aktualisierung von Dashboard-Style auf GitHub und muss darum unter beiden laufen). Es prüft statisch, ob jedes Token definiert ist (auch die von
-Dashboard-Style), `@keyframes` nur in Dashboard-Style stehen, das eigene CSS nur Tokens liest, kein `innerHTML`, `eval`
-oder `window.confirm` vorkommt, keine Seite ein Inline-Skript trägt (sonst blockiert die Inhaltsrichtlinie es auf
-Cloudflare), MSAL überall mit derselben Prüfsumme geladen wird, keine Altlasten (alte Klassen und Tokens, Google
-Fonts) zurückkommen, die Kopie von Dashboard-Style unverändert ist (`SHA256SUMS`) und jede Seite sie in der richtigen
-Reihenfolge lädt – je Prüfung «OK» oder die Fundstellen mit Datei und Zeile, Exit-Code 0/1. Was danach im Browser
-anzusehen ist, steht in `STYLEGUIDE.md`, Abschnitt 10.3.
+Aktualisierung von Dashboard-Style auf GitHub und muss darum unter beiden laufen). Es prüft in 14 Prüfungen statisch,
+ob jedes Token definiert ist (auch die von Dashboard-Style), `@keyframes` nur in Dashboard-Style stehen und niemand
+Bewegungs-Tokens setzt, das eigene CSS nur Tokens liest, kein `innerHTML`, `eval` oder `window.confirm` vorkommt,
+keine Seite ein Inline-Skript trägt, MSAL überall mit derselben Prüfsumme geladen wird, keine Altlasten (alte Klassen,
+Tokens und ICT-Namen, Google Fonts) zurückkommen, die Kopie von Dashboard-Style unverändert ist (`SHA256SUMS`), jede
+Seite sie in der richtigen Reihenfolge lädt, jeder Aufruf von `DS.*`, jede Klasse `ds-*` und jedes Sinnbild in der
+Kopie wirklich vorkommt, kein veralteter Name von Dashboard-Style benutzt wird, jede Seite das Gerüst der
+Referenz-App hat, die Seiten-CSS nur Layout enthalten und kein Geviertstrich «—» im Code steht – je Prüfung «OK» oder
+die Fundstellen mit Datei und Zeile, Exit-Code 0/1, erwartet «alle 14 Prüfungen OK». Was danach im Browser anzusehen
+ist, steht in `STYLEGUIDE.md`, Abschnitt 10.3.
 
 ---
 
@@ -315,7 +332,7 @@ Listen derselbe:
    gegen Server-Betriebssysteme und galten als verschwunden). Zeilen mit **«In Domäne = Nein»** fallen hier vollständig heraus: Sie
    bekommen kein Gerät, keine SCCM-Felder, werden nie archiviert und zählen nicht in die aktiven
    Zeilen des Archivschutzes. Leer gilt als Ja, ältere Zeilen verhalten sich also wie bisher.
-3. **Zuordnung über die Seriennummer**, nicht über den Namen — je Liste getrennt. Verglichen wird die SCCM-Seriennummer
+3. **Zuordnung über die Seriennummer**, nicht über den Namen – je Liste getrennt. Verglichen wird die SCCM-Seriennummer
    mit der Spalte `SCCM_SerialNumber` (beides getrimmt und gross geschrieben); eine manuelle
    Seriennummer-Spalte gibt es seit dem 4. September 2026 nicht mehr. Platzhalter wie `To be filled by O.E.M.`, `Default string`,
    `System Serial Number`, `0`, `None` oder reine Füllmuster gelten als **keine** Seriennummer.
@@ -682,7 +699,7 @@ oder Klick auf den Namen einer Karte. Bis zum 08.09.2026 stand sie in der Datei
 | `Kategorie` | Gruppe in der Software-Liste und in der Spaltenwahl. Eine neue Kategorie entsteht, indem man sie eingibt |
 | `AdGruppen` | sAMAccountNames von AD-Gruppen, **eine je Zeile**. Mehrere sind erlaubt, der Sync bildet die Vereinigung. Leer ist erlaubt: dann gibt es das Programm nur auf Stufe 0/1 von Hand |
 | `Reihenfolge` | Sortiernummer. Kategorien erscheinen in der Reihenfolge ihres kleinsten Werts; leer sortiert ans Ende. Die Migration hat in Zehnerschritten vergeben, damit dazwischen Platz bleibt |
-| — | Seit dem Excel-Abgleich (Abschnitt 10) stehen **94 Programme** in sieben Kategorien; neu dazu kam **«Protel-Abteilungen»** mit den 15 Abteilungen, die in der Excel als eigene Spalten neben Protel standen |
+| – | Seit dem Excel-Abgleich (Abschnitt 10) stehen **94 Programme** in sieben Kategorien; neu dazu kam **«Protel-Abteilungen»** mit den 15 Abteilungen, die in der Excel als eigene Spalten neben Protel standen |
 | `Bemerkung` | Freitext: wozu das Programm dient, wer es lizenziert |
 
 **Ein Programm ist zwei Dinge zugleich**: eine Zeile in «Software» *und* eine Textspalte in der
@@ -830,6 +847,8 @@ Erwartete Ausgabe: `Ergebnis: 439 bestanden, 0 fehlgeschlagen`.
 | Eine Person steht in der Telefonliste, aber «Person (AD)» ist leer | im AD fehlt bei diesem Konto das Feld «Telefon» (`telephoneNumber`) | Feld im AD setzen; beim nächsten Sync erscheint die Person, `Benutzer` wird geschrieben |
 | Frontend: Ansicht «EDU-Clients» oder «Software» ist leer und nennt konfig.js | `eduClientListId` bzw. `softwareListId` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
 | Frontend: «Neues Programm» meldet «Keine Schreibberechtigung» beim Anlegen der Spalte | Das Konto darf in SharePoint keine Spalten anlegen | Entweder das Konto berechtigen oder die Spalte mit `Ergaenze-Spalten.ps1 -Listen Benutzer` nachziehen |
+| Frontend: die Konsole meldet einen Verstoss gegen die Inhaltsrichtlinie («Refused to …»), ein Stil oder Skript fehlt | ein `<style>`, ein Inline-Skript, ein `on*`-Attribut oder eine fremde Adresse in einer Seite | in eine `.css`- bzw. `.js`-Datei verschieben bzw. die Adresse mit Grund in `frontend/_headers` nachtragen; `code\serve.ps1` zeigt den Verstoss schon lokal, `Pruefe-Frontend.ps1` (Prüfungen 5 und 12) vor dem Push |
+| Frontend: die nächtliche Aktualisierung von Dashboard-Style scheitert in «Verify» | der neue Stand entfernt oder markiert etwas als veraltet, das ICT-Inventar noch benutzt (Prüfungen 10 und 11 nennen die Stellen) | `frontend/STYLEGUIDE.md`, Abschnitt 11.1; die Seite bleibt bis dahin auf dem alten Stand |
 | Umlaute in der Konsole falsch | OEM-Codepage | nur Anzeige; Log, JSON und SharePoint sind UTF-8 |
 | Ein `.ps1` bricht mit «Zeichenfolge hat kein Abschlusszeichen» ab | Datei wurde ohne UTF-8-BOM gespeichert; PowerShell 5.1 liest sie dann als ANSI und zerlegt die Umlaute | Datei mit BOM speichern (`New-Object Text.UTF8Encoding($true)`). JSON dagegen bleibt **ohne** BOM, sonst kann der Browser es nicht lesen |
 

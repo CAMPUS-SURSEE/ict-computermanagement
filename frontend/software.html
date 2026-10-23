@@ -8,52 +8,74 @@
      F.seitenkopf({ titel }); im Fehlerzustand setzt F.zeigeFehler den Titel. -->
 <title>Programm – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<!-- Reihenfolge ist wichtig: Dashboard-Style (Schrift, Tokens und Bausteine),
-     das Campus-Thema, die ICT-eigenen Bausteine und der Rahmen, dann nur noch
-     das Seitenlayout. Alles liegt auf demselben Ursprung (Inhaltsrichtlinie). -->
+<!-- Reihenfolge ist wichtig: grund.css (Grundregeln unter Dashboard-Style,
+     @layer grund), Dashboard-Style (Schrift, Tokens und Bausteine, dazu die
+     Seitenübergänge zwischen den HTML-Seiten: optional/view-transitions.css
+     als <link> im <head>, sonst übersieht Chrome sie), das Campus-Thema, die
+     ICT-eigenen Bausteine und der Rahmen, dann nur noch das Seitenlayout.
+     Alles liegt auf demselben Ursprung (Inhaltsrichtlinie). -->
+<!-- Das erste Bild wartet, bis rahmen.js Kopf und Schublade gebaut hat
+     (#rahmen-gebaut steht direkt nach rahmen.js), nicht aber auf MSAL
+     vom CDN. Zeigt Chrome eine halb geparste Seite, bricht es sonst den
+     Seitenübergang ab («ViewTransition opt-in disabled», auf dem Telefon
+     bei jedem zweiten Wechsel); so empfiehlt es auch
+     optional/view-transitions.css. -->
+<link rel="expect" href="#rahmen-gebaut" blocking="render">
+<link rel="stylesheet" href="grund.css">
 <link rel="stylesheet" href="vendor/dashboard-style/fonts/fonts.css">
 <link rel="stylesheet" href="vendor/dashboard-style/ds.css">
+<link rel="stylesheet" href="vendor/dashboard-style/css/optional/view-transitions.css">
 <link rel="stylesheet" href="thema.css">
 <link rel="stylesheet" href="bausteine.css">
 <link rel="stylesheet" href="rahmen.css">
-<style>@view-transition { navigation: auto; }</style>
 <link rel="stylesheet" href="software.css">
 </head>
 <!-- rahmen.js baut Kopf und Schublade sofort beim Laden; die Bereiche
      («Stammdaten», «Berechtigte») zeichnet fenster.js (F.navZeichnen) in
      die Schublade. -->
-<body class="ds-app ds-app--drawer" data-seite="software">
+<body>
 
-<a class="ds-skip" href="#inhalt">Zum Inhalt</a>
+<div class="ds-app ds-app--drawer" data-seite="software">
 
-<!-- Kopfzeile: Wortmarke, Konto, «Abmelden» (rahmen.js). -->
-<header class="ds-topbar" id="kopf"></header>
+  <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
 
-<!-- Schublade mit den Bereichen des Programms (≤ 900 px modal). -->
-<nav class="ds-drawer" id="schublade" aria-label="Bereiche"></nav>
+  <!-- Kopfzeile: Wortmarke, Konto, «Abmelden» (rahmen.js). -->
+  <div class="ds-topbar" id="kopf"></div>
 
-<!-- Die weisse Tafel: der Rahmen rundet, main rollt (einziger Roller). -->
-<div class="ds-panel">
-  <main class="ds-view" id="tafel" tabindex="-1">
-    <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
-    <!-- data-zustand="laden": bis zum ersten Inhalt sind Seitenkopf und
-         Bereich ausgeblendet, nach 200 ms erscheint das Skelett. Den
-         Seitenkopf füllt F.seitenkopf, den Bereich F.zeichneBereich.
-         Dialog, Meldungen, Tooltip, Speicherleiste und Vorschlagslisten
-         baut rahmen.js bzw. bausteine.js selbst: KEIN statisches Markup. -->
-    <div class="ds-content">
-      <div class="ds-page" id="inhalt" data-zustand="laden">
-        <header class="ds-page-head" id="sw-kopf"></header>
-        <div class="fenster-bereich" id="sw-bereich"></div>
+  <!-- Schublade mit den Bereichen des Programms (≤ 900 px modal; der Schleier davor
+       deckt dann die Seite). -->
+  <div class="ds-scrim"></div>
+  <nav class="ds-drawer" id="schublade" aria-label="Bereiche" tabindex="-1"></nav>
+
+  <!-- Die weisse Tafel: der Rahmen rundet, main rollt (einziger Roller). -->
+  <div class="ds-panel">
+    <main class="ds-view" id="tafel" tabindex="-1">
+      <!-- data-zustand="laden": bis zum ersten Inhalt sind Seitenkopf und
+           Bereich ausgeblendet; verzögert erscheinen Skelett und Ladebalken.
+           Den Seitenkopf füllt F.seitenkopf, den Bereich F.zeichneBereich.
+           Dialoge, Tooltip, Speicherleiste und Vorschlagslisten baut die
+           Grundlage selbst (rahmen.js, bausteine.js): kein statisches
+           Markup dafür. -->
+      <div class="ds-content">
+        <div class="ds-page" id="inhalt" data-zustand="laden">
+          <header class="ds-page-head" id="sw-kopf"></header>
+          <div class="fenster-bereich" id="sw-bereich"></div>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
+
 </div>
+
+<!-- Meldungen (UI.meldung über DS.overlay.toast): direkt nach .ds-app,
+     ohne role und aria-live; die Ansagen legt Dashboard-Style daneben an. -->
+<div class="ds-toasts"></div>
 
 <script src="konfig.js"></script>
 <script src="vendor/dashboard-style/ds.js"></script>
 <script src="bausteine.js"></script>
 <script src="rahmen.js"></script>
+<div id="rahmen-gebaut" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>

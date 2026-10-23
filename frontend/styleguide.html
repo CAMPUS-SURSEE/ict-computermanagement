@@ -11,103 +11,60 @@
      Rahmen.*, Bewegung.*); nichts hier ist von Hand nachgebaut. Ohne
      Anmeldung und ohne Daten zu öffnen. Die Grundlage ist Dashboard-Style;
      sein eigener Styleguide (im Repository saschazesiger/Dashboard-Style,
-     styleguide/index.html) zeigt die gemeinsamen Bausteine neutral. Die
-     Regeln unten sind nur das Layout dieser Seite und lesen nur Tokens. -->
+     styleguide/index.html) zeigt die gemeinsamen Bausteine neutral. Das
+     Layout dieser Seite steht in styleguide.css (kein <style>: die
+     Inhaltsrichtlinie in _headers erlaubt keins). Reihenfolge der
+     Stilvorlagen wie in jeder Seite (index.html). -->
+<!-- Das erste Bild wartet, bis rahmen.js Kopf und Schublade gebaut hat
+     (#rahmen-gebaut steht direkt nach rahmen.js), nicht aber auf MSAL
+     vom CDN. Zeigt Chrome eine halb geparste Seite, bricht es sonst den
+     Seitenübergang ab («ViewTransition opt-in disabled», auf dem Telefon
+     bei jedem zweiten Wechsel); so empfiehlt es auch
+     optional/view-transitions.css. -->
+<link rel="expect" href="#rahmen-gebaut" blocking="render">
+<link rel="stylesheet" href="grund.css">
 <link rel="stylesheet" href="vendor/dashboard-style/fonts/fonts.css">
 <link rel="stylesheet" href="vendor/dashboard-style/ds.css">
+<link rel="stylesheet" href="vendor/dashboard-style/css/optional/view-transitions.css">
 <link rel="stylesheet" href="thema.css">
 <link rel="stylesheet" href="bausteine.css">
 <link rel="stylesheet" href="rahmen.css">
-<!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
-     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §11). -->
-<style>@view-transition { navigation: auto; }</style>
-<style>
-  /* Abschnitte: jeder beginnt mit einem eigenen Kopf; zwischen zwei
-     Abschnitten eine Haarlinie und mehr Luft als zwischen Karten. */
-  .sg-abschnitt {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--ds-space-5);
-    min-width: 0;
-    scroll-margin-top: var(--ds-space-6);
-  }
-  .sg-abschnitt + .sg-abschnitt {
-    margin-top: var(--ds-space-5);
-    padding-top: var(--ds-space-10);
-    border-top: 1px solid var(--ds-line);
-  }
-  .sg-abschnitt > .ds-page-head .ds-page-head__title { font: var(--ds-font-title); }
-
-  /* Reihen von Mustern (Knöpfe, Chips, Status). */
-  .sg-reihe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-3); }
-  .sg-reihe + .sg-reihe { margin-top: var(--ds-space-4); }
-  .sg-beschriftung { margin: 0; color: var(--ds-text-2); font: var(--ds-font-caption); }
-
-  /* Farbfelder */
-  .sg-farben { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--ds-space-3); }
-  .sg-farbe { display: grid; gap: var(--ds-space-2); min-width: 0; }
-  .sg-farbe-feld { height: 56px; border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card); }
-  .sg-farbe code { justify-self: start; }
-
-  /* Schriftrollen */
-  .sg-schrift { display: grid; gap: var(--ds-space-1); padding: var(--ds-space-3) 0; border-top: 1px solid var(--ds-line); }
-  .sg-schrift:first-child { padding-top: 0; border-top: 0; }
-  .sg-schrift > :first-child { margin: 0; color: var(--ds-text); overflow-wrap: anywhere; }
-
-  /* Abstände, Radien, Erhebung */
-  .sg-masse { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ds-space-4); }
-  .sg-mass { display: grid; justify-items: center; gap: var(--ds-space-1); }
-  .sg-mass-balken { width: var(--ds-space-4); background: var(--ds-accent); border-radius: var(--ds-radius-xs); }
-  .sg-flaechen { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--ds-space-4); }
-  .sg-flaeche { display: grid; place-items: center; min-height: 88px; padding: var(--ds-space-3); border: 1px solid var(--ds-line); background: var(--ds-surface); text-align: center; }
-
-  /* Sinnbilder */
-  .sg-sinnbilder { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--ds-space-2) var(--ds-space-4); }
-  .sg-sinnbild { display: flex; align-items: center; gap: var(--ds-space-3); min-width: 0; padding: var(--ds-space-2) 0; color: var(--ds-text); }
-  .sg-sinnbild > span { display: grid; justify-items: start; gap: 2px; min-width: 0; }
-
-  /* Liste mit klebendem Kopf: im Styleguide eine feste Höhe statt der
-     ganzen Tafel (auf der Hauptseite füllt sie die Tafel, Rahmen.fest). */
-  .sg-liste { display: flex; flex-direction: column; height: 440px; min-height: 0; }
-
-  /* Bühne für die Bewegungsbeispiele. */
-  .sg-buehne { display: grid; place-items: center; min-height: 168px; padding: var(--ds-space-5); border-radius: var(--ds-radius-card); background: var(--ds-surface-low); }
-  .sg-muster-karte { width: min(100%, 320px); }
-  .sg-spur { display: inline-flex; flex-wrap: wrap; gap: var(--ds-space-1); padding: var(--ds-space-1); border: 1px solid var(--ds-outline); border-radius: var(--ds-radius-action); }
-  .sg-spur > .ds-btn { --ds-btn-border: transparent; }
-  .sg-spur > .ds-btn[aria-pressed="true"] { --ds-btn-bg: transparent; }
-  .sg-indikator { border-radius: var(--ds-radius-action); background: var(--ds-accent); }
-
-  /* Ein Seitenkopf als Muster (wie auf einer Detailseite). */
-  .sg-probe { padding: var(--ds-space-6) var(--ds-space-8); border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius-card); }
-  @media (max-width: 600px) { .sg-probe { padding: var(--ds-space-4); } }
-</style>
+<link rel="stylesheet" href="styleguide.css">
 </head>
 <!-- data-seite="styleguide": rahmen.js baut Kopf und Schublade; die
      Schublade zeigt die Abschnitte dieser Seite (Anker, die Pille folgt
      beim Rollen). -->
-<body class="ds-app ds-app--drawer" data-seite="styleguide">
+<body>
 
-<a class="ds-skip" href="#inhalt">Zum Inhalt</a>
+<div class="ds-app ds-app--drawer" data-seite="styleguide">
 
-<header class="ds-topbar" id="kopf"></header>
+  <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
 
-<nav class="ds-drawer" id="schublade" aria-label="Abschnitte"></nav>
+  <div class="ds-topbar" id="kopf"></div>
 
-<div class="ds-panel">
-  <main class="ds-view" id="tafel" tabindex="-1">
-    <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
-    <div class="ds-content">
-      <div class="ds-page" id="inhalt" data-zustand="laden">
-        <!-- styleguide.js baut die Abschnitte hier hinein. -->
+  <div class="ds-scrim"></div>
+  <nav class="ds-drawer" id="schublade" aria-label="Abschnitte" tabindex="-1"></nav>
+
+  <div class="ds-panel">
+    <main class="ds-view" id="tafel" tabindex="-1">
+      <div class="ds-content">
+        <div class="ds-page" id="inhalt" data-zustand="laden">
+          <!-- styleguide.js baut die Abschnitte hier hinein. -->
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
+
 </div>
+
+<!-- Meldungen (UI.meldung über DS.overlay.toast): direkt nach .ds-app,
+     ohne role und aria-live; die Ansagen legt Dashboard-Style daneben an. -->
+<div class="ds-toasts"></div>
 
 <script src="vendor/dashboard-style/ds.js"></script>
 <script src="bausteine.js"></script>
 <script src="rahmen.js"></script>
+<div id="rahmen-gebaut" hidden></div>
 <script src="styleguide.js"></script>
 
 </body>

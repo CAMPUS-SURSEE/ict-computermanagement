@@ -6,61 +6,79 @@
 <meta name="theme-color" content="#f3f4f2">
 <title>Übersicht – ICT-Inventar</title>
 <link rel="icon" type="image/webp" href="https://www.campus-sursee.ch/wp-content/uploads/2023/12/campus-sursee-favicon.webp">
-<!-- Reihenfolge ist wichtig: Dashboard-Style (Schrift, Tokens und Bausteine),
-     das Campus-Thema, die ICT-eigenen Bausteine und der Rahmen, dann nur noch
-     das Seitenlayout. Alles liegt auf demselben Ursprung (Inhaltsrichtlinie). -->
+<!-- Reihenfolge ist wichtig: grund.css (Grundregeln unter Dashboard-Style,
+     @layer grund), Dashboard-Style (Schrift, Tokens und Bausteine, dazu die
+     Seitenübergänge zwischen den HTML-Seiten: optional/view-transitions.css
+     als <link> im <head>, sonst übersieht Chrome sie), das Campus-Thema, die
+     ICT-eigenen Bausteine und der Rahmen, dann nur noch das Seitenlayout.
+     Alles liegt auf demselben Ursprung (Inhaltsrichtlinie). -->
+<!-- Das erste Bild wartet, bis rahmen.js Kopf und Schublade gebaut hat
+     (#rahmen-gebaut steht direkt nach rahmen.js), nicht aber auf MSAL
+     vom CDN. Zeigt Chrome eine halb geparste Seite, bricht es sonst den
+     Seitenübergang ab («ViewTransition opt-in disabled», auf dem Telefon
+     bei jedem zweiten Wechsel); so empfiehlt es auch
+     optional/view-transitions.css. -->
+<link rel="expect" href="#rahmen-gebaut" blocking="render">
+<link rel="stylesheet" href="grund.css">
 <link rel="stylesheet" href="vendor/dashboard-style/fonts/fonts.css">
 <link rel="stylesheet" href="vendor/dashboard-style/ds.css">
+<link rel="stylesheet" href="vendor/dashboard-style/css/optional/view-transitions.css">
 <link rel="stylesheet" href="thema.css">
 <link rel="stylesheet" href="bausteine.css">
 <link rel="stylesheet" href="rahmen.css">
 <link rel="stylesheet" href="styles.css">
-<!-- Seitenübergänge: das Opt-in muss inline im head stehen (aus einer
-     Stilvorlage bricht Chrome den Übergang meist ab, rahmen.css §11). -->
-<style>@view-transition { navigation: auto; }</style>
 </head>
 <!-- rahmen.js baut Kopf und Schublade sofort aus Rahmen.HAUPTZIELE; der
      aktive Eintrag kommt aus dem Hash (#admin, #edu …) und ist vom ersten
      Bild an markiert. -->
-<body class="ds-app ds-app--drawer" data-seite="index">
+<body>
 
-<a class="ds-skip" href="#inhalt">Zum Inhalt</a>
+<div class="ds-app ds-app--drawer" data-seite="index">
 
-<header class="ds-topbar" id="kopf"></header>
+  <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
 
-<nav class="ds-drawer" id="schublade" aria-label="Hauptnavigation"></nav>
+  <div class="ds-topbar" id="kopf"></div>
 
-<div class="ds-panel">
-  <main class="ds-view" id="tafel" tabindex="-1">
-    <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
-    <!-- Zehn Ansichten (je Modul eine Übersicht, dazu die Listen), jede mit
-         eigenem Seitenkopf; app.js baut ihren
-         Inhalt einmal beim Start und zeichnet danach nur nach. Sichtbar ist
-         genau eine, die übrigen tragen hidden. Bis zum ersten Inhalt
-         (Rahmen.zustand('inhalt')) blendet data-zustand="laden" alle aus;
-         nach 200 ms erscheint das Skelett. Tabellenansichten füllen die
-         Tafel (Rahmen.fest), ihr Tabellenrahmen rollt selbst. -->
-    <div class="ds-content">
-      <div class="ds-page" id="inhalt" data-zustand="laden">
-        <section class="ansicht ds-stack" id="ansicht-geraete" aria-labelledby="geraete-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-verzeichnis" aria-labelledby="verzeichnis-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-videoueberwachung" aria-labelledby="videoueberwachung-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-admin" aria-labelledby="admin-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-edu" aria-labelledby="edu-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-benutzer" aria-labelledby="benutzer-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-telefone" aria-labelledby="telefone-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-software" aria-labelledby="software-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-kameras" aria-labelledby="kameras-titel" hidden></section>
-        <section class="ansicht ds-stack" id="ansicht-kamerarechte" aria-labelledby="kamerarechte-titel" hidden></section>
+  <div class="ds-scrim"></div>
+  <nav class="ds-drawer" id="schublade" aria-label="Hauptnavigation" tabindex="-1"></nav>
+
+  <div class="ds-panel">
+    <main class="ds-view" id="tafel" tabindex="-1">
+      <!-- Zehn Ansichten (je Modul eine Übersicht, dazu die Listen), jede mit
+           eigenem Seitenkopf; app.js baut ihren
+           Inhalt einmal beim Start und zeichnet danach nur nach. Sichtbar ist
+           genau eine, die übrigen tragen hidden. Bis zum ersten Inhalt
+           (Rahmen.zustand('inhalt')) blendet data-zustand="laden" alle aus;
+           verzögert erscheinen Skelett und Ladebalken. Tabellenansichten füllen die
+           Tafel (Rahmen.fest), ihr Tabellenrahmen rollt selbst. -->
+      <div class="ds-content">
+        <div class="ds-page" id="inhalt" data-zustand="laden">
+          <section class="ansicht ds-stack" id="ansicht-geraete" aria-labelledby="geraete-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-verzeichnis" aria-labelledby="verzeichnis-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-videoueberwachung" aria-labelledby="videoueberwachung-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-admin" aria-labelledby="admin-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-edu" aria-labelledby="edu-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-benutzer" aria-labelledby="benutzer-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-telefone" aria-labelledby="telefone-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-software" aria-labelledby="software-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-kameras" aria-labelledby="kameras-titel" hidden></section>
+          <section class="ansicht ds-stack" id="ansicht-kamerarechte" aria-labelledby="kamerarechte-titel" hidden></section>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
+
 </div>
+
+<!-- Meldungen (UI.meldung über DS.overlay.toast): direkt nach .ds-app,
+     ohne role und aria-live; die Ansagen legt Dashboard-Style daneben an. -->
+<div class="ds-toasts"></div>
 
 <script src="konfig.js"></script>
 <script src="vendor/dashboard-style/ds.js"></script>
 <script src="bausteine.js"></script>
 <script src="rahmen.js"></script>
+<div id="rahmen-gebaut" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"
         integrity="sha384-RGxxfG5yRS8DLU7ZJ8OoLhbV/BsJFHyPuMVHrTLbpj3t5Z15LnviJmaznKY/a7LZ"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>

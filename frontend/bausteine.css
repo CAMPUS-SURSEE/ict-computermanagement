@@ -1,115 +1,85 @@
-/* bausteine.css — die Bausteine, die es nur in ICT-Inventar gibt, und die
+/* bausteine.css – die Bausteine, die es nur in ICT-Inventar gibt, und die
    wenigen Abweichungen von Dashboard-Style.
 
-   Wird nach vendor/dashboard-style/ds.css und thema.css geladen, vor
-   rahmen.css und der Seitenvorlage. Alle gemeinsamen Bausteine (Knopf,
-   Karte, Kachel, Feld, Tabelle, Status, Banner, Leerzustand, Spinner,
-   Skelett, Fortschritt …) kommen aus Dashboard-Style mit ihren .ds-*-Klassen;
-   hier steht nichts davon noch einmal. Gebaut werden sie von bausteine.js
-   (UI.*), das die .ds-*-Klassen setzt.
+   Reihenfolge der Stilvorlagen: grund.css, Schriften, ds.css,
+   view-transitions.css, thema.css, bausteine.css, rahmen.css, Seiten-CSS.
+   Alle gemeinsamen Bausteine (Knopf, Karte, Kachel, Feld, Tabelle, Status,
+   Banner, Leerzustand, Spinner, Loader, Skelett, Fortschritt, Chip auf
+   Kästchen, Schalter …) kommen aus Dashboard-Style 1.6.2 mit ihren
+   .ds-*-Klassen und werden von bausteine.js (UI.*) gebaut.
+
+   Kaskaden-Ebenen: Dashboard-Style liegt in @layer ds.*, diese Datei in
+   keiner Ebene – jede Regel hier gewinnt gegen jede Regel von Dashboard-
+   Style, gleich wie spezifisch. Darum überschreibt sie nur, was ICT
+   wirklich anders will (Abschnitt 1, je mit Grund), und ändert gemeinsame
+   Bausteine sonst nur über ihre Hooks (--ds-btn-*, --ds-table-row-hover …).
+   Grundregeln, die Bausteine NICHT schlagen dürfen (Überschriften, Ränder
+   0 der ICT-Blöcke), stehen in grund.css in der Ebene «grund» vor «ds».
 
    Regeln wie in Dashboard-Style: nur Tokens (--ds-* und die ICT-Tokens aus
    thema.css), keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale,
    keine @keyframes (die stehen nur in vendor/dashboard-style/css/motion.css;
    hier werden sie nur beim Namen genannt). Hover-Regeln in
-   @media (hover: hover). Code/Pruefe-Frontend.ps1 prüft das.
+   @media (hover: hover), und Hover bewegt nie etwas. Drückbare ICT-
+   Bausteine folgen dem Druckmodell von Dashboard-Style: Zustandsebene in
+   der Inhaltsfarbe, Druck in --ds-dur-micro (auch für .ds-pressed von
+   DS.ripple), unter .ds-ripples trägt die Welle den Druck, Fokusebene
+   --ds-state-focus mit einem Ring, der in --ds-dur-fast einrastet, und das
+   gemeinsame Modell für gesperrt (--ds-disabled-*). Code/Pruefe-Frontend.ps1
+   prüft die Literale.
 
    ------------------------------------------------------------------
    INHALT
    ------------------------------------------------------------------
-   1. Grundstil (was ICT über .ds-base hinaus setzt)
-   2. Abweichungen von Dashboard-Style (je mit Grund)
-   3. Sinnbild, Tonklassen, Hilfstexte (.icon .t-* .kuerzel .code-block .anzahl)
-   4. Raster (.karten .karte-breit .karte-inhalt .karte-kopf-aktionen)
-   5. Knopf mit Weiter-Pfeil (.knopf-weiter)
-   6. Filter-Chips als Knöpfe, Zähler (.chip .chip-* .zaehler)
-   7. Datenzeilen (.datenzeilen .datenzeile* .schloss .geaendert)
-   8. Hinweisliste (.hinweise .hinweis-zeile*)
-   9. Formulare (.eingabe-schmal .mit-sinnbild .hinweis-platz .mehrfach)
-  10. Schalter mit drei Zuständen (.schalter .schalter-*)
-  11. Liste über die ganze Seite (.tabelle-rahmen .tabelle-kopf-text .name-link)
-  12. Listenzeilen und Zahlmarke (.zeilenliste .listen-zeile* .zahlmarke)
-  13. Zeitachse (.zeitachse*)
-  14. Balken, Säulen, Verteilung (.balken* .saeule* .verteilung* .kennwert*)
+   1. Abweichungen von Dashboard-Style (je mit Grund)
+   2. Sinnbild, Tonklassen, Hilfstexte (.icon .t-* .kuerzel .code-block .anzahl)
+   3. Raster (.karten .karte-breit .karte-inhalt .karte-kopf-aktionen)
+   4. Knopf, der ein Blatt öffnet; Gesichter mit Sinnbild
+   5. Chips als Knöpfe, Reihe, Zähler (.chip .chip-* .chip-zeile .zaehler)
+   6. Datenzeilen (.datenzeilen .datenzeile* .schloss .geaendert)
+   7. Hinweisliste (.hinweise .hinweis-zeile*)
+   8. Formulare (.eingabe-schmal .mit-sinnbild .hinweis-platz .mehrfach)
+   9. Schalter: Sperre und Zeile (.schalter-gesperrt .schalter-zeile .schalter-*)
+  10. Liste über die ganze Seite (.tabelle-rahmen .tabelle-kopf-text .name-link)
+  11. Listenzeilen und Zahlmarke (.zeilenliste .listen-zeile* .zahlmarke .karte-marke)
+  12. Zeitachse (.zeitachse*)
+  13. Balken, Säulen, Verteilung (.balken* .saeule* .verteilung* .kennwert*)
    ------------------------------------------------------------------ */
 
 
 /* ==================================================================
-   1. Grundstil
-   .ds-base (auf <html>) setzt Grund, Schrift, Links, Code, Fokus und
-   [hidden]. ICT setzt dazu die Überschriften auf die Rollen und gibt
-   Kästchen die Primärfarbe. Gleiche Gewichtung wie blanke Elemente.
-   ================================================================== */
-
-/* Überschriften: Satzschreibung, nie fett, nie gesperrt. Bausteine setzen
-   ihre eigene Rolle über die Klasse. */
-:where(.ds-base) :is(h1, h2, h3, h4, h5, h6) {
-  margin: 0;
-  letter-spacing: 0;
-}
-
-:where(.ds-base) h1 { font: var(--ds-font-headline); }
-:where(.ds-base) h2 { font: var(--ds-font-subtitle); }
-:where(.ds-base) :is(h3, h4, h5, h6) { font: var(--ds-font-label); }
-
-/* Ein nachgestelltes Sinnbild im Link (↗ extern) hält etwas Luft. */
-a:not(.ds-btn, .chip, .ds-tile, .listen-zeile) > svg:last-child:not(:first-child) {
-  margin-left: var(--ds-space-1);
-  vertical-align: -2px;
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--ds-primary);
-}
-
-
-/* ==================================================================
-   2. Abweichungen von Dashboard-Style
+   1. Abweichungen von Dashboard-Style
    Jede Regel hier ändert einen gemeinsamen Baustein bewusst. Neue
    Abweichungen nur mit Grund – und lieber in Dashboard-Style selbst,
    wenn sie für jedes Projekt gelten (STYLEGUIDE.md, Abschnitt 5).
    ================================================================== */
 
-/* Leiser Text (UI.hinweis) steht auch in Blättern und Dialogen, deren
-   Spalten den Abstand selbst setzen: nie Browser-Ränder. Null Gewichtung,
-   der Kartenrhythmus unten gewinnt. */
-:where(.ds-muted) {
-  margin: 0;
-}
+/* Inhaltsbereich einer Karte (UI.karte → .inhalt): Seiten füllen ihn,
+   nachdem die Karte gebaut ist, und die Fusszeile bleibt trotzdem
+   zuletzt. Seine Kinder sind keine Kinder von .ds-card, darum trägt er
+   den Kartenrhythmus von Dashboard-Style (.ds-card > * + *, Zwischentitel,
+   Unterabschnitt, Fehler unter einer Reihe, Fakten) selbst nach. Die
+   Karte gibt ihm, wie jedem Kind, die 16 px darüber. */
+.karte-inhalt > * + * { margin-top: var(--ds-space-4); }
+.karte-inhalt > .ds-card__subtitle:not(:first-child) { margin-top: var(--ds-space-6); }
+.karte-inhalt > .ds-card__subtitle:first-child { margin-top: 0; }
+.karte-inhalt > .ds-card__subtitle + * { margin-top: var(--ds-space-2); }
+.karte-inhalt > .ds-subsection { margin-top: var(--ds-space-2); }
+.karte-inhalt > .ds-inline-form + .ds-field__hint--error { margin-top: var(--ds-space-1); }
 
-/* Kartenrhythmus: 16 px zwischen allen Kindern einer Karte UND ihres
-   Inhaltsbereichs (.karte-inhalt, UI.karte). Die doppelte Gewichtung hebt
-   ihn über das margin: 0 der ICT-Bausteine (.datenzeilen, .hinweise …);
-   Bausteine mit eigenem Abstand in einer Karte nennen ihn unten. */
-:is(.ds-card, .karte-inhalt) > :not(:first-child) {
-  margin-top: var(--ds-space-4);
-}
-
-:is(.ds-card, .karte-inhalt) > .ds-card__subtitle { margin-top: var(--ds-space-6); }
-:is(.ds-card, .karte-inhalt) > .ds-card__subtitle:first-child { margin-top: 0; }
-:is(.ds-card, .karte-inhalt) > .ds-card__subtitle + * { margin-top: var(--ds-space-2); }
-:is(.ds-card, .karte-inhalt) > .ds-subsection { margin-top: var(--ds-space-2); }
-:is(.ds-card, .karte-inhalt) > .ds-inline-form + .ds-field__hint--error { margin-top: var(--ds-space-1); }
-
-/* Fakten stehen 20 px unter dem, was darüber steht, auch als erstes Kind
-   des Inhaltsbereichs. */
-:is(.ds-card, .karte-inhalt) > .ds-facts:not(:first-child),
+.karte-inhalt > .ds-facts:not(:first-child),
 .ds-card > .karte-inhalt:not(:first-child):has(> .ds-facts:first-child) {
   margin-top: var(--ds-space-5);
 }
 
 /* Ein Zwischentitel ausserhalb einer Karte (Blatt, Dialog) hat keinen
-   eigenen Rand. */
-.ds-card__subtitle { margin: 0; }
+   eigenen Rand: dort setzt der Körper den Abstand (gap). */
+:is(.ds-sheet__body, .ds-dialog__box) > .ds-card__subtitle { margin: 0; }
 
+/* Ein langer Titel bricht in der Titelzeile statt sie zu sprengen; ein
+   Sinnbild davor (UI.karte({ sinnbild })) hält Abstand. */
 .ds-card__title { min-width: 0; }
 .ds-card__title > .icon { margin-right: var(--ds-space-2); }
-
-/* Der Schalter von ICT ist 32 px hoch (ein Knopf, kein Label mit Spur),
-   seine Zeile 40 px: beide ragen gleich weit über die Titelzeile. */
-.ds-card__row > .schalter { margin-block: calc((24px - 32px) / 2); }
-.ds-card__row > :is(.schalter-feld, :has(> .schalter), :has(> .schalter-feld)) { margin-block: calc((24px - 40px) / 2); }
 
 /* Fusszeile einer Karte: nur Text-Knöpfe hängen ihr Polster in den Rand;
    umrandete und gefüllte Knöpfe stehen bündig und 12 px auseinander wie
@@ -135,34 +105,26 @@ input[type="radio"] {
 
 /* Kennwerte: oft der letzte Block einer Karte, darum auch unten ohne
    Polster; lange Namen brechen, ein leerer Wert steht leise. */
-.ds-kv-list { margin-top: 0; }
 .ds-kv-list > li:last-child { padding-bottom: 0; }
 .ds-kv-list > li > span { min-width: 0; overflow-wrap: anywhere; }
 .ds-kv-list > li > strong.leer { color: var(--ds-text-2); }
 
-/* Banner: der Knopf (auch mehrere in .banner-knoepfe) ist immer kompakt
-   (32 px) und ragt gleich weit über und unter die 20-px-Textzeile. Wird
-   der Text daneben schmaler als 8em, rutscht er rechts unter den Text. */
-.ds-alert > .ds-btn,
-.ds-alert > .banner-knoepfe {
-  --ds-btn-height: 32px;
-  --ds-btn-padding-x: var(--ds-space-3);
+/* Banner mit mehreren Knöpfen (UI.banner({ knopf: [ … ] })): die Gruppe
+   ragt wie ein einzelner kompakter Knopf (32 px) über und unter die
+   20-px-Textzeile; ihre Knöpfe stehen darin ohne eigenen Rand (die Regel
+   von Dashboard-Style für .ds-alert .ds-btn reicht sonst bis zu ihnen).
+   Wird der Text daneben schmaler als 8em, rutscht die Aktion rechts unter
+   den Text. */
+.banner-knoepfe {
+  display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
   margin-block: calc((var(--ds-space-5) - 32px) / 2);
   margin-inline: auto calc(-1 * var(--ds-space-2));
 }
 
-.banner-knoepfe {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2);
-}
-
-.banner-knoepfe > .ds-btn {
-  --ds-btn-height: 32px;
-  --ds-btn-padding-x: var(--ds-space-3);
-  margin: 0;
-}
+.banner-knoepfe > .ds-btn { margin: 0; }
 
 .ds-alert__text > p + p { margin-top: var(--ds-space-2); }
 
@@ -176,11 +138,7 @@ input[type="radio"] {
 /* Status-Chip: ein langer Text bricht im Chip um. */
 .status-text { min-width: 0; overflow-wrap: anywhere; }
 
-/* Filter-Chips (Knöpfe, Abschnitt 6) in .ds-chips: ohne Chip keine Zeile. */
-.ds-chips:empty { display: none; }
-.ds-chips .ds-status { flex-shrink: 0; }
-
-/* Feldfehler (UI.feldFehler) unter einer Zeile, Reihe oder Suche: 4 px
+/* Feldfehler (UI.feldFehler) unter einer Datenzeile oder Suche: 4 px
    Luft; im Feld (UI.feld) übernimmt dessen Abstand. */
 .ds-field__hint--error { margin-top: var(--ds-space-1); }
 .ds-field > .ds-field__hint--error { margin-top: 0; }
@@ -191,60 +149,27 @@ input[type="radio"] {
 }
 
 /* Datumsfelder behalten auch unter 720 px das Polster jedes anderen
-   Felds (12 px), wie vor Dashboard-Style: Dashboard-Style rückt sie dort
-   auf 8 px, damit zwei Daten nebeneinander auf 320 px passen. Die
-   Datumsfelder der Seiten (Bewertet am, Bewilligt am, Verlauf) stehen
-   einzeln untereinander; ihr Wert bleibt auf der Kante der Felder darüber
-   und darunter. */
+   Felds (12 px): Dashboard-Style rückt sie dort auf 8 px, damit zwei
+   Daten nebeneinander auf 320 px passen. Die Datumsfelder der Seiten
+   (Bewertet am, Bewilligt am, Verlauf) stehen einzeln untereinander; ihr
+   Wert bleibt auf der Kante der Felder darüber und darunter. */
 @media (max-width: 720px) {
   .ds-input[type="date"] { padding-inline: var(--ds-space-3); }
 }
 
-/* Tabelle in einer Karte: die Blende am Rand steht nur, solange es dort
-   wirklich weitergeht (UI.rollKanten setzt data-mehr-rechts bzw.
-   data-gerollt-x) – auch auf dem Telefon, wo Dashboard-Style sie immer
-   zeigt. Die Maske liest nur die Deckkraft; jede deckende Farbe taugt. */
-@media (max-width: 600px) {
-  .ds-card .ds-table-wrap {
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-}
-
-.ds-table-wrap[data-mehr-rechts] {
-  -webkit-mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
-  mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
-}
-
-.ds-table-wrap[data-gerollt-x] {
-  -webkit-mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
-  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)));
-}
-
-.ds-table-wrap[data-gerollt-x][data-mehr-rechts] {
-  -webkit-mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)),
-    var(--ds-text) calc(100% - var(--ds-card-pad, var(--ds-space-6))), transparent);
-  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-card-pad, var(--ds-space-6)),
-    var(--ds-text) calc(100% - var(--ds-card-pad, var(--ds-space-6))), transparent);
-}
-
-/* Einträge einer Liste blenden beim ersten Zeigen kürzer ein als Karten. */
-.ds-stagger.zeilenliste > * { animation-duration: var(--ds-dur-fast); }
+/* Einträge einer Liste blenden beim ersten Zeigen kürzer ein als Karten
+   (Hook von .ds-enter auf dem bewegten Element; Bewegung.auftritt). */
+.zeilenliste > * { --ds-enter-duration: var(--ds-dur-fast); }
 
 
 /* ==================================================================
-   3. Sinnbild, Tonklassen, Hilfstexte
+   2. Sinnbild, Tonklassen, Hilfstexte
    ================================================================== */
 
-/* Sinnbild aus DS.icons (UI.sinnbild setzt die Klasse): mittig in der
-   Zeile, schrumpft nie. */
+/* Sinnbild aus DS.icons (UI.sinnbild setzt die Klasse; Strich, Farbe und
+   Enden schreibt DS.icons.iconElement): mittig in der Zeile, schrumpft nie. */
 .icon {
   flex-shrink: 0;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
   vertical-align: middle;
 }
 
@@ -291,7 +216,6 @@ input[type="radio"] {
 
 /* Vorformatierter Block (Rohdaten, JSON). */
 .code-block {
-  margin: 0;
   padding: var(--ds-space-4) var(--ds-space-5);
   border-radius: var(--ds-radius-card);
   background: var(--ds-surface-low);
@@ -305,18 +229,17 @@ input[type="radio"] {
 /* Ergebniszahl einer Liste («47 von 163 ADMIN-Clients»); schliesst eine
    Leiste oder Chipreihe rechts ab. */
 .anzahl {
-  margin: 0;
   color: var(--ds-text-2);
   font: var(--ds-font-body);
   font-variant-numeric: tabular-nums;
 }
 
 .ds-action-bar > .anzahl,
-.ds-chips > .anzahl { margin-left: auto; }
+:is(.ds-chips, .chip-zeile) > .anzahl { margin-left: auto; }
 
 
 /* ==================================================================
-   4. Raster
+   3. Raster
    ================================================================== */
 
 /* Kartenraster: so viele Spalten, wie 420 px breit Platz haben. */
@@ -331,13 +254,13 @@ input[type="radio"] {
 .ds-grid-2 > .karte-breit { grid-column: 1 / -1; }
 
 /* Karten nebeneinander teilen eine Höhe; ihre Fusszeilen liegen unten auf
-   einer Linie (wie .ds-grid-2 in Dashboard-Style, hier auch im .karten). */
-:is(.karten, .ds-grid-2) > .ds-card:has(> .ds-card__links) {
+   einer Linie – wie .ds-grid-2 in Dashboard-Style, hier fürs .karten. */
+.karten > .ds-card:has(> .ds-card__links) {
   display: flex;
   flex-direction: column;
 }
 
-:is(.karten, .ds-grid-2) > .ds-card > .ds-card__links { margin-top: auto; }
+.karten > .ds-card > .ds-card__links { margin-top: auto; }
 :is(.karten, .ds-grid-2) > .ds-card > :has(+ .ds-card__links) { margin-bottom: var(--ds-space-4); }
 
 /* Inhaltsbereich einer Karte (UI.karte): ein leerer nimmt keinen Platz. */
@@ -359,13 +282,13 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   5. Knöpfe: Blatt offen, Weiter-Pfeil
+   4. Knopf, der ein Blatt öffnet; Gesichter mit Sinnbild
    ================================================================== */
 
 /* Ein Knopf, der ein Blatt öffnet («Filter», «Spalten»), ist tonal, solange
    es offen ist – wie ein gedrückter Umschaltknopf (.ds-btn[aria-pressed]),
    aber über aria-expanded: er schaltet nichts um, aria-pressed wäre für
-   den Screenreader falsch. */
+   den Screenreader falsch. Nur über die Hooks von .ds-btn. */
 .ds-btn[aria-haspopup="dialog"][aria-expanded="true"] {
   --ds-btn-border: var(--ds-accent);
   --ds-btn-bg: var(--ds-accent);
@@ -384,31 +307,39 @@ input[type="radio"] {
   .ds-btn[aria-haspopup="dialog"][aria-expanded="true"]:focus-visible { outline-color: CanvasText; }
 }
 
-/* ==================================================================
-   Knopf mit Weiter-Pfeil (UI.knopf({ weiter: true }))
-   Der nachgestellte Pfeil lehnt sich in die Richtung, in die es geht
-   (wie .ds-card__link, hier für jeden Knopf). Hover-Asymmetrie: zurück
-   200 ms, hin 250 ms.
-   ================================================================== */
-
-.knopf-weiter > svg:last-child {
-  transition: transform var(--ds-dur-base) var(--ds-ease-in-out);
-}
-
-@media (hover: hover) {
-  .knopf-weiter:hover > svg:last-child {
-    transform: translateX(var(--ds-distance-sm));
-    transition-duration: var(--ds-dur-medium);
-  }
+/* Ein Knopf mit Gesichtern (UI.beschaeftigt, DS.motion.busy), dessen
+   Beschriftung mit einem Sinnbild beginnt, behält das kürzere Polster
+   vorne (12 px) wie ohne Gesichter: Dashboard-Style erkennt das führende
+   Sinnbild nur als direktes Kind des Knopfs. */
+.ds-btn:has(> .ds-btn__faces > .ds-btn__face:first-child > svg:first-child) {
+  --ds-btn-padding-start: var(--ds-space-3);
 }
 
 
 /* ==================================================================
-   6. Filter-Chips als Knöpfe (UI.chip) und Zähler (UI.zaehler)
-   Dashboard-Style baut Filter-Chips aus Kästchen (.ds-chip). ICT braucht
-   Knöpfe: Umschalter mit aria-pressed, entfernbare aktive Filter mit ×
-   und Aktions-Chips, die eine Seite öffnen. Gleiche Masse und Zustände.
+   5. Chips als Knöpfe (UI.chip mit entfernen oder als Aktion), Reihe
+      ohne Filtergruppe (UI.chips) und Zähler (UI.zaehler)
+   Dashboard-Style baut Filter-Chips auf Kästchen (.ds-chip; UI.chip mit
+   gewaehlt). ICT braucht dazu Knöpfe und Links: entfernbare aktive
+   Filter mit × und Aktions-Chips, die eine Seite öffnen. Masse wie
+   .ds-chip (32 px, Radius --ds-radius-chip), Druckmodell und gesperrt wie
+   Dashboard-Style; Welle über data-ds-ripple.
    ================================================================== */
+
+/* Reihe von Status-Chips, Links oder Chips mit × (UI.chips ohne
+   Filter-Chip, die aktiven Filter einer Liste): wie .ds-chips angeordnet,
+   aber keine Filtergruppe – das Gleiten der Chips von DS.ripple hängt nur
+   an .ds-chips. Ohne Chip keine Zeile; ein Status-Chip schrumpft nicht. */
+.chip-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-width: 0;
+}
+
+.chip-zeile:empty { display: none; }
+.chip-zeile > .ds-status { flex-shrink: 0; }
 
 /* Höchstens so breit wie die Zeile: ein langer Filter («Suche: …») kürzt
    seinen Text mit «…» (der Tooltip zeigt ihn ganz), Sinnbild und × bleiben. */
@@ -420,7 +351,7 @@ input[type="radio"] {
   gap: var(--ds-space-2);
   max-width: 100%;
   min-width: 0;
-  height: 32px;
+  height: var(--ds-chip-height, 32px);
   margin: 0;
   padding: 0 var(--ds-space-4);
   border: 1px solid var(--ds-line-2);
@@ -432,10 +363,14 @@ input[type="radio"] {
   text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* Der Ring ruht (unsichtbar) eine Breite weiter aussen und rastet ein. */
+  outline-offset: calc(var(--ds-focus-offset) + var(--ds-focus-width));
   transition:
     background-color var(--ds-dur-fast) var(--ds-ease-in-out),
     border-color var(--ds-dur-fast) var(--ds-ease-in-out),
-    color var(--ds-dur-fast) var(--ds-ease-in-out);
+    color var(--ds-dur-fast) var(--ds-ease-in-out),
+    opacity var(--ds-dur-fast) var(--ds-ease-in-out),
+    outline-offset var(--ds-dur-fast) var(--ds-ease-out);
 }
 
 /* Zustandsebene in der Farbe des Inhalts. */
@@ -455,12 +390,7 @@ input[type="radio"] {
 }
 
 @media (hover: hover) {
-  .chip:hover::before { opacity: var(--ds-state-hover); }
-}
-
-.chip:active::before {
-  opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-instant);
+  .chip:not(:disabled, [aria-disabled="true"]):hover::before { opacity: var(--ds-state-hover); }
 }
 
 .chip:focus-visible {
@@ -468,10 +398,32 @@ input[type="radio"] {
   outline-offset: var(--ds-focus-offset);
 }
 
-.chip:disabled,
-.chip[aria-disabled="true"] {
-  opacity: var(--ds-state-disabled);
-  cursor: default;
+.chip:focus-visible::before {
+  opacity: var(--ds-state-focus);
+  transition-duration: 0s;
+}
+
+.chip:not(:disabled, [aria-disabled="true"]):is(:active, .ds-pressed)::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-micro);
+}
+
+/* Mit Welle (DS.ripple) trägt sie den Druck; die Ebene bleibt beim Hover. */
+.ds-ripples .chip:is(:active, .ds-pressed)::before { opacity: 0; }
+
+@media (hover: hover) {
+  .ds-ripples .chip:not(:disabled, [aria-disabled="true"]):is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover); }
+}
+
+.ds-ripples .chip:focus-visible:is(:active, .ds-pressed)::before { opacity: var(--ds-state-focus); }
+
+/* Gesperrt: das Modell der Knöpfe von Dashboard-Style (neutrale Kante bzw.
+   Fläche, leise Schrift), ohne Hover, Druck und Welle. */
+.chip:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ds-chip-disabled-border, var(--ds-disabled-fill, var(--ds-line-2)));
+  color: var(--ds-disabled-ink, var(--ds-text-2));
+  opacity: var(--ds-disabled-opacity, var(--ds-state-disabled));
+  cursor: not-allowed;
 }
 
 .chip > svg { flex-shrink: 0; }
@@ -482,24 +434,8 @@ input[type="radio"] {
   text-overflow: ellipsis;
 }
 
-.chip-haken { display: none; flex-shrink: 0; }
-
-/* Gewählt: Pastell + Häkchen + aria-pressed (Pastell allein hat zu wenig
-   Kontrast); der Haken schiebt sich links ein. */
-.chip[aria-pressed="true"] {
-  padding-left: var(--ds-space-2);
-  border-color: var(--ds-accent);
-  background: var(--ds-accent);
-  color: var(--ds-on-accent);
-}
-
-.chip[aria-pressed="true"] > .chip-haken {
-  display: block;
-  animation: ds-fade-in var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-/* Entfernbar («Hersteller: HP ×»): ein aktiver Filter, darum Pastell; das
-   nachgestellte × sagt, was ein Klick tut. */
+/* Entfernbar («Hersteller: HP ×»): ein aktiver Filter, darum Pastell wie
+   ein gewählter .ds-chip; das nachgestellte × sagt, was ein Klick tut. */
 .chip-entfernbar {
   padding-right: var(--ds-space-2);
   border-color: var(--ds-accent);
@@ -507,7 +443,31 @@ input[type="radio"] {
   color: var(--ds-on-accent);
 }
 
+.chip-entfernbar:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ds-chip-disabled-bg, var(--ds-disabled-fill, var(--ds-accent)));
+  background: var(--ds-chip-disabled-bg, var(--ds-disabled-fill, var(--ds-accent)));
+  color: var(--ds-disabled-ink, var(--ds-on-accent));
+}
+
 .chip-x { flex-shrink: 0; }
+
+@media (forced-colors: active) {
+  .chip-entfernbar {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .chip-entfernbar:focus-visible { outline-color: CanvasText; }
+
+  .chip:is(:disabled, [aria-disabled="true"]) {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    background: Canvas;
+    color: GrayText;
+  }
+}
 
 /* Zahl-Plakette: Pastell (aktiv, Anzahl Filter) oder neutral (Anzahl
    Spalten). Ohne Zahl keine Plakette; erscheint sie, ploppt sie
@@ -534,7 +494,7 @@ input[type="radio"] {
 .zaehler:empty { display: none; }
 
 /* Auf einer Pastellfläche verschwände die Pastell-Plakette: dort dunkel. */
-:is(.ds-btn[aria-pressed="true"], .ds-btn[aria-haspopup="dialog"][aria-expanded="true"], .ds-btn--tonal, .chip[aria-pressed="true"]) .zaehler:not(.zaehler-still) {
+:is(.ds-btn[aria-pressed="true"], .ds-btn[aria-haspopup="dialog"][aria-expanded="true"], .ds-btn--tonal, .chip-entfernbar) .zaehler:not(.zaehler-still) {
   background: var(--ds-primary);
   color: var(--ds-on-primary);
 }
@@ -545,13 +505,13 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   7. Datenzeilen
+   6. Datenzeilen
    Name links (leise), Wert in der zweiten Spalte, Haarlinien dazwischen.
    Die erste Zeile ohne Linie und Polster oben, die letzte ohne Polster
    unten (die Liste endet oft eine Karte).
    ================================================================== */
 
-.datenzeilen { margin: 0; padding: 0; }
+.datenzeilen { padding: 0; }
 
 .datenzeile {
   display: grid;
@@ -655,18 +615,17 @@ input[type="radio"] {
 }
 
 .datenzeile.geaendert > .datenzeile-name::after { opacity: 1; }
-.datenzeile:not(.geaendert) .geaendert-text { display: none !important; }
+.datenzeile:not(.geaendert) .geaendert-text { display: none; }
 
 
 /* ==================================================================
-   8. Hinweisliste (UI.hinweise)
+   7. Hinweisliste (UI.hinweise)
    Sinnbild 20 + Titel 500 + Text, Haarlinien dazwischen. Der Ton färbt
    nur das Sinnbild, der Text bleibt ruhig.
    ================================================================== */
 
 .hinweise {
   display: grid;
-  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -697,7 +656,7 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   9. Formulare
+   8. Formulare
    ================================================================== */
 
 .eingabe-schmal { width: min(100%, 200px); }
@@ -710,21 +669,18 @@ input[type="radio"] {
   gap: var(--ds-space-1);
 }
 
-:is(.ds-field__hint, .datenzeile-hinweis).mit-sinnbild > .icon { flex-shrink: 0; }
-
 /* Platz für einen Hinweis, der am Getippten hängt (UI.hinweisPlatz): ohne
-   Inhalt verborgen, sonst 8 px unter Feld und Hinweis. */
-.hinweis-platz[hidden] { display: none; }
+   Inhalt verborgen (hidden, .ds-base), sonst 8 px unter Feld und Hinweis. */
 :is(.datenzeile-wert, .ds-field) > .hinweis-platz { margin-top: var(--ds-space-2); }
 
 /* Mehrfachauswahl (Filter): umrandete Liste von Kästchen mit Zahl rechts,
-   Haarlinien, eigener dünner Rollbalken. Positioniert: absolut platzierte
-   Nachfahren rollen mit. */
+   Haarlinien, eigener dünner Rollbalken. Hover, Druck und Fokus zeigt der
+   40-px-Halo des Kästchens (Dashboard-Style), keine zweite Ebene auf der
+   Zeile. Positioniert: absolut platzierte Nachfahren rollen mit. */
 .mehrfach {
   position: relative;
   display: grid;
   max-height: 264px;
-  margin: 0;
   padding: 0;
   overflow-y: auto;
   border: 1px solid var(--ds-line);
@@ -734,34 +690,12 @@ input[type="radio"] {
 }
 
 .mehrfach > .ds-check {
-  position: relative;
-  isolation: isolate;
   display: flex;
   padding: 0 var(--ds-space-4);
 }
 
 .mehrfach > .ds-check + .ds-check { border-top: 1px solid var(--ds-line); }
 
-.mehrfach > .ds-check::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: -1;
-  background: var(--ds-text);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-@media (hover: hover) {
-  .mehrfach > .ds-check:hover::before { opacity: var(--ds-state-hover-lg); }
-}
-
-/* In der beschnittenen Liste liegt der Fokusring innen. */
-.mehrfach > .ds-check > input:focus-visible { outline-offset: 0; }
 .mehrfach > .ds-check > span { flex: 1; }
 .mehrfach > .ds-check > .anzahl { flex: none; margin-left: auto; }
 
@@ -770,86 +704,69 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   10. Schalter mit drei Zuständen (UI.schalter, UI.schalterZeile)
-   Dashboard-Style hat .ds-switch (Kästchen mit Spur). ICT braucht einen
-   button[role=switch] mit dem Zustand «an und gesperrt» (Spur voll primär,
-   Schloss im Griff, Tooltip nennt den Grund). Masse wie .ds-switch:
-   52 × 32, Griff 24 px, aus als 16 px gezeigt.
+   9. Schalter: Sperre und Zeile (UI.schalter, UI.schalterZeile)
+   Der Schalter ist .ds-switch von Dashboard-Style (Spur, Griff auf der
+   Feder, Halo, Fokusring, beide Zustandswörter). ICT-eigen sind nur:
+     - die Sperre «an und gesperrt» (.schalter-gesperrt): Spur voll primär,
+       12-px-Schloss im Griff, aria-disabled mit dem Grund im Tooltip –
+       ein Wert aus dem Abgleich, den man sieht, aber nicht ändert;
+     - deaktiviert über aria-disabled statt disabled (fokussierbar, damit
+       der Tooltip den Grund auch per Tastatur nennt), im gesperrten
+       Aussehen von Dashboard-Style (das nur :disabled kennt);
+     - die volle Zeile mit Unterzeile, Zusatz-Chips und dem Wort ganz rechts.
    ================================================================== */
 
-.schalter {
-  position: relative;
-  flex-shrink: 0;
-  width: 52px;
-  height: 32px;
-  margin: 0;
-  padding: 0;
-  border: 2px solid var(--ds-outline);
-  border-radius: var(--ds-radius-action);
-  background: var(--ds-surface-highest);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--ds-dur-base) var(--ds-ease-in-out),
-    border-color var(--ds-dur-base) var(--ds-ease-in-out);
+/* Was aria-disabled ist, zeigt weder Hover noch Druck: der Halo nur mit
+   der Tastatur, der Griff wächst nicht. */
+.ds-switch:has(> input[aria-disabled="true"]) { cursor: not-allowed; }
+
+.ds-switch > input[aria-disabled="true"]:not(:focus-visible) + .ds-switch__track::before { opacity: 0; }
+
+.ds-switch > input[aria-disabled="true"]:checked + .ds-switch__track::after { scale: calc(6 / 7); }
+
+.ds-switch > input[aria-disabled="true"]:not(:checked) + .ds-switch__track::after {
+  background: var(--ds-switch-disabled-handle, var(--ds-disabled-ink, var(--ds-outline)));
+  scale: calc(4 / 7);
 }
 
-.schalter::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--ds-radius-action);
-  background: var(--ds-outline);
-  transform: scale(calc(2 / 3));
-  transition:
-    transform var(--ds-dur-base) var(--ds-ease-in-out),
-    background-color var(--ds-dur-base) var(--ds-ease-in-out);
+/* Deaktiviert: das gesperrte Aussehen von Dashboard-Style (switch.css). */
+.ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"] + .ds-switch__track {
+  border-color: var(--ds-switch-disabled-track, var(--ds-disabled-fill, var(--ds-outline)));
+  background: var(--ds-switch-disabled-track, var(--ds-disabled-fill, var(--ds-surface-highest)));
+  opacity: var(--ds-disabled-opacity, var(--ds-state-disabled));
 }
 
-@media (hover: hover) {
-  .schalter[aria-checked="false"]:not(:disabled, [aria-disabled="true"]):hover::after { background: var(--ds-text-2); }
+.ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"]:checked + .ds-switch__track {
+  border-color: var(--ds-switch-disabled-track, var(--ds-disabled-fill, var(--ds-primary)));
+  background: var(--ds-switch-disabled-track, var(--ds-disabled-fill, var(--ds-primary)));
 }
 
-.schalter[aria-checked="true"] { border-color: var(--ds-primary); background: var(--ds-primary); }
+.ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"]:checked + .ds-switch__track::after { background: var(--ds-surface); }
 
-.schalter[aria-checked="true"]::after {
-  background: var(--ds-on-primary);
-  transform: translateX(20px);
-}
+.ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"] ~ :is(.ds-switch__label, .ds-switch__state) { color: var(--ds-text-2); }
 
-.schalter:focus-visible {
-  outline: var(--ds-focus-outline);
-  outline-offset: var(--ds-focus-offset);
-}
-
-.schalter:disabled,
-.schalter[aria-disabled="true"]:not(.gesperrt) {
-  opacity: var(--ds-state-disabled);
-  cursor: not-allowed;
-}
-
-/* An und gesperrt: volle Stärke, 12-px-Schloss mitten im weissen Griff
-   (das Schloss-Sinnbild «lock» als Maske). */
-.schalter.gesperrt { cursor: not-allowed; }
-
-.schalter.gesperrt::before {
-  content: '';
+/* An und gesperrt: volle Stärke, 12-px-Schloss mitten im Griff (der Griff
+   steht an: Mitte 34/14 im Polsterkasten der Spur). Über dem Griff
+   (::after) liegt es dank z-index. */
+.schalter-schloss {
   position: absolute;
   top: 8px;
   left: 28px;
   z-index: 1;
-  width: 12px;
-  height: 12px;
-  background: var(--ds-primary);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / 12px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / 12px no-repeat;
+  display: none;
+  color: var(--ds-primary);
 }
 
-/* Zeile: Schalter · Name (+ Unterzeile) · Zustandswort/Chips rechts. */
+.schalter-gesperrt .schalter-schloss { display: block; }
+
+/* Volle Zeile: Schalter · Name (+ Unterzeile) · Zusatz-Chips · Wort. Das
+   Label (.ds-switch) gibt seinen Kasten ab (display: contents), damit die
+   Zeile seine Teile und den Zusatz ordnen kann: das Wort steht ganz
+   rechts und rechtsbündig (die Wörter aller Zeilen fluchten), der Zusatz
+   («Geändert») links davon. Klicks auf Name und Wort schalten weiter (sie
+   stecken im Label); das versteckte Kästchen liegt an der Zeile. */
 .schalter-zeile {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--ds-space-3);
@@ -858,49 +775,25 @@ input[type="radio"] {
   border-top: 1px solid var(--ds-line);
 }
 
+.schalter-zeile > .ds-switch { display: contents; }
+
 .schalter-zeile:first-child { min-height: 48px; padding-top: 0; border-top: 0; }
 .schalter-zeile:last-child { min-height: 48px; padding-bottom: 0; }
 .schalter-zeile:only-child { min-height: 40px; }
 
-/* Kompakt in einer Kopfzeile («ICT-Ablage  Aktiv»). */
-.schalter-feld {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ds-space-3);
-  min-height: 40px;
-}
+.schalter-text { display: grid; min-width: 0; }
+.schalter-zeile .schalter-text { flex: 1; }
 
-.schalter-text { display: grid; flex: 1; min-width: 0; }
-.schalter-feld > .schalter-text { flex: none; }
-
-.schalter-name {
-  min-width: 0;
-  color: var(--ds-text);
-  font: var(--ds-font-label);
-  overflow-wrap: break-word;
-  cursor: pointer;
-}
+.schalter-name { overflow-wrap: break-word; }
 
 .schalter-unter { color: var(--ds-text-2); font: var(--ds-font-meta); }
 
-/* Das Zustandswort hält die Breite des längeren Worts: nichts springt. In
-   der Zeile steht es ganz rechts und rechtsbündig (die Wörter aller Zeilen
-   fluchten); Zusatz-Chips («Geändert») erscheinen links davon (order:
-   im DOM steht es vor dem Zusatz; es ist aria-hidden, die Lesefolge
-   bleibt). Kompakt steht es dicht hinter dem Namen. */
-.schalter-wort {
-  min-width: 3.5em;
-  color: var(--ds-text-2);
-  font: var(--ds-font-body);
-}
-
-.schalter-zeile > .schalter-wort {
+.schalter-zeile .ds-switch__state {
   order: 1;
   flex-shrink: 0;
-  text-align: right;
+  justify-items: end;
+  margin-left: 0;
 }
-
-.schalter-feld > .schalter-wort { margin-left: calc(-1 * var(--ds-space-1)); }
 
 .schalter-zusatz {
   display: flex;
@@ -908,6 +801,13 @@ input[type="radio"] {
   justify-content: flex-end;
   gap: var(--ds-space-2);
   margin-left: auto;
+}
+
+/* Kompakt mit Zusatz in einer Kopfzeile. */
+.schalter-feld-huelle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
 }
 
 /* Handy: Chips rutschen unter den Namen und fluchten mit ihm (Schalter 52
@@ -925,20 +825,28 @@ input[type="radio"] {
 }
 
 @media (forced-colors: active) {
-  .schalter::after { forced-color-adjust: none; background: CanvasText; }
-  .schalter[aria-checked="true"] { forced-color-adjust: none; border-color: Highlight; background: Highlight; }
-  .schalter[aria-checked="true"]::after { background: Canvas; }
-  .schalter.gesperrt::before { forced-color-adjust: none; background: Highlight; }
+  .schalter-schloss { forced-color-adjust: none; color: Highlight; }
+
+  .ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"] + .ds-switch__track {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    background: Canvas;
+  }
+
+  .ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"]:checked + .ds-switch__track { background: GrayText; }
+  .ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"] + .ds-switch__track::after { background: GrayText; }
+  .ds-switch:not(.schalter-gesperrt) > input[aria-disabled="true"]:checked + .ds-switch__track::after { background: Canvas; }
 }
 
 
 /* ==================================================================
-   11. Liste über die ganze Seite (UI.tabellenRahmen)
+   10. Liste über die ganze Seite (UI.tabellenRahmen)
    Der Rahmen ist ein eigener Scroller: der Kopf klebt oben, die erste
-   Spalte links. Die Kopflinie ist ein Schatten, weil zusammengefallene
-   Rahmen mitrollen. Zellen brechen nicht um, lange Werte enden mit «…»
-   (4 px Rand, damit Fokusringe von Links sichtbar bleiben). Zeilen sind
-   klickbar (die Seite öffnet die Detailseite).
+   Spalte links (Dashboard-Style schliesst das für .ds-table-wrap aus).
+   Die Kopflinie ist ein Schatten, weil zusammengefallene Rahmen
+   mitrollen. Zellen brechen nicht um, lange Werte enden mit «…» (4 px
+   Rand, damit Fokusringe von Links sichtbar bleiben). Klickbare Zeilen
+   sind .ds-table--interactive von Dashboard-Style (UI.tabellenRahmen).
    ================================================================== */
 
 .tabelle-rahmen {
@@ -952,6 +860,9 @@ input[type="radio"] {
   background: var(--ds-surface);
   scrollbar-width: thin;
   scrollbar-color: var(--ds-line-2) transparent;
+  /* Zeilen-Hover von Dashboard-Style, aber deckend: die klebende erste
+     Spalte muss verdecken, was unter ihr durchrollt. */
+  --ds-table-row-hover: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-hover-lg) * 100%), var(--ds-surface));
 }
 
 .tabelle-rahmen > .ds-table {
@@ -970,7 +881,6 @@ input[type="radio"] {
 }
 
 .tabelle-rahmen > .ds-table :is(th, td):first-child { min-width: 180px; }
-.tabelle-rahmen > .ds-table tbody tr { cursor: pointer; }
 
 .tabelle-rahmen > .ds-table thead th {
   position: sticky;
@@ -990,15 +900,27 @@ input[type="radio"] {
 
 .tabelle-rahmen > .ds-table thead th:first-child { z-index: calc(var(--ds-z-raised) + 2); }
 
-/* Der Hover liegt auf den Zellen, damit auch die klebende erste Spalte
-   ihn bekommt. */
-.tabelle-rahmen > .ds-table :is(th, td) {
-  transition: background-color var(--ds-dur-fast) var(--ds-ease-in-out);
+/* Den Hover malt Dashboard-Style auf die Zellen; die klebende erste
+   Spalte hat oben ihre eigene Fläche und nimmt ihn darum hier – ebenso
+   die Fokus- und die Druckebene der klickbaren Zeile, deckend gemischt
+   (unter ihr rollt die Zeile durch). */
+@media (hover: hover) {
+  .tabelle-rahmen > .ds-table tbody tr:hover > :first-child { background-color: var(--ds-table-row-hover); }
 }
 
-@media (hover: hover) {
-  .tabelle-rahmen > .ds-table tbody tr:hover > * { background: var(--ds-backdrop); }
+.tabelle-rahmen > .ds-table--interactive tbody tr:has(.ds-table__row-link:focus-visible) > :first-child {
+  background-color: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-focus) * 100%), var(--ds-surface));
 }
+
+.tabelle-rahmen > .ds-table--interactive tbody tr:is(:active, .ds-pressed):not(:has(:is(a[href], button):not(.ds-table__row-link):active)) > :first-child {
+  background-color: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-pressed) * 100%), var(--ds-surface));
+}
+
+/* Der Zeilenlink spannt sich nur über die klebende erste Zelle (die
+   übrigen Zellen reicht UI.tabellenRahmen an ihn weiter). Dashboard-Style
+   hebt die übrigen Bedienelemente der Zeile über ihn; hier lägen sie
+   damit beim seitlichen Rollen über der klebenden Spalte. */
+.tabelle-rahmen > .ds-table--interactive tbody td:not(:first-child) :is(a[href], button, [tabindex]) { z-index: auto; }
 
 /* Die Haarlinie rechts der ersten Spalte erscheint nur beim seitlichen
    Rollen (UI.rollKanten setzt data-gerollt-x). */
@@ -1031,26 +953,20 @@ input[type="radio"] {
    Tooltip (UI.tabellenKopf); der Ring folgt dem Radius des Sortierknopfs. */
 .tabelle-kopf-text { border-radius: var(--ds-radius-xs); }
 
-/* Name, der die Detailseite öffnet: unterstrichen, 500. */
-.name-link {
-  color: var(--ds-primary);
-  font-weight: var(--ds-weight-label);
-  text-decoration-line: underline;
-  text-decoration-thickness: var(--ds-link-underline-thickness);
-  text-underline-offset: var(--ds-link-underline-offset);
-  text-decoration-color: var(--ds-link-underline);
-}
+/* Name, der die Detailseite öffnet: ein Link wie jeder (.ds-base), in 500. */
+.name-link { font-weight: var(--ds-weight-label); }
 
 
 /* ==================================================================
-   12. Listenzeilen (UI.listenZeile) und Zahlmarke (UI.zahlmarke)
+   11. Listenzeilen (UI.listenZeile), Zahlmarke (UI.zahlmarke) und
+       Karte mit Zahlmarke (UI.karte({ marke }))
    Eine umrandete Liste mit Haarlinien; Zeilen als Link oder Knopf mit
-   6-%-Ebene und einem Pfeil, der beim Hover 4 px nachrückt.
+   der Ebene der grossen Ziele (6 %), Welle (data-ds-ripple) und einem
+   Pfeil, der beim Hover dunkler wird (Hover bewegt nichts).
    ================================================================== */
 
 .zeilenliste {
   display: grid;
-  margin: 0;
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--ds-line);
@@ -1078,14 +994,16 @@ input[type="radio"] {
   text-decoration: none;
 }
 
-/* Haarlinie zwischen den Zeilen; mit dem Listenkind gewichtet, sonst
-   gewänne «border: 0» oben bei gleicher Spezifität. */
-.zeilenliste > * + *,
-.zeilenliste > .listen-zeile + .listen-zeile { border-top: 1px solid var(--ds-line); }
+/* Haarlinie zwischen den Zeilen. */
+.zeilenliste > * + * { border-top: 1px solid var(--ds-line); }
 
+/* In der beschnittenen Liste liegt der Fokusring innen: er ruht auf der
+   Kante und rastet nach innen ein. */
 :is(a, button).listen-zeile {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  outline-offset: 0;
+  transition: outline-offset var(--ds-dur-fast) var(--ds-ease-out);
 }
 
 :is(a, button).listen-zeile::before {
@@ -1096,7 +1014,7 @@ input[type="radio"] {
   bottom: 0;
   left: 0;
   z-index: -1;
-  background: var(--ds-text);
+  background: currentColor;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
@@ -1106,13 +1024,29 @@ input[type="radio"] {
   :is(a, button).listen-zeile:hover::before { opacity: var(--ds-state-hover-lg); }
 }
 
-:is(a, button).listen-zeile:active::before {
-  opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-instant);
+:is(a, button).listen-zeile:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: calc(-1 * var(--ds-focus-width));
 }
 
-/* In der beschnittenen Liste liegt der Fokusring innen. */
-:is(a, button).listen-zeile:focus-visible { outline-offset: calc(-1 * var(--ds-focus-width)); }
+:is(a, button).listen-zeile:focus-visible::before {
+  opacity: var(--ds-state-focus);
+  transition-duration: 0s;
+}
+
+:is(a, button).listen-zeile:is(:active, .ds-pressed)::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-micro);
+}
+
+/* Mit Welle (DS.ripple) trägt sie den Druck; die Ebene bleibt beim Hover. */
+.ds-ripples :is(a, button).listen-zeile:is(:active, .ds-pressed)::before { opacity: 0; }
+
+@media (hover: hover) {
+  .ds-ripples :is(a, button).listen-zeile:is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover-lg); }
+}
+
+.ds-ripples :is(a, button).listen-zeile:focus-visible:is(:active, .ds-pressed)::before { opacity: var(--ds-state-focus); }
 
 /* Die aktuelle Zeile («dieses Gerät», «Inhaber») ruhig getönt. */
 .listen-zeile.aktuell { background: var(--ds-surface-low); }
@@ -1165,6 +1099,24 @@ input[type="radio"] {
   .zahlmarke { border: 1px solid CanvasText; }
 }
 
+/* Karte mit Zahlmarke (UI.karte({ marke })): vorne die Marke über beide
+   Zeilen, daneben Titel und Beschreibung, rechts die Aktionen (Status
+   «Dringend»). Die Kopfzeile der Karte löst sich ins Raster auf; ihr
+   Überhang für Knöpfe gilt hier nicht (Marke und Status stehen mittig). */
+.karte-marke {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px var(--ds-space-3);
+}
+
+.karte-marke > .ds-card__row { display: contents; }
+.karte-marke > .ds-card__row > * { margin-block: 0; }
+.karte-marke > .ds-card__row > .zahlmarke { grid-row: 1 / span 2; }
+.karte-marke .ds-card__title { grid-column: 2; grid-row: 1; }
+.karte-marke .karte-kopf-aktionen { grid-column: 3; grid-row: 1 / span 2; }
+.karte-marke > .ds-muted { grid-column: 2; grid-row: 2; margin-top: 0; }
+
 .listen-zeile-pfeil {
   display: inline-flex;
   flex-shrink: 0;
@@ -1172,16 +1124,8 @@ input[type="radio"] {
   transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
 }
 
-/* Hover-Asymmetrie: zurück 200 ms, hin 250 ms. */
-.listen-zeile-pfeil > svg { transition: transform var(--ds-dur-base) var(--ds-ease-in-out); }
-
 @media (hover: hover) {
   :is(a, button).listen-zeile:hover .listen-zeile-pfeil { color: var(--ds-text); }
-
-  :is(a, button).listen-zeile:hover .listen-zeile-pfeil > svg {
-    transform: translateX(var(--ds-distance-sm));
-    transition-duration: var(--ds-dur-medium);
-  }
 }
 
 /* Handy: Aktionen rutschen unter den Text. */
@@ -1193,13 +1137,12 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   13. Zeitachse (UI.zeitachse)
+   12. Zeitachse (UI.zeitachse)
    2-px-Linie, 10-px-Punkte in Primärgrün (automatische Einträge grau),
    Haarlinien zwischen den Einträgen ab der Textkante.
    ================================================================== */
 
 .zeitachse {
-  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -1295,11 +1238,12 @@ input[type="radio"] {
 
 
 /* ==================================================================
-   14. Balken, Säulen, Verteilung
+   13. Balken, Säulen, Verteilung
    Höhe und Breite nie animieren: der Anteil ist ein transform (scaleX/
    scaleY über --anteil). Beim ersten Zeigen wachsen sie einmal
-   (Bewegung.aufziehen = .ds-enter--fill-x / --fill-y aus Dashboard-Style);
-   spätere Werte springen.
+   (Bewegung.aufziehen = .ds-enter--fill-x / --fill-y aus Dashboard-Style,
+   die «scale» bewegen); ein neuer Anteil am stehenden Balken gleitet auf
+   --ds-ease-value über --ds-dur-glide, wie der Fortschritt.
    ================================================================== */
 
 .balken {
@@ -1322,6 +1266,7 @@ input[type="radio"] {
   background: var(--diagramm-a);
   transform: scaleX(var(--anteil, 0));
   transform-origin: left center;
+  transition: transform var(--ds-dur-glide) var(--ds-ease-value);
 }
 
 .balken.ton-warnung > .balken-fuell { background: var(--diagramm-warnung); }
@@ -1363,11 +1308,10 @@ input[type="radio"] {
 /* Verteilung: Kennwert-Zeilen mit einem 4-px-Balken darunter: Beschriftung
    links (leise, einzeilig, ganzer Name im Tooltip), Zahl rechts (500,
    tabellarisch), Haarlinien dazwischen. Klickbare Zeilen (Sprung in die
-   gefilterte Liste) bekommen die 6-%-Ebene der grossen Ziele; ihre Fläche
-   ragt 8 px über den Text hinaus. */
+   gefilterte Liste) bekommen die Ebene der grossen Ziele (6 %), die Welle
+   und den Fokusring; ihre Fläche ragt 8 px über den Text hinaus. */
 .verteilung {
   display: grid;
-  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -1425,9 +1369,12 @@ input[type="radio"] {
 .verteilung-klickbar:first-child { margin-top: calc(-1 * var(--ds-space-3)); }
 .verteilung-klickbar:last-child { margin-bottom: calc(-1 * var(--ds-space-3)); }
 
+/* Druckmodell wie .listen-zeile (Abschnitt 11), der Ring aussen. */
 :is(a, button).verteilung-zeile {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  outline-offset: calc(var(--ds-focus-offset) + var(--ds-focus-width));
+  transition: outline-offset var(--ds-dur-fast) var(--ds-ease-out);
 }
 
 :is(a, button).verteilung-zeile::before {
@@ -1439,7 +1386,7 @@ input[type="radio"] {
   left: 0;
   z-index: -1;
   border-radius: inherit;
-  background: var(--ds-text);
+  background: currentColor;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
@@ -1449,10 +1396,29 @@ input[type="radio"] {
   :is(a, button).verteilung-zeile:hover::before { opacity: var(--ds-state-hover-lg); }
 }
 
-:is(a, button).verteilung-zeile:active::before {
-  opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-instant);
+:is(a, button).verteilung-zeile:focus-visible {
+  outline: var(--ds-focus-outline);
+  outline-offset: var(--ds-focus-offset);
 }
+
+:is(a, button).verteilung-zeile:focus-visible::before {
+  opacity: var(--ds-state-focus);
+  transition-duration: 0s;
+}
+
+:is(a, button).verteilung-zeile:is(:active, .ds-pressed)::before {
+  opacity: var(--ds-state-pressed);
+  transition-duration: var(--ds-dur-micro);
+}
+
+/* Mit Welle (DS.ripple) trägt sie den Druck; die Ebene bleibt beim Hover. */
+.ds-ripples :is(a, button).verteilung-zeile:is(:active, .ds-pressed)::before { opacity: 0; }
+
+@media (hover: hover) {
+  .ds-ripples :is(a, button).verteilung-zeile:is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover-lg); }
+}
+
+.ds-ripples :is(a, button).verteilung-zeile:focus-visible:is(:active, .ds-pressed)::before { opacity: var(--ds-state-focus); }
 
 /* Eine Null (oder kein Wert) steht leise, nie gefärbt. */
 .verteilung-zahl.leer {

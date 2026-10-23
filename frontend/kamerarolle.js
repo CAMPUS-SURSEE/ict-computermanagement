@@ -1,4 +1,4 @@
-/* kamerarolle.js — Fenster einer Kamera-Rolle des ICT-Inventars.
+/* kamerarolle.js – Fenster einer Kamera-Rolle des ICT-Inventars.
 
    Wird von der Ansicht «Kamerarechte» als kamerarolle.html?id=… geöffnet
    und zeigt eine Zeile der Liste «Kamera-Rollen» in vier Bereichen:
@@ -95,25 +95,26 @@ function bemerkungKarte() {
   return k;
 }
 
+/* Was Milestone über die Rolle weiss. Status-Chips nur für Abweichungen
+   (nicht mehr in Milestone, Abgleich nicht OK), im Kartenkopf;
+   Mitglieder und Rechte sind Aufzählungen, keine Zustände (Teile). */
 function milestoneKarte() {
-  const k = UI.karte({ titel: "Aus Milestone",
-    unter: "Vom Abgleich gesetzt. Geändert wird im Management Client von Milestone." });
   const chips = [];
   if (!inMilestone()) chips.push(UI.status("Nicht mehr in Milestone", "neutral", { sinnbild: "archiv" }));
-  if (zeile.__admin) chips.push(UI.status("Administratoren – sieht alle Kameras", "neutral", { sinnbild: "schloss" }));
   const sync = String(zeile.MS_SyncStatus || "").trim();
   if (sync && sync !== "OK" && inMilestone()) chips.push(UI.status(sync, "warnung"));
-  if (chips.length) k.inhalt.appendChild(UI.chips(chips));
+  const k = UI.karte({ titel: "Aus Milestone", aktionen: chips,
+    unter: "Vom Abgleich gesetzt. Geändert wird im Management Client von Milestone." });
 
   const mitglieder = zeile.__mitglieder || [];
-  const mitgliederKnoten = mitglieder.length
-    ? UI.chips(mitglieder.map(m => UI.status(m.name, "neutral", { sinnbild: /gruppe/i.test(m.art) ? "benutzerGruppe" : "benutzer",
-      titel: m.art || null })))
-    : UI.el("span", "t-leise", "Keine");
   const rechte = zeile.__rechte || [];
+  const typ = UI.text(zeile.MS_RollenTyp).trim();
   k.inhalt.appendChild(UI.datenzeilen([
-    UI.feldZeile("Mitglieder", mitgliederKnoten),
-    UI.feldZeile("Rechte", rechte.length ? UI.chips(rechte.map(r => UI.status(r, "neutral", { sinnbild: false }))) : ""),
+    UI.feldZeile("Rollentyp", zeile.__admin ? (typ || "Administratoren") + " – sieht alle Kameras" : typ),
+    UI.feldZeile("Mitglieder", mitglieder.length
+      ? UI.teile(mitglieder.map(m => m.art ? m.name + " (" + m.art + ")" : m.name))
+      : UI.el("span", "t-leise", "Keine")),
+    UI.feldZeile("Rechte", rechte.length ? UI.teile(rechte) : ""),
     UI.feldZeile("Kameras", UI.zahlText((zeile.__kameras || []).length)),
     UI.feldZeile("Personen", UI.zahlText(personenAnzahl())),
     UI.feldZeile("Beschreibung", UI.text(zeile.MS_Beschreibung)),

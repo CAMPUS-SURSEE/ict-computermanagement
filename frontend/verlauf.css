@@ -1,14 +1,16 @@
-/* verlauf.css — Layout des Verlaufs (verlauf.js) auf client.html,
-   benutzer.html und telefon.html.
+/* verlauf.css – Layout des Verlaufs (verlauf.js) auf client.html,
+   benutzer.html, telefon.html, kamera.html und kamerarolle.html.
 
    Das Aussehen kommt ganz aus Dashboard-Style und bausteine.css: Karte und
-   gefüllter Block (.ds-card, .ds-card--filled), Zeitachse (.zeitachse: 2-px-Linie, Punkte in
-   Primärgrün, Abgleich grau, Sync-Sinnbild in der Meta-Zeile), Status-
-   Chips, Felder und Knöpfe. Hier steht nur, wie die Teile im Verlauf
-   zueinander liegen – nur Tokens.
+   gefüllter Block (.ds-card, .ds-card--filled), Zeitachse (.zeitachse,
+   ICT-eigen: 2-px-Linie, Punkte in Primärgrün, Abgleich grau, Sync-
+   Sinnbild in der Meta-Zeile), Status-Chip, Felder und Knöpfe; die
+   Bewegung (Formular, neue und gelöschte Einträge) von DS.motion. Hier
+   steht nur, wie die Teile im Verlauf zueinander liegen – nur Tokens.
 
-   Reine JS-Haken ohne eigene Regel (für die Seiten und die Prüfskripte):
-   .vl-karte (die Karte des Verlaufs), .vl-liste (die Zeitachse). */
+   Reine JS-Haken ohne eigene Regel (für verlauf.js, die Seiten und die
+   Prüfskripte): .vl-karte (die Karte), .vl-liste (die Zeitachse),
+   [data-vl-aktion], [data-vl-feld], [data-vl-eintrag] (Delegation). */
 
 /* Formular, Zeitachse bzw. Leerzustand untereinander im Kartenrhythmus. */
 .vl {

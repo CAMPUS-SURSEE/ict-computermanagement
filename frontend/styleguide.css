@@ -1,0 +1,81 @@
+/* styleguide.css – das Layout von styleguide.html (lebende Übersicht
+   der Bausteine). Präfix sg-; liest nur Tokens. Die Muster selbst baut
+   styleguide.js über dieselben Bauer wie die Seiten; hier stehen nur die
+   Raster der Abschnitte und die Musterflächen (Farbfelder, Masse, Bühne),
+   die es nur im Styleguide gibt. Ein eigenes Stylesheet statt <style>:
+   die Inhaltsrichtlinie (_headers) erlaubt kein Inline-CSS. */
+
+/* Abschnitte: jeder beginnt mit einem eigenen Kopf; zwischen zwei
+   Abschnitten eine Haarlinie und mehr Luft als zwischen Karten. */
+.sg-abschnitt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-space-5);
+  min-width: 0;
+  scroll-margin-top: var(--ds-space-6);
+}
+.sg-abschnitt + .sg-abschnitt {
+  margin-top: var(--ds-space-5);
+  padding-top: var(--ds-space-10);
+  border-top: 1px solid var(--ds-line);
+}
+/* Der Abschnittstitel steht eine Stufe unter dem Seitentitel (h2 in der
+   Rolle von Dialog- und Blatttitel, 22/28). */
+.sg-abschnitt-titel { font: var(--ds-font-title); }
+
+/* Reihen von Mustern (Knöpfe, Chips, Status). */
+.sg-reihe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-3); }
+.sg-reihe + .sg-reihe { margin-top: var(--ds-space-4); }
+/* Beschriftung eines Musters: steht dicht unter dem, was sie erklärt
+   (enger als der Kartenrhythmus). */
+.sg-beschriftung { margin: 0; color: var(--ds-text-2); font: var(--ds-font-caption); }
+.karte-inhalt > .sg-beschriftung { margin-top: var(--ds-space-2); }
+
+/* Farbfelder */
+.sg-farben { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--ds-space-3); }
+.sg-farbe { display: grid; gap: var(--ds-space-2); min-width: 0; }
+.sg-farbe-feld { height: 56px; border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card); }
+.sg-farbe code { justify-self: start; }
+
+/* Schriftrollen */
+.sg-schrift { display: grid; gap: var(--ds-space-1); padding: var(--ds-space-3) 0; border-top: 1px solid var(--ds-line); }
+.sg-schrift:first-child { padding-top: 0; border-top: 0; }
+.sg-schrift > :first-child { margin: 0; color: var(--ds-text); overflow-wrap: anywhere; }
+
+/* Abstände, Radien, Erhebung */
+.sg-masse { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--ds-space-4); }
+.sg-mass { display: grid; justify-items: center; gap: var(--ds-space-1); }
+.sg-mass-balken { width: var(--ds-space-4); background: var(--ds-accent); border-radius: var(--ds-radius-xs); }
+.sg-flaechen { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--ds-space-4); }
+.sg-flaeche { display: grid; place-items: center; min-height: 88px; padding: var(--ds-space-3); border: 1px solid var(--ds-line); background: var(--ds-surface); text-align: center; }
+
+/* Sinnbilder */
+.sg-sinnbilder { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--ds-space-2) var(--ds-space-4); }
+.sg-sinnbild { display: flex; align-items: center; gap: var(--ds-space-3); min-width: 0; padding: var(--ds-space-2) 0; color: var(--ds-text); }
+.sg-sinnbild > span { display: grid; justify-items: start; gap: 2px; min-width: 0; }
+
+/* Liste mit klebendem Kopf: im Styleguide eine feste Höhe statt der
+   ganzen Tafel (auf der Hauptseite füllt sie die Tafel, Rahmen.fest). */
+.sg-liste { display: flex; flex-direction: column; height: 440px; min-height: 0; }
+
+/* Bühne für die Bewegungsbeispiele. */
+.sg-buehne { display: grid; place-items: center; min-height: 168px; padding: var(--ds-space-5); border-radius: var(--ds-radius-card); background: var(--ds-surface-low); }
+.sg-wechsel { place-items: stretch; align-content: start; }
+.sg-muster-karte { width: min(100%, 320px); }
+.sg-wechsel > .sg-muster-karte { justify-self: center; }
+
+/* Knopf-Spur mit gleitender Pille (Bewegung.indikator): den gedrückten
+   Knopf unter der Pille macht Dashboard-Style durchsichtig
+   (.ds-has-indicator); hier nur Form und Farbe der Pille über ihre Hooks. */
+.sg-spur { display: inline-flex; flex-wrap: wrap; gap: var(--ds-space-1); padding: var(--ds-space-1); border: 1px solid var(--ds-outline); border-radius: var(--ds-radius-action); }
+.sg-indikator { --ds-indicator-radius: var(--ds-radius-action); background: var(--ds-accent); }
+
+/* Stapel für Banner, die kommen und gehen (Bewegung.umordnen). */
+.sg-stapel { display: grid; gap: var(--ds-space-3); min-width: 0; }
+
+/* Schmale Spalte: ein langer Chip kürzt sich darin mit «…». */
+.sg-schmal { max-width: 220px; min-width: 0; }
+
+/* Ein Seitenkopf als Muster (wie auf einer Detailseite). */
+.sg-probe { padding: var(--ds-space-6) var(--ds-space-8); border: 1px dashed var(--ds-line-2); border-radius: var(--ds-radius-card); }
+@media (max-width: 600px) { .sg-probe { padding: var(--ds-space-4); } }

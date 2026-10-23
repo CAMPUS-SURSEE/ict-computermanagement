@@ -1,11 +1,12 @@
-/* verlauf.js — der Verlauf (Zeitachse der Ereignisse) für Client, Benutzer
-   und Telefonnummer.
+/* verlauf.js – der Verlauf (Zeitachse der Ereignisse) für Client, Benutzer,
+   Telefonnummer, Kamera und Kamerarolle.
 
-   Alle drei Listen haben eine Note-Spalte «Verlauf» mit einem JSON-Array;
-   das Format und alle Lese- und Schreibhelfer stehen in modell.js. Diese
-   Datei ist reine Oberfläche: eine Karte mit Kopfzeile (Titel, Zahl der
+   Diese Listen haben eine Note-Spalte «Verlauf» mit einem JSON-Array; das
+   Format und alle Lese- und Schreibhelfer stehen in modell.js. Diese Datei
+   ist reine Oberfläche: eine Karte mit Kopfzeile (Titel, Zahl der
    Einträge, «Neuer Eintrag»), darunter die Zeitachse (UI.zeitachse,
-   ChatBob-Mapping 7.2 #13) mit Bearbeiten und Löschen je Eintrag.
+   ICT-eigen: Dashboard-Style hat keine) mit Bearbeiten und Löschen je
+   Eintrag.
 
    Gespeichert wird NICHT hier. Jede Änderung geht als fertige Zeichenkette
    an «beiAenderung»; die Seite legt sie in ihren Entwurf (F.entwurf), und
@@ -24,10 +25,10 @@
        beschreibung: ""                     // Satz unter dem Kartentitel (optional;
                                             // zurzeit übergibt keine Seite einen)
      }) → ziel
-       Leert ziel und baut darin genau eine UI.karte ({ titel, unter:
-       beschreibung, aktionen: [Zahl, «Neuer Eintrag»] }) mit Formular und
-       Zeitachse. Eine Einbauart für alle drei Fenster; die frühere Option
-       «karte» («auto», true, false) gibt es nicht mehr.
+       Baut in ziel genau eine UI.karte ({ titel, unter: beschreibung,
+       aktionen: [Zahl, «Neuer Eintrag»] }, id «vl-<schluessel>-karte») mit
+       Formular und Zeitachse. Steht die Karte schon in ziel, gleicht
+       UI.abgleichen sie an Ort und Stelle ab; sonst ersetzt sie den Inhalt.
 
      Verlauf.offeneEingabe(schluessel?) → bool
        Steht in einem Formular etwas, das beim Schliessen verloren ginge?
@@ -37,18 +38,27 @@
        Formulare schliessen, Getipptes vergessen (Seiten-«Verwerfen» in
        fenster.js); ein gezeichneter Verlauf zeigt es sofort, ohne Bewegung.
 
-   Bewegung: Neuzeichnen (die Seite ruft zeichnen nach dem Nachladen oder
-   Speichern erneut auf) animiert NIE. Nur Handlungen der Person bewegen
-   etwas: das Formular tritt ein (Bewegung.eintreten), ein neuer Eintrag
-   deckt sich auf, ein gelöschter tritt aus, ein abgebrochenes Formular
-   blendet aus.
+   Neuzeichnen: Die Seite baut den Verlauf bei jedem Nachladen, Speichern
+   oder Verwerfen in eine neue Hülle, und F.zeichneBereich gleicht den
+   Bereich mit dem gezeigten ab (DS.dom.morphChildren). Die gezeigte Karte
+   bleibt dabei stehen, mit Fokus, Schreibmarke und Status-Chips (kein
+   Auftritt spielt noch einmal); die Einträge tragen ihren Schlüssel
+   (data-ds-key = «e-<id>»). Darum hält der Verlauf keine Knoten fest: er
+   sucht die gezeigte Karte über ihre id, und alle Klicks, Eingaben und
+   Tasten hören an der Karte (Delegation über data-vl-aktion, data-vl-feld,
+   data-vl-eintrag), nie am einzelnen Knopf – ein stehen gebliebener Knopf
+   ruft so immer den aktuellen Stand auf.
 
-   Fokus: «schluessel» hält den Bedienzustand (offenes Formular, Entwürfe
-   von Datum und Text) über jedes Neuzeichnen hinweg. Alle Bedienelemente
-   tragen ein stabiles data-fokus («vl-<schluessel>-…»): F.zeichneBereich
-   findet damit Fokus und Schreibmarke wieder, auch wenn die Seite den
-   ganzen Bereich neu baut. Ruft eine Seite zeichnen ohne F.zeichneBereich
-   erneut auf, setzt der Verlauf Fokus und Schreibmarke selbst zurück.
+   Bewegung: Neuzeichnen durch die Seite bewegt NIE etwas. Nur Handlungen
+   der Person bewegen: Formular öffnen und schliessen, Eintrag anlegen und
+   löschen laufen über Bewegung.umordnen (DS.motion.flip) – Neues blendet
+   ein, Entferntes blendet ausserhalb des Flusses aus, die übrigen
+   Einträge gleiten an ihren Platz.
+
+   Fokus: Steht er auf etwas, das gleich verschwindet, geht er vorher
+   dorthin, wo die Person weiterarbeitet (Auslöser, Nachbar, «Neuer
+   Eintrag»). Alle Bedienelemente tragen ein stabiles data-fokus
+   («vl-<schluessel>-…»), die Felder dieselbe Zeichenkette als id.
 
    Tastatur im Formular: Esc bricht ab (mit Rückfrage, wenn schon etwas
    eingetippt ist), Ctrl/Cmd+Enter übernimmt, Ctrl/Cmd+S übernimmt den
@@ -63,33 +73,79 @@ const Verlauf = (function () {
 
   const el = UI.el;
 
+  /* Was Bewegung.umordnen gleiten lässt: die Teile des Rumpfs (Formular,
+     Leerzustand) und die einzelnen Einträge – nie die Liste als Ganzes,
+     sonst glitten ihre Einträge doppelt. */
+  const UMORDNEN = ".vl > :not(.vl-liste), .vl-liste > li";
+
   /* ==================================================================
      Zustand je Einbauort
      ================================================================== */
 
-  /* Was ein Neuzeichnen überleben muss: offenes Formular und die halb
-     getippten Werte (neu: datum/text, bearbeiten: bDatum/bText). */
+  /* Was ein Neuzeichnen überleben muss: offenes Formular, die halb
+     getippten Werte (neu: datum/text, bearbeiten: bDatum/bText) und die
+     zuletzt übergebenen Optionen (o) samt gelesenen Einträgen. */
   const zustaende = {};
 
   function zustand(schluessel) {
     const k = schluessel || "standard";
     if (!zustaende[k]) {
-      zustaende[k] = { offen: false, datum: "", text: "", bearbeitet: null, bDatum: "", bText: "", gelesen: null };
+      zustaende[k] = { offen: false, datum: "", text: "", bearbeitet: null, bDatum: "", bText: "",
+        gelesen: null, o: null, gesperrt: false, eintraege: [] };
     }
     return zustaende[k];
   }
 
-  /* Die zuletzt gezeichnete Ausgabe je Einbauort. Zeichnet die Seite in
-     beiAenderung selbst neu, gehört der Fokus danach in die neue Ausgabe. */
-  const letzte = {};
-
-  function aktuell(ausgabe) {
-    const neu = letzte[ausgabe.schluessel];
-    return neu && neu.ziel.isConnected ? neu : ausgabe;
-  }
-
   function kennung(schluessel) {
     return "vl-" + String(schluessel || "standard").replace(/[^A-Za-z0-9_-]/g, "-");
+  }
+
+  /* Die gezeigte Karte eines Einbauorts und ihre Teile, oder null. */
+  function gezeigt(schluessel) {
+    const karte = document.getElementById(kennung(schluessel) + "-karte");
+    if (!karte) return null;
+    return {
+      karte: karte,
+      rumpf: karte.querySelector(".vl"),
+      anzahl: karte.querySelector(".vl-anzahl"),
+      neu: karte.querySelector("[data-vl-aktion=\"neu\"]")
+    };
+  }
+
+  /* Ein Bedienelement der gezeigten Karte über sein data-fokus («neu»,
+     «bearbeiten-<id>», «loeschen-<id>» …). */
+  function finden(schluessel, fokus) {
+    const t = gezeigt(schluessel);
+    if (!t || !fokus) return null;
+    return t.karte.querySelector("[data-fokus=\"" + CSS.escape(kennung(schluessel) + "-" + fokus) + "\"]");
+  }
+
+  /* Ein Feld des offenen Formulars (id = data-fokus). */
+  function feld(schluessel, neu, name) {
+    return document.getElementById(formPraefix(schluessel, neu) + name);
+  }
+
+  /* data-fokus und id der Formularteile: «vl-geraet-formular-neu-text» usw.
+     (eigener Zweig, damit nie eine Eintrags-Id mit «text» zusammenfällt). */
+  function formPraefix(schluessel, neu) {
+    return kennung(schluessel) + "-formular-" + (neu ? "neu" : "bearbeiten") + "-";
+  }
+
+  /* Derselbe Rohwert ergibt dieselben Einträge: Modell.verlaufLesen
+     erfindet für Einträge ohne «id» (von Hand in SharePoint geändert) bei
+     jedem Lesen eine neue – dann fände ein offenes Bearbeiten-Formular oder
+     der Abgleich seinen Eintrag nicht wieder. */
+  function lesen(z) {
+    const roh = z.o ? z.o.wert : "";
+    const eintraege = z.gelesen && z.gelesen.roh === roh ? z.gelesen.liste : Modell.verlaufLesen(roh);
+    z.gelesen = { roh: roh, liste: eintraege };
+    z.eintraege = eintraege;
+    if (z.bearbeitet && !eintraege.some(function (e) { return e.id === z.bearbeitet; })) z.bearbeitet = null;
+    return eintraege;
+  }
+
+  function eintragVon(z, id) {
+    return z.eintraege.filter(function (e) { return e.id === id; })[0] || null;
   }
 
   /* ==================================================================
@@ -122,49 +178,8 @@ const Verlauf = (function () {
     return n === 1 ? "1 Eintrag" : UI.zahlText(n) + " Einträge";
   }
 
-  function finden(ausgabe, fokus) {
-    if (!fokus) return null;
-    return ausgabe.ziel.querySelector("[data-fokus=\"" + CSS.escape(ausgabe.id + "-" + fokus) + "\"]");
-  }
-
-  /* Fokus über ein Neuzeichnen der Seite retten (Auto-Nachladen, Speichern,
-     beiAenderung): Seiten, die über F.zeichneBereich zeichnen, bekommen ihn
-     von dort zurück; alle anderen Aufrufer von hier. Gemerkt wird das
-     data-fokus des Elements und die Auswahl im Feld. */
-  function fokusMerken(schluessel) {
-    const alt = letzte[schluessel];
-    const a = document.activeElement;
-    if (!alt || !a || a === document.body || !alt.ziel.contains(a)) return null;
-    const fokus = a.getAttribute("data-fokus");
-    if (!fokus) return null;
-    let auswahl = null;
-    try {
-      if (typeof a.selectionStart === "number") auswahl = [a.selectionStart, a.selectionEnd, a.selectionDirection];
-    } catch (e) { /* Datumsfeld: keine Auswahl */ }
-    return { fokus: fokus, auswahl: auswahl };
-  }
-
-  function fokusZurueck(ausgabe, vorher) {
-    if (!vorher) return;
-    function versuchen() {
-      const a = document.activeElement;
-      // Hat ihn schon jemand gesetzt (F.zeichneBereich) oder steht das alte Feld noch da: so lassen.
-      if (a && a !== document.body && a.isConnected) return;
-      if (!ausgabe.ziel.isConnected || letzte[ausgabe.schluessel] !== ausgabe) return;
-      const k = ausgabe.ziel.querySelector("[data-fokus=\"" + CSS.escape(vorher.fokus) + "\"]");
-      if (!k) return;
-      k.focus({ preventScroll: true });
-      if (vorher.auswahl && typeof k.setSelectionRange === "function") {
-        try { k.setSelectionRange(vorher.auswahl[0], vorher.auswahl[1], vorher.auswahl[2]); } catch (e) { /* Datum */ }
-      }
-    }
-    // Ein noch nicht eingehängtes Ziel (die Seite hängt es gleich ein): danach versuchen.
-    if (ausgabe.ziel.isConnected) versuchen();
-    else queueMicrotask(versuchen);
-  }
-
   function fokussieren(knoten, ansEnde) {
-    if (!knoten || !knoten.focus) return;
+    if (!knoten || !knoten.focus || !knoten.isConnected) return;
     knoten.focus();
     if (ansEnde && typeof knoten.setSelectionRange === "function") {
       try { knoten.setSelectionRange(knoten.value.length, knoten.value.length); } catch (e) { /* Datum */ }
@@ -172,11 +187,11 @@ const Verlauf = (function () {
   }
 
   /* ==================================================================
-     Zeichnen
+     Bauen
      ================================================================== */
 
   /**
-   * Zeichnet den Verlauf in «ziel» (wird geleert). Siehe Kopfkommentar.
+   * Zeichnet den Verlauf in «ziel». Siehe Kopfkommentar.
    * @param {HTMLElement} ziel
    * @param {Object} optionen
    * @returns {HTMLElement} ziel
@@ -184,178 +199,221 @@ const Verlauf = (function () {
   function zeichnen(ziel, optionen) {
     const o = Object.assign({}, optionen || {});
     const schluessel = o.schluessel || "standard";
-    const ausgabe = {
-      ziel: ziel, o: o, schluessel: schluessel, id: kennung(schluessel),
-      z: zustand(schluessel), gesperrt: !!o.gesperrt, eintraege: [],
-      rumpf: null, anzahl: null, neu: null
-    };
-
-    // Kopfteile: die Zahl (Meta wie ChatBob «137 insgesamt») und die Hauptaktion.
-    ausgabe.anzahl = el("span", "anzahl vl-anzahl");
-    if (!ausgabe.gesperrt) {
-      ausgabe.neu = UI.knopf({ text: "Neuer Eintrag", variante: "tonal", sinnbild: "plus",
-        beiKlick: function () { neuOeffnen(ausgabe); }, fokus: ausgabe.id + "-neu" });
-      ausgabe.neu.setAttribute("aria-expanded", "false");
-    }
-    ausgabe.rumpf = el("div", "vl");
-
-    const vorher = fokusMerken(schluessel);
-    const karte = UI.karte({ titel: o.titel || "Verlauf", unter: o.beschreibung || "",
-      aktionen: [ausgabe.anzahl, ausgabe.neu], klasse: "vl-karte" });
-    karte.inhalt.appendChild(ausgabe.rumpf);
-    UI.leeren(ziel).appendChild(karte);
-
-    letzte[schluessel] = ausgabe;
-    rumpfZeichnen(ausgabe);
-    fokusZurueck(ausgabe, vorher);
+    const z = zustand(schluessel);
+    z.o = o;
+    z.gesperrt = !!o.gesperrt;
+    lesen(z);
+    UI.abgleichen(ziel, [karteBauen(schluessel)]);
     return ziel;
   }
 
-  /* Formular und Zeitachse neu; die Kopfzeile nur an Ort und Stelle (der
-     Knopf «Neuer Eintrag» bleibt stehen, mit seinem Fokus). */
-  function rumpfZeichnen(ausgabe) {
-    const z = ausgabe.z;
-    /* Derselbe Rohwert ergibt dieselben Einträge: Modell.verlaufLesen
-       erfindet für Einträge ohne «id» (von Hand in SharePoint geändert)
-       bei jedem Lesen eine neue – dann fände ein offenes Bearbeiten-Formular
-       oder der Fokus seinen Eintrag nach dem Neuzeichnen nicht wieder. */
-    const roh = ausgabe.o.wert;
-    const eintraege = z.gelesen && z.gelesen.roh === roh ? z.gelesen.liste : Modell.verlaufLesen(roh);
-    z.gelesen = { roh: roh, liste: eintraege };
-    ausgabe.eintraege = eintraege;
-    if (z.bearbeitet && !eintraege.some(function (e) { return e.id === z.bearbeitet; })) z.bearbeitet = null;
+  /* Die ganze Karte frisch, aus dem Zustand. Die Zuhörer hängen an der
+     Karte: bleibt beim Abgleich die gezeigte stehen, hört weiter deren. */
+  function karteBauen(schluessel) {
+    const z = zustand(schluessel);
+    const id = kennung(schluessel);
 
-    // Nur lesen: kein Formular zeigen (der Zustand bleibt für später).
-    const offen = z.offen && !ausgabe.gesperrt;
-
-    UI.textSetzen(ausgabe.anzahl, anzahlText(eintraege.length));
-    ausgabe.anzahl.hidden = !eintraege.length;
-    if (ausgabe.neu) ausgabe.neu.setAttribute("aria-expanded", offen ? "true" : "false");
-
-    const rumpf = UI.leeren(ausgabe.rumpf);
-    if (offen) rumpf.appendChild(formular(ausgabe, null));
-
-    if (!eintraege.length) {
-      if (!offen) rumpf.appendChild(leer(ausgabe));
-      return;
+    // Kopfteile: die Zahl (Meta, z. B. «12 Einträge») und die Hauptaktion.
+    const anzahl = el("span", "anzahl vl-anzahl");
+    let neu = null;
+    if (!z.gesperrt) {
+      neu = UI.knopf({ text: "Neuer Eintrag", variante: "tonal", sinnbild: "plus", fokus: id + "-neu" });
+      neu.setAttribute("data-vl-aktion", "neu");
     }
+    const karte = UI.karte({ titel: z.o.titel || "Verlauf", unter: z.o.beschreibung || "",
+      aktionen: [anzahl, neu], klasse: "vl-karte", id: id + "-karte" });
+    karte.setAttribute("data-vl", schluessel);
+    kopfNachfuehren({ anzahl: anzahl, neu: neu }, z);
 
-    const liste = UI.zeitachse(eintraege.map(function (e) { return eintragDaten(ausgabe, e); }));
-    liste.classList.add("vl-liste");
-    Array.from(liste.children).forEach(function (li, i) { li.setAttribute("data-eintrag", eintraege[i].id); });
-    rumpf.appendChild(liste);
+    const rumpf = el("div", "vl");
+    UI.anhaengen(rumpf, rumpfKinder(schluessel));
+    karte.inhalt.appendChild(rumpf);
+    verdrahten(karte, schluessel);
+    return karte;
   }
 
-  /* Allgemein gehalten: der Verlauf steht beim Gerät, bei der Person und
-     bei der Nummer. Titel und Sinnbild genügen – wie man einen Eintrag
-     anlegt, zeigt der Knopf «Neuer Eintrag» im Kartenkopf schon. */
-  function leer(ausgabe) {
-    if (ausgabe.gesperrt) return UI.hinweis("Noch kein Verlauf erfasst.");
-    return UI.leerzustand({
-      sinnbild: "verlauf",
-      titel: "Noch kein Verlauf"
-    });
+  function kopfNachfuehren(t, z) {
+    const n = z.eintraege.length;
+    if (t.anzahl) {
+      UI.textSetzen(t.anzahl, anzahlText(n));
+      if (t.anzahl.hidden !== !n) t.anzahl.hidden = !n;
+    }
+    const offen = z.offen && !z.gesperrt;
+    if (t.neu && t.neu.getAttribute("aria-expanded") !== String(offen)) t.neu.setAttribute("aria-expanded", String(offen));
+  }
+
+  /* Formular (neu), dann Zeitachse bzw. Leerzustand. Nur lesen: kein
+     Formular (der Zustand bleibt für später). Alle Teile tragen einen
+     Schlüssel: neben dem geschlüsselten Formular fände der Abgleich eine
+     Liste ohne Schlüssel nicht wieder und baute sie samt ihren Status-
+     Chips neu. */
+  function rumpfKinder(schluessel) {
+    const z = zustand(schluessel);
+    const offen = z.offen && !z.gesperrt;
+    const kinder = [];
+    if (offen) kinder.push(formular(schluessel, null));
+    if (!z.eintraege.length) {
+      if (!offen) {
+        const l = leer(z);
+        l.setAttribute("data-ds-key", "leer");
+        kinder.push(l);
+      }
+      return kinder;
+    }
+    const liste = UI.zeitachse(z.eintraege.map(function (e) { return eintragDaten(schluessel, e); }));
+    liste.classList.add("vl-liste");
+    liste.setAttribute("data-ds-key", "liste");
+    Array.from(liste.children).forEach(function (li, i) { li.setAttribute("data-ds-key", "e-" + z.eintraege[i].id); });
+    kinder.push(liste);
+    return kinder;
+  }
+
+  /* Allgemein gehalten: der Verlauf steht beim Gerät, bei der Person, bei
+     der Nummer und bei der Kamera. Titel und Sinnbild genügen – wie man
+     einen Eintrag anlegt, zeigt der Knopf «Neuer Eintrag» im Kartenkopf. */
+  function leer(z) {
+    if (z.gesperrt) return UI.hinweis("Noch kein Verlauf erfasst.");
+    return UI.leerzustand({ sinnbild: "verlauf", titel: "Noch kein Verlauf" });
   }
 
   /* Ein Eintrag für UI.zeitachse: Datum (500, tabellarisch), wann erfasst
-     (Meta). Abgleich-Einträge mit neutralem Status-Chip «Abgleich», grauem
-     Punkt und Sync-Sinnbild in der Meta-Zeile (ChatBob 7.2 #13); von Hand
-     erfasste sind der Normalfall und tragen keinen Chip (UI.anhaengen
-     überspringt null). Im Bearbeiten steht das Formular statt des Texts. */
-  function eintragDaten(ausgabe, e) {
+     (Meta). Abgleich-Einträge weichen vom Normalfall ab: neutraler Status-
+     Chip «Abgleich», grauer Punkt und Sync-Sinnbild in der Meta-Zeile; von
+     Hand erfasste tragen keinen Chip (UI.anhaengen überspringt null). Im
+     Bearbeiten steht das Formular statt des Texts. */
+  function eintragDaten(schluessel, e) {
+    const z = zustand(schluessel);
+    const id = kennung(schluessel);
     const sync = e.quelle === "sync";
-    const quelle = sync ? UI.status("Abgleich", "neutral", { sinnbild: "server" }) : null;
     const d = {
       titel: datumText(e),
-      // Abgleich: Sync-Sinnbild vor der Meta-Zeile (UI.zeitachse zeitSinnbild).
       zeit: sync ? (erfasstText(e) || "automatisch") : erfasstText(e),
       zeitSinnbild: sync ? "sync" : undefined,
       still: sync,
-      zusatz: [quelle],
+      zusatz: [sync ? UI.status("Abgleich", "neutral", { sinnbild: "server" }) : null],
       text: e.text || "–"
     };
-    if (ausgabe.gesperrt) return d;
-    if (ausgabe.z.bearbeitet === e.id) {
-      d.text = formular(ausgabe, e);
+    if (z.gesperrt) return d;
+    if (z.bearbeitet === e.id) {
+      d.text = formular(schluessel, e);
       return d;
     }
     const wann = e.datum ? "Eintrag vom " + datumText(e) : "Eintrag ohne Datum";
     const bearbeiten = UI.knopf({ text: "Bearbeiten", variante: "leise", klein: true,
-      label: wann + " bearbeiten",
-      beiKlick: function () { bearbeitenOeffnen(ausgabe, e); }, fokus: ausgabe.id + "-bearbeiten-" + e.id });
+      label: wann + " bearbeiten", fokus: id + "-bearbeiten-" + e.id });
     const loeschen = UI.knopf({ text: "Löschen", variante: "leise", klein: true,
-      label: wann + " löschen",
-      beiKlick: function () { loeschenFragen(ausgabe, e); }, fokus: ausgabe.id + "-loeschen-" + e.id });
+      label: wann + " löschen", fokus: id + "-loeschen-" + e.id });
+    bearbeiten.setAttribute("data-vl-aktion", "bearbeiten");
+    loeschen.setAttribute("data-vl-aktion", "loeschen");
+    bearbeiten.setAttribute("data-vl-eintrag", e.id);
+    loeschen.setAttribute("data-vl-eintrag", e.id);
     d.aktionen = [bearbeiten, loeschen];
     return d;
   }
 
-  /* ==================================================================
-     Das Formular (neu oder bearbeiten): ein gefüllter Block mit Datum,
-     Text und den Aktionen
-     ================================================================== */
-
-  function formular(ausgabe, eintrag) {
-    const z = ausgabe.z;
+  /* Das Formular (neu oder bearbeiten): ein gefüllter Block mit Datum,
+     Text und den Aktionen. Die Felder hören nicht selbst (die Karte
+     nimmt ihre Eingaben, verdrahten). */
+  function formular(schluessel, eintrag) {
+    const z = zustand(schluessel);
     const neu = !eintrag;
-    const p = formPraefix(ausgabe, neu);
+    const p = formPraefix(schluessel, neu);
 
     const block = UI.karte({ titel: neu ? "Neuer Eintrag" : "Eintrag bearbeiten", gefuellt: true, ebene: 3,
       klasse: "vl-formular" });
     block.setAttribute("data-vl-art", neu ? "neu" : "bearbeiten");
+    block.setAttribute("data-ds-key", neu ? "formular-neu" : "formular-" + eintrag.id);
 
-    const datum = UI.eingabe({ art: "datum", schmal: true,
-      wert: neu ? (z.datum || Modell.heuteIso()) : z.bDatum,
-      beiEingabe: function (w) { if (neu) z.datum = w; else z.bDatum = w; }, fokus: p + "datum" });
-    const text = UI.eingabe({ art: "textbereich", zeilen: 3,
-      wert: neu ? z.text : z.bText,
-      platzhalter: neu ? "Was ist passiert?" : "",
-      beiEingabe: function (w) { if (neu) z.text = w; else z.bText = w; }, fokus: p + "text" });
+    const datum = UI.eingabe({ art: "datum", schmal: true, id: p + "datum", fokus: p + "datum",
+      wert: neu ? (z.datum || Modell.heuteIso()) : z.bDatum });
+    datum.setAttribute("data-vl-feld", "datum");
+    const text = UI.eingabe({ art: "textbereich", zeilen: 3, id: p + "text", fokus: p + "text",
+      wert: neu ? z.text : z.bText, platzhalter: neu ? "Was ist passiert?" : "" });
+    text.setAttribute("data-vl-feld", "text");
     text.spellcheck = true;
 
-    const ok = UI.knopf({ text: neu ? "Hinzufügen" : "Übernehmen", variante: "primaer",
-      beiKlick: function () { absenden(aktuell(ausgabe), neu); }, fokus: p + "ok" });
-    const ab = UI.knopf({ text: "Abbrechen", variante: "leise",
-      beiKlick: function () { schliessen(aktuell(ausgabe), neu, false); }, fokus: p + "abbrechen" });
+    const ok = UI.knopf({ text: neu ? "Hinzufügen" : "Übernehmen", variante: "primaer", fokus: p + "ok" });
+    ok.setAttribute("data-vl-aktion", "ok");
+    const ab = UI.knopf({ text: "Abbrechen", variante: "leise", fokus: p + "abbrechen" });
+    ab.setAttribute("data-vl-aktion", "abbrechen");
 
     UI.anhaengen(block.inhalt, [
       UI.feld("Datum", datum),
       UI.feld("Text", text),
       UI.anhaengen(el("div", "ds-form-actions"), [ok, ab, UI.meta("Gespeichert wird erst mit «Speichern».")])
     ]);
-    block.addEventListener("keydown", function (ev) { tasten(aktuell(ausgabe), neu, ev); });
     return block;
   }
 
-  /* data-fokus der Formularfelder: «vl-geraet-formular-neu-text» usw.
-     (eigener Zweig, damit nie eine Eintrags-Id mit «text» zusammenfällt). */
-  function formPraefix(ausgabe, neu) {
-    return ausgabe.id + "-formular-" + (neu ? "neu" : "bearbeiten") + "-";
+  /* Ein Zuhörer je Art an der Karte. Ein gesperrter oder beschäftigter
+     Knopf kommt nicht an (bausteine.js schluckt seinen Klick). */
+  function verdrahten(karte, schluessel) {
+    function artVon(knoten) {
+      const block = knoten.closest(".vl-formular");
+      return block ? block.getAttribute("data-vl-art") === "neu" : null;
+    }
+    karte.addEventListener("click", function (ev) {
+      const k = ev.target instanceof Element ? ev.target.closest("[data-vl-aktion]") : null;
+      if (!k || !karte.contains(k)) return;
+      const aktion = k.getAttribute("data-vl-aktion");
+      const eintrag = k.getAttribute("data-vl-eintrag");
+      if (aktion === "neu") neuOeffnen(schluessel);
+      else if (aktion === "bearbeiten") bearbeitenOeffnen(schluessel, eintrag);
+      else if (aktion === "loeschen") loeschenFragen(schluessel, eintrag);
+      else if (aktion === "ok") absenden(schluessel, artVon(k));
+      else if (aktion === "abbrechen") schliessen(schluessel, artVon(k), false);
+    });
+    karte.addEventListener("input", function (ev) {
+      const f = ev.target;
+      const name = f && f.getAttribute ? f.getAttribute("data-vl-feld") : null;
+      if (!name) return;
+      const z = zustand(schluessel);
+      const neu = artVon(f);
+      if (name === "datum") { if (neu) z.datum = f.value; else z.bDatum = f.value; }
+      else if (neu) z.text = f.value;
+      else z.bText = f.value;
+    });
+    karte.addEventListener("keydown", function (ev) {
+      const neu = ev.target instanceof Element ? artVon(ev.target) : null;
+      if (neu !== null) tasten(schluessel, neu, ev);
+    });
   }
 
-  /* Die Felder des offenen Formulars in einer Ausgabe. */
-  function felder(ausgabe, neu) {
-    const teil = "formular-" + (neu ? "neu" : "bearbeiten") + "-";
-    return { datum: finden(ausgabe, teil + "datum"), text: finden(ausgabe, teil + "text"),
-      block: ausgabe.rumpf.querySelector(".vl-formular[data-vl-art=\"" + (neu ? "neu" : "bearbeiten") + "\"]") };
+  /* Die gezeigte Karte nachführen: Kopfzeile an Ort und Stelle, der Rumpf
+     über UI.abgleichen – mit bewegt über Bewegung.umordnen (Handlungen der
+     Person), sonst still. */
+  function neuZeichnen(schluessel, bewegt) {
+    const z = zustand(schluessel);
+    const t = gezeigt(schluessel);
+    if (!t || !t.rumpf) return Promise.resolve();
+    lesen(z);
+    kopfNachfuehren(t, z);
+    const kinder = rumpfKinder(schluessel);
+    if (!bewegt) {
+      UI.abgleichen(t.rumpf, kinder);
+      return Promise.resolve();
+    }
+    return Bewegung.umordnen(t.rumpf, function (o) { UI.abgleichen(t.rumpf, kinder, o); }, { eintraege: UMORDNEN });
   }
+
+  /* ==================================================================
+     Handlungen
+     ================================================================== */
 
   /* Ist im Formular etwas, das beim Schliessen verloren ginge? */
-  function hatEingabe(ausgabe, neu) {
-    const z = ausgabe.z;
+  function hatEingabe(z, neu) {
     if (neu) return z.offen && !!String(z.text || "").trim();
     if (!z.bearbeitet) return false;
-    const e = ausgabe.eintraege.filter(function (x) { return x.id === z.bearbeitet; })[0];
+    const e = eintragVon(z, z.bearbeitet);
     if (!e) return false;
     return String(z.bText || "").trim() !== String(e.text || "").trim() || (z.bDatum || "") !== (e.datum || "");
   }
 
   /* Das andere offene Formular darf nur ohne Verlust zugehen. */
-  async function anderesSchliessen(ausgabe, neu) {
-    const z = ausgabe.z;
+  async function anderesSchliessen(z, neu) {
     const anderesOffen = neu ? !!z.bearbeitet : z.offen;
     if (!anderesOffen) return true;
-    if (hatEingabe(ausgabe, !neu)) {
+    if (hatEingabe(z, !neu)) {
       const ja = await UI.bestaetigen({
         titel: neu ? "Bearbeitung verwerfen?" : "Neuen Eintrag verwerfen?",
         text: neu ? "Die Änderungen am offenen Eintrag gehen verloren."
@@ -369,118 +427,121 @@ const Verlauf = (function () {
     return true;
   }
 
-  async function neuOeffnen(ausgabe) {
-    if (ausgabe.gesperrt) return;
-    const z = ausgabe.z;
+  async function neuOeffnen(schluessel) {
+    const z = zustand(schluessel);
+    if (z.gesperrt) return;
     if (z.offen) {
       // Schon offen: dorthin, statt ein zweites Formular zu öffnen.
-      fokussieren(felder(aktuell(ausgabe), true).text, true);
+      fokussieren(feld(schluessel, true, "text"), true);
       return;
     }
-    if (!(await anderesSchliessen(ausgabe, true))) return;
-    const jetzt = aktuell(ausgabe);
+    if (!(await anderesSchliessen(z, true))) return;
     z.offen = true;
     z.datum = Modell.heuteIso();
     z.text = "";
-    rumpfZeichnen(jetzt);
-    const f = felder(jetzt, true);
-    Bewegung.eintreten(f.block);
-    fokussieren(f.text);
+    const lauf = neuZeichnen(schluessel, true);
+    fokussieren(feld(schluessel, true, "text"));
+    await lauf;
   }
 
-  async function bearbeitenOeffnen(ausgabe, eintrag) {
-    const z = ausgabe.z;
-    if (z.bearbeitet === eintrag.id) return;
-    if (!(await anderesSchliessen(ausgabe, false))) return;
-    if (z.bearbeitet && hatEingabe(aktuell(ausgabe), false)) {
+  async function bearbeitenOeffnen(schluessel, id) {
+    const z = zustand(schluessel);
+    const eintrag = eintragVon(z, id);
+    if (!eintrag || z.bearbeitet === id) return;
+    if (!(await anderesSchliessen(z, false))) return;
+    if (z.bearbeitet && hatEingabe(z, false)) {
       const ja = await UI.bestaetigen({ titel: "Bearbeitung verwerfen?",
         text: "Die Änderungen am anderen Eintrag gehen verloren.", ja: "Verwerfen" });
       if (!ja) return;
     }
-    const jetzt = aktuell(ausgabe);
     z.bearbeitet = eintrag.id;
     z.bDatum = eintrag.datum || Modell.heuteIso();
     z.bText = eintrag.text || "";
-    rumpfZeichnen(jetzt);
-    const f = felder(jetzt, false);
-    Bewegung.eintreten(f.block);
-    fokussieren(f.text, true);
+    const lauf = neuZeichnen(schluessel, true);
+    fokussieren(feld(schluessel, false, "text"), true);
+    await lauf;
   }
 
   /* Prüfen und übernehmen. Gibt false zurück, wenn etwas fehlt (dann steht
      der Fehler am Feld und der Fokus im ersten falschen Feld). */
-  function absenden(ausgabe, neu) {
-    const f = felder(ausgabe, neu);
-    if (!f.datum || !f.text) return false;
-    const z = ausgabe.z;
+  function absenden(schluessel, neu) {
+    const fDatum = feld(schluessel, neu, "datum");
+    const fText = feld(schluessel, neu, "text");
+    if (!fDatum || !fText) return false;
+    const z = zustand(schluessel);
     let erstesFalsches = null;
-    if (!Modell.datumIsoGueltig(f.datum.value)) {
-      UI.feldFehler(f.datum, "Bitte ein gültiges Datum wählen.");
-      erstesFalsches = f.datum;
+    if (!Modell.datumIsoGueltig(fDatum.value)) {
+      UI.feldFehler(fDatum, "Bitte ein gültiges Datum wählen.");
+      erstesFalsches = fDatum;
     }
-    if (!f.text.value.trim()) {
-      UI.feldFehler(f.text, "Bitte beschreiben, was passiert ist.");
-      erstesFalsches = erstesFalsches || f.text;
+    if (!fText.value.trim()) {
+      UI.feldFehler(fText, "Bitte beschreiben, was passiert ist.");
+      erstesFalsches = erstesFalsches || fText;
     }
     if (erstesFalsches) { erstesFalsches.focus(); return false; }
 
-    const datum = f.datum.value;
-    const text = f.text.value.trim();
+    const datum = fDatum.value;
+    const text = fText.value.trim();
     if (neu) {
-      const eintrag = Modell.verlaufEintrag(datum, text);
       z.offen = false; z.text = ""; z.datum = "";
-      uebernehmen(ausgabe, ausgabe.eintraege.concat([eintrag]), { fokus: "neu", aufdecken: eintrag.id });
+      // Das Formular geht gleich: der Fokus wartet bei «Neuer Eintrag».
+      const t = gezeigt(schluessel);
+      fokussieren(t && t.neu);
+      uebernehmen(schluessel, z.eintraege.concat([Modell.verlaufEintrag(datum, text)]));
       return true;
     }
     const id = z.bearbeitet;
-    const alt = ausgabe.eintraege.filter(function (e) { return e.id === id; })[0];
+    const alt = eintragVon(z, id);
     z.bearbeitet = null;
     if (!alt || (alt.text === text && alt.datum === datum)) {
       // Nichts geändert: nur zu, kein neuer Wert für die Seite.
-      rumpfZeichnen(ausgabe);
-      fokussieren(finden(ausgabe, "bearbeiten-" + id));
-      return true;
+      neuZeichnen(schluessel, true);
+    } else {
+      uebernehmen(schluessel, z.eintraege.map(function (e) {
+        if (e.id !== id) return e;
+        /* Quelle und Erfassungszeitpunkt bleiben: sie sagen, woher der
+           Eintrag stammt, nicht wann er zuletzt angefasst wurde. */
+        return Object.assign({}, e, { datum: datum, text: text });
+      }));
     }
-    uebernehmen(ausgabe, ausgabe.eintraege.map(function (e) {
-      if (e.id !== id) return e;
-      /* Quelle und Erfassungszeitpunkt bleiben: sie sagen, woher der
-         Eintrag stammt, nicht wann er zuletzt angefasst wurde. */
-      return Object.assign({}, e, { datum: datum, text: text });
-    }), { fokus: "bearbeiten-" + id });
+    // Der Knopf «Bearbeiten» steht erst nach dem Abgleich wieder da.
+    fokussieren(finden(schluessel, "bearbeiten-" + id));
     return true;
   }
 
   /* Abbrechen: das Formular blendet aus, der Fokus geht an den Auslöser
      zurück. «fragen» (Esc): erst nachfragen, wenn schon etwas getippt ist. */
-  async function schliessen(ausgabe, neu, fragen) {
-    const z = ausgabe.z;
-    if (fragen && hatEingabe(ausgabe, neu)) {
+  async function schliessen(schluessel, neu, fragen) {
+    const z = zustand(schluessel);
+    if (fragen && hatEingabe(z, neu)) {
       const ja = await UI.bestaetigen({
         titel: neu ? "Neuen Eintrag verwerfen?" : "Bearbeitung verwerfen?",
         text: neu ? "Der eingegebene Text geht verloren." : "Die Änderungen an diesem Eintrag gehen verloren.",
         ja: "Verwerfen"
       });
       if (!ja) {
-        fokussieren(felder(aktuell(ausgabe), neu).text);
+        fokussieren(feld(schluessel, neu, "text"));
         return;
       }
     }
-    const jetzt = aktuell(ausgabe);
     const id = z.bearbeitet;
-    const block = felder(jetzt, neu).block;
-    if (neu) { z.offen = false; z.text = ""; z.datum = ""; } else { z.bearbeitet = null; }
-    if (jetzt.neu) {
-      jetzt.neu.setAttribute("aria-expanded", "false");
-      // Der Fokus wartet nicht im ausblendenden Block, er ist gleich wieder beim Auslöser.
-      if (neu) fokussieren(jetzt.neu);
+    if (neu) {
+      z.offen = false; z.text = ""; z.datum = "";
+      // Der Fokus wartet nicht im ausblendenden Block, er ist gleich beim Auslöser.
+      const t = gezeigt(schluessel);
+      fokussieren(t && t.neu);
+    } else {
+      z.bearbeitet = null;
     }
-    if (block) await Bewegung.austreten(block, "", { dann: "behalten" });
-    const danach = aktuell(jetzt);
-    rumpfZeichnen(danach);
-    fokussieren(neu ? danach.neu : finden(danach, "bearbeiten-" + id));
+    const lauf = neuZeichnen(schluessel, true);
+    if (!neu) fokussieren(finden(schluessel, "bearbeiten-" + id));
+    await lauf;
   }
 
-  async function loeschenFragen(ausgabe, eintrag) {
+  async function loeschenFragen(schluessel, id) {
+    const z = zustand(schluessel);
+    const eintrag = eintragVon(z, id);
+    if (!eintrag) return;
     const was = auszug(eintrag.text, 60);
     const ja = await UI.bestaetigen({
       titel: "Eintrag löschen?",
@@ -489,60 +550,53 @@ const Verlauf = (function () {
       ja: "Eintrag löschen"
     });
     if (!ja) return;
-    const jetzt = aktuell(ausgabe);
-    const index = jetzt.eintraege.findIndex(function (e) { return e.id === eintrag.id; });
+    // Inzwischen kann neu gezeichnet worden sein: mit dem jetzigen Stand.
+    const index = z.eintraege.findIndex(function (e) { return e.id === id; });
     if (index === -1) return;
-    const li = jetzt.rumpf.querySelector("[data-eintrag=\"" + CSS.escape(eintrag.id) + "\"]");
-    if (li) await Bewegung.austreten(li, "skalieren", { dann: "behalten" });
-    const danach = aktuell(jetzt);
-    if (danach.z.bearbeitet === eintrag.id) danach.z.bearbeitet = null;
-    const rest = danach.eintraege.filter(function (e) { return e.id !== eintrag.id; });
-    // Der Fokus rückt zum Nachbarn (Tastatur: gleich weiter löschen), sonst zu «Neuer Eintrag».
+    if (z.bearbeitet === id) z.bearbeitet = null;
+    const rest = z.eintraege.filter(function (e) { return e.id !== id; });
+    // Der Fokus rückt zum Nachbarn (Tastatur: gleich weiter löschen), sonst
+    // zu «Neuer Eintrag» – vor dem Abgleich, der gelöschte Eintrag geht gleich.
     const nachbar = rest[index] || rest[index - 1];
-    uebernehmen(danach, rest, { fokus: nachbar ? "loeschen-" + nachbar.id : "neu" });
+    const t = gezeigt(schluessel);
+    fokussieren(nachbar ? finden(schluessel, "loeschen-" + nachbar.id) : (t && t.neu));
+    await uebernehmen(schluessel, rest);
   }
 
-  /* Die neue Liste an die Seite melden und zeigen. Zeichnet die Seite in
-     beiAenderung selbst neu, wird nicht doppelt gezeichnet. */
-  function uebernehmen(ausgabe, liste, nach) {
+  /* Die neue Liste an die Seite melden und mit Bewegung zeigen. Zeichnet
+     die Seite in beiAenderung selbst neu, ist danach nichts mehr zu tun. */
+  function uebernehmen(schluessel, liste) {
+    const z = zustand(schluessel);
     const json = Modell.verlaufSchreiben(liste);
-    ausgabe.o.wert = json;
-    if (typeof ausgabe.o.beiAenderung === "function") ausgabe.o.beiAenderung(json);
-    let jetzt = letzte[ausgabe.schluessel];
-    if (!jetzt || jetzt === ausgabe || !jetzt.ziel.isConnected) {
-      jetzt = ausgabe;
-      rumpfZeichnen(ausgabe);
-    }
-    const n = nach || {};
-    if (n.aufdecken) {
-      const li = jetzt.rumpf.querySelector("[data-eintrag=\"" + CSS.escape(n.aufdecken) + "\"]");
-      if (li) Bewegung.aufdecken(li);
-    }
-    fokussieren(n.fokus === "neu" ? jetzt.neu : finden(jetzt, n.fokus));
+    z.o.wert = json;
+    if (typeof z.o.beiAenderung === "function") z.o.beiAenderung(json);
+    return neuZeichnen(schluessel, true);
   }
 
   /* Esc bricht ab, Ctrl/Cmd+Enter übernimmt. Ctrl/Cmd+S mit Eingabe:
      erst übernehmen, dann darf F.ereignisse speichern (der Eintrag steht
-     jetzt im Entwurf); ist die Eingabe falsch, wird nicht gespeichert. */
-  function tasten(ausgabe, neu, ev) {
+     jetzt im Entwurf); ist die Eingabe falsch, wird nicht gespeichert.
+     Eine offene Überlagerung (Rückfrage) hat Esc für sich: UI.ebeneOffen. */
+  function tasten(schluessel, neu, ev) {
     if (ev.defaultPrevented || ev.isComposing) return;
     const strg = (ev.ctrlKey || ev.metaKey) && !ev.altKey;
     if (ev.key === "Escape" && !UI.ebeneOffen()) {
       ev.preventDefault();
       ev.stopPropagation();
-      schliessen(ausgabe, neu, true);
+      schliessen(schluessel, neu, true);
       return;
     }
     if (strg && ev.key === "Enter") {
       ev.preventDefault();
-      absenden(ausgabe, neu);
+      absenden(schluessel, neu);
       return;
     }
     if (strg && (ev.key === "s" || ev.key === "S")) {
-      const f = felder(ausgabe, neu);
-      const leerNeu = neu && !String(f.text ? f.text.value : "").trim();
-      if (leerNeu || (!neu && !hatEingabe(ausgabe, false))) return;   // nichts zu übernehmen
-      if (!absenden(ausgabe, neu)) {
+      const z = zustand(schluessel);
+      const fText = feld(schluessel, neu, "text");
+      const leerNeu = neu && !String(fText ? fText.value : "").trim();
+      if (leerNeu || (!neu && !hatEingabe(z, false))) return;   // nichts zu übernehmen
+      if (!absenden(schluessel, neu)) {
         ev.preventDefault();
         ev.stopPropagation();
       }
@@ -559,7 +613,7 @@ const Verlauf = (function () {
      ================================================================== */
 
   /* Die Einbauorte, die ein Aufruf betrifft: einer oder alle. */
-  function schluesselVon(schluessel) {
+  function einbauorte(schluessel) {
     return schluessel ? [String(schluessel)] : Object.keys(zustaende);
   }
 
@@ -573,11 +627,11 @@ const Verlauf = (function () {
    * @returns {boolean}
    */
   function offeneEingabe(schluessel) {
-    return schluesselVon(schluessel).some(function (k) {
-      const ausgabe = letzte[k];
+    return einbauorte(schluessel).some(function (k) {
+      const z = zustaende[k];
       // Nie gezeichnet oder nur lesen: kein sichtbares Formular, nichts zu verlieren.
-      if (!ausgabe || ausgabe.gesperrt) return false;
-      return hatEingabe(ausgabe, true) || hatEingabe(ausgabe, false);
+      if (!z || !z.o || z.gesperrt) return false;
+      return hatEingabe(z, true) || hatEingabe(z, false);
     });
   }
 
@@ -589,20 +643,21 @@ const Verlauf = (function () {
    * @param {string} [schluessel]
    */
   function zuruecksetzen(schluessel) {
-    for (const k of schluesselVon(schluessel)) {
+    for (const k of einbauorte(schluessel)) {
       const z = zustaende[k];
       if (!z || (!z.offen && !z.bearbeitet)) continue;
       const bearbeitet = z.bearbeitet;
       z.offen = false; z.datum = ""; z.text = "";
       z.bearbeitet = null; z.bDatum = ""; z.bText = "";
-      const ausgabe = letzte[k];
-      if (!ausgabe || !ausgabe.ziel.isConnected) continue;
+      const t = gezeigt(k);
+      if (!t) continue;
       const a = document.activeElement;
-      const block = a && ausgabe.rumpf.contains(a) ? a.closest(".vl-formular") : null;
-      rumpfZeichnen(ausgabe);
-      if (!block) continue;
-      fokussieren(block.getAttribute("data-vl-art") === "neu" ? ausgabe.neu
-        : finden(ausgabe, "bearbeiten-" + bearbeitet) || ausgabe.neu);
+      const block = a && t.rumpf && t.rumpf.contains(a) ? a.closest(".vl-formular") : null;
+      if (block && block.getAttribute("data-vl-art") === "neu") fokussieren(t.neu);
+      neuZeichnen(k, false);
+      if (block && block.getAttribute("data-vl-art") !== "neu") {
+        fokussieren(finden(k, "bearbeiten-" + bearbeitet) || t.neu);
+      }
     }
   }
 

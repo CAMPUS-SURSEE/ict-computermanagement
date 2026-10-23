@@ -1,13 +1,15 @@
-/* benutzer.css — Seitenlayout des Benutzerfensters.
+/* benutzer.css – Seitenlayout des Benutzerfensters.
 
    Wird NACH Dashboard-Style (ds.css), thema.css,
    bausteine.css und rahmen.css geladen. Alles, was
    dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Kacheln,
    Karten, Datenzeilen, Banner, Suchfeld, Listenzeilen, Schalterzeilen,
-   Leerzustände. Raster und Abstände kommen aus .ds-stack, .karten und
-   .ds-action-bar, der Bereich aus .fenster-bereich
-   (rahmen.css). Hier steht nur Raster – keine Farben, Radien, Schatten,
-   Schriften oder Dauern. Klassen dieser Seite beginnen mit «b-».
+   Leerzustände. Raster und Abstände kommen aus .ds-tiles, .ds-stack und
+   .ds-action-bar (Dashboard-Style), .karten (bausteine.css), der Bereich
+   aus .fenster-bereich (rahmen.css). Hier steht nur Raster – keine
+   Farben, Radien, Schatten, Schriften oder Dauern. Dashboard-Style liegt
+   in Kaskaden-Ebenen; diese Regeln liegen ausserhalb und gewinnen darum
+   mit einer einfachen Klasse. Klassen dieser Seite beginnen mit «b-».
 
    Klassen ohne eigene Regel (Haken für benutzer.js und die Prüfskripte):
    .b-programme (Karten der Berechtigungen), .b-verlauf (Hülle des Verlaufs).
@@ -16,18 +18,19 @@
 
 
 /* Die drei Kennzahlen der Übersicht füllen die Zeile, statt drei von vier
-   Spalten zu belegen. Auf dem Handy zwei Spalten wie überall; die dritte
-   Kachel nimmt dann die ganze Breite, statt allein halb zu stehen. */
-.ds-tiles.b-kennzahlen {
+   Spalten (bzw. unter 1100 px zwei von zwei mit einer allein darunter) zu
+   belegen. Auf dem Handy zwei Spalten wie überall; die dritte Kachel nimmt
+   dann die ganze Breite, statt allein halb zu stehen. */
+.b-kennzahlen {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @media (max-width: 600px) {
-  .ds-tiles.b-kennzahlen {
+  .b-kennzahlen {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ds-tiles.b-kennzahlen > :last-child:nth-child(odd) {
+  .b-kennzahlen > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 }
@@ -37,7 +40,7 @@
    «Programm oder AD-Gruppe» ab (wie die Werkzeugleiste der Hauptseite,
    styles.css). */
 @container ds-content (max-width: 600px) {
-  .ds-action-bar.b-rechte-leiste > .ds-search {
+  .b-rechte-leiste > .ds-search {
     flex-basis: 100%;
     max-width: none;
   }

@@ -1,21 +1,18 @@
-/* client.css — Seitenlayout des Clientfensters (client.html).
+/* client.css – Seitenlayout des Clientfensters (client.html).
 
-   Wird NACH Dashboard-Style (ds.css), thema.css,
-   bausteine.css und rahmen.css geladen. Alles, was
-   dieses Fenster zeigt, sind Bausteine der Grundlage (UI.*, F.*): Seitenkopf,
-   Karten, Kacheln, Hinweise, Datenzeilen, Formularzeilen, Banner, Listen-
-   zeilen, Zeitachse, Säulen, schlichte Tabellen, Leerzustände. Raster und
-   Abstände kommen aus .ds-stack, .ds-grid-2 (Dashboard-Style) und .karten (bausteine.css), der
-   Bereich aus .fenster-bereich (rahmen.css).
+   Geladen als letzte Stilvorlage, nach grund.css, Dashboard-Style (ds.css,
+   in @layer ds), thema.css, bausteine.css, rahmen.css und verlauf.css. Wie
+   alles ICT-CSS steht es in keiner Ebene und gewinnt darum ohne Kniffe;
+   es überschreibt nichts von Dashboard-Style. Alles, was dieses Fenster
+   zeigt, sind Bausteine der Grundlage (UI.*, F.*): Seitenkopf, Karten,
+   Kacheln, Hinweise, Datenzeilen, Formularzeilen, Banner, Listenzeilen,
+   Zeitachse, Säulen, schlichte Tabellen, Leerzustände. Raster und
+   Abstände kommen aus .ds-stack, .ds-grid-2 (Dashboard-Style) und .karten
+   (bausteine.css), der Bereich aus .fenster-bereich (rahmen.css).
 
    Hier steht nur, was dieses Fenster an Anordnung zusätzlich braucht –
    Raster, Breiten, Positionen, alle Werte als Tokens. Keine Farben, Radien,
    Schatten, Schriften, Dauern oder Kurven. Klassen beginnen mit «g-». */
-
-
-/* Warnungen unter einem Feld («Name schon vergeben», «Archiviert, aber noch
-   in SCCM») sind UI.hinweisPlatz: Abstand und Verbergen kommen aus
-   bausteine.css (.hinweis-platz). */
 
 
 /* ------------------------------------------------------------------
@@ -30,11 +27,6 @@
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
 }
-
-
-/* Die Trefferliste im Inhaber-Dialog ist eine .dialog-liste (rahmen.css):
-   sie rollt selbst und nimmt die Resthöhe des Dialogs; Titel, Suchfeld und
-   Knöpfe bleiben stehen. Hier steht dafür nichts mehr. */
 
 
 /* ------------------------------------------------------------------

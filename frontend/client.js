@@ -31,15 +31,25 @@
    Bewegung und F (fenster.js). Diese Datei enthält das Fachliche und das
    Seitenlayout der Bereiche, keine eigenen Bausteine.
 
-   Zwei Regeln prägen den Aufbau:
+   Drei Regeln prägen den Aufbau:
      - Ein Bereich wird gebaut, wenn er erscheint (F.bereichWechseln: mit
        Auftritt) oder still neu gezeichnet, wenn sich die Daten ändern
        (Nachladen, Speichern: F.zeichneBereich, ohne Bewegung, Fokus und
-       Rollen bleiben). Tippen zeichnet NIE neu: was von einem Feld abhängt
+       Rollen bleiben; geänderte Kennzahlen zählen vom gezeigten Wert).
+       Tippen zeichnet NIE neu – ein Neuaufbau unter dem Fokus verlöre
+       Schreibmarke und Tab-Reihenfolge: was von einem Feld abhängt
        (Hinweise, Vorschlag, Lebenszyklus, Kopf), führen kleine Nachführer
-       an Ort und Stelle nach (Fehler C2, Inventar §8 Nr. 13).
+       an Ort und Stelle nach.
+     - Nachführer und Klick-Handler halten keine Knoten und keine Zeilen
+       eines Zeichnens fest: sie suchen den Knoten bei jedem Aufruf über
+       seine id bzw. sein data-fokus und die Person oder das Gerät über
+       die Listen-ID. Gleicht ein stilles Neuzeichnen ab (UI.abgleichen),
+       bleiben die schon stehenden Knoten im Dokument samt ihren Zuhörern,
+       nicht die eben gebauten.
      - Jedes Bedienelement trägt eine id oder ein data-fokus, damit
-       F.zeichneBereich und die Dialoge den Fokus wiederfinden.
+       F.zeichneBereich und die Dialoge den Fokus wiederfinden. Trefferlisten
+       (Software, Alle Felder, Inhaber-Dialog) gleichen beim Tippen ab
+       (UI.abgleichen, Zeilen mit data-ds-key) statt neu zu bauen.
 
    Aufbau:
      1. Parameter und Spaltenwissen
@@ -162,27 +172,48 @@ function tageText(n) { return UI.zahlText(n) + (n === 1 ? " Tag" : " Tage"); }
 
 /* Aktionen, die schreiben oder die Seite verlassen, warten, bis der
    Entwurf gespeichert oder verworfen ist: gesperrt mit Grund (fokussierbar,
-   der Tooltip nennt ihn, api.md §9.9), an Ort und Stelle nachgeführt.
-   Knöpfe ohne id tragen ein «fokus» (data-fokus) für F.zeichneBereich und
-   den Rückfokus der Dialoge; Handler mit Parametern nie direkt übergeben
-   (Fehler A3). */
+   der Tooltip nennt ihn), an Ort und Stelle nachgeführt. Knöpfe ohne id
+   tragen ein «fokus» (data-fokus) für F.zeichneBereich und den Rückfokus
+   der Dialoge. Handler mit Parametern nie direkt als beiKlick übergeben:
+   sie bekämen sonst das Klickereignis als ersten Parameter. */
 function sperrGrund() {
   return entwurf.anzahl() > 0 ? SPERR_GRUND : "";
 }
 
+/* Für Nachführer: der Knoten, der im Dokument steht – der gebaute selbst
+   oder, hat ein stilles Abgleichen den schon stehenden behalten, dieser
+   (gefunden über die id bzw. das data-fokus des gebauten). */
+function stehend(knoten) {
+  if (!knoten || knoten.isConnected) return knoten || null;
+  const bereich = $("g-bereich");
+  if (knoten.id) return document.getElementById(knoten.id);
+  const f = knoten.getAttribute("data-fokus");
+  return bereich && f ? bereich.querySelector("[data-fokus=\"" + CSS.escape(f) + "\"]") : null;
+}
+
+/* Schlüssel fürs Abgleichen (data-ds-key): zwei Knoten mit verschiedenem
+   Schlüssel werden nie ineinander gepatcht – eine Zeile von Person A wird
+   nie die von Person B, ein Leerzustand nie eine Tabelle. */
+function schluesselSetzen(knoten, schluessel) {
+  if (knoten) knoten.setAttribute("data-ds-key", String(schluessel));
+  return knoten;
+}
+
+/* Beim Bauen gilt die Sperre dem gebauten Knopf, danach dem stehenden. */
 function sperrenNachfuehren(knoepfe) {
-  const setzen = function () {
+  const setzen = function (beimBauen) {
     const grund = sperrGrund();
-    for (const k of knoepfe) UI.knopfSperren(k, grund);
+    for (const k of knoepfe) UI.knopfSperren(beimBauen === true ? k : stehend(k), grund);
   };
-  setzen();
+  setzen(true);
   nachfuehren(setzen);
 }
 
 function raster(kinder) { return UI.anhaengen(el("div", "ds-grid-2"), kinder); }
 
 /* Jeder Bereich steht in EINEM Stapel: so staffelt der Auftritt beim
-   Bereichswechsel seine Karten (Bewegung.auftritt staffelt nur Raster). */
+   Bereichswechsel seine Karten (Bewegung.auftritt staffelt Raster wie
+   .ds-stack, .ds-grid-2 und .karten, nicht lose Karten). */
 function stapel(ziel) { return ziel.appendChild(el("div", "ds-stack")); }
 
 /* Zeile für einen Wert aus SCCM; leere Werte zeigen «–». */
@@ -196,18 +227,24 @@ function datumZeile(name, roh) {
 
 function leer(roh) { return roh === null || roh === undefined || String(roh).trim() === ""; }
 
-/* Ja/Nein aus SCCM als Status-Chip; leer bleibt «–». */
+/* Ja/Nein aus SCCM: der Normalfall (ja) als Text, die Abweichung als
+   Status-Chip; leer bleibt «–». */
 function jaNeinStatus(roh, ja, nein, tonNein) {
   if (leer(roh)) return "";
-  return Hilfe.istJa(roh) ? UI.status(ja, "erfolg") : UI.status(nein, tonNein || "warnung");
+  return Hilfe.istJa(roh) ? ja : UI.status(nein, tonNein || "warnung");
 }
 
-/* Online/Offline überall gleich: im Seitenkopf und im Bereich «Client und
-   Aktivität» dasselbe Sinnbild (WLAN bzw. durchgestrichenes WLAN). */
-function onlineStatus(roh) {
-  return Hilfe.istJa(roh)
-    ? UI.status("Online", "erfolg", { sinnbild: "online" })
-    : UI.status("Offline", "neutral", { sinnbild: "offline" });
+/* Ja/Nein aus SCCM ohne Normalfall (Co-Managed): nur Text. */
+function jaNeinText(roh) {
+  if (leer(roh)) return "";
+  return Hilfe.istJa(roh) ? "Ja" : "Nein";
+}
+
+/* Offline überall gleich: im Seitenkopf und im Bereich «Client und
+   Aktivität» derselbe Chip (durchgestrichenes WLAN). Online ist der
+   Normalfall und bleibt ohne Chip. */
+function offlineStatus() {
+  return UI.status("Offline", "neutral", { sinnbild: "offline" });
 }
 
 /* Der Abgleich schreibt Zeitpunkte in Textspalten als «17.09.2026 07:15»
@@ -557,35 +594,37 @@ function werteDerSpalte(feld) {
    «geändert» folgt dem Entwurf an Ort und Stelle – beim Anlegen keiner
    (Option «neu» des Entwurfs). Hier steht nur, was je Feld dazukommt. */
 
-/* PC-Name mit Hinweis: erscheint beim Tippen als Banner (aufgedeckt,
-   weil der Benutzer ihn auslöst), beim Neuzeichnen ohne Bewegung. Er sagt,
+/* PC-Name mit Hinweis: erscheint beim Tippen als Banner (über FLIP auf
+   seinem Stapel, weil der Benutzer ihn auslöst), beim Neuzeichnen ohne Bewegung. Er sagt,
    ob der Name schon vergeben ist. Gleiche Namen sind erlaubt – jede Zeile
    ist eine eigene Hardware, die Inhaberschaft hängt an der Listen-ID und
    bleibt beim Umbenennen, wo sie ist. Warnung nur, wenn ein Gerät im
    Einsatz so heisst; ein archiviertes gleichen Namens ist nur Info. */
+function namenswarnungSetzen(ort, mitBewegung) {
+  if (!ort) return;
+  const zwillinge = namensZwillinge();
+  const aktive = zwillinge.filter(z => !z.__archiviert);
+  let text = "";
+  if (aktive.length) {
+    text = (aktive.length === 1 ? "Ein weiteres Gerät im Einsatz heisst bereits so (" : aktive.length
+      + " weitere Geräte im Einsatz heissen bereits so (")
+      + aktive.map(z => Modell.status(z.Status) + ", Listen-ID " + z.id).join("; ") + ").";
+  } else if (zwillinge.length) {
+    text = (zwillinge.length === 1 ? "Ein archiviertes Gerät heisst gleich (Listen-ID " : zwillinge.length
+      + " archivierte Geräte heissen gleich (Listen-ID ")
+      + zwillinge.map(z => z.id).join(", ") + "). Jede Zeile ist ein eigenes Gerät.";
+  }
+  ort.setzen(text ? (aktive.length ? "w|" : "i|") + text : "", function () {
+    return aktive.length
+      ? UI.banner({ ton: "warnung", titel: "Name schon vergeben.", text: text })
+      : UI.banner({ ton: "info", text: text });
+  }, { ausEingabe: mitBewegung });
+}
+
 function titelZeile(hinweisText) {
   const ort = UI.hinweisPlatz({ id: "g-namenswarnung" });
-  const setzen = function (mitBewegung) {
-    const zwillinge = namensZwillinge();
-    const aktive = zwillinge.filter(z => !z.__archiviert);
-    let text = "";
-    if (aktive.length) {
-      text = (aktive.length === 1 ? "Ein weiteres Gerät im Einsatz heisst bereits so (" : aktive.length
-        + " weitere Geräte im Einsatz heissen bereits so (")
-        + aktive.map(z => Modell.status(z.Status) + ", Listen-ID " + z.id).join("; ") + ").";
-    } else if (zwillinge.length) {
-      text = (zwillinge.length === 1 ? "Ein archiviertes Gerät heisst gleich (Listen-ID " : zwillinge.length
-        + " archivierte Geräte heissen gleich (Listen-ID ")
-        + zwillinge.map(z => z.id).join(", ") + "). Jede Zeile ist ein eigenes Gerät.";
-    }
-    ort.setzen(text ? (aktive.length ? "w|" : "i|") + text : "", function () {
-      return aktive.length
-        ? UI.banner({ ton: "warnung", titel: "Name schon vergeben.", text: text })
-        : UI.banner({ ton: "info", text: text });
-    }, { aufdecken: mitBewegung });
-  };
-  setzen(false);
-  nachfuehren(function (feld) { if (feld === "Title") setzen(true); });
+  namenswarnungSetzen(ort, false);
+  nachfuehren(function (feld) { if (feld === "Title") namenswarnungSetzen(stehend(ort), true); });
   return F.feld("Title", { beschriftung: "PC-Name", hinweis: hinweisText, zusatz: ort,
     eingabe: { platzhalter: listenName === "edu" ? "z. B. EDU-AULA-03" : "z. B. CAMPUS-907" } });
 }
@@ -613,27 +652,33 @@ function archivHinweis(lagerWahl) {
 /* Status als Auswahl. Der Hinweis erklärt «Lager» und «Archiviert» (der
    Normalfall «Aktiv» bleibt ohne); wer «Archiviert» wählt, solange das
    Gerät in SCCM steht, sieht archivHinweis. */
-function statusZeile() {
-  const hinweis = el("span");
-  const warnOrt = UI.hinweisPlatz({ id: "g-statuswarnung" });
-  const setzen = function (mitBewegung) {
-    const s = geraeteStatus();
+function statusHinweisSetzen(hinweis, warnOrt, mitBewegung) {
+  const s = geraeteStatus();
+  if (hinweis) {
     UI.textSetzen(hinweis, s === "Archiviert"
       ? "Ausser Betrieb. In der Liste und den Kennzahlen standardmässig ausgeblendet."
       : (s === "Lager" ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Liste." : ""));
     // Ohne Text (Normalfall «Aktiv») fällt auch die Hülle .datenzeile-hinweis
     // weg: ihr :empty greift nicht, solange der leere span darin steht.
     if (hinweis.parentNode) hinweis.parentNode.hidden = !hinweis.textContent;
+  }
+  if (warnOrt) {
     warnOrt.setzen(s === "Archiviert" && inSccm() ? "archiviert-in-sccm" : "", function () {
       return archivHinweis("Für ein eingelagertes Gerät «Lager» wählen.");
-    }, { aufdecken: mitBewegung });
-  };
+    }, { ausEingabe: mitBewegung });
+  }
+}
+
+function statusZeile() {
+  const hinweis = el("span");
+  hinweis.id = "g-status-hinweis";
+  const warnOrt = UI.hinweisPlatz({ id: "g-statuswarnung" });
   // Die Auswahl zeigt den Status so, wie er gilt (leer → «Aktiv»); der
   // Entwurf vergleicht ebenso (leer: { Status: "Aktiv" }).
   const z = F.feld("Status", { beschriftung: "Status", art: "auswahl", hinweis: hinweis, zusatz: warnOrt,
     eingabe: { werte: Modell.STATUS_WERTE, wert: geraeteStatus(), schmal: true } });
-  setzen(false);
-  nachfuehren(function (feld) { if (feld === "Status") setzen(true); });
+  statusHinweisSetzen(hinweis, warnOrt, false);
+  nachfuehren(function (feld) { if (feld === "Status") statusHinweisSetzen(stehend(hinweis), stehend(warnOrt), true); });
   return z;
 }
 
@@ -642,114 +687,130 @@ function statusZeile() {
    leerer gespeicherter Wert gilt als Ja (leer: { InDomaene: true } am
    Entwurf); ein Hin und Her ist darum keine Änderung. Der Hinweis sagt,
    was daran hängt, und folgt dem Kästchen an Ort und Stelle. */
+function domaeneHinweisSetzen(hinweis) {
+  UI.textSetzen(hinweis, inDomaene()
+    ? "Der Abgleich füllt die SCCM-Felder und archiviert das Gerät, sobald es nicht mehr in SCCM steht."
+    : "Der Abgleich füllt keine SCCM-Felder und archiviert das Gerät nie.");
+}
+
 function domaeneZeile() {
   const hinweis = el("span");
+  hinweis.id = "g-domaene-hinweis";
   const z = F.feld("InDomaene", { beschriftung: "In Domäne", art: "ankreuzen", hinweis: hinweis,
     eingabe: { text: "Gerät ist in der Domäne" } });
-  const setzen = function () {
-    UI.textSetzen(hinweis, inDomaene()
-      ? "Der Abgleich füllt die SCCM-Felder und archiviert das Gerät, sobald es nicht mehr in SCCM steht."
-      : "Der Abgleich füllt keine SCCM-Felder und archiviert das Gerät nie.");
-  };
-  setzen();
-  nachfuehren(function (feld) { if (feld === "InDomaene") setzen(); });
+  domaeneHinweisSetzen(hinweis);
+  nachfuehren(function (feld) { if (feld === "InDomaene") domaeneHinweisSetzen(stehend(hinweis)); });
   return z;
 }
 
 /* Beschaffungsjahr und Ersatz: Vorschlag (Beschaffung + 5) und Hinweise
    folgen dem Tippen an Ort und Stelle; Tab führt ungestört zum nächsten
-   Feld (Fehler C2: früher baute «change» den Bereich unter dem Fokus neu). */
+   Feld. */
 function beschaffungsjahrZeile() {
   return F.feld("Beschaffungsjahr", { beschriftung: "Beschaffungsjahr", hinweis: "Geschäftsjahr (1. August bis 31. Juli).",
     eingabe: { vorschlaege: Modell.gjAuswahl(), schmal: true, platzhalter: "z. B. 2023/2024" } });
 }
 
-function ersatzZeile() {
-  const hinweis = el("span");
-  const zusatz = el("div", "datenzeile-zeile");
-  const zeileErsatz = F.feld("ErsatzGeplant", { beschriftung: "Ersatz geplant", hinweis: hinweis, zusatz: zusatz,
-    eingabe: { vorschlaege: Modell.gjAuswahl(), schmal: true, platzhalter: "z. B. 2028/2029" } });
-  const feld = zeileErsatz.feld;
-  const vorschlagKnopf = UI.knopf({ text: "Vorschlag übernehmen", variante: "leise", klein: true, sinnbild: "check",
-    beiKlick: function () {
-      const vorschlag = Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
-      if (!vorschlag) return;
-      // Der Knopf verschwindet gleich: der Fokus geht vorher ins Feld.
-      feld.value = vorschlag;
-      feld.focus();
-      entwurf.setzeWert("ErsatzGeplant", vorschlag);
-      UI.meldung("Vorschlag " + vorschlag + " übernommen. Noch nicht gespeichert.", { ton: "info" });
-    }, fokus: "vorschlag-uebernehmen" });
-  zusatz.appendChild(vorschlagKnopf);
-  const setzen = function () {
-    const vorschlag = Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
-    const geplant = textWert("ErsatzGeplant").trim();
+function vorschlagUebernehmen() {
+  const vorschlag = Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
+  const feld = $("g-eingabe-ErsatzGeplant");
+  if (!vorschlag || !feld) return;
+  // Der Knopf verschwindet gleich: der Fokus geht vorher ins Feld.
+  feld.value = vorschlag;
+  feld.focus();
+  entwurf.setzeWert("ErsatzGeplant", vorschlag);
+  UI.meldung("Vorschlag " + vorschlag + " übernommen. Noch nicht gespeichert.", { ton: "info" });
+}
+
+function ersatzHinweisSetzen(hinweis, zusatz) {
+  const vorschlag = Modell.ersatzVorschlag(textWert("Beschaffungsjahr").trim());
+  const geplant = textWert("ErsatzGeplant").trim();
+  if (hinweis) {
     UI.textSetzen(hinweis, !vorschlag ? "Ohne Beschaffungsjahr gibt es keinen Vorschlag."
       : (geplant === vorschlag ? "Entspricht dem Vorschlag (Beschaffung + 5 Jahre)."
         : (!geplant ? "Bleibt das Feld leer, gilt " + vorschlag + " (Beschaffung + 5 Jahre)."
           : "Vorschlag: " + vorschlag + " (Beschaffung + 5 Jahre).")));
+  }
+  if (zusatz) {
     zusatz.hidden = !vorschlag || geplant === vorschlag;
-    if (vorschlag) UI.knopfText(vorschlagKnopf, "Vorschlag " + vorschlag + " übernehmen");
-  };
-  setzen();
-  nachfuehren(function (f) { if (f === "Beschaffungsjahr" || f === "ErsatzGeplant") setzen(); });
+    const knopf = zusatz.querySelector(".ds-btn");
+    if (vorschlag && knopf) UI.knopfText(knopf, "Vorschlag " + vorschlag + " übernehmen");
+  }
+}
+
+function ersatzZeile() {
+  const hinweis = el("span");
+  hinweis.id = "g-ersatz-hinweis";
+  const zusatz = el("div", "datenzeile-zeile");
+  zusatz.id = "g-ersatz-vorschlag";
+  zusatz.appendChild(UI.knopf({ text: "Vorschlag übernehmen", variante: "leise", klein: true, sinnbild: "check",
+    beiKlick: function () { vorschlagUebernehmen(); }, fokus: "vorschlag-uebernehmen" }));
+  const zeileErsatz = F.feld("ErsatzGeplant", { beschriftung: "Ersatz geplant", hinweis: hinweis, zusatz: zusatz,
+    eingabe: { vorschlaege: Modell.gjAuswahl(), schmal: true, platzhalter: "z. B. 2028/2029" } });
+  ersatzHinweisSetzen(hinweis, zusatz);
+  nachfuehren(function (f) {
+    if (f === "Beschaffungsjahr" || f === "ErsatzGeplant") ersatzHinweisSetzen(stehend(hinweis), stehend(zusatz));
+  });
   return zeileErsatz;
 }
 
 /* --- Lebenszyklus: Beschaffung, Ersatz, verstrichener Anteil --- */
 
+/* «Im Plan» ist der Normalfall und bekommt keinen Chip. */
 const ERSATZ_STATUS = {
   ueberfaellig: { text: "Ersatz überfällig", ton: "gefahr" },
   bald:         { text: "Ersatz in diesem GJ", ton: "warnung" },
-  ok:           { text: "Im Plan", ton: "neutral", sinnbild: "kalender" },
   unbekannt:    { text: "Nicht erfasst", ton: "neutral" }
 };
 
-/* Karte mit dem Lebenszyklus. Ändert sich ein Jahr im Entwurf, wird nur
-   ihr Inhalt (ohne Bedienelemente) neu gefüllt; der Balken springt dann,
-   er wächst nur beim ersten Zeigen. «mitFuss»: Link in den Bereich. */
+/* Karte mit dem Lebenszyklus. Ändert sich ein Jahr im Entwurf, gleicht
+   sie Chip und Inhalt ab (UI.abgleichen): der Chip wechselt Farbe und
+   Sinnbild auf der Feder, der Balken gleitet zum neuen Anteil (er wächst
+   nur beim ersten Zeigen). «mitFuss»: Link in den Bereich. */
 function lebenszyklusKarte(mitFuss) {
-  const chip = UI.status("", "neutral");
   const ohneJahr = !textWert("Beschaffungsjahr").trim();
-  const k = UI.karte({ titel: "Lebenszyklus", aktionen: [chip], fuss: mitFuss ? [UI.knopf({
+  const statusOrt = el("span");
+  statusOrt.id = "g-lebenszyklus-status";
+  const k = UI.karte({ titel: "Lebenszyklus", id: "g-lebenszyklus", aktionen: [statusOrt], fuss: mitFuss ? [UI.knopf({
     text: ohneJahr ? "Beschaffungsjahr erfassen" : "Beschaffung bearbeiten", variante: "leise", weiter: true,
     beiKlick: function () { bereichWechseln("beschaffung", "g-eingabe-Beschaffungsjahr"); }, fokus: "beschaffung-oeffnen"
   })] : null });
-  let sig = null;
-  const fuellen = function () {
-    const beschaffung = textWert("Beschaffungsjahr").trim();
-    const geplant = textWert("ErsatzGeplant").trim();
-    const neueSig = beschaffung + "|" + geplant;
-    if (neueSig === sig) return;
-    sig = neueSig;
-    const vorschlag = Modell.ersatzVorschlag(beschaffung);
-    const ersatz = geplant || vorschlag;
-    const status = ersatzStatus();
-    const c = ERSATZ_STATUS[status] || ERSATZ_STATUS.unbekannt;
-    chip.setzen(c.text, c.ton, { sinnbild: c.sinnbild, titel: "Laufendes Geschäftsjahr: " + Modell.gjAktuell() });
-
-    const inhalt = UI.leeren(k.inhalt);
-    inhalt.appendChild(UI.kennwerte([
-      ["Beschaffung", beschaffung],
-      [geplant ? "Ersatz geplant" : "Ersatz (Vorschlag)", ersatz]
-    ]));
-    const von = Modell.gjZahl(beschaffung);
-    const bis = Modell.gjZahl(ersatz);
-    const heute = Modell.gjZahl(Modell.gjAktuell());
-    if (von !== null && bis !== null && heute !== null && bis > von) {
-      const spanne = bis - von;
-      const verstrichen = Math.min(Math.max(heute - von, 0), spanne);
-      inhalt.appendChild(UI.balken(verstrichen / spanne,
-        status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : undefined)));
-      inhalt.appendChild(UI.meta(verstrichen + " von " + spanne + " Geschäftsjahren verstrichen · laufendes "
-        + "Geschäftsjahr " + Modell.gjAktuell()));
-    } else if (!beschaffung) {
-      inhalt.appendChild(UI.hinweis("Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen."));
-    }
-  };
-  fuellen();
-  nachfuehren(function (f) { if (f === "Beschaffungsjahr" || f === "ErsatzGeplant") fuellen(); });
+  lebenszyklusFuellen(k);
+  nachfuehren(function (f) { if (f === "Beschaffungsjahr" || f === "ErsatzGeplant") lebenszyklusFuellen(stehend(k)); });
   return k;
+}
+
+function lebenszyklusFuellen(k) {
+  if (!k || !k.inhalt) return;
+  const beschaffung = textWert("Beschaffungsjahr").trim();
+  const geplant = textWert("ErsatzGeplant").trim();
+  const vorschlag = Modell.ersatzVorschlag(beschaffung);
+  const ersatz = geplant || vorschlag;
+  const status = ersatzStatus();
+  const c = status === "ok" ? null : (ERSATZ_STATUS[status] || ERSATZ_STATUS.unbekannt);
+  const statusOrt = k.querySelector("#g-lebenszyklus-status");
+  if (statusOrt) {
+    UI.abgleichen(statusOrt, c ? [UI.status(c.text, c.ton, { titel: "Laufendes Geschäftsjahr: " + Modell.gjAktuell() })] : []);
+  }
+
+  const teile = [schluesselSetzen(UI.kennwerte([
+    ["Beschaffung", beschaffung],
+    [geplant ? "Ersatz geplant" : "Ersatz (Vorschlag)", ersatz]
+  ]), "kennwerte")];
+  const von = Modell.gjZahl(beschaffung);
+  const bis = Modell.gjZahl(ersatz);
+  const heute = Modell.gjZahl(Modell.gjAktuell());
+  if (von !== null && bis !== null && heute !== null && bis > von) {
+    const spanne = bis - von;
+    const verstrichen = Math.min(Math.max(heute - von, 0), spanne);
+    teile.push(schluesselSetzen(UI.balken(verstrichen / spanne,
+      status === "ueberfaellig" ? "gefahr" : (status === "bald" ? "warnung" : undefined)), "balken"));
+    teile.push(schluesselSetzen(UI.meta(verstrichen + " von " + spanne + " Geschäftsjahren verstrichen · laufendes "
+      + "Geschäftsjahr " + Modell.gjAktuell()), "anteil"));
+  } else if (!beschaffung) {
+    teile.push(schluesselSetzen(UI.hinweis("Ohne Beschaffungsjahr lässt sich der Ersatz nicht planen."), "ohne-jahr"));
+  }
+  UI.abgleichen(k.inhalt, teile);
 }
 
 /* --- Personen --- */
@@ -773,6 +834,12 @@ function personZeile(b, aktionen) {
     status: ad.aktiv ? null : UI.status(ad.text, ad.ton),
     aktionen: aktionen
   });
+}
+
+/* Die Person mit dieser Listen-ID, wie sie jetzt geladen ist (mit dem
+   aktuellen eTag). Klick-Handler merken sich nur die ID. */
+function personNachId(id) {
+  return alleBenutzer.filter(b => String(b.id) === String(id))[0] || null;
 }
 
 /* --- SCCM fehlt --- */
@@ -839,45 +906,55 @@ function zustandKarte() {
   const flottenBuild = haeufigster("SCCM_OSVersion");
   const zielBuild = buildZahl(flottenBuild.wert);
 
-  /* Die Einheit steht in der Beschriftung, die Kachel zeigt nur die Zahl
-     (wie ChatBob «Hilfreich 184»): auch «1’240» passt so aufs Handy. */
-  const tage = function (text, n, unter, ton) {
-    return UI.kachel({ text: text, wert: n === null || n < 0 ? "" : UI.zahlText(n), zahl: n === null || n < 0 ? undefined : n,
-      unter: unter, ton: ton });
+  /* Die Einheit steht in der Beschriftung, die Kachel zeigt nur die Zahl:
+     auch «1’240» passt so aufs Handy. Jede Kachel hat einen Schlüssel
+     (Abgleichen, Nachzählen nach dem stillen Neuzeichnen). */
+  const tage = function (schluessel, text, n, unter, ton) {
+    return kachel(schluessel, { text: text, wert: n === null || n < 0 ? "" : UI.zahlText(n),
+      zahl: n === null || n < 0 ? undefined : n, unter: unter, ton: ton });
   };
   k.inhalt.appendChild(UI.kacheln([
-    tage("Tage seit letzter Aktivität", tageAktiv, UI.zeitText(zeile.SCCM_LastActive),
+    tage("aktiv", "Tage seit letzter Aktivität", tageAktiv, UI.zeitText(zeile.SCCM_LastActive),
       tageAktiv === null ? null : (tageAktiv > 90 ? "gefahr" : (tageAktiv > 30 ? "warnung" : null))),
-    tage("Tage seit letztem Neustart", tageBoot, UI.zeitText(zeile.SCCM_LastBoot),
+    tage("neustart", "Tage seit letztem Neustart", tageBoot, UI.zeitText(zeile.SCCM_LastBoot),
       tageBoot !== null && tageBoot > 30 ? "warnung" : null),
-    UI.kachel({ text: "Freier Speicher C:", wert: frei === null ? "" : UI.zahlText(Math.round(frei)) + " GB",
+    kachel("frei", { text: "Freier Speicher C:", wert: frei === null ? "" : UI.zahlText(Math.round(frei)) + " GB",
       zahl: frei === null ? undefined : Math.round(frei), unter: gesamt ? "von " + UI.zahlText(gesamt) + " GB" : "",
       ton: frei === null ? null : (frei < 20 ? "gefahr" : (frei < 50 ? "warnung" : null)) }),
-    UI.kachel({ text: "Arbeitsspeicher", wert: ram === null ? "" : UI.zahlText(ram) + " GB", zahl: ram === null ? undefined : ram,
+    kachel("ram", { text: "Arbeitsspeicher", wert: ram === null ? "" : UI.zahlText(ram) + " GB", zahl: ram === null ? undefined : ram,
       unter: zeile.SCCM_CPUCores ? zeile.SCCM_CPUCores + " Kerne · " + (zeile.SCCM_CPULogical || "–") + " Threads" : "" }),
     // Die Build-Nummer statt «10.0.26100»: kurz genug für die Kachel auch
     // auf dem Handy, und sie ist es, die mit der Flotte verglichen wird.
-    UI.kachel({ text: "Windows-Build", wert: build === null ? zeile.SCCM_OSVersion : String(build),
+    // Eine Kennung, keine Menge: sie zählt nie.
+    kachel("build", { text: "Windows-Build", wert: build === null ? zeile.SCCM_OSVersion : String(build),
       unter: String(zeile.SCCM_OS || "").replace(/^Microsoft\s+/i, ""),
       ton: build !== null && zielBuild !== null && build < zielBuild ? "warnung" : null,
       titel: zeile.SCCM_OSVersion ? "Version " + zeile.SCCM_OSVersion
         + (zielBuild !== null ? " · häufigster Build der Flotte: " + flottenBuild.wert : "") : undefined }),
-    tage("Alter der Virensignatur in Tagen", signatur, zeile.SCCM_EPSignatureVersion ? "Version " + zeile.SCCM_EPSignatureVersion : "",
+    tage("signatur", "Alter der Virensignatur in Tagen", signatur, zeile.SCCM_EPSignatureVersion ? "Version " + zeile.SCCM_EPSignatureVersion : "",
       signatur === null ? null : (signatur > 7 ? "gefahr" : (signatur > 2 ? "warnung" : null))),
-    UI.kachel({ text: "Laufwerk verschlüsselt", wert: bitlocker ? (bitlockerAus() ? "Nein" : "Ja") : "",
+    kachel("bitlocker", { text: "Laufwerk verschlüsselt", wert: bitlocker ? (bitlockerAus() ? "Nein" : "Ja") : "",
       unter: bitlocker ? "BitLocker: " + bitlocker : "", ton: bitlocker && bitlockerAus() ? "gefahr" : null }),
-    UI.kachel({ text: "Akku-Kapazität", wert: akku === null ? "" : akku + " %", zahl: akku === null ? undefined : akku,
+    kachel("akku", { text: "Akku-Kapazität", wert: akku === null ? "" : UI.zahlText(akku) + " %", zahl: akku === null ? undefined : akku,
       unter: akku === null ? "kein Akku gemeldet" : (akku < 50 ? "Ersatz prüfen" : "in Ordnung"),
       ton: akku !== null && akku < 50 ? "warnung" : null })
   ]));
   return k;
 }
 
+/* Kacheln mit Schlüssel: geändert nach einem stillen Neuzeichnen zählen
+   sie vom gezeigten Wert zum neuen (Bewegung.kennzahlenStill in
+   zeichnenAlles), beim ersten Zeigen eines Bereichs zählt der Auftritt
+   von 0. */
+function kachel(schluessel, o) {
+  return UI.kachel(Object.assign({ schluessel: "kachel-" + schluessel }, o));
+}
+
 function inhaberKurzKarte() {
   const wem = inhaber();
   const k = UI.karte({ titel: "Inhaber", fuss: [UI.knopf({ text: wem ? "Inhaber verwalten" : "Inhaber festlegen",
     variante: "leise", weiter: true, beiKlick: function () { bereichWechseln("inhaber"); }, fokus: "inhaber-oeffnen" })] });
-  if (wem) k.inhalt.appendChild(UI.zeilenliste([personZeile(wem)]));
+  if (wem) k.inhalt.appendChild(UI.zeilenliste([schluesselSetzen(personZeile(wem), "person-" + wem.id)]));
   else k.inhalt.appendChild(UI.hinweis("Kein Inhaber eingetragen."));
   const zuviele = weitereInhaber().length;
   if (zuviele) k.inhalt.appendChild(UI.hinweis("Dazu " + (zuviele === 1 ? "ein überzähliger Eintrag" : zuviele + " überzählige Einträge") + "."));
@@ -906,8 +983,8 @@ function geraetKurzKarte() {
 
 function bereichStammdaten(ziel) {
   const s = stapel(ziel);
-  // Fehler A1: die Adresse kommt aus UI.adresse (client.html, mit liste=).
-  // Ein echter Link: Ctrl- und Mittelklick öffnen das Formular im neuen Tab.
+  // Die Adresse kommt aus UI.adresse (client.html, mit liste=), damit die
+  // Vorlage in derselben Client-Liste angelegt wird. Ein echter Link: Ctrl- und Mittelklick öffnen das Formular im neuen Tab.
   // «Duplizieren» legt ein neues Gerät aus den von Hand gepflegten Angaben
   // an (ohne Name, Status, Verlauf) und steht darum bei ihnen; es ist keine
   // Schnellaktion an DIESEM Gerät. «Löschen …» betrifft das ganze Gerät und
@@ -987,12 +1064,11 @@ function bereichInhaber(ziel) {
   const zuviele = weitereInhaber();
   const sperrbar = [];
 
-  // Fehler A3: nie den Handler direkt übergeben – sonst käme das
-  // Klickereignis als «ausgabe» an und der Wechsel nähme das Gerät aus
-  // Lager oder Archiv. Die Aktion steht einmal: im Kartenkopf, ohne
-  // Inhaber im Leerzustand. Tonal wie jede Aktion in einer Karte (Spec
-  // §3.2 «softer main action in cards»): gefüllt ist auf der Seite nur
-  // «Speichern» in der Leiste.
+  // Nie den Handler direkt übergeben – sonst käme das Klickereignis als
+  // «ausgabe» an und der Wechsel nähme das Gerät aus Lager oder Archiv.
+  // Die Aktion steht einmal: im Kartenkopf, ohne Inhaber im Leerzustand.
+  // Tonal wie jede Aktion in einer Karte (Dashboard-Style: die gefüllte
+  // Hauptaktion gibt es einmal je Ansicht – hier «Speichern» in der Leiste).
   const waehlen = UI.knopf({ text: wem ? "Inhaber wechseln" : "Inhaber festlegen", variante: "tonal",
     sinnbild: wem ? "sync" : "ausgeben", beiKlick: function () { inhaberWaehlenDialog(false); }, fokus: "inhaber-waehlen" });
   sperrbar.push(waehlen);
@@ -1005,22 +1081,24 @@ function bereichInhaber(ziel) {
   }
 
   if (wem) {
+    const wemId = wem.id;
     const entfernen = UI.knopf({ text: "Entfernen", variante: "leise", klein: true,
-      beiKlick: function () { inhaberEntfernenDialog(wem); }, fokus: "entfernen-" + wem.id });
+      beiKlick: function () { inhaberEntfernenDialog(personNachId(wemId)); }, fokus: "entfernen-" + wemId });
     sperrbar.push(entfernen);
-    k.inhalt.appendChild(UI.zeilenliste([personZeile(wem, [entfernen])]));
+    k.inhalt.appendChild(UI.zeilenliste([schluesselSetzen(personZeile(wem, [entfernen]), "person-" + wemId)]));
   } else {
     /* Neu aufgesetzt unter dem Namen eines archivierten Geräts: dessen
        Inhaber geht nicht von selbst mit (die Inhaberschaft hängt an der
        Hardware), lässt sich aber mit einem Klick übernehmen. */
     const vorgaenger = namensZwillinge().filter(z => z.__archiviert && z.__inhaber)[0];
     if (vorgaenger) {
+      const vorId = vorgaenger.__inhaber.id;
       const uebernehmen = UI.knopf({ text: "Übernehmen", variante: "leise",
-        beiKlick: function () { inhaberWaehlenDialog(false, vorgaenger.__inhaber); }, fokus: "vorgaenger-uebernehmen" });
+        beiKlick: function () { inhaberWaehlenDialog(false, personNachId(vorId)); }, fokus: "vorgaenger-uebernehmen" });
       sperrbar.push(uebernehmen);
-      k.inhalt.appendChild(UI.banner({ ton: "info", knopf: uebernehmen,
+      k.inhalt.appendChild(schluesselSetzen(UI.banner({ ton: "info", knopf: uebernehmen,
         text: "«" + personName(vorgaenger.__inhaber) + "» ist Inhaber des archivierten Geräts gleichen Namens (Listen-ID "
-          + vorgaenger.id + ")." }));
+          + vorgaenger.id + ")." }), "vorgaenger-" + vorId));
     }
     k.inhalt.appendChild(UI.leerzustand({ sinnbild: "benutzer", titel: "Noch kein Inhaber", aktion: waehlen }));
   }
@@ -1029,10 +1107,11 @@ function bereichInhaber(ziel) {
   if (zuviele.length) {
     const kZuviel = UI.karte({ titel: "Überzählige Einträge" });
     kZuviel.inhalt.appendChild(UI.zeilenliste(zuviele.map(function (b) {
+      const bId = b.id;
       const weg = UI.knopf({ text: "Eintrag entfernen", variante: "leise", klein: true,
-        beiKlick: function () { inhaberEntfernenDialog(b); }, fokus: "entfernen-" + b.id });
+        beiKlick: function () { inhaberEntfernenDialog(personNachId(bId)); }, fokus: "entfernen-" + bId });
       sperrbar.push(weg);
-      return personZeile(b, [weg]);
+      return schluesselSetzen(personZeile(b, [weg]), "person-" + bId);
     })));
     s.appendChild(kZuviel);
   }
@@ -1089,10 +1168,11 @@ function bereichSoftware(ziel) {
   } else {
     kDeploy.inhalt.appendChild(UI.tabelle(["Applikation", "Sammlung", "Zweck", "Status"],
       deployments.map(function (f) {
+        // Erfolgreich ist der Normalfall (Text); nur Fehler und Ausstehendes
+        // bekommen einen Chip.
         const st = String(f[3] || "").trim();
-        const ton = /erfolg/i.test(st) ? "erfolg" : (/fehl/i.test(st) ? "gefahr"
-          : (/ausstehend|pending/i.test(st) ? "wartet" : "neutral"));
-        return [f[0] || "", f[1] || "", f[2] || "", st ? UI.status(st, ton) : ""];
+        const ton = /fehl/i.test(st) ? "gefahr" : (/ausstehend|pending/i.test(st) ? "wartet" : null);
+        return [f[0] || "", f[1] || "", f[2] || "", st && ton ? UI.status(st, ton) : st];
       }), { beschriftung: "Zugewiesene Applikationen" }));
   }
   s.appendChild(kDeploy);
@@ -1105,14 +1185,14 @@ function bereichSoftware(ziel) {
   anzahl.setAttribute("aria-live", "polite");
   kInst.inhalt.appendChild(UI.anhaengen(el("div", "ds-action-bar"), [
     UI.suchfeld({ id: "g-suche-installiert", platzhalter: "Name suchen", label: "Installierte Software suchen",
-      wert: swSuche, beiEingabe: function (w) { swSuche = w; installiertFuellen(); } }),
+      wert: swSuche, beiEingabe: function (w) { swSuche = w; installiertFuellen(true); } }),
     anzahl
   ]));
   const ort = el("div");
   ort.id = "g-installiert";
   kInst.inhalt.appendChild(ort);
   s.appendChild(kInst);
-  installiertFuellen();
+  installiertFuellen(false, ort);
 
   const office = Hilfe.zeilen(zeile.SCCM_Office).map(Hilfe.felder);
   const kOffice = UI.karte({ titel: "Office-Produkte" });
@@ -1122,40 +1202,62 @@ function bereichSoftware(ziel) {
 
   const sammlungen = Hilfe.zeilen(zeile.SCCM_Collections);
   const kSamml = UI.karte({ titel: "Sammlungen" });
-  kSamml.inhalt.appendChild(sammlungen.length
-    ? UI.anhaengen(el("div", "ds-chips"), sammlungen.map(n => UI.status(n, "neutral", { sinnbild: "ordner" })))
-    : UI.hinweis("Keine Sammlungen erfasst."));
+  // Eine Aufzählung, keine Zustände: Teile statt Status-Chips.
+  kSamml.inhalt.appendChild(sammlungen.length ? UI.teile(sammlungen) : UI.hinweis("Keine Sammlungen erfasst."));
   s.appendChild(raster([kOffice, kSamml]));
 }
 
 /* Füllt nur die Trefferliste: das Suchfeld bleibt stehen (Fokus und
-   Schreibmarke). Die Knoten werden über ihre id gesucht, weil eine noch
-   wartende Eingabe eines inzwischen neu gezeichneten Suchfelds hier landen
-   kann. */
-function installiertFuellen() {
-  const ort = $("g-installiert");
+   Schreibmarke). Die Liste wird abgeglichen, nicht neu gebaut: die Zeilen
+   der Tabelle werden an Ort und Stelle gepatcht (bei Hunderten von Zeilen
+   ohne Bewegung). Kommt beim Tippen der Leerzustand oder geht er, gleitet
+   der Wechsel (Bewegung.umordnen: die Tabelle blendet aus, der
+   Leerzustand ein, und umgekehrt). Die Knoten werden über ihre id
+   gesucht, weil eine noch wartende Eingabe eines inzwischen neu
+   gezeichneten Suchfelds hier landen kann. */
+function installiertFuellen(ausEingabe, gebaut) {
+  const ort = gebaut || $("g-installiert");
   if (!ort || !zeile) return;
   const alle = Hilfe.zeilen(zeile.SCCM_InstalledSoftware).map(Hilfe.felder);
   const such = swSuche.trim().toLowerCase();
   const treffer = alle.filter(f => !such || String(f[0] || "").toLowerCase().indexOf(such) > -1);
-  UI.textSetzen($("g-installiert-anzahl"), such ? treffer.length + " von " + alle.length
+  UI.textSetzen(ort.parentNode.querySelector(".anzahl"), such ? treffer.length + " von " + alle.length
     : alle.length + (alle.length === 1 ? " Eintrag" : " Einträge"));
-  UI.leeren(ort);
+  let neu;
   if (!alle.length) {
-    ort.appendChild(UI.hinweis("Keine Software erfasst."));
+    neu = schluesselSetzen(UI.hinweis("Keine Software erfasst."), "keine");
   } else if (!treffer.length) {
-    ort.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
+    neu = schluesselSetzen(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
       text: "Kein Eintrag passt zu «" + swSuche.trim() + "».",
       aktion: UI.knopf({ text: "Suche zurücksetzen", variante: "tonal", beiKlick: function () {
-        swSuche = "";
-        const f = $("g-suche-installiert");
-        if (f) { f.value = ""; f.focus(); }
-        installiertFuellen();
-      }, fokus: "suche-leeren-installiert" }) }));
+        sucheZuruecksetzen("g-suche-installiert", function () { swSuche = ""; installiertFuellen(true); });
+      }, fokus: "suche-leeren-installiert" }) }), "leer");
   } else {
-    ort.appendChild(UI.tabelle(["Name", "Version"], treffer.map(f => [f[0] || "", f[1] || ""]),
-      { beschriftung: "Installierte Software" }));
+    neu = schluesselSetzen(UI.tabelle(["Name", "Version"], treffer.map(f => [f[0] || "", f[1] || ""]),
+      { beschriftung: "Installierte Software" }), "treffer");
   }
+  trefferAbgleichen(ort, [neu], ausEingabe);
+}
+
+/* Ein Trefferbereich unter einer Suche: still abgleichen; wechselt beim
+   Tippen die Art (Treffer ↔ Leerzustand), gleitet der Wechsel. */
+function trefferAbgleichen(ort, neu, ausEingabe) {
+  const schluessel = function (liste) { return liste.map(k => k && k.getAttribute ? k.getAttribute("data-ds-key") : "").join("|"); };
+  const vorher = schluessel(Array.from(ort.children));
+  if (ausEingabe && vorher && vorher !== schluessel(neu)) {
+    Bewegung.umordnen(ort, function (o) { UI.abgleichen(ort, neu, o); });
+  } else {
+    UI.abgleichen(ort, neu);
+  }
+}
+
+/* «Suche zurücksetzen» im Leerzustand: das Suchfeld leeren und
+   fokussieren, dann die Liste (über leeren()) neu abgleichen. Der Knopf
+   verschwindet dabei; der Fokus steht vorher schon im Feld. */
+function sucheZuruecksetzen(feldId, leeren) {
+  const f = $(feldId);
+  if (f) { f.value = ""; f.focus(); }
+  leeren();
 }
 
 /* ---------- Hardware ---------- */
@@ -1251,7 +1353,7 @@ function bereichSystem(ziel) {
     datumZeile("Computerkonto erstellt", zeile.SCCM_ADCreated),
     datumZeile("Letzte AD-Anmeldung", zeile.SCCM_ADLastLogon),
     datenZeile("Entra-Geräte-ID", zeile.SCCM_AADDeviceID),
-    datenZeile("Co-Managed (Intune)", jaNeinStatus(zeile.SCCM_CoManaged, "Ja", "Nein", "neutral"))
+    datenZeile("Co-Managed (Intune)", jaNeinText(zeile.SCCM_CoManaged))
   ]));
 
   s.appendChild(UI.anhaengen(el("div", "karten"), [kOs, kNetz, kAd]));
@@ -1274,8 +1376,8 @@ function bereichSicherheit(ziel) {
       : (signaturAlter === 0 ? "heute aktualisiert" : tageText(signaturAlter) + " alt")),
     datumZeile("Letzter Schnellscan", zeile.SCCM_EPLastQuickScan),
     datumZeile("Letzter Vollscan", zeile.SCCM_EPLastFullScan),
-    datenZeile("Infektionsstatus", infektion
-      ? UI.status(infektion, /sauber|clean|kein/i.test(infektion) ? "erfolg" : "gefahr") : ""),
+    datenZeile("Infektionsstatus", infektion && !/sauber|clean|kein/i.test(infektion)
+      ? UI.status(infektion, "gefahr") : infektion),
     datenZeile("Letzte Bedrohung", zeile.SCCM_EPLastThreat),
     datenZeile("Neustart ausstehend", Hilfe.istJa(zeile.SCCM_EPPendingReboot)
       ? UI.status("Ja", "warnung") : (zeile.SCCM_EPPendingReboot || ""))
@@ -1284,7 +1386,7 @@ function bereichSicherheit(ziel) {
   const bitlocker = String(zeile.SCCM_BitLocker || "").trim();
   const kVersch = UI.karte({ titel: "Verschlüsselung und TPM" });
   kVersch.inhalt.appendChild(UI.datenzeilen([
-    datenZeile("BitLocker", bitlocker ? UI.status(bitlocker, bitlockerAus() ? "gefahr" : "erfolg", { sinnbild: bitlockerAus() ? undefined : "schloss" }) : ""),
+    datenZeile("BitLocker", bitlocker && bitlockerAus() ? UI.status(bitlocker, "gefahr") : bitlocker),
     datenZeile("TPM-Version", zeile.SCCM_TPMVersion),
     datenZeile("TPM", jaNeinStatus(zeile.SCCM_TPMEnabled, "Aktiviert", "Nicht aktiviert"))
   ]));
@@ -1322,7 +1424,7 @@ function bereichAktivitaet(ziel) {
   const kClient = UI.karte({ titel: "SCCM-Client" });
   kClient.inhalt.appendChild(UI.datenzeilen([
     datenZeile("Gerätename in SCCM", zeile.SCCM_Name),
-    datenZeile("Online", leer(zeile.SCCM_Online) ? "" : onlineStatus(zeile.SCCM_Online)),
+    datenZeile("Online", leer(zeile.SCCM_Online) ? "" : (Hilfe.istJa(zeile.SCCM_Online) ? "Ja" : offlineStatus())),
     datenZeile("Client", jaNeinStatus(zeile.SCCM_ClientActive, "Aktiv", "Inaktiv")),
     datenZeile("Client-Prüfung", jaNeinStatus(zeile.SCCM_ClientCheckPass, "Bestanden", "Nicht bestanden")),
     datenZeile("Client-Version", zeile.SCCM_ClientVersion),
@@ -1446,9 +1548,9 @@ function bereichFelder(ziel) {
   anzahl.setAttribute("aria-live", "polite");
   const leiste = UI.anhaengen(el("div", "ds-action-bar"), [
     UI.suchfeld({ id: "g-suche-felder", platzhalter: "Feld oder Wert suchen", label: "Feld oder Wert suchen",
-      wert: rohSuche, beiEingabe: function (w) { rohSuche = w; felderFuellen(); } }),
+      wert: rohSuche, beiEingabe: function (w) { rohSuche = w; felderFuellen(true); } }),
     UI.ankreuzen({ text: "Leere Felder zeigen", an: rohLeereZeigen, id: "g-leere-zeigen",
-      beiAenderung: function (an) { rohLeereZeigen = an; felderFuellen(); } }),
+      beiAenderung: function (an) { rohLeereZeigen = an; felderFuellen(true); } }),
     UI.knopf({ text: "Als JSON kopieren", variante: "leise", sinnbild: "kopieren", beiKlick: function () {
       const roh = { id: zeile.id };
       for (const sp of SPALTEN) roh[sp.i] = wert(sp.i);
@@ -1459,7 +1561,7 @@ function bereichFelder(ziel) {
   leiste.id = "g-felder-leiste";
   k.inhalt.appendChild(leiste);
   s.appendChild(k);
-  felderFuellen();
+  felderFuellen(false, leiste);
 }
 
 function rohText(spalte, roh) {
@@ -1473,54 +1575,69 @@ function rohText(spalte, roh) {
 
 const QUELLEN = { manuell: "von Hand", sccm: "aus SCCM", ad: "aus dem AD", sharepoint: "von SharePoint" };
 
-/* Füllt die Felder unter der Werkzeugleiste neu; Suchfeld und Kästchen
-   bleiben stehen. Die Abschnitte stehen direkt im Karteninhalt, damit der
-   Rhythmus der Karte (Zwischentitel, Datenzeilen) gilt. */
-function felderFuellen() {
-  const leiste = $("g-felder-leiste");
+/* Die Listen-ID als erste «Spalte» unter «Kennung». */
+const ID_SPALTE = { i: "id", d: "Listen-ID", t: "Number", q: "sharepoint" };
+
+/* Der Text einer Spalte, wie er jetzt gilt (Entwurf eingeschlossen). */
+function feldText(sp) {
+  return rohText(sp, sp.i === "id" ? zeile.id : wert(sp.i));
+}
+
+/* Gleicht die Felder unter der Werkzeugleiste ab; Suchfeld und Kästchen
+   bleiben stehen (die Leiste geht als derselbe Knoten mit). Die
+   Abschnitte stehen direkt im Karteninhalt, damit der Rhythmus der Karte
+   (Zwischentitel, Datenzeilen) gilt. Jede Zeile trägt den Spaltennamen als
+   Schlüssel; der Kopierknopf liest den Wert erst beim Klick. */
+function felderFuellen(ausEingabe, gebaut) {
+  const leiste = gebaut || $("g-felder-leiste");
   if (!leiste || !zeile) return;
-  while (leiste.nextSibling) leiste.nextSibling.remove();
   const inhalt = leiste.parentNode;
   const such = rohSuche.trim().toLowerCase();
-  const gruppen = [{ titel: "Kennung", spalten: [{ i: "id", d: "Listen-ID", t: "Number", q: "sharepoint" }] }]
+  const gruppen = [{ titel: "Kennung", spalten: [ID_SPALTE] }]
     .concat(GRUPPEN.map(g => ({ titel: g, spalten: SPALTEN.filter(sp => sp.g === g) })));
+  const kinder = [leiste];
   let gezeigt = 0, gesamt = 0;
   for (const g of gruppen) {
     const zeilen = [];
     for (const sp of g.spalten) {
       gesamt++;
-      const text = rohText(sp, sp.i === "id" ? zeile.id : wert(sp.i));
+      const text = feldText(sp);
       if (!text && !rohLeereZeigen) continue;
       if (such && sp.d.toLowerCase().indexOf(such) === -1 && sp.i.toLowerCase().indexOf(such) === -1
         && text.toLowerCase().indexOf(such) === -1) continue;
       const teile = [el("span", "g-feld-text" + (text ? "" : " t-still"), text || "–")];
       if (text) {
         teile.push(UI.knopf({ variante: "sinnbild", sinnbild: "kopieren", klein: true, titel: "«" + sp.d + "» kopieren",
-          beiKlick: function () { kopieren(text, "«" + sp.d + "» kopiert."); }, fokus: "kopieren-" + sp.i }));
+          beiKlick: function () { kopieren(feldText(sp), "«" + sp.d + "» kopiert."); }, fokus: "kopieren-" + sp.i }));
       }
       const z = UI.feldZeile(sp.d, teile);
       z.firstChild.appendChild(el("span", "ds-meta g-feld-intern", sp.i + " · " + sp.t + " · " + (QUELLEN[sp.q] || sp.q)));
       z.lastChild.classList.add("g-feld-wert");
-      zeilen.push(z);
+      zeilen.push(schluesselSetzen(z, "feld-" + sp.i));
     }
     if (!zeilen.length) continue;
     gezeigt += zeilen.length;
-    inhalt.appendChild(el("h3", "ds-card__subtitle", g.titel));
-    inhalt.appendChild(UI.datenzeilen(zeilen));
+    kinder.push(schluesselSetzen(el("h3", "ds-card__subtitle", g.titel), "titel-" + g.titel));
+    kinder.push(schluesselSetzen(UI.datenzeilen(zeilen), "gruppe-" + g.titel));
   }
-  UI.textSetzen($("g-felder-anzahl"), gezeigt + " von " + gesamt + " Feldern");
+  UI.textSetzen(leiste.querySelector(".anzahl"), gezeigt + " von " + gesamt + " Feldern");
   if (!gezeigt) {
-    inhalt.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
+    kinder.push(schluesselSetzen(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
       text: such ? "Kein Feld passt zu «" + rohSuche.trim() + "»." : "Alle Felder sind leer.",
       aktion: such ? UI.knopf({ text: "Suche zurücksetzen", variante: "tonal", beiKlick: function () {
-        rohSuche = "";
-        const f = $("g-suche-felder");
-        if (f) { f.value = ""; f.focus(); }
-        felderFuellen();
-      }, fokus: "suche-leeren-felder" }) : null }));
+        sucheZuruecksetzen("g-suche-felder", function () { rohSuche = ""; felderFuellen(true); });
+      }, fokus: "suche-leeren-felder" }) : null }), "leer"));
+  }
+  /* Kommt oder geht der Leerzustand beim Tippen, gleitet der Wechsel; die
+     Leiste gleitet nicht mit. Sonst still abgleichen. */
+  const warLeer = !!inhalt.querySelector(":scope > .ds-empty");
+  if (ausEingabe && warLeer !== !gezeigt) {
+    Bewegung.umordnen(inhalt, function (o) { UI.abgleichen(inhalt, kinder, o); },
+      { eintraege: ":scope > :not(#g-felder-leiste)" });
+  } else {
+    UI.abgleichen(inhalt, kinder);
   }
 }
-
 
 /* ==================================================================
    7. Kopf, Navigation, Neuzeichnen
@@ -1575,11 +1692,16 @@ function unterTeile() {
   if (zeile.SCCM_SerialNumber) teile.push("SN " + zeile.SCCM_SerialNumber);
   const wem = inhaber();
   if (wem) teile.push(personName(wem));
+  // Merkmale aus SCCM, keine Abweichungen: darum Teile statt Chips.
+  if (inSccm() && Hilfe.istJa(zeile.SCCM_IsVirtual)) teile.push("Virtuelle Maschine");
+  if (inSccm() && Hilfe.istJa(zeile.SCCM_CoManaged)) teile.push("Co-Managed (Intune)");
   return teile;
 }
 
-/* Status-Chips, immer Icon + Text. Online/Offline nur, wenn das Gerät in
-   SCCM steht (Fehler D5: sonst ist der Zustand unbekannt, nicht offline). */
+/* Status-Chips nur für Abweichungen, immer Icon + Text: der Normalfall
+   (aktiv, in SCCM, online, Client aktiv) bleibt ohne Chip. Offline nur,
+   wenn das Gerät in SCCM steht: sonst ist der Zustand unbekannt, nicht
+   offline. */
 function statusChips() {
   const chips = [];
   const betrieb = geraeteStatus();
@@ -1587,11 +1709,8 @@ function statusChips() {
   else if (betrieb === "Lager") chips.push(UI.status("Im Lager", "neutral", { sinnbild: "lager" }));
 
   if (inSccm()) {
-    chips.push(onlineStatus(zeile.SCCM_Online));
-    chips.push(UI.status("In SCCM", "erfolg"));
-    chips.push(Hilfe.istJa(zeile.SCCM_ClientActive) ? UI.status("SCCM-Client aktiv", "erfolg") : UI.status("SCCM-Client inaktiv", "warnung"));
-    if (Hilfe.istJa(zeile.SCCM_CoManaged)) chips.push(UI.status("Co-Managed", "neutral", { sinnbild: "verknuepfung" }));
-    if (Hilfe.istJa(zeile.SCCM_IsVirtual)) chips.push(UI.status("Virtuell", "neutral", { sinnbild: "server" }));
+    if (!leer(zeile.SCCM_Online) && !Hilfe.istJa(zeile.SCCM_Online)) chips.push(offlineStatus());
+    if (!leer(zeile.SCCM_ClientActive) && !Hilfe.istJa(zeile.SCCM_ClientActive)) chips.push(UI.status("SCCM-Client inaktiv", "warnung"));
   } else if (inDomaene()) {
     chips.push(UI.status("Nicht in SCCM", "warnung", { titel: "Der Abgleich findet zu diesem PC-Namen kein Gerät in SCCM." }));
   } else {
@@ -1611,13 +1730,13 @@ function statusChips() {
 
 /* Schnellaktionen: der ganze Lagerablauf mit je einem Dialog, zuletzt
    «Löschen …» – wie auf den Seiten für Telefonnummern und Programme
-   rechts im Seitenkopf, in jedem Bereich erreichbar (Vertrag §1,
-   Inventar §8 Nr. 8). Welche
-   Lageraktionen erscheinen, hängt vom Status ab. Gesperrt mit Grund,
-   solange etwas ungespeichert ist; während geschrieben wird, sperrt
-   F.beschaeftigt (Fehler A8). Nur mit beiKlick bauen: F.seitenkopf lässt
-   gleiche Knöpfe stehen und gibt ihnen den neuen Handler (kein Neuaufbau
-   pro Taste). */
+   rechts im Seitenkopf, in jedem Bereich erreichbar. Welche Lageraktionen
+   erscheinen, hängt vom Status ab. Gesperrt mit Grund, solange etwas
+   ungespeichert ist; während geschrieben wird, sperrt F.beschaeftigt
+   (sonst schriebe eine zweite Aktion auf das veraltete eTag). Die
+   Handler lesen den Zustand erst beim Klick: F.seitenkopf lässt gleiche
+   Knöpfe stehen (kein Neuaufbau pro Taste). data-fokus «aktion-…» findet
+   fokusNachAktion wieder. */
 function kopfAktionen() {
   if (neuModus || !zeile) return [];
   const grund = sperrGrund();
@@ -1664,16 +1783,21 @@ function speicherleisteZeichnen() {
 }
 
 /* Still neu zeichnen (Nachladen, Speichern, Verwerfen): kein Auftritt;
-   derselbe Bereich behält Fokus, Schreibmarke und Rollen. */
+   derselbe Bereich behält Fokus, Schreibmarke und Rollen, geänderte
+   Kennzahlen zählen vom gezeigten Wert (Bewegung.kennzahlenStill; beim
+   ersten Zeigen steht noch keine Kachel da, dann zählt der Auftritt). */
 function zeichnenAlles() {
   kopfZeichnen();
   navZeichnen();
-  aktiverBereich = F.zeichneBereich(sichtbareBereiche(), aktiverBereich);
+  aktiverBereich = Bewegung.kennzahlenStill($("g-bereich"), function () {
+    return F.zeichneBereich(sichtbareBereiche(), aktiverBereich);
+  });
   speicherleisteZeichnen();
 }
 
 /* In einen anderen Bereich (Navigation oder ein Knopf im Inhalt): Adresse
-   per replaceState (Fehler A4), Pille gleitet, Fade-through. «fokusId»:
+   per replaceState (der Zurück-Knopf des Browsers führt zur Liste, nicht
+   durch die Bereiche), Pille gleitet, Fade-through. «fokusId»:
    ein Feld, das danach den Fokus bekommt («Beschaffungsjahr erfassen»). */
 function bereichWechseln(schluessel, fokusId) {
   aktiverBereich = schluessel;
@@ -1841,8 +1965,9 @@ function fuerGraph(feld, roh) {
   return roh === null || roh === undefined ? "" : String(roh);
 }
 
-/* Speichern und Anlegen über F.speicherAblauf: nichts ohne Änderungen
-   (A5), Schreiben und Nachladen getrennt (A7), Aktionen gesperrt (A8). */
+/* Speichern und Anlegen über F.speicherAblauf: nichts ohne Änderungen,
+   Schreiben und Nachladen getrennt (scheitert nur das Nachladen, ist
+   trotzdem gespeichert), Aktionen gesperrt, solange geschrieben wird. */
 let zuletztAngelegt = false;
 
 function speichern() {
@@ -1886,7 +2011,8 @@ async function schreiben() {
     zeile = abgeleiteteFelder(Object.assign({}, zeile, felder, neu));
     entwurf.leeren();
     aktiverBereich = "stammdaten";
-    // Fehler A2: die Adresse zeigt jetzt auf das Gerät, in seiner Liste.
+    // Die Adresse zeigt jetzt auf das Gerät, in seiner Liste: Neu laden
+    // oder ein Lesezeichen öffnet das Gerät statt eines leeren Formulars.
     try { history.replaceState(null, "", UI.adresse.client(listenName, elementId, { bereich: "stammdaten" })); } catch (e) { /* file:// */ }
     F.melden("zeile-neu", elementId);
     return { neu: true, name: name, dubletten: dubletten };
@@ -1950,7 +2076,8 @@ function bisherigesGeraet(b) {
    «AdminClientId» jeder Person: «zuweisen» trägt die Listen-ID dieses
    Geräts ein, sonst wird die Inhaberschaft entfernt (null, damit Graph das
    Feld wirklich leert). Scheitert ein Schritt, sagt die Meldung, welcher;
-   nachgeladen wird danach immer (F.beschaeftigt, Fehler A8). */
+   nachgeladen wird danach immer (F.beschaeftigt), damit kein veraltetes
+   eTag stehen bleibt. */
 async function inhaberSchreiben(schritte, geraetFelder) {
   let geraetGespeichert = false;
   if (geraetFelder) {
@@ -1976,45 +2103,30 @@ async function inhaberSchreiben(schritte, geraetFelder) {
   }
 }
 
-/* Eine Aktion aus einem offenen Dialog: der Hauptknopf zeigt «beschäftigt»,
-   Esc und Schleier schliessen nicht, Kopfaktionen und Speicherleiste sind
-   gesperrt. Erst wenn alles geschrieben und nachgeladen ist, schliesst der
-   Dialog; bei einem Fehler bleibt er offen, die Meldung steht darüber. */
-async function imDialogAusfuehren(d, ja, abbrechen, arbeit) {
-  if (F.istBeschaeftigt()) {
-    UI.meldung("Es wird gerade gespeichert. Bitte gleich noch einmal versuchen.", { ton: "info" });
-    return false;
-  }
-  d.sperren(true);
-  abbrechen.disabled = true;
-  UI.beschaeftigt(ja, true, "Wird gespeichert …");
-  let fehler = null;
-  await F.beschaeftigt(async function () {
-    try { await arbeit(); } catch (e) { fehler = e; }
-  });
-  if (fehler) {
-    d.sperren(false);
-    abbrechen.disabled = false;
-    await UI.beschaeftigt(ja, false);
-    UI.meldung("Speichern fehlgeschlagen. " + F.fehlerText(fehler), { ton: "fehler" });
-    return false;
-  }
-  await UI.beschaeftigtAbwarten(ja);
-  d.sperren(false);
-  d.schliessen("ja");
-  fokusNachAktion();
-  return true;
+/* Eine Aktion aus einem offenen Dialog über F.imDialog: der Hauptknopf
+   («ja», gebaut mit UI.knopf({ beschaeftigt }), damit er beim Start nicht
+   breiter wird) zeigt «Wird gespeichert …», solange geschrieben UND
+   nachgeladen wird; der Dialog und seine übrigen Knöpfe sind so lange
+   gesperrt (mit Grund, nicht disabled), Kopfaktionen und Speicherleiste
+   sperrt F.beschaeftigt. Gelungen schliesst der Dialog und der Fokus
+   geht dorthin, wo die Person weiterarbeitet; bei einem Fehler bleibt er
+   offen, frei und mit der Meldung darüber. → true, wenn es geklappt hat. */
+async function imDialogAusfuehren(d, ja, arbeit) {
+  const ok = await F.imDialog(d, ja, arbeit);
+  if (ok) fokusNachAktion();
+  return ok;
 }
 
 /* Nach einer Schnellaktion gibt es den auslösenden Knopf oft nicht mehr
-   («Ins Lager legen» wird zu «Ausgeben an …»): der Rückfokus der Ebene
-   fiele dann auf die Tafel. Stattdessen auf die erste Aktion im Kopf,
-   sonst auf den Titel – dort, wo die Person weiterarbeitet. */
+   («Ins Lager legen» wird zu «Ausgeben an …»): Dashboard-Style gibt den
+   Fokus dann der Tafel (main.ds-view). Stattdessen auf die erste Aktion
+   im Kopf (data-fokus «aktion-…», siehe kopfAktionen), sonst auf den
+   Titel – dort, wo die Person weiterarbeitet. */
 function fokusNachAktion() {
   const a = document.activeElement;
-  if (a && a !== document.body && a !== Rahmen.elemente().tafel) return;
+  if (a && a !== document.body && !a.matches(".ds-view")) return;
   const kopf = $("g-kopf");
-  const ziel = (kopf && kopf.querySelector(".seitenkopf-aktionen > .ds-btn")) || $("g-titel");
+  const ziel = (kopf && kopf.querySelector("[data-fokus^=\"aktion-\"]")) || $("g-titel");
   if (ziel) ziel.focus({ preventScroll: true });
 }
 
@@ -2037,8 +2149,8 @@ function aktionsDialog(o) {
   const notiz = UI.eingabe({ art: "textbereich", id: "g-aktion-notiz", zeilen: 2, platzhalter: "z. B. den Grund" });
   inhalt.push(UI.feld("Notiz für den Verlauf (optional)", notiz));
   const abbrechen = UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
-  const ja = UI.knopf({ text: o.ja, variante: "primaer", beiKlick: async function () {
-    if (await imDialogAusfuehren(d, ja, abbrechen, function () { return o.ausfuehren(notiz.value); })) {
+  const ja = UI.knopf({ text: o.ja, variante: "primaer", beschaeftigt: "Wird gespeichert …", beiKlick: async function () {
+    if (await imDialogAusfuehren(d, ja, function () { return o.ausfuehren(notiz.value); })) {
       UI.meldung(o.erfolg);
     }
   } });
@@ -2105,13 +2217,13 @@ function inBetriebDialog() {
 }
 
 function inhaberEntfernenDialog(b) {
-  if (F.istBeschaeftigt()) return;
+  if (!b || F.istBeschaeftigt()) return;
   const istInhaber = !!inhaber() && String(inhaber().id) === String(b.id);
   const titel = istInhaber ? "Inhaber entfernen?" : "Eintrag entfernen?";
   const abbrechen = UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
   const ja = UI.knopf({ text: istInhaber ? "Inhaber entfernen" : "Eintrag entfernen", variante: "primaer",
-    beiKlick: async function () {
-      const ok = await imDialogAusfuehren(d, ja, abbrechen, function () {
+    beschaeftigt: "Wird gespeichert …", beiKlick: async function () {
+      const ok = await imDialogAusfuehren(d, ja, function () {
         return inhaberSchreiben([{ benutzer: b, zuweisen: false }], istInhaber
           ? { Verlauf: F.verlaufAnhaengen(wert("Verlauf"), "Inhaber entfernt: " + personName(b)) } : null);
       });
@@ -2122,11 +2234,15 @@ function inhaberEntfernenDialog(b) {
 }
 
 /* Inhaber wählen in zwei Schritten: suchen und wählen, dann bestätigen.
-   Beide Schritte stehen im selben Dialog (an Ort und Stelle neu gefüllt).
-   «ausgabe» (nur aus der Schnellaktion «Ausgeben an …»): das Gerät
-   verlässt dabei das Lager und wird «Aktiv». Sonst ein gewöhnlicher
-   Inhaberwechsel – auch bei archivierten Geräten (Fehler A3). «person»
-   springt gleich zur Bestätigung (Inhaber des Vorgängers übernehmen). */
+   Beide Schritte stehen im selben Dialog: Inhalt und Knöpfe werden
+   abgeglichen (UI.abgleichen, jeder Teil mit Schlüssel), die Trefferliste
+   beim Tippen ebenso – sie behält ihren Rollstand, die Zeilen gleiten an
+   ihren Platz (Bewegung.umordnen), kommt der Leerzustand, blendet die
+   Liste aus und er ein. «ausgabe» (nur aus der Schnellaktion «Ausgeben
+   an …»): das Gerät verlässt dabei das Lager und wird «Aktiv». Sonst ein
+   gewöhnlicher Inhaberwechsel – auch bei archivierten Geräten, deren
+   Status dabei bleibt. «person» springt gleich zur Bestätigung (Inhaber
+   des Vorgängers übernehmen). */
 function inhaberWaehlenDialog(ausgabe, person) {
   if (F.istBeschaeftigt()) return;
   const pcName = textWert("Title").trim();
@@ -2143,20 +2259,27 @@ function inhaberWaehlenDialog(ausgabe, person) {
 
   function schritt1() {
     d.titel(titel);
-    UI.leeren(d.inhalt);
-    UI.leeren(d.knoepfe);
     // .dialog-liste (rahmen.css): rollt selbst und nimmt die Resthöhe des
     // Dialogs; Suchfeld, Titel und Knöpfe bleiben stehen.
-    const liste = el("div", "dialog-liste");
+    const liste = schluesselSetzen(el("div", "dialog-liste"), "liste");
     liste.setAttribute("data-rolle", "treffer");
-    const zahl = el("p", "ds-meta");
+    const zahl = schluesselSetzen(el("p", "ds-meta"), "zahl");
     zahl.setAttribute("aria-live", "polite");
-    const suche = UI.suchfeld({ id: "g-inhaber-suche", platzhalter: "Name, Login oder Abteilung", label: "Person suchen",
-      wert: suchText, verzoegerung: 100, beiEingabe: function (w) { suchText = w; treffer(liste, zahl); } });
-    UI.anhaengen(d.inhalt, [suche, liste, zahl]);
-    d.knoepfe.appendChild(UI.knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } }));
-    treffer(liste, zahl);
-    suche.eingabe.focus();
+    const suche = schluesselSetzen(UI.suchfeld({ id: "g-inhaber-suche", platzhalter: "Name, Login oder Abteilung",
+      label: "Person suchen", wert: suchText, verzoegerung: 100,
+      beiEingabe: function (w) { suchText = w; treffer(true); } }), "suche");
+    trefferFuellen(liste, zahl, false);
+    UI.abgleichen(d.inhalt, [suche, liste, zahl]);
+    UI.abgleichen(d.knoepfe, [schluesselSetzen(UI.knopf({ text: "Abbrechen", variante: "leise",
+      beiKlick: function () { d.schliessen("abbrechen"); } }), "abbrechen")]);
+    const feld = $("g-inhaber-suche");
+    if (feld) feld.focus();
+  }
+
+  function treffer(ausEingabe) {
+    const liste = d.inhalt.querySelector(":scope > .dialog-liste");
+    const zahl = d.inhalt.querySelector(":scope > [data-ds-key=\"zahl\"]");
+    if (liste && zahl) trefferFuellen(liste, zahl, ausEingabe);
   }
 
   /* Gesucht wird nur, was der Platzhalter verspricht: Name, Login und
@@ -2164,7 +2287,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
      wen ein Herr Meierhans führt, und stünde alphabetisch zuoberst). Jedes
      Wort muss passen, die Reihenfolge ist egal («ammann urs»). Wer schon
      über Name oder Login passt, steht vor den Treffern über die Abteilung. */
-  function treffer(liste, zahl) {
+  function trefferFuellen(liste, zahl, ausEingabe) {
     const t = suchText.trim().toLowerCase();
     const woerter = t.split(/\s+/).filter(Boolean);
     const rang = new Map();
@@ -2177,45 +2300,56 @@ function inhaberWaehlenDialog(ausgabe, person) {
       rang.set(b, woerter.every(w => person.indexOf(w) > -1) ? 0 : 1);
       return true;
     }).sort((a, b) => ((rang.get(a) || 0) - (rang.get(b) || 0)) || Hilfe.vergleiche(a.__name, b.__name));
-    UI.leeren(liste);
+
+    UI.textSetzen(zahl, !passend.length ? "" : (passend.length > 40
+      ? "40 von " + UI.zahlText(passend.length) + " Personen"
+      : (passend.length === 1 ? "1 Person" : UI.zahlText(passend.length) + " Personen")));
     if (!passend.length) {
-      liste.appendChild(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
-        text: t ? "Niemand passt zu «" + suchText.trim() + "»." : "Keine Personen zur Auswahl." }));
-      UI.textSetzen(zahl, "");
+      const leer = schluesselSetzen(UI.leerzustand({ sinnbild: "suche", titel: "Keine Treffer",
+        text: t ? "Niemand passt zu «" + suchText.trim() + "»." : "Keine Personen zur Auswahl." }), "leer");
+      trefferAbgleichen(liste, [leer], ausEingabe);
       return;
     }
-    liste.appendChild(UI.zeilenliste(passend.slice(0, 40).map(function (b) {
+    const zeilen = passend.slice(0, 40).map(function (b) {
       const unter = personUnter(b).slice(0, 2);
       const bisher = bisherigesGeraet(b);
       unter.push(bisher ? "hat «" + bisher + "»" : "kein Gerät");
-      return UI.listenZeile({ titel: personName(b), unter: unter, sinnbild: "benutzer",
-        beiKlick: function () { schritt2(b); } });
-    })));
-    UI.textSetzen(zahl, passend.length > 40
-      ? "40 von " + UI.zahlText(passend.length) + " Personen"
-      : (passend.length === 1 ? "1 Person" : UI.zahlText(passend.length) + " Personen"));
+      const bId = b.id;
+      return schluesselSetzen(UI.listenZeile({ titel: personName(b), unter: unter, sinnbild: "benutzer",
+        beiKlick: function () { schritt2(personNachId(bId)); } }), "person-" + bId);
+    });
+    // Stehen schon Treffer, gleiten nur die Zeilen; sonst wechselt die Art.
+    const bestand = liste.querySelector(":scope > .zeilenliste");
+    if (bestand && ausEingabe) {
+      Bewegung.umordnen(bestand, function (o) { UI.abgleichen(bestand, zeilen, o); }, { eintraege: ":scope > .listen-zeile" });
+    } else if (bestand) {
+      UI.abgleichen(bestand, zeilen);
+    } else {
+      trefferAbgleichen(liste, [schluesselSetzen(UI.zeilenliste(zeilen), "zeilen")], ausEingabe);
+    }
   }
 
   function schritt2(b) {
+    if (!b) return;
     const bisher = bisherigesGeraet(b);
     const abgebende = inhaberAlle().filter(a => String(a.id) !== String(b.id));
     d.titel(ausLager ? "Ausgeben an «" + personName(b) + "»?" : "«" + personName(b) + "» als Inhaber?");
-    UI.leeren(d.inhalt);
-    UI.leeren(d.knoepfe);
-    d.inhalt.appendChild(el("p", "ds-dialog__text", "«" + pcName + "» geht an «" + personName(b) + "» (" + (String(b.Title || "").trim() || "ohne Login")
+    const teile = [schluesselSetzen(el("p", "ds-dialog__text", "«" + pcName + "» geht an «" + personName(b) + "» ("
+      + (String(b.Title || "").trim() || "ohne Login")
       + (String(b.Abteilung || "").trim() ? ", " + String(b.Abteilung).trim() : "")
-      + ")." + (ausLager ? " Das Gerät bekommt den Status «Aktiv»." : "")));
+      + ")." + (ausLager ? " Das Gerät bekommt den Status «Aktiv»." : "")), "frage")];
     if (abgebende.length) {
-      d.inhalt.appendChild(UI.banner({ ton: "warnung", text: namenText(abgebende)
-        + (abgebende.length === 1 ? " gibt" : " geben") + " das Gerät ab." }));
+      teile.push(schluesselSetzen(UI.banner({ ton: "warnung", text: namenText(abgebende)
+        + (abgebende.length === 1 ? " gibt" : " geben") + " das Gerät ab." }), "abgebende"));
     }
     if (bisher) {
-      d.inhalt.appendChild(UI.banner({ ton: "warnung", text: "«" + personName(b) + "» hat zurzeit «" + bisher
-        + "». Dieser Eintrag wird ersetzt." }));
+      teile.push(schluesselSetzen(UI.banner({ ton: "warnung", text: "«" + personName(b) + "» hat zurzeit «" + bisher
+        + "». Dieser Eintrag wird ersetzt." }), "bisher"));
     }
-    const zurueck = UI.knopf({ text: "Zurück", variante: "leise", beiKlick: function () { schritt1(); } });
-    const ja = UI.knopf({ text: ausLager ? "Ausgeben" : (bisheriger ? "Wechseln" : "Festlegen"), variante: "primaer",
-      beiKlick: async function () {
+    const zurueck = schluesselSetzen(UI.knopf({ text: "Zurück", variante: "leise",
+      beiKlick: function () { schritt1(); } }), "zurueck");
+    const ja = schluesselSetzen(UI.knopf({ text: ausLager ? "Ausgeben" : (bisheriger ? "Wechseln" : "Festlegen"),
+      variante: "primaer", beschaeftigt: "Wird gespeichert …", beiKlick: async function () {
         const verlaufText = ausLager ? "Aus dem Lager ausgegeben an " + personName(b)
           : (bisheriger ? "Inhaber gewechselt: " + personName(bisheriger) + " → " + personName(b)
             : "Inhaber festgelegt: " + personName(b));
@@ -2225,10 +2359,11 @@ function inhaberWaehlenDialog(ausgabe, person) {
            aber nie zwei. */
         const schritte = abgebende.map(a => ({ benutzer: a, zuweisen: false }));
         schritte.push({ benutzer: b, zuweisen: true });
-        const ok = await imDialogAusfuehren(d, ja, zurueck, function () { return inhaberSchreiben(schritte, geraetFelder); });
+        const ok = await imDialogAusfuehren(d, ja, function () { return inhaberSchreiben(schritte, geraetFelder); });
         if (ok) UI.meldung(ausLager ? "Ausgegeben an «" + personName(b) + "»." : "«" + personName(b) + "» ist jetzt Inhaber.");
-      } });
-    UI.anhaengen(d.knoepfe, [zurueck, ja]);
+      } }), "ja");
+    UI.abgleichen(d.inhalt, teile);
+    UI.abgleichen(d.knoepfe, [zurueck, ja]);
     ja.focus();
   }
 
@@ -2242,7 +2377,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
    ================================================================== */
 
 /* Löschen mit Eintippen des PC-Namens; danach der Endzustand mit «Zur
-   Liste» (gemerkte Liste samt Filtern, Fehler A6). */
+   Liste» (gemerkte Liste samt Filtern). */
 function loeschenDialog() {
   const name = anzeigeName();
   const personen = inhaberAlle();

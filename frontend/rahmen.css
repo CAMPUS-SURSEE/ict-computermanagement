@@ -1,4 +1,4 @@
-/* rahmen.css — was der App-Rahmen und die Ebenen von ICT-Inventar über
+/* rahmen.css – was der App-Rahmen und die Ebenen von ICT-Inventar über
    Dashboard-Style hinaus brauchen.
 
    Den Rahmen selbst bringt Dashboard-Style (components/shell.css, page.css,
@@ -17,26 +17,32 @@
    Hier steht nur, was es nur bei ICT gibt (Wortmarke, Konto-Kapsel,
    Zurück-Eintrag und Zähler der Schublade, Zustände der Seite, Seitenkopf
    mit Zurück-Link und Aktionen, Speicherleiste, Rollflächen im Dialog,
-   Meldung über der Speicherleiste, Seitenübergänge) und die wenigen
-   Abweichungen vom Rahmen von Dashboard-Style, je mit Grund.
+   Unterzeile und Fuss im Blatt, Aktion in der Meldung) und die wenigen
+   Abweichungen vom Rahmen von Dashboard-Style, je mit Grund. Dashboard-
+   Style liegt in @layer ds.*; diese Datei ist ungelagert und gewinnt
+   darum immer – sie überschreibt nur, was ICT wirklich anders will.
+
+   Die Seitenübergänge zwischen den HTML-Seiten bringt Dashboard-Style
+   selbst: vendor/dashboard-style/css/optional/view-transitions.css (in
+   jeder Seite nach ds.css verlinkt) schaltet sie ein und benennt Tafel,
+   Rahmen und feste Schublade; die alte Ansicht geht kurz, die neue blendet
+   ein und wächst, Kopf und Schublade bleiben stehen.
 
    Inhalt:
-     1. Seitengerüst und Kopf (Wortmarke, Konto-Kapsel)
+     1. Seitengerüst und Kopf (Wortmarke, Konto-Kapsel, Roll-Wächter)
      2. Schublade (Zurück-Eintrag, Zähler, Knopf-Einträge)
-     3. Tafel: Ladebalken, Platz am Ende, Tabellenansichten, Zustände
+     3. Tafel: Platz am Ende, Tabellenansichten, Zustände
      4. Seitenkopf (Zurück-Link, Teile-Zeile, Status, Aktionen)
      5. Gerüst der Detailseiten (.fenster-bereich)
      6. Schmale Fenster (≤ 900 / 720 / 600 / 359 px)
      7. Dialog (Rollfläche zwischen Titel und Knöpfen)
      8. Seitenblatt (Unterzeile, Fusszeile)
-     9. Meldung (über der Speicherleiste, Aktion)
+     9. Meldung (Aktion)
     10. Speicherleiste
-    11. Seitenübergänge zwischen den HTML-Seiten (View Transitions)
-    12. Kontrastmodus und Druck
+    11. Kontrastmodus und Druck
 
    Regeln wie in bausteine.css: nur Tokens, keine @keyframes (die Namen
    ds-fade-in, ds-lift-in … stehen in vendor/dashboard-style/css/motion.css).
-   Reduzierte Bewegung schaltet Dashboard-Style über die Tokens ab.
 
    Gebaut und gesteuert wird alles von rahmen.js (Rahmen, UI.dialog,
    UI.bestaetigen, UI.blatt, UI.meldung, UI.tipp, UI.speicherleiste). */
@@ -46,32 +52,39 @@
    1. Seitengerüst und Kopf
    ================================================================== */
 
-/* body ist .ds-app. Er rollt nie: alles, was rahmen.js später an den body
-   hängt (Dialoge, Meldungen, Tooltip, die Ansage), ist fest positioniert. */
-.ds-app {
-  overflow: hidden;
-}
-
 /* Die Wortmarke steht über der linken KANTE der Navigationssinnbilder
-   (Einzug der Liste 12 + Polster des Eintrags 16; Dashboard-Style mittet
-   ein 32-px-Logo auf ihrer Achse). Die Gruppentitel beginnen auf derselben
-   Linie. Ohne Schublade (Neu-Formulare) bleibt sie, wo sie mit Schublade
-   steht: beim Wechsel Liste → «Neuer …» rückt der Kopf nicht. */
+   (Dashboard-Style mittet ein 32-px-Logo auf ihrer Achse). Die Kante ist
+   die Achse von Dashboard-Style (--ds-drawer-icon-axis, gesetzt von
+   .ds-app--drawer) minus das halbe 20-px-Sinnbild. Die Gruppentitel
+   beginnen auf derselben Linie. Ohne Schublade (Neu-Formulare) bleibt sie,
+   wo sie mit Schublade steht: beim Wechsel Liste → «Neuer …» rückt der
+   Kopf nicht. */
 .ds-app--drawer {
-  --sinnbild-achse: calc(var(--ds-space-3) + var(--ds-space-4));
+  --sinnbild-kante: calc(var(--ds-drawer-icon-axis) - 10px);
 }
 
 /* Nur mit fester Schublade: darunter gelten die Abstände von
    Dashboard-Style (Kopf am Menüknopf) und unten die eigene Regel ohne
-   Schublade (§6). */
+   Schublade (§6). Gilt mit und ohne Schublade ([data-drawer-hidden]):
+   diese Datei hat keine Ebene und schlägt beide Regeln von Dashboard-Style. */
 @media (min-width: 901px) {
-  .ds-app--drawer .ds-topbar,
-  .ds-app--drawer[data-drawer-hidden] .ds-topbar {
-    padding-left: max(var(--sinnbild-achse), env(safe-area-inset-left));
+  .ds-app--drawer .ds-topbar {
+    padding-left: max(var(--sinnbild-kante), env(safe-area-inset-left));
   }
 }
 
 .ds-topbar__menu { flex-shrink: 0; }
+
+/* Wächter für data-scrolled (rahmen.js, wie bei Dashboard-Style): 1 px am
+   Anfang eines Rollers, der keinen Platz nimmt. Im Blatt gleicht er auch
+   den Abstand der Spalte aus. */
+.rollwaechter {
+  flex-shrink: 0;
+  height: 1px;
+  margin-bottom: -1px;
+}
+
+.ds-sheet__body > .rollwaechter { margin-bottom: calc(-1px - var(--ds-space-3)); }
 
 /* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
    Logo von Campus Sursee, Archivo breit (thema.css), der Punkt im
@@ -154,15 +167,15 @@
    2. Schublade
    ================================================================== */
 
-/* Einträge sind Links oder (Styleguide, Abschnitte) Knöpfe; Knöpfe setzt
-   Dashboard-Style zurück. Kein Tipp-Blitz auf Links: der Eintrag hat seine
-   eigene Zustandsschicht. */
+/* Einträge sind Links oder (Styleguide, Abschnitte) Knöpfe. Kein
+   Tipp-Blitz auf Links: der Eintrag hat seine eigene Zustandsschicht
+   (Dashboard-Style schaltet ihn nur bei button.ds-drawer__item ab). */
 .ds-drawer__item { -webkit-tap-highlight-color: transparent; }
 
 /* Der Text nimmt den Platz, der Zähler steht am Ende. */
 .ds-drawer__label { flex: 1; }
 
-/* Zähler am Ende des Eintrags: eine Beschriftung, keine Pille — auf der
+/* Zähler am Ende des Eintrags: eine Beschriftung, keine Pille – auf der
    Pastell-Pille wäre ein Pastell-Zähler unsichtbar. */
 .schublade-zahl {
   flex-shrink: 0;
@@ -193,22 +206,13 @@
 
 
 /* ==================================================================
-   3. Tafel: Ladebalken, Platz am Ende, Tabellenansichten, Zustände
+   3. Tafel: Platz am Ende, Tabellenansichten, Zustände
    ================================================================== */
 
 /* Positioniert, damit absolut platzierte Nachfahren (.ds-sr-Texte) in ihr
    bleiben: sonst hängen sie am Fenster, verlängern das Dokument, und ein
    scrollIntoView rollt den ganzen Rahmen samt Kopf aus dem Bild. */
 .ds-view { position: relative; }
-
-/* Ladebalken der Seite: klebt oben in der Tafel über dem Inhalt (bei
-   Dashboard-Style steht er im Skelett) und erscheint erst nach 200 ms. */
-.ds-view > .ds-loadbar {
-  z-index: var(--ds-z-sticky);
-  flex-shrink: 0;
-  margin: 0 0 calc(-1 * var(--ds-space-1));
-  animation: ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-delay-loader) backwards;
-}
 
 /* Die Bahn (.ds-content) füllt die Tafel nach unten: die Speicherleiste
    (ohne eigene Höhe, nach der Bahn) steht dann auch bei kurzem Inhalt am
@@ -267,27 +271,34 @@
   }
 }
 
-/* Platz am Tafelende für Speicherleiste und Fehlermeldungen (rahmen.js):
-   - [data-leiste], solange die Speicherleiste steht: --leiste-reserve =
-     ihre Höhe + Abstand unten + 8 px, als scroll-padding (Fokus und
-     scrollIntoView halten Felder über ihr) und als Mindestpolster der Bahn;
+/* Platz am Tafelende für die Speicherleiste (rahmen.js):
+   - [data-leiste], solange sie steht: --leiste-reserve = ihre Höhe +
+     Abstand unten + 8 px, als Mindestpolster der Bahn (bewusst der Bahn,
+     nicht der Tafel: das Polster von Dashboard-Style für Meldungen bleibt);
    - [data-leiste-rest], nachdem sie ging, bis das Polster aus dem Bild ist
-     (--leiste-rest): sonst rutschte der Inhalt am Tafelende nach unten;
-   - [data-meldung-platz], solange eine Fehlermeldung offen ist
-     (--ds-toast-reserve, darüber noch 24 px): sie verdeckt nie die letzten
-     Aktionen.
-   Bewusst als Polster der Bahn und nicht der Tafel. */
-.ds-view { --meldung-zusatz: 0px; }
-
-.ds-view[data-meldung-platz] { --meldung-zusatz: calc(var(--ds-space-6) + var(--ds-toast-reserve, 0px)); }
-
-.ds-view:is([data-leiste], [data-meldung-platz]) {
+     (--leiste-rest): sonst rutschte der Inhalt am Tafelende nach unten.
+   Eine offene Fehlermeldung hält ihren Platz über den Hook von
+   Dashboard-Style (.ds-view[data-toast-reserve], --ds-toast-reserve).
+   Steht beides, hält scroll-padding fokussierte Felder über Leiste UND
+   Meldung (Dashboard-Style kennt nur die Meldung). */
+.ds-view:is([data-leiste], [data-toast-reserve]) {
   scroll-padding-bottom: calc(var(--leiste-reserve, 0px) + var(--ds-toast-reserve, 0px));
 }
 
-.ds-view:is([data-leiste], [data-leiste-rest], [data-meldung-platz]) > .ds-content {
-  padding-bottom: max(var(--bahn-unten), var(--leiste-rest, 0px),
-    calc(var(--leiste-reserve, 0px) + var(--meldung-zusatz)));
+.ds-view:is([data-leiste], [data-leiste-rest]) > .ds-content {
+  padding-bottom: max(var(--bahn-unten), var(--leiste-rest, 0px), var(--leiste-reserve, 0px));
+}
+
+/* Steht die Leiste UND ist ein Fehler offen, hält ebenfalls die Bahn den
+   Platz für beide: das Polster von Dashboard-Style auf der Tafel schöbe
+   die klebende Leiste um seine Höhe hoch, unter die Meldung, die
+   rahmen.js über der Ruhelage der Leiste ausgerichtet hat. */
+.ds-view[data-leiste][data-toast-reserve] {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ds-view[data-leiste][data-toast-reserve] > .ds-content {
+  padding-bottom: max(var(--bahn-unten), calc(var(--leiste-reserve, 0px) + var(--ds-toast-reserve, 0px)));
 }
 
 /* Zustände der Seite: solange geladen wird oder ein Fehler steht, ist der
@@ -310,17 +321,13 @@
 
 .bahn-zustand:empty { display: none; }
 
-/* Das Skelett samt Fortschrittszeile erscheint erst nach 200 ms. */
+/* Das Skelett samt Fortschrittszeile erscheint verzögert (Dashboard-Style,
+   --ds-delay-loader); der Ladebalken steht davor in .ds-content. */
 .zustand-laden {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ds-space-4);
 }
-
-/* Bei Dashboard-Style ist der Ladebalken das erste Rasterkind des Skeletts
-   und bringt eine Lücke von 16 px mit; hier klebt er ausserhalb der Bahn,
-   darum steht die Lücke als Polster da. */
-.zustand-laden > .ds-skeleton { padding-top: var(--ds-space-4); }
 
 /* Die Fortschrittszeile steht im Skelett an der Stelle des Leads. */
 .zustand-fortschritt {
@@ -331,14 +338,6 @@
 }
 
 .zustand-fortschritt:empty { display: none; }
-
-/* Seitenwechsel innerhalb der Seite (Rahmen.wechseln), ausgehende Hälfte:
-   kurz und beschleunigend (wie .ds-view--leaving, aber nur für die
-   ausgehenden Ansichten, nicht für alles in der Tafel). */
-.wechsel-weg {
-  opacity: 0;
-  transition: opacity var(--ds-dur-instant) var(--ds-ease-in);
-}
 
 
 /* ==================================================================
@@ -378,8 +377,10 @@
   gap: var(--ds-space-1);
 }
 
-/* Lead und Teile-Zeile mit tabellarischen Ziffern («47 von 163»). */
-.ds-page-head__lead,
+/* Lead und Teile-Zeile mit tabellarischen Ziffern («47 von 163»); die
+   Teile-Zeile sieht aus wie der Lead von Dashboard-Style. */
+.ds-page-head__lead { font-variant-numeric: tabular-nums; }
+
 .seitenkopf-unter {
   margin: 0;
   max-width: var(--ds-measure);
@@ -417,17 +418,21 @@
    auf der Kante von Banner und Karten darunter. */
 .seitenkopf-aktionen:has(> .ds-btn--text:last-child) { margin-right: calc(-1 * var(--ds-space-3)); }
 
-/* Schmale Bahn: die Aktionen stehen links unter dem Titel; ein Text-Knopf
-   vorne fluchtet mit dem Titel. */
+/* Schmale Bahn: die Aktionen stehen links unter dem Titel, und der erste
+   Text-Knopf JEDER Zeile fluchtet mit dem Titel, auch nach einem Umbruch.
+   Wie .ds-card__links von Dashboard-Style: jeder Text-Knopf hängt sein
+   Polster in den Rand, die Lücke gleicht das wieder aus (sichtbar bleibt
+   space-2 zwischen den Knöpfen). Kopfaktionen sind Text-Knöpfe (§4). */
 @container ds-content (max-width: 600px) {
   .seitenkopf-aktionen,
   .seitenkopf-aktionen:has(> .ds-btn--text:last-child) {
     justify-content: flex-start;
+    column-gap: calc(var(--ds-space-2) + var(--ds-space-3));
     margin-left: 0;
     margin-right: 0;
   }
 
-  .seitenkopf-aktionen > .ds-btn--text:first-child { margin-left: calc(-1 * var(--ds-space-3)); }
+  .seitenkopf-aktionen > .ds-btn--text { margin-left: calc(-1 * var(--ds-space-3)); }
 }
 
 
@@ -452,7 +457,7 @@
    6. Schmale Fenster
    ================================================================== */
 
-/* Modale Schublade (gleiche Grenze wie MODAL_ABFRAGE in rahmen.js): der
+/* Modale Schublade (Grenze von Dashboard-Style, shell.css und DS.overlay): der
    Kopf rückt an den Menüknopf (Dashboard-Style); ohne Schublade steht er
    schon ab 900 px am schmalen Seitenrand von 16 px, nicht erst ab 600. */
 @media (max-width: 900px) {
@@ -508,9 +513,9 @@
 /* 560 px für Formulare und Listen (UI.dialog({ breit: true })). */
 .dialog-breit { --ds-dialog-width: 560px; }
 
-/* Fläche und Blatt nehmen den Fokus nur als Parkplatz (ohne Ring). */
-.ds-dialog__box:focus,
-.ds-sheet__panel:focus { outline: none; }
+/* Hat der Dialog beim Öffnen noch nichts Fokussierbares, parkt
+   DS.overlay den Fokus auf der Fläche (tabindex -1): ohne Ring. */
+.ds-dialog__box[tabindex="-1"]:focus { outline: none; }
 
 .ds-dialog__title,
 .ds-dialog__actions { flex-shrink: 0; }
@@ -585,11 +590,9 @@
     0 var(--ds-space-2) 0 0 var(--ds-surface);
 }
 
-/* Bestätigung durch Eintippen (F.loeschenDialog). */
-.dialog-bestaetigung {
-  display: grid;
-  gap: var(--ds-space-2);
-}
+/* Die Bestätigung durch Eintippen (F.loeschenDialog, .dialog-bestaetigung)
+   ist ein .ds-field wie jedes andere: die Klasse ist nur ein Haken, ohne
+   eigene Regel. */
 
 
 /* ==================================================================
@@ -605,7 +608,7 @@
   display: grid;
 }
 
-/* Unterzeile im Kopf, z. B. die Trefferzahl — live. */
+/* Unterzeile im Kopf, z. B. die Trefferzahl – live. */
 .blatt-unter {
   margin: 0;
   color: var(--ds-text-2);
@@ -633,12 +636,6 @@
    voller Länge: es rollt nur das Blatt, nie zusätzlich eine Liste darin. */
 .ds-sheet__body .mehrfach { max-height: none; }
 
-/* Platz für eine offene Fehlermeldung im Blatt (rahmen.js, wie in der Tafel). */
-.ds-sheet__body[data-meldung-platz] {
-  padding-bottom: calc(var(--ds-space-8) + env(safe-area-inset-bottom) + var(--ds-toast-reserve, 0px));
-  scroll-padding-bottom: var(--ds-toast-reserve, 0px);
-}
-
 /* Optionale Fusszeile (Trefferzahl, «Fertig»): bleibt stehen, der Körper
    rollt darüber. */
 .blatt-fuss {
@@ -658,7 +655,14 @@
 
 .blatt-fuss:empty { display: none; }
 
-.ds-sheet__panel:has(> .blatt-fuss:not(:empty)) .ds-sheet__body { padding-bottom: var(--ds-space-6); }
+/* Über einer Fusszeile reicht ein kleineres Polster als die 32 px von
+   Dashboard-Style. Ist ein Fehler offen, kommt der Meldungsplatz dazu
+   (--ds-toast-reserve, rahmen.js misst ihn ab der Unterkante des Körpers):
+   diese Regel ohne Ebene schlägt die von Dashboard-Style und muss ihn
+   darum selbst mitrechnen. */
+.ds-sheet__panel:has(> .blatt-fuss:not(:empty)) .ds-sheet__body {
+  padding-bottom: calc(var(--ds-space-6) + var(--ds-toast-reserve, 0px));
+}
 
 @media (max-width: 600px) {
   .blatt-fuss {
@@ -669,11 +673,9 @@
 
 /* ==================================================================
    9. Meldung (Snackbar, UI.meldung)
-   Unten links in der Tafel (rahmen.js richtet --ds-toast-left an ihrer
-   Kante aus) und über einer sichtbaren Speicherleiste (--ds-toast-bottom).
-   Wechselt die Ebene (Blatt ↔ Seite), gleiten die sichtbaren Meldungen
-   an die neue Kante (--ds-toast-shift, --ds-toast-shift-y). Alle vier
-   sind Laufzeitvariablen von Dashboard-Style; rahmen.js setzt sie.
+   Stapel, Platz neben der Schublade und im Blatt, Ansage und Bewegung
+   bringt DS.overlay.toast; rahmen.js setzt nur --ds-toast-bottom über
+   einer sichtbaren Speicherleiste. Hier steht nur die Aktion.
    ================================================================== */
 
 /* Aktion in der Meldung («Rückgängig»): Text-Knopf in der inversen
@@ -687,7 +689,7 @@
 
 .meldung-aktion + .ds-toast__close { margin-left: 0; }
 
-.ds-toast .ds-btn:focus-visible { outline-color: var(--ds-on-inverse); }
+.meldung-aktion:focus-visible { outline-color: var(--ds-on-inverse); }
 
 
 /* ==================================================================
@@ -699,7 +701,9 @@
    Tafelende liegt sie so im unteren Polster der Bahn, und Kommen und
    Gehen verschieben nichts. Den Platz darüber hält die Tafel frei,
    solange sie steht ([data-leiste], Abschnitt 3).
-   Eintritt Blende + 8 px Heben 250, Austritt Sinken 200 (rahmen.js).
+   Sie kommt und geht immer wieder: Ein- und Austritt spielt .ds-presence
+   von Dashboard-Style (rahmen.js schaltet nur hidden um; ein Umschalten
+   mitten im Übergang macht vom aktuellen Stand weiter).
    ================================================================== */
 
 .speicherleiste {
@@ -722,7 +726,6 @@
   background: var(--ds-surface);
   box-shadow: var(--ds-elev-overlay);
   outline: 1px solid transparent;
-  --ds-motion-distance: var(--ds-distance-md);
 }
 
 .speicherleiste-text {
@@ -736,14 +739,6 @@
   font: var(--ds-font-label);
   font-variant-numeric: tabular-nums;
 }
-
-.speicherleiste-meta {
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-}
-
-.speicherleiste-meta:empty { display: none; }
 
 .speicherleiste-knoepfe {
   display: flex;
@@ -761,60 +756,7 @@
 
 
 /* ==================================================================
-   11. Seitenübergänge zwischen den HTML-Seiten
-   Wechselt man von der Liste ins Detailfenster und zurück, bleibt der
-   Rahmen ruhig stehen und nur der Inhalt blendet durch: alt 100 ms
-   beschleunigend aus, neu danach 250 ms ein mit 4 px Heben — dieselbe
-   Choreografie wie Rahmen.wechseln.
-
-   Das Opt-in steht NICHT hier, sondern als eine Zeile im <head> jeder
-   Seite: <style>@view-transition { navigation: auto; }</style>. Chrome
-   prüft es auf der neuen Seite, bevor externe Stilvorlagen aktiv sind;
-   aus einer Stilvorlage brach der Übergang meist ab. Hier steht nur die
-   Choreografie; bei reduzierter Bewegung laufen auch diese Animationen
-   über die Tokens in 1 ms.
-
-   Kopf, Schublade und Tafel sind eigene Gruppen ohne Animation, ihr altes
-   Bild wird gar nicht gezeigt (sonst lägen Name und «Abmelden» 370 ms
-   doppelt übereinander). Der Name «inhalt» liegt auf dem Roller
-   (.ds-view): das alte Bild ist der sichtbare Ausschnitt einer gerollten
-   Tafel und blendet an Ort und Stelle aus.
-   ================================================================== */
-
-.ds-topbar { view-transition-name: kopf; }
-.ds-drawer { view-transition-name: schublade; }
-.ds-panel { view-transition-name: tafel; }
-.ds-view { view-transition-name: inhalt; }
-
-::view-transition-group(*),
-::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-new(kopf),
-::view-transition-new(schublade),
-::view-transition-new(tafel) {
-  animation: none;
-}
-
-::view-transition-old(kopf),
-::view-transition-old(schublade),
-::view-transition-old(tafel) {
-  display: none;
-}
-
-::view-transition-old(inhalt) {
-  animation: ds-fade-out var(--ds-dur-instant) var(--ds-ease-in) both;
-}
-
-::view-transition-new(inhalt) {
-  --ds-motion-distance: var(--ds-distance-sm);
-  animation:
-    ds-fade-in var(--ds-dur-medium) var(--ds-ease-in-out) var(--ds-dur-instant) both,
-    ds-lift-in var(--ds-dur-medium) var(--ds-ease-out) var(--ds-dur-instant) both;
-}
-
-
-/* ==================================================================
-   12. Kontrastmodus und Druck
+   11. Kontrastmodus und Druck
    ================================================================== */
 
 /* Im Kontrastmodus trägt der aktive Eintrag die Systemfarbe der Auswahl
@@ -830,13 +772,10 @@
     color: HighlightText;
   }
 
-  .ds-drawer__list .ds-drawer__item[aria-current="page"] svg { color: HighlightText; }
-
   .ds-drawer__list .ds-drawer__item[aria-current="page"]:focus-visible {
     outline: 2px solid CanvasText;
     outline-offset: var(--ds-focus-offset);
   }
-
 
   .wortmarke-punkt { forced-color-adjust: none; background: CanvasText; }
 }
@@ -845,8 +784,6 @@
    Dazu: keine Speicherleiste, keine Schnellaktionen im Seitenkopf, und die
    seitenfüllende Liste läuft über alle Seiten statt nur ihren Ausschnitt. */
 @media print {
-  .ds-app { overflow: visible; }
-
   .speicherleiste,
   .seitenkopf-aktionen { display: none; }
 

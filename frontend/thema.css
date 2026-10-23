@@ -1,21 +1,24 @@
-/* thema.css — das Campus-Thema von ICT-Inventar auf Dashboard-Style.
+/* thema.css – das Campus-Thema von ICT-Inventar auf Dashboard-Style.
 
    Dashboard-Style (vendor/dashboard-style/, siehe STYLEGUIDE.md) bringt
    Tokens, Bausteine, Bewegung und Sinnbilder mit einem neutralen
    Standardthema. Diese Datei setzt darauf NUR die Werte von Campus Sursee
-   (dieselben wie die ChatBob-Admin-Oberfläche) und die wenigen Tokens, die
-   es nur hier gibt. Sie wird direkt nach ds.css geladen und überschreibt
-   Rollen auf demselben Selektor .ds-theme (steht auf <html>).
+   und die wenigen Tokens, die es nur hier gibt. Sie wird nach ds.css (und
+   der optionalen view-transitions.css) geladen und überschreibt Rollen auf
+   demselben Selektor .ds-theme (steht auf <html>).
 
    Regeln:
      - Hier stehen nur Tokens und die Schrift der Wortmarke, keine
        Bausteine (die stehen in bausteine.css und rahmen.css).
-     - Bewegungs-Tokens (--ds-dur-*, --ds-ease-*, --ds-distance-* …)
-       überschreibt kein Thema: der Schalter für reduzierte Bewegung in
-       Dashboard-Style hängt daran.
+     - Ohne Kaskaden-Ebene: Dashboard-Style liegt in @layer ds.*, ein Thema
+       nie (sonst verlöre es gegen die Standardwerte von ds.tokens).
+     - Bewegungs-Tokens und -Hooks (--ds-dur-*, --ds-ease-*, --ds-distance-*,
+       --ds-delay-*, --ds-hold-*, --ds-enter-*, --ds-indicator-lag …) setzt
+       kein Thema: Dashboard-Style hat ein festes Bewegungsschema, gleich
+       auf jedem Gerät; --ds-time-scale setzen nur Styleguide und Tests.
      - Was Dashboard-Style schon richtig hat (Text #1f1f1f/#444746/#747775,
-       Statusfarben, Radien, Schatten, Google Sans, Typo-Rollen, Masse),
-       steht hier nicht noch einmal. */
+       Statusfarben, Radien, Schatten, Google Sans, Typo-Rollen, Masse,
+       16 px Feldtext auf dem Telefon), steht hier nicht noch einmal. */
 
 
 /* ==================================================================
@@ -58,7 +61,7 @@
   --ds-backdrop:         #f3f4f2;   /* Grund, Kopf, Schublade; Zeilen-Hover */
   --ds-surface-low:      #f9f9f7;   /* Kacheln, gefüllte Karten, neutrale Hinweise */
   --ds-surface-high:     #edeeec;   /* gefüllte Felder, Suche, neutrale Chips */
-  --ds-surface-highest:  #e2e3e1;   /* Schalter-Spur aus, Skelett, Spinner-Spur */
+  --ds-surface-highest:  #e2e3e1;   /* Schalter-Spur aus, Skelett */
   --ds-line:             #e2e3e1;   /* passive Haarlinie: Karten, Trenner */
 
   /* Primär Campus-Grün; das Pastell ist DIE einzige Tönung (Auswahl,
@@ -70,13 +73,6 @@
   --ds-on-accent:        #1a3c25;
   --ds-inverse-primary:  #a1d73b;   /* Erfolgs-Sinnbild in der Meldung */
   --ds-link-underline:   rgba(26, 60, 37, .4);
-
-  /* Spur des Spinners wie die Skelette, nicht die Haarlinie. */
-  --ds-spinner-track:    var(--ds-surface-highest);
-
-  /* Felder bleiben auch auf dem Telefon 14 px (Dashboard-Style schaltet
-     sonst unter 600 px auf 16 px, damit iOS nicht hineinzoomt). */
-  --ds-input-font:       var(--ds-font-body);
 
   /* --- Nur ICT-Inventar --- */
 

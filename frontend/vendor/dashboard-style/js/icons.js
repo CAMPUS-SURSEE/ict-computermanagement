@@ -72,9 +72,11 @@ export const thumbUp = '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0
 export const thumbDown = '<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88z"/>';
 
 // Status
-// pathLength="1": the check can draw itself (ds-draw in motion.css).
-export const check = '<path pathLength="1" d="M20 6 9 17l-5-5"/>';
-export const checkCircle = '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>';
+// pathLength="1": the check and the tick of checkCircle can draw themselves
+// (ds-draw in motion.css, the done face of a button, .ds-icon-swap). Drawn
+// from the short arm, left to right, like the checks of chips and checkboxes.
+export const check = '<path pathLength="1" d="M4 12l5 5L20 6"/>';
+export const checkCircle = '<circle cx="12" cy="12" r="10"/><path pathLength="1" d="m9 12 2 2 4-4"/>';
 export const alert = '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
 export const alertCircle = '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>';
 export const info = '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>';
@@ -136,17 +138,25 @@ function checkGlyph(body) {
   if (typeof body !== 'string' || body.charAt(0) !== '<') throw new Error('Unknown icon: ' + body);
 }
 
+const ESCAPES = { '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' };
+
+/** A value for a double-quoted attribute: a class can never close it. */
+function escapeAttribute(value) {
+  return String(value).replace(/[&"<>]/g, (char) => ESCAPES[char]);
+}
+
 /**
  * SVG markup of one glyph.
  * @param {string} body  a glyph of this module (inner SVG markup)
  * @param {number} [size]  rendered width and height in px (default 20)
- * @param {string} [className]  extra class (a styling hook)
+ * @param {string} [className]  extra class (a styling hook); escaped, so
+ *   it never ends the attribute
  * @returns {string}
  */
 export function icon(body, size, className) {
   checkGlyph(body);
   const px = size || ICON_SIZE;
-  const cls = className ? ` class="${className}"` : '';
+  const cls = className ? ` class="${escapeAttribute(className)}"` : '';
   return `<svg${cls} width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 

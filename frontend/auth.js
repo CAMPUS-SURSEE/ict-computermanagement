@@ -1,9 +1,9 @@
-/* auth.js — Anmeldung an Entra ID (Microsoft 365) für das ICT-Inventar.
+/* auth.js – Anmeldung an Entra ID (Microsoft 365) für das ICT-Inventar.
 
    Dünner Aufsatz auf MSAL, der offiziellen Anmeldebibliothek von Microsoft.
-   MSAL wird per CDN eingebunden, siehe die Script-Zeile in jeder der fünf
-   Seiten (index, client, benutzer, telefon, software; _headers erklärt die
-   Prüfsumme). Hier steht nur die Übersetzung in die vier Funktionen, welche
+   MSAL wird per CDN eingebunden, siehe die Script-Zeile in jeder der sieben
+   Seiten (index, client, benutzer, telefon, software, kamera, kamerarolle;
+   _headers erklärt die Prüfsumme). Hier steht nur die Übersetzung in die vier Funktionen, welche
    die Seiten brauchen.
    Den OAuth-Ablauf selbst, das Zwischenspeichern der Token und die stille
    Erneuerung erledigt MSAL.
@@ -17,8 +17,9 @@
      4. Auth.token() liefert jederzeit ein gültiges Zugriffstoken.
 
    Die Berechtigung ist delegiert und umfasst Lesen und Schreiben
-   (Sites.ReadWrite.All): alle vier Detailseiten (client, benutzer, telefon,
-   software) pflegen die von Hand geführten Spalten ihrer Liste. Mehr als die
+   (Sites.ReadWrite.All): alle sechs Detailseiten (client, benutzer, telefon,
+   software, kamera, kamerarolle) pflegen die von Hand geführten Spalten
+   ihrer Liste. Mehr als die
    angemeldete Person in SharePoint selbst darf, kann das Token nie.
 
    Ablage: localStorage. Detailseiten öffnen im selben Tab, mit Ctrl- oder

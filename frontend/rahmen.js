@@ -1,37 +1,64 @@
-/* rahmen.js — der Rahmen aller Seiten und die schwebenden Ebenen.
+/* rahmen.js – der Rahmen aller Seiten und die schwebenden Ebenen.
 
-   Rahmen (Kopf, Schublade, Seitenwechsel), Dialog, Seitenblatt, Meldung
-   und Tooltip als klassisches Skript mit EINEM Namensraum «Rahmen»; die
-   Ebenen hängen sich an «UI» (bausteine.js) an. Aussehen: die Bausteine
-   von Dashboard-Style (.ds-app, .ds-topbar, .ds-drawer, .ds-panel,
-   .ds-view, .ds-dialog, .ds-sheet, .ds-toast, .ds-tooltip) und rahmen.css.
+   Rahmen (Kopf, Schublade, Wechsel und Zustände der Seite) als
+   klassisches Skript mit EINEM Namensraum «Rahmen»; Dialog, Seitenblatt,
+   Meldung und Tooltip hängen sich an «UI» (bausteine.js) an. Aussehen und
+   Verhalten kommen von Dashboard-Style: das App-Gerüst (.ds-app,
+   .ds-topbar, .ds-drawer, .ds-panel, .ds-view), DS.overlay (modale
+   Schublade, Dialog, Blatt, Meldungen und Tooltips: Fokusfalle, inert,
+   Escape, Bildlaufsperre, Fokus zurück, Ansage), DS.motion (Wechsel,
+   Ladeanzeigen), DS.indicator (Pille, über Bewegung.indikator) und
+   DS.ripple (Druckwelle). Hier steht nur, was ICT darüber hinaus braucht;
+   das Aussehen dazu in rahmen.css.
 
    Ladereihenfolge: konfig.js, vendor/dashboard-style/ds.js, bausteine.js,
    rahmen.js, MSAL … rahmen.js baut den Rahmen SOFORT beim Laden aus dem
-   HTML-Gerüst:
+   HTML-Gerüst (wie die Beispiel-App von Dashboard-Style, docs/components.md
+   «App frame»):
 
      <html class="ds-theme ds-base">
-     <body class="ds-app ds-app--drawer" data-seite="index|client|benutzer|telefon|software|kamera|kamerarolle|styleguide">
-       <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
-       <header class="ds-topbar" id="kopf"></header>
-       <nav class="ds-drawer" id="schublade" aria-label="…"></nav>
-       <div class="ds-panel">
-         <main class="ds-view" id="tafel" tabindex="-1">
-           <div class="ds-loadbar" id="ladebalken" hidden><span class="ds-loadbar__bar"></span></div>
-           <div class="ds-content"><div class="ds-page" id="inhalt" data-zustand="laden"> … </div></div>
-         </main>
+     <head> … <link rel="expect" href="#rahmen-gebaut" blocking="render"> … </head>
+     <body>
+       <div class="ds-app ds-app--drawer" data-seite="index|client|benutzer|telefon|software|kamera|kamerarolle|styleguide">
+         <a class="ds-skip" href="#inhalt">Zum Inhalt</a>
+         <div class="ds-topbar" id="kopf"></div>
+         <div class="ds-scrim"></div>
+         <nav class="ds-drawer" id="schublade" aria-label="…" tabindex="-1"></nav>
+         <div class="ds-panel">
+           <main class="ds-view" id="tafel" tabindex="-1">
+             <div class="ds-content"><div class="ds-page" id="inhalt" data-zustand="laden"> … </div></div>
+           </main>
+         </div>
        </div>
+       <div class="ds-toasts"></div>
+       <script src="…/ds.js"></script> <script src="bausteine.js"></script> <script src="rahmen.js"></script>
+       <div id="rahmen-gebaut" hidden></div>
+       <script …></script>
      </body>
 
-   Zustände am body (.ds-app): data-drawer-open (modale Schublade offen),
-   data-drawer-hidden (Seite ohne Schublade), data-scrolled (Tafel gerollt:
-   die Kante oben zeigt sich), data-zurueck (Zurück-Eintrag steht).
+   Das erste Bild wartet auf #rahmen-gebaut (rel=expect), also bis
+   rahmen.js Kopf, Schublade und Ladezustand gebaut hat, nicht aber auf
+   MSAL vom CDN. Zeigt Chrome eine halb geparste Seite, bricht es den
+   Seitenübergang zwischen den HTML-Seiten ab (optional/view-transitions.css
+   von Dashboard-Style).
 
-   Fehlt ein Teil, legt rahmen.js ihn an. Ohne body[data-seite] baut es
-   keinen Rahmen (Rahmen.bereit = false); die UI-Ebenen (Dialog, Blatt,
+   Zustände an .ds-app: data-drawer-open (modale Schublade offen; setzt
+   DS.overlay), data-drawer-hidden (Seite ohne Schublade), data-scrolled
+   (Tafel gerollt: Kante und Tönung oben; ein 1-px-Wächter mit
+   IntersectionObserver setzt es), data-zurueck (Zurück-Eintrag steht).
+   Der Ladebalken (span.ds-loadbar#ladebalken) steht nur, solange die Seite
+   lädt, in .ds-content vor der Bahn; Dialoge und Blätter hängen als
+   <dialog> am Ende von body; die Meldungsregion .ds-toasts steht ohne
+   role und aria-live direkt nach .ds-app (DS.overlay.toast legt die
+   Ansagen daneben an).
+
+   Fehlt ein Teil, legt rahmen.js ihn an. Ohne .ds-app[data-seite] baut es
+   keinen Rahmen; die UI-Ebenen (Dialog, Blatt,
    Meldung, Tooltip) gehen trotzdem. Der Kopf steht vom ersten Bild an:
    das Konto der zuletzt gezeigten Seite belegt ihn vor (sessionStorage),
-   die Wortmarke wartet höchstens 300 ms auf ihre Schrift.
+   die Wortmarke wartet höchstens 300 ms auf ihre Schrift. Einmal je
+   Seite startet rahmen.js DS.ripple.attach(document) und
+   DS.overlay.tooltips(document), auch ohne Rahmen (Styleguide).
 
    ------------------------------------------------------------------
    API «Rahmen»
@@ -47,11 +74,13 @@
                                      neue Struktur → neu, Pille springt. Echte Links
                                      (href): Mittel-/Ctrl-Klick öffnen einen neuen Tab,
                                      ein schlichter Klick geht an beiWahl (falls da).
-                                     verstecken: Seite ohne Schublade (Tafel volle Breite).
+                                     verstecken: Seite ohne Schublade (Tafel volle Breite;
+                                     kommt sie wieder, gleitet sie herein).
                                      zurueck: {text, href} – Zurück-Eintrag zuoberst
                                      (Detailseiten: «‹ ADMIN-Clients»), ein schlichter
                                      Link ohne Pille; null/fehlt = keiner.
-   Rahmen.aktiv(schluessel)          aktiver Eintrag, die Pille gleitet
+   Rahmen.aktiv(schluessel)          aktiver Eintrag, die Pille gleitet (vor dem ersten
+                                     Inhalt springt sie)
    Rahmen.zahl(schluessel, wert)     Zähler am Eintrag (leer/null = keiner); erscheint
                                      er (leer → Wert), ploppt er einmal
    Rahmen.konto({name, email})       Konto rechts im Kopf: Kapsel mit Initiale, Name
@@ -60,67 +89,103 @@
    Rahmen.vorfuehrung({text, beiZuruecksetzen}) | null
                                      Warn-Banner als erster Block der Bahn
    Rahmen.wechseln(neu, {alt, nachOben=true, auftritt=true}) → Promise<boolean>
-                                     Fade-through wie ChatBob shell.show: «alt» (Standard:
-                                     der sichtbare Inhalt der Bahn) blendet 100 ms aus,
-                                     dann baut neu() um (Funktion; gibt den eintretenden
-                                     Knoten zurück) bzw. ersetzt den Inhalt durch den
-                                     Knoten «neu», der tritt ein ('tausch'), Karten
-                                     staffeln. Letzter Aufruf gewinnt (false für ältere).
+                                     Ansichtswechsel über DS.motion.transition
+                                     ('fade-through'): neu() baut um (Funktion; gibt den
+                                     eintretenden Knoten zurück) bzw. ersetzt den Inhalt
+                                     durch den Knoten «neu»; die modale Schublade schliesst
+                                     dabei. Der Fokus geht auf den neuen Titel, wo er sonst
+                                     verloren wäre (im alten Inhalt – Standard: der sichtbare
+                                     Inhalt der Bahn, sonst «alt» –, auf body, aus der
+                                     modalen Schublade); Raster darin staffeln (auftritt).
+                                     Letzter Aufruf gewinnt: ältere bauen nicht mehr und
+                                     lösen mit false auf.
    Rahmen.zustand('laden', {text, fortschritt, karten})
    Rahmen.zustand('fehler', {titel, text, hinweis, knopfText, beiKlick, pfad})
    Rahmen.zustand('ende',   {titel, text, hinweis, knopfText, beiKlick, fokus, pfad})
                                      pfad: {text, href} – Zurück-Link «‹ Liste» über dem Titel
-   Rahmen.zustand('inhalt') → Promise   (hält ein sichtbares Skelett ≥ 450 ms;
-                                     Staffelung + Hochzählen nur beim ERSTEN Inhalt)
+   Rahmen.zustand('inhalt') → Promise   (hält eine sichtbare Ladeanzeige ihre
+                                     Mindestzeit, DS.motion.settleLoader; Staffelung +
+                                     Hochzählen nur beim ERSTEN Inhalt)
    Rahmen.zustandJetzt()             'laden' | 'fehler' | 'ende' | 'inhalt'
-   Rahmen.erstauftritt(behaelter, {wurzel})  Staffelung + Hochzählen (= Bewegung.auftritt)
    Rahmen.stillZeichnen(behaelter, zeichnen)  zeichnet ohne Bewegung neu (Nachladen,
-                                     Speichern, Filtern): Tafel und innere Roller bleiben
-                                     stehen, ein verschwundener Fokus geht samt Schreibmarke
-                                     an sein Gegenstück (data-fokus, id, sonst dieselbe
-                                     Stelle, sonst der Seitentitel)
+                                     Speichern, Filtern). zeichnen() baut den Behälter selbst
+                                     um – oder gibt die neuen, abgehängten Kinder zurück
+                                     (Array/NodeList): dann gleicht DS.dom.morphChildren sie
+                                     mit dem Bestand ab (Schlüssel data-ds-key bzw. id;
+                                     bleibende Knoten behalten Fokus, Listener, Rollstand).
+                                     Tafel und innere Roller bleiben stehen, ein
+                                     verschwundener Fokus geht samt Schreibmarke an sein
+                                     Gegenstück (data-fokus, id, sonst dieselbe Stelle,
+                                     sonst der Seitentitel)
    Rahmen.fest(an)                   Tafel rollt nicht (Tabellenansichten), solange das
                                      Fenster ≥ 601 × 720 px ist; darunter rollt sie, und
                                      die Liste ist höchstens so hoch wie die Tafel
    Rahmen.dokumentTitel(text)        «text – ICT-Inventar»
-   Rahmen.schublade.oeffnen() / .schliessen() / .offen()
-   Rahmen.elemente()                 {kopf, schublade, tafel, bahn, ladebalken}
+   Rahmen.schublade.oeffnen({ausloeser}) / .schliessen() → Promise / .offen()
+                                     (DS.overlay; nur ≤ 900 px modal). ausloeser bekommt
+                                     den Fokus nach dem Schliessen (Standard: Menüknopf)
+   Rahmen.elemente()                 {app, kopf, schublade, tafel, bahn, ladebalken, meldungen}
+                                     (ladebalken: null, solange nichts lädt)
 
    ------------------------------------------------------------------
-   Erweiterungen von «UI»
+   Erweiterungen von «UI» (alle über DS.overlay)
    ------------------------------------------------------------------
-   UI.dialog({titel, inhalt?, knoepfe?, breit?, rolle?, fokus?, beiSchliessen?(grund), klasse?})
+   UI.dialog({titel, inhalt?, knoepfe?, breit?, rolle?, fokus?, beschreibung?, beiSchliessen?(grund), klasse?})
      → {element, flaeche, inhalt, knoepfe, titel(t), schliessen(grund) → Promise, offen(), fokussieren(),
-        sperren(an)}   (gesperrt: Esc und Schleier schliessen nicht, z. B. während gelöscht wird)
+        sperren(an)}
+     element ist ein natives <dialog class="ds-dialog"> (role dialog bzw. rolle),
+     flaeche seine .ds-dialog__box; DS.overlay.open/close öffnen und schliessen
+     es (Fokusfalle, Escape, Schleier, Fokus zurück zum Auslöser). Der Fokus
+     beginnt auf fokus, sonst dem ersten Feld, sonst dem ersten Knopf.
+     beschreibung: id des Texts, der den Dialog beschreibt (aria-describedby).
+     grund an beiSchliessen: 'esc', 'schleier', 'schliessen' (ohne erkennbaren
+     Anlass) oder was die Seite an schliessen() gibt.
+     Gesperrt (sperren(true), z. B. während gelöscht wird) schliessen weder Esc
+     noch Schleier noch [data-close]; schliessen() der Seite geht weiter.
      Der Schleier schliesst nur mit einem eigenen einfachen Klick (nicht dem
      zweiten eines Doppelklicks, nicht in den ersten 300 ms).
      Titel und Knöpfe bleiben stehen, nur der Inhalt rollt (eine Rollfläche).
      Eine Trefferliste darin trägt die Klasse .dialog-liste: sie rollt selbst
      und nimmt die Resthöhe; ist dafür kein Platz, rollt der ganze Inhalt mit
      ihr (data-knapp) und das Suchfeld darüber klebt oben.
-   UI.bestaetigen({titel, text, ja, nein='Abbrechen'}) | (titel, frage, knopfText) → Promise<boolean>
-     löst bei Esc, Schleier und «Abbrechen» mit false auf.
+   UI.bestaetigen({titel, text, ja, nein='Abbrechen', breit?}) → Promise<boolean>
+     role=alertdialog, Fokus auf «Abbrechen»; löst bei Esc, Schleier und
+     «Abbrechen» mit false auf.
    UI.blatt({titel, unter?, inhalt?, fuss?, breite: 560|720, beiSchliessen?(grund), klasse?})
      → {element, flaeche, koerper, fuss, titel(t), unter(t), schliessen(grund) → Promise, offen(),
         fokusSchliessen(), sperren(an)}
-   UI.ebeneOffen() → boolean         ein Dialog oder Blatt ist offen
+     natives <dialog class="ds-sheet">; × ([data-close], grund 'knopf') und
+     Schleier wie beim Dialog.
+   UI.ebeneOffen() → boolean         eine Überlagerung ist offen: Dialog, Blatt,
+                                     modale Schublade oder ein Menü/eine
+                                     Vorschlagsliste von DS.overlay (für Tastenkürzel
+                                     der Seiten: Esc, Ctrl+S, «/»)
    UI.meldung(text, {ton:'erfolg'|'fehler'|'info', dauer, aktion:{text, beiKlick}}) → {schliessen, element}
-     (kompatibel: UI.meldung(text, true) = Fehler). Fehler bleiben mit ×.
-     Angesagt wird über EINE Live-Region (#ansage), die von Anfang an da ist;
-     die sichtbaren Meldungen ziehen bei offener Ebene in deren Wurzel um.
+     über DS.overlay.toast in der Region .ds-toasts. Fehler und Meldungen mit Aktion bleiben (mit ×), bis man
+     sie schliesst; die übrigen gehen nach dauer bzw. der Lesezeit von
+     Dashboard-Style. Dazu ICT: ein neuer Fehler ersetzt den offenen; dieselbe
+     Meldung ersetzt die stehende, statt sich zu stapeln; solange ein Fehler
+     offen ist, hält die Tafel (bzw. das Blatt) an ihrem Ende Platz frei
+     (data-toast-reserve).
    UI.meldungenFehlerSchliessen()    (UI.beschaeftigt ruft es beim Start auf)
-   UI.meldungenAusrichten()          nach Layoutwechseln
-   UI.tipp(element, text|null)       Tooltip-Text setzen; UI.tipp.verbergen()
+   UI.tipp(element, text|null)       Tooltip-Text setzen: data-tip, oder, wenn er nur
+                                     den sichtbaren Text wiederholt,
+                                     data-tip-abgeschnitten (zeigt sich nur, solange
+                                     der Text abgeschnitten ist). Gezeigt werden beide
+                                     von DS.overlay.tooltips.
    UI.speicherleiste({beiSpeichern, beiVerwerfen, fokusZiel}) → {element, speichernKnopf,
-     verwerfenKnopf, setzen({sichtbar, text, meta, speichernText, verwerfenText, speichernAus,
-     verwerfenAus, beschaeftigt}), sichtbar(), speicherbar()}
+     verwerfenKnopf, setzen({sichtbar, text, speichernText, verwerfenText, speichernAus,
+     verwerfenAus}), beschaeftigt(arbeit) → Promise, sichtbar(), speicherbar()}
      Trägt keine Höhe bei; solange sie steht, hält die Tafel Platz frei und rollt
-     ein verdecktes fokussiertes Feld über sie. Eine austretende Leiste friert
-     ihren Inhalt ein. fokusZiel() → Element: wohin der Fokus geht, wenn er in
+     ein verdecktes fokussiertes Feld über sie. Sie kommt und geht über
+     .ds-presence (Dashboard-Style); eine austretende Leiste friert ihren
+     Inhalt ein. fokusZiel() → Element: wohin der Fokus geht, wenn er in
      der Leiste steht und sie geht oder ihr Knopf gesperrt wird (sonst die Tafel).
+     beschaeftigt(arbeit) zeigt den Speichern-Knopf beschäftigt, solange arbeit
+     läuft (UI.beschaeftigt → DS.motion.busy).
    UI.seitenkopf({titel, lead, unter:[Teile]|Text, status:[Knoten], aktionen:[Knoten],
                   pfad:{text, href}|null, ebene=1, id, titelId, element})
-     → header.seitenkopf mit .knoten {pfad, pfadText, titel, lead, unter, status, aktionen}
+     → header.ds-page-head mit .knoten {pfad, pfadText, titel, lead, unter, status, aktionen}
        und .setzen({…}) (dieselben Schlüssel; ersetzt nur, was übergeben wird).
        element: einen vorhandenen <header> füllen statt einen neuen zu bauen.
    UI.adresse.client(liste, id, {neu, vorlage, bereich}|bereich) · benutzer(id, …) ·
@@ -132,42 +197,31 @@
      localStorage, sonst index.html#tab) · mock()       (hängt mock=1 selbst an)
 
    Grundsätze wie überall: kein Framework, kein innerHTML, Text nur über
-   textContent. Bewegung nur über Klassen und Tokens von Dashboard-Style
-   (Bewegung in bausteine.js). */
+   textContent, kein Browser-title. Bewegung nur über Dashboard-Style
+   (DS.motion direkt bzw. Bewegung in bausteine.js). */
 
 "use strict";
 
 const Rahmen = (function () {
 
-  if (typeof UI === "undefined" || typeof Bewegung === "undefined") {
+  if (typeof UI === "undefined" || typeof Bewegung === "undefined"
+    || typeof DS === "undefined" || !DS.overlay || !DS.motion) {
     throw new Error("rahmen.js braucht vendor/dashboard-style/ds.js und bausteine.js (vorher laden).");
   }
+  const M = DS.motion;
 
   /* ==================================================================
      Konstanten
      ================================================================== */
 
-  /** Muss der Grenze der modalen Schublade in Dashboard-Style (shell.css) und rahmen.css entsprechen. */
-  const MODAL_ABFRAGE = "(max-width: 900px)";
   /** Ab hier zeigt das Konto nur noch die Initiale (Dashboard-Style shell.css, rahmen.css Abschnitt 6). */
   const SCHMAL_ABFRAGE = "(max-width: 720px)";
-  /** Abstand eines in die Liste gerollten Eintrags zu ihrem Rand (--a2). */
-  const LISTEN_RAND_PX = 8;
-  /** Ausblenden beim Wechsel (--dauer-sofort) plus Reserve. */
-  const AUSBLENDEN_FRIST_MS = 250;
-  /** So lange steht eine Erfolgs- oder Info-Meldung; Fehler bleiben. */
-  const MELDUNG_SICHTBAR_MS = 3200;
-  /** Abstand der Meldung zur Tafelkante (--a6) und zu Inhalt darüber (--a2). */
-  const MELDUNG_ABSTAND_PX = 24;
-  const LUECKE_PX = 8;
-  /** Mehr gleichzeitige Meldungen verdrängen die älteste (nie einen Fehler). */
-  const MELDUNG_HOECHSTENS = 3;
-  /** Material: Tooltip nach 500 ms; 100 ms, um auf den Tooltip zu wechseln. */
-  const TIPP_VERZOEGERUNG_MS = 500;
-  const TIPP_GNADE_MS = 100;
   /** Ein Klick auf einen Schleier so kurz nach dem Öffnen gehört noch zur
       Geste, die die Ebene geöffnet hat (Doppelklick, doppeltes Tippen). */
   const SCHLEIER_SPERRE_MS = 300;
+  /** So lange gilt ein vorgemerkter Anlass (Esc, Schleier, ×) für das
+      Schliessen, das Dashboard-Style danach meldet (natives close-Ereignis). */
+  const ANLASS_GILT_MS = 1000;
   const PRODUKT = "ICT-Inventar";
   const LISTE_SPEICHER = "ictinventar.listen";
   /** So lange gilt eine gemerkte Listenadresse in einem neuen Tab (ein
@@ -182,6 +236,12 @@ const Rahmen = (function () {
       (Archivo) da ist – danach erscheint sie auch mit der Ersatzschrift. */
   const SCHRIFT_WARTEN_MS = 300;
   const SCHRIFT_MARKE = "650 22px Archivo";
+
+  /** Offene Überlagerungen von Dashboard-Style, aus dem DOM gelesen (auch
+      die, die bausteine.js über DS.overlay öffnet: Menüs, Vorschlagslisten). */
+  const UEBERLAGERUNG_OFFEN = ".ds-app[data-drawer-open], dialog.ds-dialog[open], dialog.ds-sheet[open], "
+    + ".ds-dialog[data-state=\"open\"], .ds-sheet[data-state=\"open\"], .ds-menu[data-state=\"open\"], "
+    + ".ds-combo__popup[data-state=\"open\"]";
 
   const FOKUSSIERBAR = "a[href], button:not([disabled]), input:not([disabled]):not([type=\"hidden\"]), "
     + "select:not([disabled]), textarea:not([disabled]), [tabindex], [contenteditable=\"true\"]";
@@ -212,24 +272,14 @@ const Rahmen = (function () {
     });
   }
 
-  /* Tab bleibt im Behälter: am Ende wieder zum Anfang und umgekehrt.
-     «ersatz» nimmt den Fokus, wenn im Behälter nichts fokussierbar ist
-     (der Behälter selbst ist es nicht immer). */
-  function tabFangen(ev, behaelter, ersatz) {
-    if (ev.key !== "Tab" || !behaelter) return;
-    const liste = fokussierbare(behaelter);
-    if (!liste.length) { ev.preventDefault(); (ersatz || behaelter).focus(); return; }
-    const erstes = liste[0];
-    const letztes = liste[liste.length - 1];
-    const aktiv = document.activeElement;
-    const draussen = !behaelter.contains(aktiv);
-    if (ev.shiftKey && (aktiv === erstes || aktiv === behaelter || draussen)) {
-      ev.preventDefault();
-      letztes.focus();
-    } else if (!ev.shiftKey && (aktiv === letztes || draussen)) {
-      ev.preventDefault();
-      erstes.focus();
-    }
+  function fokusbereit(k) {
+    return !!k && k.isConnected && !k.closest("[inert]") && k.getClientRects().length > 0;
+  }
+
+  /* Ein Abstand aus den Tokens von Dashboard-Style in px (--ds-space-2 …):
+     JS rechnet mit denselben Massen wie das CSS, nie mit eigenen Zahlen. */
+  function abstand(token) {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
   }
 
   function fehlerMeldungAusnahme(fehler) {
@@ -237,7 +287,7 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Adressen (Fehler A1, A2, A4, A6): EIN Ort für alle Fensteradressen
+     Adressen: EIN Ort für alle Fensteradressen
      ================================================================== */
 
   function istMock() {
@@ -377,7 +427,7 @@ const Rahmen = (function () {
   };
 
   /* ==================================================================
-     Hauptziele (Schublade der Hauptseite) — einzige Quelle
+     Hauptziele (Schublade der Hauptseite) – einzige Quelle
      ================================================================== */
 
   /* Jedes Modul beginnt mit seiner eigenen Übersicht. In der Schublade heisst
@@ -413,26 +463,44 @@ const Rahmen = (function () {
      ================================================================== */
 
   const body = document.body;
-  const seite = body ? body.getAttribute("data-seite") : null;
+  let app = body ? body.querySelector(":scope > .ds-app") : null;
+  const seite = app ? app.getAttribute("data-seite") : null;
   const bereit = !!seite;
-  const modalAbfrage = window.matchMedia ? window.matchMedia(MODAL_ABFRAGE) : null;
   const schmalAbfrage = window.matchMedia ? window.matchMedia(SCHMAL_ABFRAGE) : null;
 
   let sprungmarke = null, kopf = null, schublade = null, schubladeListe = null, schleier = null;
   let schubladeZurueck = null;
-  let menueKnopf = null, tafelRahmen = null, tafel = null, ladebalken = null, bahn = null;
+  let menueKnopf = null, tafelRahmen = null, tafel = null, inhaltRahmen = null, bahn = null;
+  let ladebalken = null, region = null;
   let zustandsBlock = null, vorfuehrBanner = null;
   let kapsel = null, kontoEl = null, kontoInitiale = null, kontoName = null, kontoEmail = null;
   let kapselTrenner = null, abmeldenKnopf = null, abmeldenRueckruf = null;
   let indikator = null;
 
+  /* Ein Teil des Gerüsts über seine id, sonst neu (ohne Platz im DOM). */
   function sichern(id, tag, klasse) {
     let k = document.getElementById(id);
     if (!k) {
       k = el(tag, klasse);
       k.id = id;
     }
+    if (klasse) k.classList.add(klasse);
     return k;
+  }
+
+  /* Die Meldungsregion: direkt nach .ds-app, ohne role und aria-live (die
+     Ansagen legt DS.overlay.toast daneben an). Ohne Rahmen am Ende von
+     body. DS.overlay zieht sie in ein offenes Dialog oder Blatt um und
+     bringt sie danach zurück; der Verweis hier bleibt gültig. */
+  function regionHolen() {
+    if (region) return region;
+    region = body ? body.querySelector(":scope > .ds-toasts") : null;
+    if (!region && body) {
+      region = el("div", "ds-toasts");
+      if (app) app.after(region);
+      else body.appendChild(region);
+    }
+    return region;
   }
 
   /* Die Wortmarke wartet beim harten Laden auf ihre Schrift: in der
@@ -497,22 +565,28 @@ const Rahmen = (function () {
   }
 
   function geruestSichern() {
-    body.classList.add("ds-app", "ds-app--drawer");
+    app.classList.add("ds-app", "ds-app--drawer");
 
-    sprungmarke = body.querySelector(":scope > .ds-skip");
+    sprungmarke = app.querySelector(":scope > .ds-skip");
     if (!sprungmarke) {
       sprungmarke = el("a", "ds-skip", "Zum Inhalt");
       sprungmarke.href = "#inhalt";
-      body.insertBefore(sprungmarke, body.firstChild);
+      app.insertBefore(sprungmarke, app.firstChild);
     }
 
-    kopf = sichern("kopf", "header", "ds-topbar");
+    kopf = sichern("kopf", "div", "ds-topbar");
     if (!kopf.parentNode) sprungmarke.after(kopf);
     schublade = sichern("schublade", "nav", "ds-drawer");
     if (!schublade.parentNode) kopf.after(schublade);
+    // Der Schleier steht VOR der Schublade (er deckt nur die Seite); ein
+    // Klick darauf schliesst die modale Schublade (DS.overlay).
+    schleier = app.querySelector(":scope > .ds-scrim");
+    if (!schleier) {
+      schleier = el("div", "ds-scrim");
+      app.insertBefore(schleier, schublade);
+    }
 
     tafel = sichern("tafel", "main", "ds-view");
-    tafel.classList.add("ds-view");
     if (!tafel.hasAttribute("tabindex")) tafel.tabIndex = -1;
     tafelRahmen = tafel.parentElement && tafel.parentElement.classList.contains("ds-panel")
       ? tafel.parentElement : null;
@@ -527,27 +601,23 @@ const Rahmen = (function () {
 
     // Die Bahn: .ds-content (Polster, Container) > .ds-page#inhalt (Breite, Rhythmus).
     bahn = sichern("inhalt", "div", "ds-page");
-    bahn.classList.add("ds-page");
     if (!bahn.parentNode) tafel.appendChild(el("div", "ds-content")).appendChild(bahn);
-
-    ladebalken = sichern("ladebalken", "div", "ds-loadbar");
-    ladebalken.classList.add("ds-loadbar");
-    if (!ladebalken.firstElementChild) ladebalken.appendChild(el("span", "ds-loadbar__bar"));
-    ladebalken.setAttribute("aria-hidden", "true");
-    if (!ladebalken.parentNode) { ladebalken.hidden = true; tafel.insertBefore(ladebalken, tafel.firstChild); }
+    inhaltRahmen = bahn.parentElement;
 
     zustandsBlock = el("div", "bahn-zustand");
     bahn.insertBefore(zustandsBlock, bahn.firstChild);
+    regionHolen();
   }
 
   function kopfBauen() {
-    kopf.classList.add("ds-topbar");
-
     menueKnopf = knopf({ variante: "sinnbild", sinnbild: "menue", titel: "Navigation", klasse: "ds-topbar__menu" });
     menueKnopf.setAttribute("aria-label", "Navigation öffnen");
     menueKnopf.setAttribute("aria-controls", "schublade");
     menueKnopf.setAttribute("aria-expanded", "false");
-    menueKnopf.addEventListener("click", function () { schubladeSetzen(true); });
+    menueKnopf.addEventListener("click", function () {
+      if (schubladeOffen()) schubladeSchliessen();
+      else schubladeOeffnen();
+    });
 
     const marke = el("a", "ds-brand");
     marke.href = adresse.liste(STARTZIEL);
@@ -603,7 +673,6 @@ const Rahmen = (function () {
   }
 
   function schubladeBauen() {
-    schublade.classList.add("ds-drawer");
     schublade.tabIndex = -1;
     if (!schublade.getAttribute("aria-label")) {
       schublade.setAttribute("aria-label", seite === "index" ? "Hauptnavigation" : "Bereiche");
@@ -619,9 +688,26 @@ const Rahmen = (function () {
     schublade.appendChild(schubladeKopf);
     schublade.appendChild(schubladeZurueck);
     schublade.appendChild(schubladeListe);
+  }
 
-    schleier = el("div", "ds-scrim");
-    schublade.parentNode.insertBefore(schleier, schublade);
+  /* data-scrolled aus einem 1-px-Wächter am Anfang des Rollers (Dashboard-
+     Style, docs/components.md «App frame»/«Side sheet»): ein
+     IntersectionObserver statt eines scroll-Listeners. Zurück oben setzt
+     DS.motion.resyncScroll die rollgesteuerte Kante und Tönung zurück. */
+  function gerolltBeobachten(roller, ziel) {
+    if (typeof IntersectionObserver !== "function") return;
+    const waechter = el("div", "rollwaechter");
+    waechter.setAttribute("aria-hidden", "true");
+    // Ein Laufzeitknoten: DS.dom.morphChildren und staggerOnce lassen ihn stehen.
+    waechter.setAttribute("data-ds-keep", "");
+    roller.insertBefore(waechter, roller.firstChild);
+    new IntersectionObserver(function (eintraege) {
+      const e = eintraege[eintraege.length - 1];
+      if (!e.boundingClientRect.height) return;
+      if (e.isIntersecting === !ziel.hasAttribute("data-scrolled")) return;
+      ziel.toggleAttribute("data-scrolled", !e.isIntersecting);
+      if (e.isIntersecting) M.resyncScroll(roller);
+    }, { root: roller }).observe(waechter);
   }
 
   function verdrahten() {
@@ -632,30 +718,11 @@ const Rahmen = (function () {
       tafel.focus({ preventScroll: true });
     });
 
-    // Die Kante oben in der Tafel zeigt sich nur, solange Inhalt darunter rollt
-    // (.ds-app[data-scrolled], Dashboard-Style).
-    tafel.addEventListener("scroll", function () {
-      const gerollt = tafel.scrollTop > 0;
-      if (gerollt !== body.hasAttribute("data-scrolled")) body.toggleAttribute("data-scrolled", gerollt);
-      // Das Polster einer gegangenen Speicherleiste fällt, sobald es aus dem Bild ist.
-      leisteRestFreigeben(false);
-    }, { passive: true });
+    gerolltBeobachten(tafel, app);
+    // Das Polster einer gegangenen Speicherleiste fällt, sobald es aus dem Bild ist.
+    tafel.addEventListener("scroll", function () { leisteRestFreigeben(false); }, { passive: true });
 
-    // Wie bei Dialog und Blatt: der zweite Klick eines Doppelklicks auf den
-    // Menüknopf schliesst die eben geöffnete Schublade nicht gleich wieder.
-    schleierVerdrahten(schleier, function () { return schubladeOffenSeit; }, function () { schubladeSetzen(false); });
     schubladeListe.addEventListener("click", beiSchubladeKlick);
-
-    if (modalAbfrage) {
-      const wechsel = function () {
-        // Über die Grenze gewachsen: die modale wird zur festen Schublade.
-        if (!modalAbfrage.matches) schubladeSetzen(false, { fokusZurueck: false });
-        if (indikator) indikator.aktualisieren();
-        meldungenAusrichten();
-      };
-      if (modalAbfrage.addEventListener) modalAbfrage.addEventListener("change", wechsel);
-      else if (modalAbfrage.addListener) modalAbfrage.addListener(wechsel);
-    }
 
     if (typeof ResizeObserver === "function") {
       new ResizeObserver(function () { ueberlaufPruefen(); }).observe(schubladeListe);
@@ -674,7 +741,7 @@ const Rahmen = (function () {
 
   const nav = { signatur: null, aktiv: null, beiWahl: null };
   /** Die letzte Wahl kam aus der modalen Schublade: der Fokus geht danach
-      auf die neue Seite (er stünde sonst auf einem verborgenen Eintrag). */
+      auf die neue Seite (er stünde sonst auf dem Menüknopf). */
   let wahlAusModal = false;
 
   function eintraege() {
@@ -705,6 +772,17 @@ const Rahmen = (function () {
     return k;
   }
 
+  /* Die Pille (DS.indicator über Bewegung.indikator) folgt aria-current
+     selbst und gleitet zum neuen Eintrag. Neu gesetzt springt sie an ihren
+     Platz: beim Bauen der Liste und vor dem ersten Inhalt. */
+  function pilleSetzen() {
+    if (indikator) { indikator.zerstoeren(); indikator = null; }
+    if (!eintraege().length) return;
+    indikator = Bewegung.indikator(schubladeListe, {
+      aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
+    });
+  }
+
   function listeBauen(gruppen, aktiv) {
     if (indikator) { indikator.zerstoeren(); indikator = null; }
     UI.leeren(schubladeListe);
@@ -725,20 +803,16 @@ const Rahmen = (function () {
     // Der aktive Eintrag ist vom ersten Bild an markiert: nichts blendet
     // beim Laden an seinen Platz, die Pille springt (gleitet nicht).
     markieren(aktiv);
-    if (gruppen.length) {
-      indikator = Bewegung.indikator(schubladeListe, {
-        aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
-      });
-    }
+    pilleSetzen();
     aktivZeigen();
   }
 
   /* Zurück-Eintrag der Detailseiten: ein schlichter Link zur Liste (keine
      Pille, kein beiWahl – er verlässt die Seite). Er steht über den Gruppen
      und trägt den Namen der Liste; der Pfeil sagt «zurück», das aria-label
-     auch dem Screenreader. Solange er steht (body[data-zurueck]), weicht der
-     Zurück-Link über dem Seitentitel, wenn die Schublade fest daneben steht
-     (rahmen.css Abschnitt 4). */
+     auch dem Screenreader. Solange er steht (.ds-app[data-zurueck]), weicht
+     der Zurück-Link über dem Seitentitel, wenn die Schublade fest daneben
+     steht (rahmen.css Abschnitt 4). */
   const zurueckStand = { signatur: null };
 
   function zurueckSetzen(z) {
@@ -748,7 +822,7 @@ const Rahmen = (function () {
     zurueckStand.signatur = signatur;
     UI.leeren(schubladeZurueck);
     schubladeZurueck.hidden = !gueltig;
-    body.toggleAttribute("data-zurueck", gueltig);
+    app.toggleAttribute("data-zurueck", gueltig);
     if (!gueltig) return;
     const a = el("a", "ds-drawer__item schublade-eintrag-zurueck");
     a.href = z.href;
@@ -762,9 +836,16 @@ const Rahmen = (function () {
     if (!bereit) return;
     const o = optionen || {};
     const verstecken = !!o.verstecken;
-    if (verstecken !== body.hasAttribute("data-drawer-hidden")) {
-      body.toggleAttribute("data-drawer-hidden", verstecken);
-      if (verstecken) schubladeSetzen(false, { fokusZurueck: false });
+    if (verstecken !== app.hasAttribute("data-drawer-hidden")) {
+      if (verstecken) {
+        schubladeSchliessen();
+        app.setAttribute("data-drawer-hidden", "");
+      } else {
+        // Kommt die Schublade wieder, gleitet sie von links herein
+        // (Dashboard-Style: data-drawer-hidden weg, dann enter(drawer)).
+        app.removeAttribute("data-drawer-hidden");
+        Bewegung.eintreten(schublade);
+      }
     }
     zurueckSetzen(verstecken ? null : o.zurueck);
     if (o.label) schublade.setAttribute("aria-label", o.label);
@@ -794,17 +875,10 @@ const Rahmen = (function () {
     if (!bereit) return;
     nav.aktiv = schluessel;
     markieren(schluessel);
-    if (indikator && !inhaltGezeigt) {
-      // Vor dem ersten Inhalt (die Seite korrigiert beim Start den aktiven
-      // Eintrag) springt die Pille, statt beim Laden schon zu gleiten.
-      indikator.zerstoeren();
-      indikator = Bewegung.indikator(schubladeListe, {
-        aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
-      });
-    } else if (indikator) {
-      // Nur ein ANDERER Eintrag gleitet (Bewegung.indikator merkt sich den letzten).
-      indikator.aktualisieren();
-    }
+    // Vor dem ersten Inhalt (die Seite korrigiert beim Start den aktiven
+    // Eintrag) springt die Pille, statt beim Laden schon zu gleiten;
+    // danach folgt sie aria-current selbst.
+    if (!inhaltGezeigt) pilleSetzen();
     aktivZeigen();
   }
 
@@ -817,8 +891,7 @@ const Rahmen = (function () {
     const z = k.querySelector(".schublade-zahl");
     const warLeer = z.textContent === "";
     UI.textSetzen(z, text);
-    // Mapping 7.2 #16: ein Zähler, der erscheint, ploppt (.6 → 1); ein
-    // neuer Wert ändert sich ohne Bewegung.
+    // Ein Zähler, der erscheint, ploppt; ein neuer Wert ändert sich ohne Bewegung.
     if (warLeer && text) Bewegung.eintreten(z, "ploppen");
   }
 
@@ -836,87 +909,69 @@ const Rahmen = (function () {
     if (!ueberlaufPruefen()) return;
     const k = schubladeListe.querySelector("[aria-current=\"page\"]");
     if (!k) return;
+    const rand = abstand("--ds-space-2");
     const l = schubladeListe.getBoundingClientRect();
     const r = k.getBoundingClientRect();
     let d = 0;
-    if (r.top < l.top + LISTEN_RAND_PX) d = r.top - l.top - LISTEN_RAND_PX;
-    else if (r.bottom > l.bottom - LISTEN_RAND_PX) {
-      d = Math.min(r.bottom - l.bottom + LISTEN_RAND_PX, r.top - l.top - LISTEN_RAND_PX);
+    if (r.top < l.top + rand) d = r.top - l.top - rand;
+    else if (r.bottom > l.bottom - rand) {
+      d = Math.min(r.bottom - l.bottom + rand, r.top - l.top - rand);
     }
     schubladeListe.scrollTop += d;
   }
 
+  /* Ein schlichter Klick auf einen Eintrag geht an beiWahl. Kam er aus der
+     modalen Schublade, schliesst sie im Wechsel selbst (Rahmen.wechseln, so
+     blendet die neue Ansicht unter ihr durch) – oder hier, wenn die Seite
+     gar nicht wechselt (derselbe Eintrag, ein Abschnitt der Seite). */
   function beiSchubladeKlick(ev) {
     const k = ev.target && ev.target.closest ? ev.target.closest(".ds-drawer__item") : null;
     if (!k || !schubladeListe.contains(k)) return;
     const modifiziert = ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey;
-    const warModal = schubladeOffen;
+    const warModal = schubladeOffen();
     if (nav.beiWahl && !modifiziert) {
       ev.preventDefault();
-      if (warModal) {
-        wahlAusModal = true;
-        schubladeSetzen(false, { fokusZurueck: false });
-      }
+      wahlAusModal = warModal;
       const vorher = wechselMarke;
       try {
         nav.beiWahl(k.getAttribute("data-schluessel"), ev);
       } finally {
-        // Kein Wechsel ausgelöst (derselbe Eintrag, oder die Seite rollt nur
-        // zu einem Abschnitt): stünde der Fokus noch in der geschlossenen
-        // Schublade, geht er zum Menüknopf. Hat die Seite ihn selbst gesetzt
-        // (Abschnittstitel), bleibt er dort.
-        if (warModal && vorher === wechselMarke) {
+        if (vorher === wechselMarke) {
           wahlAusModal = false;
-          const a = aktivesElement();
-          if (!a || schublade.contains(a)) menueKnopf.focus();
+          if (warModal) schubladeSchliessen();
         }
       }
       return;
     }
-    // Ein neuer Tab oder eine echte Navigation: der Fokus geht sofort zurück.
-    if (warModal) schubladeSetzen(false);
+    // Ein neuer Tab oder eine echte Navigation: die Schublade geht sofort.
+    if (warModal) schubladeSchliessen();
   }
 
-  /* ---------- Modale Schublade (≤ 900 px) ---------- */
+  /* ---------- Modale Schublade (≤ 900 px, DS.overlay) ---------- */
 
-  let schubladeOffen = false;
   let schubladeOffenSeit = 0;
 
-  function schubladeSetzen(offen, optionen) {
-    const fokusZurueck = !optionen || optionen.fokusZurueck !== false;
-    if (!bereit || offen === schubladeOffen) return;
-    if (offen && (!modalAbfrage || !modalAbfrage.matches || body.hasAttribute("data-drawer-hidden"))) return;
-    schubladeOffen = offen;
-    if (offen) schubladeOffenSeit = Date.now();
-    body.toggleAttribute("data-drawer-open", offen);
-    menueKnopf.setAttribute("aria-expanded", String(offen));
-    inertSetzen();
-    if (offen) {
-      tippVerbergen();
-      // Die Pille gleitet in der modalen Schublade nicht; sie muss nur beim
-      // Öffnen an ihrem Platz sein.
-      if (indikator) indikator.aktualisieren();
-      aktivZeigen();
-      const ziel = schubladeListe.querySelector("[aria-current=\"page\"]")
-        || schubladeListe.querySelector(".ds-drawer__item");
-      (ziel || schublade).focus();
-    } else if (fokusZurueck) {
-      menueKnopf.focus();
-    }
+  function schubladeOffen() {
+    return !!app && app.hasAttribute("data-drawer-open");
   }
 
-  /* Alles hinter einer offenen Ebene (Dialog, Blatt, modale Schublade) ist
-     ausser Reichweite. Meldungen und Tooltip bleiben bedienbar. */
-  function inertSetzen() {
-    if (!body) return;
-    const oben = ebeneOben();
-    for (const kind of Array.from(body.children)) {
-      if (kind.tagName === "SCRIPT" || kind.tagName === "TEMPLATE") continue;
-      let aus = false;
-      if (oben) aus = kind !== oben.element && kind !== region && kind !== tippEl && kind !== ansage;
-      else if (schubladeOffen) aus = kind === kopf || kind === tafelRahmen || kind === sprungmarke;
-      if (kind.inert !== aus) kind.inert = aus;
-    }
+  /* DS.overlay öffnet sie nur ≤ 900 px (darüber steht sie fest), setzt
+     data-drawer-open und aria-expanded, fängt den Fokus, schliesst mit Esc
+     und dem Schleier und beim Wachsen über 900 px. */
+  /* ausloeser: wohin der Fokus nach dem Schliessen zurückgeht (Standard:
+     der Menüknopf im Kopf), wenn eine Seite die Schublade aus einem
+     anderen Knopf öffnet. */
+  function schubladeOeffnen(optionen) {
+    if (!bereit || app.hasAttribute("data-drawer-hidden")) return;
+    const o = optionen && !(optionen instanceof Event) ? optionen : {};
+    schubladeOffenSeit = Date.now();
+    DS.overlay.open(schublade, { opener: o.ausloeser || menueKnopf });
+    aktivZeigen();
+  }
+
+  function schubladeSchliessen() {
+    if (!bereit || !schubladeOffen()) return Promise.resolve();
+    return DS.overlay.close(schublade);
   }
 
   /* ==================================================================
@@ -932,7 +987,7 @@ const Rahmen = (function () {
 
   /* Breit stehen Name und E-Mail daneben: die Initiale ist dann Schmuck.
      Schmal (≤ 720 px) steht sie allein und nennt das Konto selbst – als
-     Tabstopp mit Tooltip, auch auf Antippen. */
+     Tabstopp mit Tooltip, auch auf Antippen (tippAufBild unten). */
   function initialeEinrichten() {
     const allein = !!(schmalAbfrage && schmalAbfrage.matches);
     if (allein) {
@@ -956,7 +1011,7 @@ const Rahmen = (function () {
     const erstes = Array.from((name || email).trim())[0] || "?";
     kontoInitiale.textContent = erstes.toLocaleUpperCase("de-CH");
     kontoInitiale.setAttribute("aria-label", email ? "Angemeldet als " + [name, email].filter(Boolean).join(", ") : name);
-    kontoInitiale.setAttribute("data-tipp", [name, email].filter(Boolean).join("\n"));
+    kontoInitiale.setAttribute("data-tip", [name, email].filter(Boolean).join("\n"));
     kapselAbgleichen();
     return { name: name, email: email };
   }
@@ -1012,10 +1067,10 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Seitenkopf: EIN Bauer für den Kopf jeder Ansicht (ChatBob pageHeader:
-     Titel 24/32 + Lead) und jeder Detailseite (Mapping 7.2 #7: Zurück-Link
-     darüber, Teile-Zeile, Status-Chips, Aktionen rechts). Leere Teile
-     nehmen keinen Platz (rahmen.css :empty).
+     Seitenkopf: EIN Bauer für den Kopf jeder Ansicht (.ds-page-head:
+     Titel und Lead) und jeder Detailseite (dazu der Zurück-Link darüber,
+     die Teile-Zeile, Status-Chips und Aktionen rechts – Dashboard-Style
+     kennt keine). Leere Teile nehmen keinen Platz (rahmen.css :empty).
      ================================================================== */
 
   function teileListe(unter) {
@@ -1119,6 +1174,29 @@ const Rahmen = (function () {
     return fokusGeparkt && (!a || a === tafel);
   }
 
+  /* Der Ladebalken nach Dashboard-Style (Muster «Refresh»): ein
+     span.ds-loadbar in .ds-content vor der Bahn; seine Ränder nehmen den
+     Platz zurück, nichts rückt. Er blendet nach --ds-delay-loader ein (wie
+     das Skelett) und geht mit DS.motion.leave. Jedes Laden bekommt einen
+     neuen; ein noch austretender gibt seine id ab. */
+  function ladebalkenZeigen() {
+    if (ladebalken && ladebalken.isConnected && !ladebalken.hasAttribute("data-ds-leaving")) return;
+    ladebalkenWeg();
+    ladebalken = el("span", "ds-loadbar");
+    ladebalken.id = "ladebalken";
+    ladebalken.setAttribute("aria-hidden", "true");
+    ladebalken.appendChild(el("span", "ds-loadbar__bar"));
+    inhaltRahmen.insertBefore(ladebalken, bahn);
+  }
+
+  function ladebalkenWeg() {
+    const alt = ladebalken;
+    ladebalken = null;
+    if (!alt || !alt.isConnected || alt.hasAttribute("data-ds-leaving")) return;
+    alt.removeAttribute("id");
+    Bewegung.austreten(alt);
+  }
+
   function zustand(art, optionen) {
     if (!bereit) return Promise.resolve(false);
     const o = optionen || {};
@@ -1140,7 +1218,7 @@ const Rahmen = (function () {
         fokusGeparkt = true;
       }
       bahn.setAttribute("data-zustand", "laden");
-      ladebalken.hidden = false;
+      ladebalkenZeigen();
       const block = el("div", "zustand-laden");
       ladeMeta = el("p", "zustand-fortschritt");
       // Die Zeile ändert sich laufend («ADMIN-Clients 50 / …»): sie wäre als
@@ -1153,6 +1231,7 @@ const Rahmen = (function () {
       ladeSkelett.insertBefore(ladeMeta, ladeSkelett.querySelector(".ds-skeleton__card"));
       block.appendChild(ladeSkelett);
       UI.leeren(zustandsBlock).appendChild(block);
+      M.resyncScroll(tafel);
       ladeText = "";
       ladeFortschritt = "";
     }
@@ -1173,7 +1252,7 @@ const Rahmen = (function () {
     fokusGeparkt = false;
     zustandJetzt = art;
     bahn.setAttribute("data-zustand", art);
-    ladebalken.hidden = true;
+    ladebalkenWeg();
 
     const titel = o.titel || (art === "fehler" ? "Die Daten konnten nicht geladen werden" : "Erledigt");
     // pfad: der Zurück-Link «‹ ADMIN-Clients» bleibt auch im Fehler- und
@@ -1184,7 +1263,7 @@ const Rahmen = (function () {
     const beiKlick = typeof o.beiKlick === "function" ? o.beiKlick : function () { location.reload(); };
     let block;
     if (art === "fehler") {
-      // Der Fehlerkasten wie bei ChatBob: Fehlerfarbe, Text, «Erneut laden».
+      // Der Fehlerkasten: Fehlerfarbe, Text, «Erneut laden».
       const text = [o.text, o.hinweis].filter(Boolean).join(" ");
       block = UI.banner({
         ton: "gefahr", rolle: "alert", text: text || "Unbekannter Fehler.",
@@ -1199,6 +1278,7 @@ const Rahmen = (function () {
     zustandsBlock.appendChild(kopfTeil);
     zustandsBlock.appendChild(block);
     dokumentTitel(titel);
+    M.resyncScroll(tafel);
     Bewegung.aufdecken(zustandsBlock);
     if (fokusDrin || o.fokus) h1.focus({ preventScroll: true });
     return Promise.resolve(true);
@@ -1210,13 +1290,15 @@ const Rahmen = (function () {
     const start = ladeStart;
     zustandJetzt = "inhalt";
     const marke = ++zustandsMarke;
-    // Eine sichtbar gewordene Ladeanzeige bleibt mindestens 450 ms stehen.
-    return (warLaden ? Bewegung.ladeAbwarten(start) : Promise.resolve()).then(function () {
+    // Eine sichtbar gewordene Ladeanzeige bleibt ihre Mindestzeit stehen
+    // (DS.motion.settleLoader liest Verzögerung und Haltezeit am Balken).
+    return (warLaden ? M.settleLoader(start, { element: ladebalken || tafel }) : Promise.resolve()).then(function () {
       if (marke !== zustandsMarke) return false;
-      ladebalken.hidden = true;
+      ladebalkenWeg();
       bahn.removeAttribute("data-zustand");
       UI.leeren(zustandsBlock);
       ladeSkelett = null;
+      M.resyncScroll(tafel);
       const kinder = inhaltsKinder().filter(sichtbar);
       for (const k of kinder) Bewegung.aufdecken(k);
       // Kam der Fokus von «Erneut laden» (bzw. aus dem Inhalt) und liegt
@@ -1242,7 +1324,8 @@ const Rahmen = (function () {
 
   /* Der Schlüssel, über den ein neu gebautes Element wiedergefunden wird:
      data-fokus vor id (eine id kann bei jedem Bauen neu vergeben sein),
-     zuletzt data-rolle (Roller). */
+     zuletzt data-rolle (Roller). Auch der Rückfokus der Ebenen findet so
+     einen neu gezeichneten Auslöser wieder. */
   function wiederfindSchluessel(k) {
     if (!k || !k.getAttribute) return null;
     if (k.hasAttribute("data-fokus")) return "[data-fokus=\"" + CSS.escape(k.getAttribute("data-fokus")) + "\"]";
@@ -1251,15 +1334,23 @@ const Rahmen = (function () {
     return null;
   }
 
-  /* zeichnen() baut den Behälter ganz oder teilweise neu – ohne Bewegung.
-     Danach stehen die Tafel und alle inneren Roller (mit data-fokus, id
-     oder data-rolle) wieder dort, wo sie waren. Ist das fokussierte
-     Element dabei verschwunden, bekommt sein Gegenstück den Fokus (samt
-     Schreibmarke und Rollposition im Feld): gefunden über data-fokus/id,
-     sonst das Bedienelement an derselben Stelle, sonst der Seitentitel im
-     Behälter. Ein stehen gebliebenes Element behält ihn ohnehin. Das
-     Gegenstück zu Rahmen.wechseln für Daten, die sich nur ändern (api.md
-     §9.1/§9.2); F.zeichneBereich benutzt es für die Detailseiten. */
+  function istKnotenListe(w) {
+    return !!w && typeof w !== "string" && typeof w.length === "number"
+      && Array.prototype.every.call(w, function (k) { return k && typeof k.nodeType === "number"; });
+  }
+
+  /* zeichnen() baut den Behälter ganz oder teilweise neu – ohne Bewegung –,
+     oder es gibt seine neuen Kinder zurück: dann gleicht DS.dom.morphChildren
+     sie mit dem Bestand ab, und was bleibt, behält Fokus, Schreibmarke,
+     Listener und Rollstand von selbst (der Weg, auf den die Seiten
+     umziehen; Zeilen tragen data-ds-key). Danach stehen die Tafel und alle
+     inneren Roller (mit data-fokus, id oder data-rolle) wieder dort, wo sie
+     waren. Ist das fokussierte Element dabei verschwunden, bekommt sein
+     Gegenstück den Fokus (samt Schreibmarke und Rollposition im Feld):
+     gefunden über data-fokus/id, sonst das Bedienelement an derselben
+     Stelle, sonst der Seitentitel im Behälter. Das Gegenstück zu
+     Rahmen.wechseln für Daten, die sich nur ändern; F.zeichneBereich
+     benutzt es für die Detailseiten. */
   function stillZeichnen(behaelter, zeichnen) {
     if (!behaelter) { zeichnen(); return; }
     const aktiv = aktivesElement();
@@ -1283,7 +1374,8 @@ const Rahmen = (function () {
     }
     const tafelOben = tafel ? tafel.scrollTop : 0;
 
-    zeichnen();
+    const neu = zeichnen();
+    if (istKnotenListe(neu)) DS.dom.morphChildren(behaelter, Array.from(neu));
 
     for (const r of rollen) {
       const k = behaelter.querySelector(r[0]);
@@ -1309,35 +1401,10 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Wechsel innerhalb der Seite (Fade-through wie ChatBob shell.show)
+     Wechsel innerhalb der Seite (DS.motion.transition, fade-through)
      ================================================================== */
 
   let wechselMarke = 0;
-
-  /** Unter dieser Deckkraft verschwindet ein abgebrochener Eintritt sofort,
-      statt noch auszublenden (er war ohnehin kaum zu sehen). */
-  const KAUM_SICHTBAR = 0.3;
-  /** Elemente, deren Deckkraft eintrittBeenden inline festhält (nur diese
-      Angabe nimmt wechseln wieder weg). */
-  const deckkraftGehalten = new WeakSet();
-
-  /* Ein noch laufender Eintritt besitzt die Deckkraft: sonst begänne das
-     Ausblenden nie (und es käme kein transitionend). Er wird nicht zu Ende
-     gespielt (finish() liesse die halb eingeblendete Ansicht in einem Bild
-     auf volle Deckkraft springen), sondern dort abgebrochen, wo er steht:
-     die erreichte Deckkraft bleibt als Ausgangswert stehen, von dort blendet
-     .wechsel-weg aus. Ist kaum etwas zu sehen, ist sie gleich weg.
-     Gibt true zurück, wenn ein Eintritt lief (dann muss der Aufrufer das
-     Layout lesen, bevor er .wechsel-weg setzt). */
-  function eintrittBeenden(k) {
-    if (!k.classList.contains("ds-enter") || !k.getAnimations) return false;
-    const deckkraft = parseFloat(getComputedStyle(k).opacity);
-    for (const a of k.getAnimations()) a.cancel();
-    k.classList.remove("ds-enter", "ds-enter--swap");
-    k.style.setProperty("opacity", String(isFinite(deckkraft) && deckkraft >= KAUM_SICHTBAR ? deckkraft : 0));
-    deckkraftGehalten.add(k);
-    return true;
-  }
 
   function seiteFokussieren(rein) {
     const ziel = rein && rein.querySelector ? rein.querySelector("h1, h2") : null;
@@ -1355,6 +1422,14 @@ const Rahmen = (function () {
     return knoten;
   }
 
+  /* Mit View Transitions friert Dashboard-Style die Seite ein, ruft das
+     Umbauen auf und spielt den Wechsel auf .ds-view (die alte Ansicht geht
+     in --ds-dur-instant, die neue blendet ein und wächst); ohne sie tritt
+     der zurückgegebene Knoten mit .ds-enter--swap ein. Die modale
+     Schublade schliesst im Umbauen: die neue Ansicht blendet unter ihr
+     durch. Ein neuerer Aufruf überholt: das Umbauen eines älteren läuft
+     dann nicht mehr (sonst stünde dessen Ansicht im Inhalt, Pille und
+     Adresse aber auf der neuen). */
   function wechseln(neu, optionen) {
     const o = optionen || {};
     if (!bereit) {
@@ -1364,61 +1439,34 @@ const Rahmen = (function () {
     const marke = ++wechselMarke;
     const ausModal = wahlAusModal;
     wahlAusModal = false;
-    if (schubladeOffen) schubladeSetzen(false, { fokusZurueck: false });
-    tippVerbergen();
+    let rein = [];
 
-    const alt = (o.alt ? [].concat(o.alt) : inhaltsKinder()).filter(sichtbar);
-    let warten = Promise.resolve();
-    if (alt.length) {
-      let beendet = false;
-      for (const k of alt) beendet = eintrittBeenden(k) || beendet;
-      // Wie ChatBob shell.show (void outgoing.offsetWidth): erst das Lesen
-      // des Layouts übernimmt das Ende des Eintritts als Ausgangswert.
-      // Ohne diesen Schritt begänne im selben Takt kein Übergang – ein
-      // Klick während eines Eintritts liesse den alten Inhalt in einem
-      // Bild verschwinden statt 100 ms auszublenden.
-      if (beendet) void alt[0].offsetWidth;
-      // Im selben Takt: die stehen gebliebene Deckkraft weg, .wechsel-weg
-      // dazu – der Übergang läuft von ihr aus auf 0.
-      for (const k of alt) {
-        k.classList.add("wechsel-weg");
-        if (deckkraftGehalten.delete(k)) k.style.removeProperty("opacity");
-      }
-      if (getComputedStyle(alt[0]).opacity !== "0") {
-        warten = Bewegung.abgeschlossen(alt[0], {
-          ereignis: "transitionend", eigenschaft: "opacity", zeit: AUSBLENDEN_FRIST_MS
-        });
-      }
-    }
-    return warten.then(function () {
-      if (marke !== wechselMarke) return false;   // ein neuerer Wechsel hat übernommen
-      for (const k of alt) k.classList.remove("wechsel-weg");
+    return M.transition(function () {
+      if (marke !== wechselMarke) return undefined;
+      if (schubladeOffen()) schubladeSchliessen();
       // Der Fokus geht auf die neue Seite nur, wo er sonst verloren wäre: im
-      // ausgehenden Inhalt, schon auf <body> oder in der modalen Schublade.
+      // ausgehenden Inhalt, schon auf <body> oder aus der modalen Schublade.
+      const alt = (o.alt ? [].concat(o.alt) : inhaltsKinder()).filter(sichtbar);
       const aktiv = aktivesElement();
       const fokusSeite = alt.length > 0 && (!aktiv || ausModal
         || alt.some(function (k) { return k.contains(aktiv); }));
-      let rein = typeof neu === "function" ? neu() : ersetzen(neu);
-      rein = rein ? [].concat(rein) : inhaltsKinder();
-      rein = rein.filter(sichtbar);
-      if (o.nachOben !== false) {
-        tafel.scrollTop = 0;
-        body.removeAttribute("data-scrolled");
-      }
+      const ergebnis = typeof neu === "function" ? neu() : ersetzen(neu);
+      rein = (ergebnis ? [].concat(ergebnis) : inhaltsKinder()).filter(sichtbar);
+      if (o.nachOben !== false) tafel.scrollTop = 0;
       if (fokusSeite) seiteFokussieren(rein[0]);
-      for (const k of rein) Bewegung.eintreten(k, "tausch");
-      // Wie ChatBob: gestaffelt werden nur Raster IN der neuen Ansicht.
+      // Gestaffelt werden nur Raster IN der neuen Ansicht, mit ihr zugleich.
       if (o.auftritt !== false) for (const k of rein) Bewegung.auftritt(k, { wurzel: false });
-      return true;
+      return rein[0] || bahn;
+    }, { type: "fade-through" }).then(function () {
+      return marke === wechselMarke;
     });
   }
 
-  function erstauftritt(behaelter, optionen) {
-    Bewegung.auftritt(behaelter, optionen);
-  }
-
   function fest(an) {
-    if (tafel) tafel.toggleAttribute("data-fest", !!an);
+    if (!tafel || tafel.hasAttribute("data-fest") === !!an) return;
+    tafel.toggleAttribute("data-fest", !!an);
+    // Eine Tafel, die jetzt nicht mehr rollt, behält sonst Kante und Tönung.
+    M.resyncScroll(tafel);
   }
 
   function dokumentTitel(text) {
@@ -1426,67 +1474,31 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Ebenen: Dialog und Seitenblatt
+     Ebenen: Dialog und Seitenblatt (native <dialog> über DS.overlay)
      ================================================================== */
 
+  /* Die offenen Ebenen von UI.dialog/UI.blatt, älteste zuerst: für ihren
+     Anlass beim Schliessen, sperren() und den Schleier-Schutz. Fokusfalle,
+     inert, Escape, Bildlaufsperre, verschachtelte Schleier und den Fokus
+     zurück macht DS.overlay. */
   const ebenen = [];
   let ebenenZaehler = 0;
 
   function ebeneOben() { return ebenen.length ? ebenen[ebenen.length - 1] : null; }
-  function ebeneOffen() { return ebenen.length > 0; }
 
-  function ebeneOeffnen(ebene) {
-    if (schubladeOffen) schubladeSetzen(false, { fokusZurueck: false });
-    tippVerbergen();
-    body.appendChild(ebene.element);
-    ebenen.push(ebene);
-    inertSetzen();
-    meldungenUmziehen();
+  function ebeneOffen() {
+    return ebenen.length > 0 || !!document.querySelector(UEBERLAGERUNG_OFFEN);
   }
 
-  /* Zustand und Fokus wechseln sofort, nur die Pixel gehen einen Moment
-     später (ChatBob createDialog): so kann die Seite gleich nach
-     «await UI.bestaetigen(…)» wieder fokussieren und schreiben. */
-  function ebeneSchliessen(ebene) {
-    const i = ebenen.indexOf(ebene);
-    if (i !== -1) ebenen.splice(i, 1);
-    inertSetzen();
-    // Meldungen, die in der Ebene standen, bleiben auf der Seite stehen,
-    // statt mit ihr zu gehen (sie gleiten an die neue Kante).
-    meldungenUmziehen();
-    fokusZurueckGeben(ebene);
-    ebene.element.classList.add(ebene.art === "dialog" ? "ds-dialog--closing" : "ds-sheet--closing");
-    return Bewegung.abgeschlossen(ebene.flaeche).then(function () {
-      ebene.element.remove();
-    });
+  /* Die innerste offene Ebene, in der der Knoten liegt. */
+  function ebeneVon(knoten) {
+    for (let i = ebenen.length - 1; i >= 0; i--) if (ebenen[i].element.contains(knoten)) return ebenen[i];
+    return null;
   }
 
-  /* Wie F.zeichneBereich findet die Ebene ihren Auslöser über
-     wiederfindSchluessel (oben: data-fokus › id › data-rolle) wieder: hat
-     die Seite den Bereich dahinter neu gezeichnet (Nachladen,
-     BroadcastChannel), ist der alte Knoten weg, ein gleichwertiger neuer
-     aber da. (Früher stand hier eine zweite Funktion gleichen Namens ohne
-     data-rolle; als spätere Deklaration galt sie im ganzen Rahmen, und
-     Rahmen.stillZeichnen stellte Roller mit nur data-rolle nie wieder her.) */
-
-  function fokusbereit(k) {
-    return !!k && k.isConnected && !k.closest("[inert]") && k.getClientRects().length > 0;
-  }
-
-  function fokusZurueckGeben(ebene) {
-    const aktiv = aktivesElement();
-    if (aktiv && !ebene.element.contains(aktiv)) return;   // schon woanders hin bewegt
-    let ziel = ebene.rueckfokus;
-    if (!fokusbereit(ziel)) {
-      ziel = ebene.rueckSchluessel ? document.querySelector(ebene.rueckSchluessel) : null;
-      if (!fokusbereit(ziel)) ziel = null;
-    }
-    if (!ziel) {
-      const oben = ebeneOben();
-      ziel = oben ? (fokussierbare(oben.falle)[0] || oben.falle) : tafel;
-    }
-    if (ziel && ziel.focus) ziel.focus({ preventScroll: true });
-    else if (aktiv) aktiv.blur();
+  function anlassVormerken(ebene, anlass) {
+    ebene.anlass = anlass;
+    ebene.anlassZeit = Date.now();
   }
 
   function rueckrufEinmal(rueckruf) {
@@ -1498,23 +1510,124 @@ const Rahmen = (function () {
     };
   }
 
-  /* Der Schleier schliesst nur mit einem eigenen, einfachen Klick. Der
-     zweite Klick eines Doppelklicks auf «Löschen …» oder «Filter» träfe
-     sonst schon den eben erschienenen Schleier und schlösse die Ebene
-     wieder: sie blitzte nur auf, UI.bestaetigen löste stumm mit false auf.
-     Darum zählt ein Klick nur, wenn er auf dem Schleier gedrückt wurde,
-     kein Folgeklick ist (detail > 1) und die Ebene schon 300 ms offen ist.
-     offenSeit() liefert den Zeitpunkt des letzten Öffnens. */
-  function schleierVerdrahten(schleierEl, offenSeit, schliessen) {
-    let gedrueckt = false;
-    schleierEl.addEventListener("pointerdown", function (ev) { gedrueckt = ev.target === schleierEl; });
-    schleierEl.addEventListener("click", function (ev) {
-      const eigen = gedrueckt;
-      gedrueckt = false;
-      if (!eigen || ev.detail > 1 || Date.now() - offenSeit() < SCHLEIER_SPERRE_MS) return;
-      schliessen();
+  function ebeneOeffnen(ebene) {
+    ebenen.push(ebene);
+    body.appendChild(ebene.element);
+    // Gesperrt schliesst auch die Abbruch-Anfrage des Browsers (Esc) nicht.
+    // Vor DS.overlay.open angemeldet, also vor dessen eigenem Listener.
+    ebene.element.addEventListener("cancel", function (ev) {
+      if (!ebene.sperre) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
     });
+    // Schliesst Dashboard-Style die Ebene (Esc, Schleier, ×), meldet das
+    // native close-Ereignis es; der vorgemerkte Anlass nennt den Grund.
+    ebene.element.addEventListener("close", function () {
+      if (!ebene.offen) return;
+      const frisch = ebene.anlass && Date.now() - ebene.anlassZeit < ANLASS_GILT_MS;
+      ebeneSchliessen(ebene, frisch ? ebene.anlass : "schliessen");
+    });
+    DS.overlay.open(ebene.element, { opener: ebene.ausloeser }).then(function () { platzReservieren(); });
   }
+
+  /* Zustand und Fokus wechseln sofort, nur die Pixel gehen einen Moment
+     später: so kann die Seite gleich nach «await UI.bestaetigen(…)» wieder
+     fokussieren und schreiben. */
+  function ebeneSchliessen(ebene, grund) {
+    ebene.offen = false;
+    const i = ebenen.indexOf(ebene);
+    if (i !== -1) ebenen.splice(i, 1);
+    if (ebene.knappLoesen) ebene.knappLoesen();
+    ebene.fertig = DS.overlay.close(ebene.element).then(function () {
+      ebene.element.remove();
+      // Meldungen, die in der Ebene standen, sind zurück auf der Seite.
+      platzReservieren();
+    });
+    fokusNachsehen(ebene);
+    ebene.melden(grund);
+    return ebene.fertig;
+  }
+
+  /* DS.overlay gibt den Fokus dem Auslöser zurück. Hat die Seite den
+     Bereich dahinter inzwischen neu gezeichnet (Nachladen, Rundfunkkanal),
+     ist der alte Knoten weg und der Fokus auf der Tafel gelandet: dann
+     bekommt ihn das Gegenstück, gefunden wie bei Rahmen.stillZeichnen. */
+  function fokusNachsehen(ebene) {
+    if (ebene.ausloeser && ebene.ausloeser.isConnected) return;
+    const a = aktivesElement();
+    if (a && a !== tafel && !ebene.element.contains(a)) return;
+    const ziel = ebene.rueckSchluessel ? document.querySelector(ebene.rueckSchluessel) : null;
+    if (fokusbereit(ziel)) ziel.focus({ preventScroll: true });
+  }
+
+  function ebeneAnlegen(art, element, flaeche, beiSchliessen) {
+    const ausloeser = aktivesElement();
+    return {
+      art: art, element: element, flaeche: flaeche, koerper: null,
+      ausloeser: ausloeser, rueckSchluessel: wiederfindSchluessel(ausloeser),
+      offen: true, sperre: false, offenSeit: Date.now(), anlass: null, anlassZeit: 0,
+      fertig: null, knappLoesen: null, melden: rueckrufEinmal(beiSchliessen)
+    };
+  }
+
+  function schliesserVon(ebene) {
+    return function (grund) {
+      if (!ebene.offen) return ebene.fertig || Promise.resolve();
+      return ebeneSchliessen(ebene, grund || "schliessen");
+    };
+  }
+
+  /* Der Schleier schliesst nur mit einem eigenen, einfachen Klick. Der
+     zweite Klick eines Doppelklicks auf «Löschen …», «Filter» oder den
+     Menüknopf träfe sonst schon den eben erschienenen Schleier und schlösse
+     die Ebene wieder: sie blitzte nur auf, UI.bestaetigen löste stumm mit
+     false auf. Darum zählt ein Klick nur, wenn er auf dem Schleier gedrückt
+     wurde, kein Folgeklick ist (detail > 1) und die Ebene schon 300 ms offen
+     ist. Eine gesperrte Ebene schliesst gar nicht über [data-close]. Die
+     Wache sitzt in der Fangphase am Dokument, vor den Listenern von
+     DS.overlay an Schleier und Ebene. */
+  let gedruecktAuf = null;
+
+  function schlucken(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+
+  function zuFrueh(ev, eigen, offenSeit) {
+    return !eigen || ev.detail > 1 || Date.now() - offenSeit < SCHLEIER_SPERRE_MS;
+  }
+
+  document.addEventListener("pointerdown", function (ev) { gedruecktAuf = ev.target; }, true);
+  document.addEventListener("click", function (ev) {
+    const ziel = ev.target;
+    const eigen = gedruecktAuf === ziel;
+    gedruecktAuf = null;
+    if (!ziel || !ziel.closest) return;
+    if (schleier && ziel === schleier) {
+      if (zuFrueh(ev, eigen, schubladeOffenSeit)) schlucken(ev);
+      return;
+    }
+    const schliesser = ziel.closest("[data-close]");
+    const ebene = schliesser ? ebeneVon(schliesser) : null;
+    if (!ebene || !ebene.offen) return;
+    const istSchleier = schliesser.matches(".ds-dialog__backdrop, .ds-sheet__backdrop");
+    if (ebene.sperre || (istSchleier && zuFrueh(ev, eigen, ebene.offenSeit))) {
+      schlucken(ev);
+      return;
+    }
+    anlassVormerken(ebene, istSchleier ? "schleier" : "knopf");
+  }, true);
+
+  /* Esc: eine gesperrte Ebene bleibt offen – die behandelte Taste lässt
+     DS.overlay liegen, und die Tastenkürzel der Seite (Esc = Verwerfen)
+     sehen defaultPrevented. Sonst gilt Esc als Anlass. */
+  window.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape" || ev.isComposing) return;
+    const oben = ebeneOben();
+    if (!oben || !oben.offen) return;
+    if (oben.sperre) ev.preventDefault();
+    else anlassVormerken(oben, "esc");
+  }, true);
 
   /* ---------- Dialog ---------- */
 
@@ -1551,10 +1664,7 @@ const Rahmen = (function () {
            verdeckt. Der Abstand oben hält die Zeile darunter (Feld + 8 px
            Luft, wie der Flächenschatten in rahmen.css). */
         const ueber = liste.previousElementSibling;
-        if (ueber) {
-          const luft = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ds-space-2")) || 8;
-          inhalt.style.scrollPaddingTop = (ueber.offsetHeight + luft) + "px";
-        }
+        if (ueber) inhalt.style.scrollPaddingTop = (ueber.offsetHeight + abstand("--ds-space-2")) + "px";
         if (vorher) inhalt.scrollTop = oben;
       }
     }
@@ -1579,66 +1689,47 @@ const Rahmen = (function () {
   function dialog(optionen) {
     const o = optionen || {};
     const id = "dialog-" + (++ebenenZaehler);
-    const wurzel = el("div", "ds-dialog" + (o.breit ? " dialog-breit" : "") + (o.klasse ? " " + o.klasse : ""));
+    const wurzel = el("dialog", "ds-dialog" + (o.breit ? " dialog-breit" : "") + (o.klasse ? " " + o.klasse : ""));
+    wurzel.setAttribute("role", o.rolle || "dialog");
+    wurzel.setAttribute("aria-labelledby", id + "-titel");
     const schleierEl = el("div", "ds-dialog__backdrop");
+    schleierEl.setAttribute("data-close", "");
     const flaeche = el("div", "ds-dialog__box");
-    flaeche.tabIndex = -1;
-    flaeche.setAttribute("role", o.rolle || "dialog");
-    flaeche.setAttribute("aria-modal", "true");
-    flaeche.setAttribute("aria-labelledby", id + "-titel");
     const titelEl = el("h2", "ds-dialog__title", o.titel || "");
     titelEl.id = id + "-titel";
     const inhalt = el("div", "dialog-inhalt");
     const knoepfe = el("div", "ds-dialog__actions");
     UI.anhaengen(inhalt, o.inhalt);
     UI.anhaengen(knoepfe, o.knoepfe);
+    if (o.beschreibung) wurzel.setAttribute("aria-describedby", o.beschreibung);
     flaeche.appendChild(titelEl);
     flaeche.appendChild(inhalt);
     flaeche.appendChild(knoepfe);
     wurzel.appendChild(schleierEl);
     wurzel.appendChild(flaeche);
 
-    const ausloeser = aktivesElement();
-    const ebene = {
-      art: "dialog", element: wurzel, flaeche: flaeche, falle: flaeche,
-      rueckfokus: ausloeser, rueckSchluessel: wiederfindSchluessel(ausloeser),
-      offen: true, schliessen: null, sperre: false, offenSeit: Date.now()
-    };
-    const melden = rueckrufEinmal(o.beiSchliessen);
-    let fertig = null;
+    const ebene = ebeneAnlegen("dialog", wurzel, flaeche, o.beiSchliessen);
+    const schliessen = schliesserVon(ebene);
 
-    function schliessen(grund) {
-      if (!ebene.offen) return fertig || Promise.resolve();
-      ebene.offen = false;
-      if (ebene.knappLoesen) ebene.knappLoesen();
-      melden(grund || "schliessen");
-      fertig = ebeneSchliessen(ebene);
-      return fertig;
-    }
-    ebene.schliessen = schliessen;
-
-    /* Der Fokus beginnt auf dem ersten Feld, sonst auf dem ersten Knopf
-       (bei Fragen «Abbrechen», die sichere Wahl). Erst im nächsten Takt:
-       die Seite füllt Inhalt und Knöpfe oft gleich nach dem Öffnen und
-       setzt den Fokus dann selbst. */
-    function fokussieren() {
+    /* Der Fokus beginnt auf «fokus», sonst dem ersten Feld, sonst dem
+       ersten Knopf (bei Fragen «Abbrechen», die sichere Wahl) – nicht auf
+       dem ersten Tabstopp, den DS.overlay beim Öffnen nimmt (erzwingen).
+       Die Seite füllt Inhalt und Knöpfe oft erst nach dem Öffnen: dann
+       steht der Fokus auf der Fläche, und im nächsten Takt geht er weiter –
+       ausser die Seite hat ihn inzwischen selbst gesetzt. */
+    function fokussieren(erzwingen) {
       if (!ebene.offen) return;
       const aktiv = document.activeElement;
-      if (aktiv && aktiv !== flaeche && flaeche.contains(aktiv)) return;
+      if (erzwingen !== true && aktiv && aktiv !== flaeche && flaeche.contains(aktiv)) return;
       const vorgabe = typeof o.fokus === "function" ? o.fokus() : o.fokus;
       const ziel = (vorgabe && vorgabe.isConnected ? vorgabe : null)
         || inhalt.querySelector("input:not([disabled]):not([type=\"hidden\"]), select:not([disabled]), textarea:not([disabled])")
-        || knoepfe.querySelector("button:not([disabled])")
-        || flaeche;
-      ziel.focus();
+        || knoepfe.querySelector("button:not([disabled])");
+      if (ziel) ziel.focus();
     }
 
-    schleierVerdrahten(schleierEl, function () { return ebene.offenSeit; }, function () {
-      if (!ebene.sperre) schliessen("schleier");
-    });
     ebeneOeffnen(ebene);
-    flaeche.focus({ preventScroll: true });
-    if (o.fokus) fokussieren();
+    fokussieren(true);
     setTimeout(fokussieren, 0);
     knappBeobachten(wurzel, flaeche, inhalt, ebene);
 
@@ -1650,17 +1741,17 @@ const Rahmen = (function () {
       titel: function (t) { UI.textSetzen(titelEl, t); },
       schliessen: schliessen,
       offen: function () { return ebene.offen; },
-      fokussieren: fokussieren,
-      /** Solange gesperrt (z. B. während gelöscht wird), schliessen Esc und
-          Schleier nicht; schliessen() der Seite geht weiter. */
+      fokussieren: function () { fokussieren(); },
+      /** Solange gesperrt (z. B. während gelöscht wird), schliessen Esc,
+          Schleier und [data-close] nicht; schliessen() der Seite geht weiter. */
       sperren: function (an) { ebene.sperre = !!an; }
     };
   }
 
   /* Ja/Nein-Frage statt window.confirm. Der Titel fragt, der Text nennt die
      Folge, der Hauptknopf benennt sie («Eintrag löschen», nie «OK»). */
-  function bestaetigen(a, frage, knopfText) {
-    const o = a && typeof a === "object" ? a : { titel: a, text: frage, ja: knopfText };
+  function bestaetigen(optionen) {
+    const o = optionen || {};
     return new Promise(function (aufloesen) {
       let antwort = false;
       const textId = "dialog-text-" + (ebenenZaehler + 1);
@@ -1674,10 +1765,9 @@ const Rahmen = (function () {
       }
       const d = dialog({
         titel: o.titel || "Bestätigen", inhalt: inhalt, knoepfe: [nein, ja], rolle: "alertdialog",
-        breit: !!o.breit, fokus: nein,
+        breit: !!o.breit, fokus: nein, beschreibung: o.text ? textId : null,
         beiSchliessen: function () { aufloesen(antwort); }
       });
-      if (o.text) d.flaeche.setAttribute("aria-describedby", textId);
       nein.addEventListener("click", function () { d.schliessen("abbrechen"); });
       ja.addEventListener("click", function () { antwort = true; d.schliessen("ja"); });
     });
@@ -1689,13 +1779,11 @@ const Rahmen = (function () {
     const o = optionen || {};
     const id = "blatt-" + (++ebenenZaehler);
     const breit = (o.breite || 560) >= 720 || o.breit;
-    const wurzel = el("div", "ds-sheet" + (o.klasse ? " " + o.klasse : ""));
+    const wurzel = el("dialog", "ds-sheet" + (o.klasse ? " " + o.klasse : ""));
+    wurzel.setAttribute("aria-labelledby", id + "-titel");
     const schleierEl = el("div", "ds-sheet__backdrop");
+    schleierEl.setAttribute("data-close", "");
     const flaeche = el("section", "ds-sheet__panel" + (breit ? " ds-sheet__panel--wide" : ""));
-    flaeche.tabIndex = -1;
-    flaeche.setAttribute("role", "dialog");
-    flaeche.setAttribute("aria-modal", "true");
-    flaeche.setAttribute("aria-labelledby", id + "-titel");
 
     const kopfTeil = el("div", "ds-sheet__head");
     const kopfText = el("div", "blatt-kopf-text");
@@ -1705,6 +1793,8 @@ const Rahmen = (function () {
     kopfText.appendChild(titelEl);
     kopfText.appendChild(unterEl);
     const zu = knopf({ variante: "sinnbild", sinnbild: "schliessen", titel: "Schliessen", klasse: "blatt-schliessen" });
+    zu.setAttribute("data-close", "");
+    zu.setAttribute("autofocus", "");
     kopfTeil.appendChild(kopfText);
     kopfTeil.appendChild(zu);
 
@@ -1722,36 +1812,11 @@ const Rahmen = (function () {
     flaeche.appendChild(fuss);
     wurzel.appendChild(schleierEl);
     wurzel.appendChild(flaeche);
+    gerolltBeobachten(koerper, flaeche);
 
-    const ausloeser = aktivesElement();
-    const ebene = {
-      art: "blatt", element: wurzel, flaeche: flaeche, falle: flaeche, koerper: koerper,
-      rueckfokus: ausloeser, rueckSchluessel: wiederfindSchluessel(ausloeser),
-      offen: true, schliessen: null, sperre: false, offenSeit: Date.now()
-    };
-    const melden = rueckrufEinmal(o.beiSchliessen);
-    let fertig = null;
-
-    function schliessen(grund) {
-      if (!ebene.offen) return fertig || Promise.resolve();
-      ebene.offen = false;
-      melden(grund || "schliessen");
-      fertig = ebeneSchliessen(ebene);
-      return fertig;
-    }
-    ebene.schliessen = schliessen;
-
-    koerper.addEventListener("scroll", function () {
-      const gerollt = koerper.scrollTop > 0;
-      if (gerollt !== flaeche.hasAttribute("data-scrolled")) flaeche.toggleAttribute("data-scrolled", gerollt);
-    }, { passive: true });
-    zu.addEventListener("click", function () { schliessen("knopf"); });
-    schleierVerdrahten(schleierEl, function () { return ebene.offenSeit; }, function () {
-      if (!ebene.sperre) schliessen("schleier");
-    });
-
+    const ebene = ebeneAnlegen("blatt", wurzel, flaeche, o.beiSchliessen);
+    ebene.koerper = koerper;
     ebeneOeffnen(ebene);
-    zu.focus({ preventScroll: true });
 
     return {
       element: wurzel,
@@ -1760,7 +1825,7 @@ const Rahmen = (function () {
       fuss: fuss,
       titel: function (t) { UI.textSetzen(titelEl, t); },
       unter: function (t) { UI.textSetzen(unterEl, t); },
-      schliessen: schliessen,
+      schliessen: schliesserVon(ebene),
       offen: function () { return ebene.offen; },
       /** Fokusziel, wenn der Körper unter dem Fokus neu gebaut wurde. */
       fokusSchliessen: function () { zu.focus({ preventScroll: true }); },
@@ -1768,400 +1833,162 @@ const Rahmen = (function () {
     };
   }
 
-  /* EIN Tastenwächter in der Fangphase: Esc schliesst nur die oberste Ebene
-     (ein Dialog über einem Blatt), Tab bleibt in ihr. Danach die modale
-     Schublade. Seiten-Handler (Esc = Verwerfen) sehen die Taste dann nicht. */
-  window.addEventListener("keydown", function (ev) {
-    const oben = ebeneOben();
-    if (oben) {
-      if (ev.key === "Escape") {
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        tippVerbergen();
-        // Eine gesperrte Ebene (es wird gerade gelöscht) bleibt offen; die
-        // Taste erreicht trotzdem keine Seite (kein «Verwerfen?» dahinter).
-        if (!oben.sperre) oben.schliessen("esc");
-      } else if (ev.key === "Tab") {
-        // Die ganze Ebene: Fläche und die Meldungen, die in ihr stehen.
-        tabFangen(ev, oben.element, oben.falle);
-      }
-      return;
-    }
-    if (schubladeOffen) {
-      if (ev.key === "Escape") {
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        schubladeSetzen(false);
-      } else if (ev.key === "Tab") {
-        tabFangen(ev, schublade);
-      }
-    }
-  }, true);
-
   /* ==================================================================
-     Meldung (Snackbar)
+     Meldung (Snackbar, DS.overlay.toast)
      ================================================================== */
 
-  let region = null;
-  /** Die Ansage für Screenreader: EINE Live-Region, die von Anfang an da ist
-      und nie umzieht. Eine Live-Region, die im selben Takt wie ihr erster
-      Inhalt entsteht oder umgehängt wird, sagen Screenreader oft nicht an. */
-  let ansage = null;
-  let ansageUhr = 0;
-  /** Offene Fehlermeldungen und wie man jede schliesst. */
-  const offeneFehler = new Map();
-  /** Worum es in einer Meldung geht (der Fokus kehrt dorthin zurück). */
-  const herkunft = new WeakMap();
-  const meldungsDaten = new WeakMap();
+  /** Griffe (von DS.overlay.toast) der offenen Fehlermeldungen. */
+  const offeneFehler = new Set();
+  /** Stehende Erfolgs- und Info-Meldungen nach Ton und Text. */
+  const stehende = new Map();
 
-  /* Die sichtbare Region ist keine Live-Region (sie zieht in Ebenen um);
-     angesagt wird über «ansage». */
-  function regionSichern() {
-    if (!region) region = el("div", "ds-toasts");
-    if (regionPlatzieren() && offeneFehler.size) platzReservieren();
-    return region;
+  function platzFrei(k) {
+    k.removeAttribute("data-toast-reserve");
+    k.style.removeProperty("--ds-toast-reserve");
   }
 
-  function ansageEinrichten() {
-    if (ansage || !body) return;
-    ansage = el("div", "ds-sr");
-    ansage.id = "ansage";
-    ansage.setAttribute("role", "status");
-    ansage.setAttribute("aria-live", "polite");
-    body.appendChild(ansage);
-  }
-
-  /* Leeren und im nächsten Takt neu schreiben: so wird auch derselbe Text
-     (zweimal «Gespeichert.») wieder angesagt. Danach räumt sie sich, damit
-     im Lesemodus kein alter Text stehen bleibt. */
-  function ansagen(text) {
-    if (!ansage) ansageEinrichten();
-    if (!ansage) return;
-    clearTimeout(ansageUhr);
-    ansage.textContent = "";
-    ansageUhr = setTimeout(function () {
-      ansage.textContent = text;
-      ansageUhr = setTimeout(function () { ansage.textContent = ""; }, MELDUNG_SICHTBAR_MS * 2);
-    }, 50);
-  }
-
-  /* Bei offener Ebene leben die Meldungen IN ihr: sonst lägen sie hinter
-     ihrem Schleier ausser Reichweite der Tab-Falle. Aber in der Wurzel der
-     Ebene, nicht in ihrer Fläche: die Fläche tritt mit transform ein, und
-     ein transformierter Vorfahr ist der Bezug für position: fixed – die
-     Meldung stünde während des Eintritts mitten im Dialog bzw. rechts
-     ausserhalb des Fensters und spränge danach an ihren Platz. */
-  function regionWirt() {
-    const oben = ebeneOben();
-    return oben ? oben.element : body;
-  }
-
-  function regionLage() {
-    const s = getComputedStyle(region);
-    return { links: parseFloat(s.left) || 0, unten: parseFloat(s.bottom) || 0 };
-  }
-
-  function regionPlatzieren() {
-    const wirt = regionWirt();
-    const umzug = region.parentElement !== wirt;
-    const gezeigt = region.isConnected && region.children.length > 0;
-    const vorher = gezeigt ? regionLage() : null;
-    if (umzug) {
-      // Ein umgehängter Knoten spielt seine CSS-Animationen neu: bereits
-      // gezeigte Meldungen werden darum vorher als gezeigt markiert.
-      for (const m of Array.from(region.children)) {
-        if (!m.classList.contains("ds-leave")) m.classList.add("ds-toast--shown");
-      }
-      wirt.appendChild(region);
-    }
-    regionAusrichten();
-    if (vorher) gleitenVon(vorher);
-    return umzug;
-  }
-
-  /* Lage eines Elements ohne seinen laufenden Eintritt: getBoundingClientRect
-     enthält das transform der Animation (die Speicherleiste beginnt 8 px
-     tiefer, das Blatt 24 px weiter rechts). Gemessen im selben Takt, in dem
-     der Eintritt beginnt, käme die Meldung sonst ohne Lücke auf der Leiste
-     bzw. 48 statt 24 px neben der Blattkante zu stehen. */
-  function ruheLage(k) {
+  /* Ruhelage eines Elements ohne seinen laufenden Eintritt: die
+     Bewegungen von Dashboard-Style verschieben über translate und wachsen
+     über scale um die Mitte (die Speicherleiste als .ds-presence),
+     getBoundingClientRect enthält beides. Die Ruhehöhe ist offsetHeight. */
+  function ruheOben(k) {
     const r = k.getBoundingClientRect();
-    let dx = 0, dy = 0;
-    try {
-      const m = new DOMMatrixReadOnly(getComputedStyle(k).transform);
-      dx = m.m41;
-      dy = m.m42;
-    } catch (e) { /* «none» oder ohne DOMMatrix: keine Verschiebung */ }
-    return { left: r.left - dx, top: r.top - dy };
+    const t = getComputedStyle(k).translate;
+    const dy = t && t !== "none" ? parseFloat(t.split(" ")[1]) || 0 : 0;
+    return r.top + r.height / 2 - k.offsetHeight / 2 - dy;
   }
 
   function leisteOben() {
     if (!leiste || !leiste.zustand.sichtbar || !leiste.element.isConnected) return null;
-    return ruheLage(leiste.element).top;
-  }
-
-  /* Links an der Tafel (bzw. am offenen Blatt) ausrichten, unten über einer
-     sichtbaren Speicherleiste (Fehler E1). Über das CSSOM, CSP-sicher. */
-  function regionAusrichten() {
-    if (!region) return;
-    const oben = ebeneOben();
-    const bezug = oben && oben.art === "blatt" ? oben.flaeche : tafel;
-    const links = bezug ? Math.max(0, Math.round(ruheLage(bezug).left)) : 0;
-    region.style.setProperty("--ds-toast-left", (links + MELDUNG_ABSTAND_PX) + "px");
-    const leisteTop = oben ? null : leisteOben();
-    if (leisteTop !== null) {
-      region.style.setProperty("--ds-toast-bottom",
-        (Math.max(0, Math.round(window.innerHeight - leisteTop)) + LUECKE_PX) + "px");
-    } else {
-      region.style.removeProperty("--ds-toast-bottom");
-    }
-  }
-
-  /* Sichtbare Meldungen gleiten an ihren neuen Platz, statt in einem Bild
-     dorthin zu springen: die Region beginnt, wo sie stand, und ihre
-     Verschiebung läuft per Übergang weg (rahmen.css). */
-  function gleitenVon(vorher) {
-    const jetzt = regionLage();
-    const dx = Math.round(vorher.links - jetzt.links);
-    const dy = Math.round(jetzt.unten - vorher.unten);
-    if (!dx && !dy) return;
-    region.style.setProperty("transition", "none");
-    region.style.setProperty("--ds-toast-shift", dx + "px");
-    region.style.setProperty("--ds-toast-shift-y", dy + "px");
-    void region.offsetWidth;
-    region.style.removeProperty("transition");
-    region.style.removeProperty("--ds-toast-shift");
-    region.style.removeProperty("--ds-toast-shift-y");
-  }
-
-  function meldungenAusrichten() {
-    if (!region || !region.isConnected) return;
-    const vorher = region.children.length ? regionLage() : null;
-    regionAusrichten();
-    if (vorher) gleitenVon(vorher);
-    if (offeneFehler.size) platzReservieren();
-  }
-
-  function meldungenUmziehen() {
-    if (region && region.isConnected) regionPlatzieren();
-    platzReservieren();
-  }
-
-  function platzFrei(k) {
-    k.removeAttribute("data-meldung-platz");
-    k.style.removeProperty("--ds-toast-reserve");
+    return ruheOben(leiste.element);
   }
 
   /* Solange ein Fehler offen ist, hält der Roller darunter (Tafel bzw. der
-     Körper des Blatts) an seinem Ende Platz frei und rollt das Element,
-     um das es geht, über die Meldung. */
+     Körper des Blatts) an seinem Ende Platz frei (data-toast-reserve,
+     --ds-toast-reserve: Hook von Dashboard-Style) und rollt das Element,
+     um das es geht, über die Meldung. Gemessen wird ab der Unterkante
+     dessen, was die Meldung verdecken kann: im Blatt ab dem Körper (eine
+     Fusszeile darunter zählte sonst doppelt, rahmen.css Abschnitt 8),
+     sonst ab der Speicherleiste bzw. dem Fensterrand. */
   function platzReservieren(urheber) {
-    for (const m of Array.from(offeneFehler.keys())) if (!m.isConnected) offeneFehler.delete(m);
     const oben = ebeneOben();
     const roller = oben && oben.art === "blatt" ? oben.koerper : tafel;
-    for (const k of Array.from(document.querySelectorAll("[data-meldung-platz]"))) if (k !== roller) platzFrei(k);
+    for (const k of Array.from(document.querySelectorAll("[data-toast-reserve]"))) if (k !== roller) platzFrei(k);
     if (!roller) return;
-    if (!offeneFehler.size || !region || !region.isConnected) { platzFrei(roller); return; }
-    const regionTop = region.getBoundingClientRect().top;
+    const fehler = Array.from(offeneFehler).filter(function (h) { return h.el && h.el.isConnected; });
+    if (!fehler.length || !region) { platzFrei(roller); return; }
+    const luecke = abstand("--ds-space-2");
+    const regionOben = region.getBoundingClientRect().top;
     const leisteTop = oben ? null : leisteOben();
-    const basis = leisteTop !== null ? leisteTop : window.innerHeight;
-    roller.style.setProperty("--ds-toast-reserve", (Math.max(0, Math.round(basis - regionTop)) + LUECKE_PX) + "px");
-    roller.setAttribute("data-meldung-platz", "");
+    const basis = roller !== tafel ? roller.getBoundingClientRect().bottom
+      : (leisteTop !== null ? leisteTop : window.innerHeight);
+    roller.style.setProperty("--ds-toast-reserve", (Math.max(0, Math.round(basis - regionOben)) + luecke) + "px");
+    roller.setAttribute("data-toast-reserve", "");
     if (urheber && urheber.isConnected && roller.contains(urheber)
-      && urheber.getBoundingClientRect().bottom > regionTop - LUECKE_PX) {
+      && urheber.getBoundingClientRect().bottom > regionOben - luecke) {
       urheber.scrollIntoView({ block: "nearest" });
     }
   }
 
-  function ersatzFokus() {
-    const oben = ebeneOben();
-    if (oben) return fokussierbare(oben.falle)[0] || oben.falle;
-    return tafel;
+  /* Über einer sichtbaren Speicherleiste (--ds-toast-bottom, Hook von
+     Dashboard-Style); links richtet Dashboard-Style die Region selbst aus
+     (neben der festen Schublade, im Blatt an dessen Kante). */
+  function meldungenAusrichten() {
+    const r = regionHolen();
+    if (!r) return;
+    const leisteTop = leisteOben();
+    if (leisteTop !== null) {
+      r.style.setProperty("--ds-toast-bottom",
+        (Math.max(0, Math.round(window.innerHeight - leisteTop)) + abstand("--ds-space-2")) + "px");
+    } else {
+      r.style.removeProperty("--ds-toast-bottom");
+    }
+    if (offeneFehler.size) platzReservieren();
   }
 
   function fehlerSchliessen() {
-    for (const schliessen of Array.from(offeneFehler.values())) schliessen();
+    for (const h of Array.from(offeneFehler)) h.close();
+  }
+
+  const SINNBILD_JE_TON = { erfolg: "checkKreis", fehler: "achtungKreis", info: "info" };
+  const ART_JE_TON = { erfolg: "success", fehler: "error", info: "info" };
+
+  /* Eine Meldung mit Aktion («Rückgängig», «Neu laden»): Dashboard-Style
+     lässt sie stehen, bis man sie nutzt oder schliesst (WCAG 2.2.1). */
+  function aktionsMeldung(text, ton, aktion, griff) {
+    const m = el("div", "ds-toast" + (ton === "fehler" ? " ds-toast--error" : (ton === "info" ? " ds-toast--info" : "")));
+    m.appendChild(UI.sinnbild(SINNBILD_JE_TON[ton], 20));
+    m.appendChild(el("span", "ds-toast__text", text));
+    const k = knopf({ text: aktion.text, variante: "leise", klein: true, klasse: "meldung-aktion" });
+    k.addEventListener("click", function (ev) {
+      griff().schliessen();
+      if (typeof aktion.beiKlick === "function") aktion.beiKlick(ev);
+    });
+    const zu = knopf({ variante: "sinnbild", sinnbild: "schliessen", titel: "Meldung schliessen", klasse: "ds-toast__close" });
+    zu.addEventListener("click", function () { griff().schliessen(); });
+    m.appendChild(k);
+    m.appendChild(zu);
+    return m;
   }
 
   function meldung(text, optionen) {
-    let o = optionen;
-    if (o === true) o = { ton: "fehler" };
-    else if (typeof o === "string") o = { ton: o };
-    o = o || {};
+    const o = optionen || {};
     const ton = o.ton === "fehler" || o.ton === "info" ? o.ton : "erfolg";
     const textWert = text === null || text === undefined ? "" : String(text);
-    const wirt = regionSichern();
+    const wirt = regionHolen();
+    const urheber = aktivesElement();
+    const mitAktion = !!(o.aktion && o.aktion.text);
+    const schluessel = ton + "\u0000" + textWert;
 
-    // Dieselbe Meldung steht schon: nur ihre Zeit beginnt neu (dreimal
-    // Ctrl+S ergibt keinen Stapel «Gespeichert.»).
-    if (ton !== "fehler") {
-      for (const m of Array.from(wirt.children)) {
-        const d = meldungsDaten.get(m);
-        if (d && !m.classList.contains("ds-leave") && d.ton === ton && d.text === textWert) {
-          d.neuStarten();
-          ansagen(textWert);
-          return d.griff;
-        }
-      }
+    // Dieselbe Meldung steht schon: sie macht der neuen Platz (dreimal
+    // Ctrl+S ergibt keinen Stapel «Gespeichert.», angesagt wird jedes Mal).
+    if (ton !== "fehler" && !mitAktion && stehende.has(schluessel)) stehende.get(schluessel).close();
+    // Ein neuer Fehler ersetzt den offenen, statt sich zu stapeln; stand der
+    // Fokus auf dem alten, geht er auf das × des neuen.
+    let fokusUebernehmen = false;
+    if (ton === "fehler") {
+      fokusUebernehmen = Array.from(offeneFehler).some(function (h) { return h.el && h.el.contains(document.activeElement); });
+      fehlerSchliessen();
     }
 
-    ansagen(textWert);
-    const item = el("div", "ds-toast" + (ton === "fehler" ? " ds-toast--error" : (ton === "info" ? " ds-toast--info" : "")));
-    item.appendChild(UI.sinnbild(ton === "erfolg" ? "checkKreis" : (ton === "fehler" ? "achtungKreis" : "info"), 20));
-    item.appendChild(el("span", "ds-toast__text", textWert));
-
-    // Wo der Fokus war: schliesst man eine fokussierte Meldung, kehrt er
-    // dorthin zurück.
-    const aktiv = aktivesElement();
-    const vorige = aktiv && wirt.contains(aktiv) ? aktiv.closest(".ds-toast") : null;
-    const urheber = vorige ? (herkunft.get(vorige) || null) : aktiv;
-    herkunft.set(item, urheber);
-
-    let uhr = 0;
-    function schliessen() {
-      if (!item.isConnected || item.classList.contains("ds-leave")) return;
-      clearTimeout(uhr);
-      offeneFehler.delete(item);
-      if (item.contains(document.activeElement)) {
-        const ziel = urheber && urheber.isConnected && !urheber.closest("[inert]") ? urheber : ersatzFokus();
-        if (ziel) ziel.focus({ preventScroll: true });
-      }
-      Bewegung.austreten(item).then(function () { platzReservieren(); });
-    }
-    const griff = { schliessen: schliessen, element: item };
-
-    if (o.aktion && o.aktion.text) {
-      const aktion = knopf({ text: o.aktion.text, variante: "leise", klein: true, klasse: "meldung-aktion" });
-      aktion.addEventListener("click", function (ev) {
-        schliessen();
-        if (typeof o.aktion.beiKlick === "function") o.aktion.beiKlick(ev);
-      });
-      item.appendChild(aktion);
-    }
+    let griff = null;
+    const inhalt = mitAktion ? aktionsMeldung(textWert, ton, o.aktion, function () { return griff; }) : textWert;
+    const h = DS.overlay.toast(wirt, inhalt, {
+      kind: ART_JE_TON[ton], timeout: o.dauer > 0 ? o.dauer : undefined, closeLabel: "Meldung schliessen"
+    });
+    griff = { schliessen: function () { return h.close(); }, element: h.el };
 
     if (ton === "fehler") {
-      // Fehler liest man in Ruhe und schliesst sie selbst: keine Uhr. Ein
-      // neuerer Fehler ersetzt den letzten, statt sich zu stapeln.
-      const zu = knopf({ variante: "sinnbild", sinnbild: "schliessen", sinnbildGroesse: 18, titel: "Meldung schliessen", klasse: "ds-toast__close" });
-      zu.addEventListener("click", schliessen);
-      item.appendChild(zu);
-      const fokusUebernehmen = !!vorige && vorige.contains(document.activeElement);
-      fehlerSchliessen();
-      offeneFehler.set(item, schliessen);
-      wirt.appendChild(item);
-      eingetreten(item);
-      if (fokusUebernehmen) zu.focus({ preventScroll: true });
-      platzReservieren(urheber);
-      zuvieleSchliessen(wirt);
-      return griff;
+      offeneFehler.add(h);
+      h.closed.then(function () { offeneFehler.delete(h); platzReservieren(); });
+      if (fokusUebernehmen && h.el) {
+        const zu = h.el.querySelector(".ds-toast__close");
+        if (zu) zu.focus({ preventScroll: true });
+      }
+      // Gemessen wird, wenn die Meldung steht (ihr Eintritt hebt sie an).
+      M.settled(h.el).then(function () { platzReservieren(urheber); });
+    } else if (!mitAktion) {
+      stehende.set(schluessel, h);
+      h.closed.then(function () { if (stehende.get(schluessel) === h) stehende.delete(schluessel); });
     }
-
-    // Die Uhr hält an, solange Zeiger oder Fokus auf der Meldung sind.
-    const dauer = o.dauer || MELDUNG_SICHTBAR_MS;
-    function starten() { clearTimeout(uhr); uhr = setTimeout(schliessen, dauer); }
-    function anhalten() { clearTimeout(uhr); }
-    item.addEventListener("pointerenter", anhalten);
-    item.addEventListener("pointerleave", starten);
-    item.addEventListener("focusin", anhalten);
-    item.addEventListener("focusout", starten);
-    meldungsDaten.set(item, { ton: ton, text: textWert, neuStarten: starten, griff: griff });
-    starten();
-    wirt.appendChild(item);
-    eingetreten(item);
-    zuvieleSchliessen(wirt);
     return griff;
   }
 
-  /* Hat eine Meldung ihren Auftritt gespielt, bleibt sie beim Umzug in eine
-     andere Ebene ruhig (.ds-toast--shown, Dashboard-Style). */
-  function eingetreten(item) {
-    Bewegung.abgeschlossen(item).then(function () { item.classList.add("ds-toast--shown"); });
-  }
-
-  function zuvieleSchliessen(wirt) {
-    const lebend = Array.from(wirt.children).filter(function (m) { return !m.classList.contains("ds-leave"); });
-    let zuviel = lebend.length - MELDUNG_HOECHSTENS;
-    for (const m of lebend) {
-      if (zuviel <= 0) break;
-      const d = meldungsDaten.get(m);
-      if (d) { d.griff.schliessen(); zuviel -= 1; }
-    }
-  }
-
   /* ==================================================================
-     Tooltip
+     Tooltip (DS.overlay.tooltips) – zwei kleine Ergänzungen
      ================================================================== */
-
-  const TIPP_SELEKTOR = "[data-tipp], button[title], a.ds-btn[title], [role=\"switch\"][title], "
-    + ".ds-status[title], .chip[title], th button[title]";
-
-  let tippEl = null;
-  let tippZiel = null;
-  let tippUhr = 0;
-  let tippGnade = 0;
-  let tippMarke = 0;
 
   function normal(t) {
     return String(t || "").replace(/[\s,]+/g, " ").trim().toLocaleLowerCase("de-CH");
   }
 
-  /* Text, den das Element sichtbar zeigt (unsichtbare 1-px-Beschriftungen
-     wie .nur-sr zählen nicht). */
-  function sichtbarerText(element) {
-    let t = "";
-    for (const n of Array.from(element.childNodes)) {
-      if (n.nodeType === 3) t += n.textContent;
-      else if (n.nodeType === 1) {
-        const r = n.getBoundingClientRect();
-        if (r.width > 1 && r.height > 1) t += " " + sichtbarerText(n);
-      }
-    }
-    return t;
-  }
-
-  /* Das Element zu einem Knoten; ein title wird beim ersten Kontakt zu
-     data-tipp, damit der Browser-Tooltip nie daneben erscheint. */
-  function tippBesitzer(knoten) {
-    const e = knoten && knoten.closest ? knoten.closest(TIPP_SELEKTOR) : null;
-    if (e && e.hasAttribute("title")) {
-      e.setAttribute("data-tipp", e.getAttribute("title") || "");
-      e.removeAttribute("title");
-    }
-    return e;
-  }
-
-  function beschreibungen(e) {
-    return (e.getAttribute("aria-describedby") || "").split(" ").filter(Boolean);
-  }
-
-  function tippLoesen() {
-    if (!tippZiel) return;
-    const rest = beschreibungen(tippZiel).filter(function (i) { return i !== tippEl.id; });
-    if (rest.length) tippZiel.setAttribute("aria-describedby", rest.join(" "));
-    else tippZiel.removeAttribute("aria-describedby");
-  }
-
-  /* Mittig 8 px unter dem Element, im Fenster gehalten; darüber, wenn unten
-     kein Platz ist. */
-  function tippPlatzieren(e) {
-    const r = e.getBoundingClientRect();
-    const b = tippEl.offsetWidth;
-    const h = tippEl.offsetHeight;
-    const links = Math.min(Math.max(LUECKE_PX, r.left + r.width / 2 - b / 2), window.innerWidth - b - LUECKE_PX);
-    const unten = r.bottom + LUECKE_PX;
-    const oben = unten + h + LUECKE_PX <= window.innerHeight ? unten : Math.max(LUECKE_PX, r.top - LUECKE_PX - h);
-    tippEl.style.left = Math.round(Math.max(LUECKE_PX, links)) + "px";
-    tippEl.style.top = Math.round(oben) + "px";
-  }
-
   /* Ist der Text des Elements abgeschnitten (Ellipse in einer Listenzelle,
-     einzeiliger Name)? Dann sagt ein Tooltip mit demselben Text doch etwas:
-     er zeigt den ganzen Wert. Geprüft werden das Element und seine
-     Nachfahren, die selbst beschneiden. */
+     einzeiliger Name)? Geprüft werden das Element und seine Nachfahren,
+     die selbst beschneiden. */
   function abgeschnitten(element) {
     const liste = [element].concat(Array.from(element.querySelectorAll("*")).slice(0, 24));
     return liste.some(function (n) {
-      // Unsichtbare 1-px-Beschriftungen (.nur-sr) beschneiden absichtlich;
+      // Unsichtbare 1-px-Beschriftungen (.ds-sr) beschneiden absichtlich;
       // Sinnbilder (SVG) haben keinen Text.
       if (n instanceof SVGElement || n.clientWidth <= 1 || n.clientHeight <= 1) return false;
       const s = getComputedStyle(n);
@@ -2170,170 +1997,86 @@ const Rahmen = (function () {
     });
   }
 
-  function tippZeigen(e) {
-    clearTimeout(tippUhr);
-    clearTimeout(tippGnade);
-    const text = e.getAttribute("data-tipp") || "";
-    if (!e.isConnected || !text || e.closest("[inert]")
-      || (normal(sichtbarerText(e)) === normal(text) && !abgeschnitten(e))) {
-      tippVerbergen();
-      return;
+  /* 1. Nur bei Abschneiden: ein Tooltip, der den sichtbaren Text bloss
+     wiederholt, steht in data-tip-abgeschnitten. Bevor DS.overlay.tooltips
+     ein Zeigen oder Fokussieren sieht (Fangphase am Dokument, vor seinen
+     Listenern), wird daraus data-tip – oder eben keins. */
+  function tippAbgleichen(ev) {
+    const e = ev.target && ev.target.closest ? ev.target.closest("[data-tip-abgeschnitten]") : null;
+    if (!e) return;
+    const text = e.getAttribute("data-tip-abgeschnitten");
+    if (text && abgeschnitten(e)) {
+      if (e.getAttribute("data-tip") !== text) e.setAttribute("data-tip", text);
+    } else if (e.hasAttribute("data-tip")) {
+      e.removeAttribute("data-tip");
     }
-    if (tippZiel !== e) tippLoesen();
-    tippZiel = e;
-    tippEl.textContent = text;
-    // Beschreibung nur, wenn der Tooltip mehr sagt als der Name des Elements.
-    const name = normal(e.getAttribute("aria-label") || e.textContent || "");
-    if (e.getAttribute("aria-hidden") !== "true" && name.indexOf(normal(text)) === -1
-      && beschreibungen(e).indexOf(tippEl.id) === -1) {
-      e.setAttribute("aria-describedby", beschreibungen(e).concat(tippEl.id).join(" "));
-    }
-    tippMarke += 1;
-    tippEl.classList.remove("ds-leave");
-    tippEl.hidden = false;
-    tippPlatzieren(e);
   }
 
-  function tippVerbergen() {
-    if (!tippEl) return;
-    clearTimeout(tippUhr);
-    clearTimeout(tippGnade);
-    tippLoesen();
-    tippZiel = null;
-    if (tippEl.hidden || tippEl.classList.contains("ds-leave")) return;
-    const marke = tippMarke;
-    Bewegung.austreten(tippEl, "", { dann: "behalten" }).then(function () {
-      if (marke !== tippMarke) return;
-      tippEl.hidden = true;
-      tippEl.classList.remove("ds-leave");
-    });
-  }
-
-  function tippBald() {
-    clearTimeout(tippGnade);
-    if (tippEl.hidden) { tippVerbergen(); return; }
-    tippGnade = setTimeout(tippVerbergen, TIPP_GNADE_MS);
+  /* 2. Antippen: ein Bild ohne eigene Handlung (die Initiale im Kopf, role
+     img) zeigt seinen Tooltip auch auf Touch, wo es kein Schweben gibt –
+     Dashboard-Style zeigt Tooltips nur für Maus, Stift und Tastatur. Der
+     Tipp gilt als Schweben; der nächste Druck irgendwo verbirgt ihn. */
+  function tippAufBild(ev) {
+    if (ev.pointerType !== "touch" || !ev.target || !ev.target.closest) return;
+    const e = ev.target.closest("[role=\"img\"][data-tip]");
+    if (e) e.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
   }
 
   function tippEinrichten() {
-    if (tippEl || !body) return;
-    tippEl = el("div", "ds-tooltip");
-    tippEl.id = "tipp";
-    tippEl.setAttribute("role", "tooltip");
-    tippEl.hidden = true;
-    body.appendChild(tippEl);
-
-    document.addEventListener("pointerover", function (ev) {
-      if (ev.pointerType === "touch") return;   // Touch kennt kein Schweben
-      const e = tippBesitzer(ev.target);
-      if (!e) {
-        // Wurde das Element unter dem Zeiger ersetzt (Neuzeichnen der Liste,
-        // Seitenkopf-Aktionen), kam nie ein pointerout: der Tooltip stünde
-        // mit dem alten Text neben einem anderen Element.
-        if (tippZiel && !tippEl.contains(ev.target)
-          && (!tippZiel.isConnected || !tippZiel.contains(ev.target))) tippBald();
-        return;
-      }
-      if (e === tippZiel) { clearTimeout(tippGnade); return; }
-      tippVerbergen();
-      tippZiel = e;
-      tippUhr = setTimeout(function () { tippZeigen(e); }, TIPP_VERZOEGERUNG_MS);
-    });
-    document.addEventListener("pointerout", function (ev) {
-      const e = tippBesitzer(ev.target);
-      if (!e || e !== tippZiel) return;
-      const naechstes = ev.relatedTarget;
-      if (naechstes && (e.contains(naechstes) || tippEl.contains(naechstes))) return;
-      tippBald();
-    });
-    tippEl.addEventListener("pointerenter", function () { clearTimeout(tippGnade); });
-    tippEl.addEventListener("pointerleave", function (ev) {
-      if (ev.relatedTarget && tippZiel && tippZiel.contains(ev.relatedTarget)) return;
-      if (tippZiel) tippBald();
-    });
-    /* Mit der Tastatur sofort. Auch für einen Besitzer, der selbst nicht
-       fokussierbar ist (th mit Erklärung um den Sortierknopf), wenn das
-       fokussierte Element sein einziges Bedienelement ist. */
-    document.addEventListener("focusin", function (ev) {
-      const e = tippBesitzer(ev.target);
-      if (!e || !ev.target.matches || !ev.target.matches(":focus-visible")) return;
-      if (e === ev.target || fokussierbare(e).length === 1) tippZeigen(e);
-    });
-    document.addEventListener("focusout", function (ev) {
-      if (tippZiel && (ev.target === tippZiel || tippZiel.contains(ev.target))) tippVerbergen();
-    });
-    document.addEventListener("pointerdown", function () { if (tippZiel) tippVerbergen(); });
-    // Ein Element, das sonst nichts tut (die Initiale), zeigt ihn auf Klick:
-    // auf Touch der einzige Weg.
-    document.addEventListener("click", function (ev) {
-      const e = tippBesitzer(ev.target);
-      if (e && e.getAttribute("role") === "img") tippZeigen(e);
-    });
-    document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && tippZiel) tippVerbergen();
-    });
-    // scroll blubbert nicht: in der Fangphase verbirgt jeder Roller ihn.
-    // Ausnahme: mit der Tastatur gezeigt. Dann kommt das Rollen meist vom
-    // Fokus selbst (der Browser rollt das Element ins Bild, etwa eine Spalte
-    // rechts in einer breiten Liste) – der Tooltip folgt, solange das
-    // Element zu sehen ist, statt sofort wieder zu verschwinden.
-    document.addEventListener("scroll", function () {
-      if (!tippZiel) return;
-      const fokus = document.activeElement;
-      if (!tippEl.hidden && !tippEl.classList.contains("ds-leave") && fokus && tippZiel.contains(fokus)
-        && fokus.matches(":focus-visible")) {
-        const r = tippZiel.getBoundingClientRect();
-        if (r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth) {
-          tippPlatzieren(tippZiel);
-          return;
-        }
-      }
-      tippVerbergen();
-    }, { capture: true, passive: true });
+    document.addEventListener("pointerover", tippAbgleichen, true);
+    document.addEventListener("focusin", tippAbgleichen, true);
+    document.addEventListener("click", tippAufBild);
+    DS.overlay.tooltips(document);
   }
 
+  /* Wiederholt der Text nur, was das Element ohnehin zeigt, zeigt er sich
+     nur bei Abschneiden; sonst immer. Ohne Text: kein Tooltip. */
   function tipp(element, text) {
     if (!element) return element;
-    element.removeAttribute("title");
-    if (text) element.setAttribute("data-tipp", String(text));
-    else element.removeAttribute("data-tipp");
-    if (tippZiel === element && tippEl && !tippEl.hidden) {
-      if (text) tippEl.textContent = String(text);
-      else tippVerbergen();
-    }
+    const t = text === null || text === undefined || text === false ? "" : String(text);
+    element.removeAttribute("data-tip");
+    element.removeAttribute("data-tip-abgeschnitten");
+    if (!t) return element;
+    if (normal(element.textContent) === normal(t)) element.setAttribute("data-tip-abgeschnitten", t);
+    else element.setAttribute("data-tip", t);
     return element;
   }
-  tipp.verbergen = tippVerbergen;
 
   /* ==================================================================
      Speicherleiste
      ================================================================== */
 
   let leiste = null;
+  const SPEICHERN_BESCHAEFTIGT = "Wird gespeichert …";
 
   function leisteBauen() {
-    const element = el("div", "speicherleiste");
+    // Sie kommt und geht bei jeder Änderung und jedem Speichern: .ds-presence
+    // von Dashboard-Style (nur hidden umschalten; ein Umschalten mitten im
+    // Ein- oder Austritt macht vom aktuellen Stand weiter).
+    const element = el("div", "speicherleiste ds-presence");
     element.hidden = true;
     element.setAttribute("role", "region");
     element.setAttribute("aria-label", "Ungespeicherte Änderungen");
     const textTeil = el("div", "speicherleiste-text");
     const anzahl = el("span", "speicherleiste-anzahl");
-    const meta = el("span", "speicherleiste-meta");
     textTeil.appendChild(anzahl);
-    textTeil.appendChild(meta);
     const knoepfe = el("div", "speicherleiste-knoepfe");
     const verwerfen = knopf({ text: "Verwerfen", variante: "leise" });
-    const speichern = knopf({ text: "Speichern", variante: "primaer" });
+    // Die Gesichter von DS.motion.busy stehen schon beim Bauen: der Knopf
+    // ist von Anfang an so breit wie «Wird gespeichert …» und springt nie.
+    const speichern = knopf({ text: "Speichern", variante: "primaer", beschaeftigt: SPEICHERN_BESCHAEFTIGT });
     knoepfe.appendChild(verwerfen);
     knoepfe.appendChild(speichern);
     element.appendChild(textTeil);
     element.appendChild(knoepfe);
     (tafel || body).appendChild(element);
 
-    const z = { sichtbar: false, generation: 0, beschaeftigt: false, speichernText: "", speichernAus: false,
-      beiSpeichern: null, beiVerwerfen: null, fokusZiel: null, reserve: 0, austritt: false, ausstehend: null };
+    const z = { sichtbar: false, beschaeftigt: false, lauf: null, speichernText: "",
+      speichernAus: false, beiSpeichern: null, beiVerwerfen: null, fokusZiel: null, reserve: 0,
+      austritt: null, ausstehend: null };
     speichern.addEventListener("click", function (ev) {
-      if (speichern.disabled || speichern.getAttribute("aria-disabled") === "true") return;
+      if (speichern.disabled || speichern.getAttribute("aria-disabled") === "true"
+        || speichern.getAttribute("aria-busy") === "true") return;
       if (typeof z.beiSpeichern === "function") z.beiSpeichern(ev);
     });
     verwerfen.addEventListener("click", function (ev) {
@@ -2348,20 +2091,20 @@ const Rahmen = (function () {
       }).observe(element);
     }
 
-    /* Platz am Tafelende (Spec 7.2 #1). Die Leiste klebt im Roller, trägt
-       aber keine Höhe bei (rahmen.css: negativer Rand in ihrer eigenen
-       Höhe, --leiste-hoehe): sie liegt im unteren Polster der Bahn, und
-       Kommen und Gehen verschieben nichts. Solange sie steht, gilt an der
-       Tafel --leiste-reserve = Höhe + Abstand unten + 8 px: als
+    /* Platz am Tafelende. Die Leiste klebt im Roller, trägt aber keine
+       Höhe bei (rahmen.css: negativer Rand in ihrer eigenen Höhe,
+       --leiste-hoehe): sie liegt im unteren Polster der Bahn, und Kommen
+       und Gehen verschieben nichts. Solange sie steht, gilt an der Tafel
+       --leiste-reserve = Höhe + Abstand unten + 8 px: als
        scroll-padding-bottom (Fokus und scrollIntoView halten Felder über
-       ihr) und als Mindestpolster der Bahn (eine umbrechende, höhere Leiste
-       verdeckt das Ende nicht). */
+       ihr) und als Mindestpolster der Bahn (eine umbrechende, höhere
+       Leiste verdeckt das Ende nicht). */
     function masseSetzen() {
       const h = element.offsetHeight;
       if (!h) return;
       element.style.setProperty("--leiste-hoehe", h + "px");
       const unten = parseFloat(getComputedStyle(element).bottom) || 0;
-      z.reserve = Math.round(h + unten + LUECKE_PX);
+      z.reserve = Math.round(h + unten + abstand("--ds-space-2"));
       if (tafel && z.sichtbar) tafel.style.setProperty("--leiste-reserve", z.reserve + "px");
     }
 
@@ -2385,8 +2128,9 @@ const Rahmen = (function () {
 
     /* Steht ein Element der Tafel (das fokussierte Feld) unter der Leiste,
        rollt die Tafel es darüber – beim Erscheinen der Leiste und bei jedem
-       Fokuswechsel, solange sie steht (Fehler: Leiste verdeckt das Feld,
-       WCAG 2.4.11). Ein hohes Feld rollt höchstens bis zu seinem Anfang. */
+       Fokuswechsel, solange sie steht (WCAG 2.4.11: die Leiste verdeckt
+       kein fokussiertes Feld). Ein hohes Feld rollt höchstens bis zu
+       seinem Anfang. */
     function ueberLeisteHalten(k) {
       if (!z.sichtbar || !tafel || !k || k === tafel || !tafel.contains(k) || element.contains(k)) return;
       const t = tafel.getBoundingClientRect();
@@ -2394,7 +2138,7 @@ const Rahmen = (function () {
       if (!r.height) return;
       const grenze = t.bottom - z.reserve;
       if (r.bottom <= grenze) return;
-      const d = Math.min(r.bottom - grenze, Math.max(0, r.top - t.top - LUECKE_PX));
+      const d = Math.min(r.bottom - grenze, Math.max(0, r.top - t.top - abstand("--ds-space-2")));
       if (d > 0) tafel.scrollTop += d;
     }
 
@@ -2424,60 +2168,73 @@ const Rahmen = (function () {
       k.disabled = aus;
     }
 
+    /* Ein- und Austritt spielt .ds-presence (Übergänge von Dashboard-Style
+       beim Umschalten von hidden). Während des Austritts ist die Leiste
+       inert; z.austritt hält das Warten auf sein Ende: nur das jüngste
+       wendet danach Zurückgehaltenes an (ein inzwischen abgebrochener
+       Austritt endet auch, gilt aber nicht mehr). */
     function zeigen(an) {
       if (an === z.sichtbar) return;
       z.sichtbar = an;
-      const generation = ++z.generation;
       if (an) {
-        z.austritt = false;
+        z.austritt = null;
+        element.inert = false;
         element.hidden = false;
         masseSetzen();
         reserveSetzen(true);
-        Bewegung.eintreten(element);   // Blende + 8 px Heben, 250 ms
         ueberLeisteHalten(document.activeElement);
       } else {
         fokusRetten();
-        z.austritt = true;
         reserveSetzen(false);
-        Bewegung.austreten(element, "sinken", { dann: "behalten" }).then(function () {
-          if (generation !== z.generation) return;   // inzwischen wieder gezeigt
-          element.hidden = true;
-          element.classList.remove("ds-leave", "ds-leave--sink");
-          z.austritt = false;
+        element.inert = true;
+        element.hidden = true;
+        const austritt = Bewegung.abgeschlossen(element, { uebergaenge: true });
+        z.austritt = austritt;
+        austritt.then(function () {
+          if (z.austritt !== austritt) return;   // inzwischen wieder gezeigt
+          z.austritt = null;
           ausstehendeAnwenden();
         });
       }
       meldungenAusrichten();
     }
 
-    /* Texte, Sperren und «beschäftigt» – alles ausser der Sichtbarkeit. */
+    /* Der Speichern-Knopf ist beschäftigt, solange «arbeit» läuft
+       (UI.beschaeftigt → DS.motion.busy: sofort gesperrt, das Gesicht mit
+       Spinner erst nach --ds-delay-loader und dann mindestens
+       --ds-hold-loader). Danach gelten wieder die gewünschten Texte und
+       Sperren. */
+    function beschaeftigt(arbeit) {
+      z.beschaeftigt = true;
+      speichern.disabled = false;
+      const lauf = UI.beschaeftigt(speichern, arbeit, { text: SPEICHERN_BESCHAEFTIGT });
+      z.lauf = lauf;
+      const frei = function () {
+        // Ein neuerer Lauf gilt; DS.motion.busy gibt einem zweiten Aufruf
+        // während des ersten denselben Lauf zurück: dessen Ende gilt dann.
+        if (z.lauf !== lauf) return;
+        z.lauf = null;
+        z.beschaeftigt = false;
+        if (z.speichernText) UI.knopfText(speichern, z.speichernText);
+        sperren(speichern, !!z.speichernAus);
+      };
+      lauf.then(frei, frei);
+      return lauf;
+    }
+
+    /* Texte und Sperren – alles ausser der Sichtbarkeit. */
     function anwenden(s) {
       if (s.text !== undefined) UI.textSetzen(anzahl, s.text);
-      if (s.meta !== undefined) UI.textSetzen(meta, s.meta);
       if (s.verwerfenText !== undefined) UI.knopfText(verwerfen, s.verwerfenText);
       // Solange der Knopf beschäftigt ist, gehören Beschriftung und Sperre dem
       // Spinner; gewünscht wird trotzdem gemerkt und danach übernommen.
-      const frei = function () { return !z.beschaeftigt && speichern.getAttribute("aria-busy") !== "true"; };
       if (s.speichernText !== undefined) {
         z.speichernText = s.speichernText;
-        if (frei()) UI.knopfText(speichern, s.speichernText);
+        if (!z.beschaeftigt) UI.knopfText(speichern, s.speichernText);
       }
       if (s.speichernAus !== undefined) {
         z.speichernAus = !!s.speichernAus;
-        if (frei()) sperren(speichern, z.speichernAus);
-      }
-      if (s.beschaeftigt !== undefined && !!s.beschaeftigt !== z.beschaeftigt) {
-        z.beschaeftigt = !!s.beschaeftigt;
-        if (z.beschaeftigt) {
-          speichern.disabled = false;
-          UI.beschaeftigt(speichern, true, "Wird gespeichert …");
-        } else {
-          UI.beschaeftigt(speichern, false).then(function () {
-            if (z.beschaeftigt) return;
-            if (z.speichernText) UI.knopfText(speichern, z.speichernText);
-            sperren(speichern, !!z.speichernAus);
-          });
-        }
+        if (!z.beschaeftigt) sperren(speichern, z.speichernAus);
       }
       if (s.verwerfenAus !== undefined) sperren(verwerfen, !!s.verwerfenAus);
     }
@@ -2495,17 +2252,17 @@ const Rahmen = (function () {
        gilt nach dem Austritt (oder sofort, wenn sie wieder erscheint). */
     function setzen(w) {
       const s = Object.assign({}, w || {});
-      const sichtbar = s.sichtbar;
+      const sichtbarWunsch = s.sichtbar;
       delete s.sichtbar;
-      const geht = sichtbar === false && z.sichtbar;
-      if (geht || (z.austritt && sichtbar !== true)) {
+      const geht = sichtbarWunsch === false && z.sichtbar;
+      if (geht || (z.austritt !== null && sichtbarWunsch !== true)) {
         z.ausstehend = Object.assign(z.ausstehend || {}, s);
         if (geht) zeigen(false);
         return;
       }
       ausstehendeAnwenden();
       anwenden(s);
-      if (sichtbar !== undefined) zeigen(!!sichtbar);
+      if (sichtbarWunsch !== undefined) zeigen(!!sichtbarWunsch);
     }
 
     return {
@@ -2516,6 +2273,7 @@ const Rahmen = (function () {
         speichernKnopf: speichern,
         verwerfenKnopf: verwerfen,
         setzen: setzen,
+        beschaeftigt: beschaeftigt,
         sichtbar: function () { return z.sichtbar; },
         speicherbar: function () {
           return z.sichtbar && !z.beschaeftigt && !speichern.disabled
@@ -2553,6 +2311,11 @@ const Rahmen = (function () {
      Start
      ================================================================== */
 
+  // Einmal je Seite, mit und ohne Rahmen: die Druckwelle auf allen
+  // Bedienelementen von Dashboard-Style (und data-ds-ripple), die Tooltips.
+  DS.ripple.attach(document);
+  if (body) tippEinrichten();
+
   if (bereit) {
     geruestSichern();
     kopfBauen();
@@ -2563,16 +2326,12 @@ const Rahmen = (function () {
       navigation({ gruppen: HAUPTZIELE, aktiv: indexAktiv(), label: "Hauptnavigation" });
     }
     // Das HTML startet im Ladezustand: vor dem ersten Skript der Seite blitzt
-    // nichts Halbfertiges auf, nach 200 ms erscheinen Skelett und Ladebalken.
+    // nichts Halbfertiges auf; Skelett und Ladebalken erscheinen verzögert.
     if (bahn.getAttribute("data-zustand") === "laden") {
       bahn.removeAttribute("data-zustand");
       zustandJetzt = "inhalt";
       ladenZeigen({});
     }
-  }
-  if (body) {
-    tippEinrichten();
-    ansageEinrichten();
   }
 
   /* ---------- An UI anhängen ---------- */
@@ -2582,9 +2341,7 @@ const Rahmen = (function () {
   UI.blatt = blatt;
   UI.ebeneOffen = ebeneOffen;
   UI.meldung = meldung;
-  UI.meldung.fehlerSchliessen = fehlerSchliessen;
   UI.meldungenFehlerSchliessen = fehlerSchliessen;
-  UI.meldungenAusrichten = meldungenAusrichten;
   UI.tipp = tipp;
   UI.speicherleiste = speicherleiste;
   UI.seitenkopf = seitenkopf;
@@ -2603,18 +2360,17 @@ const Rahmen = (function () {
     wechseln: wechseln,
     zustand: zustand,
     zustandJetzt: function () { return zustandJetzt; },
-    erstauftritt: erstauftritt,
     stillZeichnen: stillZeichnen,
     fest: fest,
     dokumentTitel: dokumentTitel,
     schublade: {
-      oeffnen: function () { schubladeSetzen(true); },
-      schliessen: function () { schubladeSetzen(false); },
-      offen: function () { return schubladeOffen; }
+      oeffnen: schubladeOeffnen,
+      schliessen: schubladeSchliessen,
+      offen: schubladeOffen
     },
     elemente: function () {
-      return { kopf: kopf, schublade: schublade, tafel: tafel, bahn: bahn, ladebalken: ladebalken };
-    },
-    bereit: bereit
+      return { app: app, kopf: kopf, schublade: schublade, tafel: tafel, bahn: bahn,
+        ladebalken: ladebalken, meldungen: regionHolen() };
+    }
   };
 })();
