@@ -65,14 +65,14 @@
   --ds-line:             #e2e3e1;   /* passive Haarlinie: Karten, Trenner */
 
   /* Primär Campus-Grün; das Pastell ist DIE einzige Tönung (Auswahl,
-     aktive Navigation, gewählte Chips, Tonal-Knopf, Leerzustand). */
+     aktive Navigation, gewählte Chips, Tonal-Knopf, Leerzustand). Hover
+     und Druck des gefüllten Knopfs (Primär + 8 % Weiss bzw. + 15 %
+     Schwarz) und die Unterstreichung der Links (Primär zu 40 %) leitet
+     Dashboard-Style 2.0 selbst aus --ds-primary ab. */
   --ds-primary:          #1a3c25;
-  --ds-primary-hover:    #2c4c36;   /* Referenzwert: Primär + 8 % Weiss */
-  --ds-primary-pressed:  #153220;
   --ds-accent:           #cfdfad;
   --ds-on-accent:        #1a3c25;
-  --ds-inverse-primary:  #a1d73b;   /* Erfolgs-Sinnbild in der Meldung */
-  --ds-link-underline:   rgba(26, 60, 37, .4);
+  --ds-inverse-primary:  #a1d73b;   /* Erfolgs-Sinnbild und Text-Knopf in der Meldung */
 
   /* Bausteine von Dashboard-Style (Hooks): die aktuelle Zeile einer
      Zeilenliste («dieses Gerät», «Inhaber») ruhig getönt statt im Pastell,
