@@ -24,9 +24,9 @@
      - Sichtbare Texte Schweizer Hochdeutsch; Leerwert «–».
      - Tooltips: Bauer setzen data-tip (DS.overlay.tooltips zeigt ihn, von
        rahmen.js einmal je Seite gestartet). Ein Tooltip, der nur den
-       sichtbaren Text wiederholt (gekürzte Namen, Chips), steht in
-       data-tip-abgeschnitten; rahmen.js macht daraus beim Zeigen data-tip,
-       solange der Text wirklich abgeschnitten ist. Nie ein Browser-title.
+       sichtbaren Text wiederholt (gekürzte Namen, Chips), zeigt
+       Dashboard-Style nur, solange der Text wirklich abgeschnitten ist.
+       Nie ein Browser-title.
      - Drückbare ICT-Bausteine (Chip mit ×, Listenzeile, Verteilungszeile,
        klickbare Kennwerte) tragen data-ds-ripple: DS.ripple (von rahmen.js
        einmal je Seite gestartet) gibt ihnen die Welle und .ds-pressed,
@@ -99,7 +99,8 @@
        (F.seitenkopf); false, wenn «neu» ohne beiKlick gebaut wurde.
      UI.beschaeftigt(knopf, arbeit, { text = 'Wird gespeichert …', fertig }) → Promise<Ergebnis>
        = DS.motion.busy: arbeit ist eine Funktion (→ Promise) oder ein
-       Promise. aria-busy sofort (Klicks werden geschluckt, der Fokus
+       Promise. aria-busy sofort (Klick, Enter und Leertaste sperrt die
+       Wache von Dashboard-Style, DS.motion.guard; der Fokus
        bleibt), das Gesicht mit Spinner und text erst nach --ds-delay-loader
        und dann mindestens --ds-hold-loader; mit fertig: 'Gespeichert'
        danach das Erfolgsgesicht für --ds-hold-success. Texte zeigen die
@@ -895,7 +896,8 @@ const UI = (function () {
 
   /* Gesperrt MIT Grund: aria-disabled statt disabled, damit der Knopf
      fokussierbar bleibt und der Tooltip den Grund nennt – auch per
-     Tastatur. Klicks schluckt der Zuhörer unten (Fangphase). Ein leerer
+     Tastatur. Klick, Enter und Leertaste sperrt die Wache von Dashboard-
+     Style (DS.motion.guard, mit DS.ripple.attach gestartet). Ein leerer
      Grund hebt die Sperre auf; der frühere Tooltip (titel) kehrt zurück.
      An Ort und Stelle: aufrufbar bei jedem Tastendruck. */
   const freieTipps = new WeakMap();
@@ -1016,28 +1018,14 @@ const UI = (function () {
     return gesichter;
   }
 
-  /* Gesperrte, beschäftigte und gerade erfolgreiche Knöpfe bleiben
-     fokussierbar (ein disabled-Knopf verliert den Fokus) und behalten die
-     Zeigerereignisse (für den Tooltip mit dem Grund). Dashboard-Style
-     überlässt das Ignorieren ihrer Klicks der Seite: EIN Zuhörer in der
-     Fangphase schluckt sie – auch den synthetischen Klick, den Enter in
-     einem Formular oder ein Label (Schalter) auslöst. */
-  document.addEventListener("click", function (e) {
-    const ziel = e.target instanceof Element
-      ? e.target.closest('button[aria-disabled="true"], a[aria-disabled="true"], input[aria-disabled="true"], [role="button"][aria-disabled="true"], .ds-btn[aria-busy="true"], .ds-btn--done')
-      : null;
-    if (!ziel) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }, true);
-
   function beschaeftigt(k, arbeit, o) {
     const w = istOptionen(o) ? o : {};
     if (!k) return Promise.resolve(typeof arbeit === "function" ? arbeit() : arbeit);
     const fertigText = w.fertig || null;
     gesichterSichern(k, w.text, fertigText, true);
     if (typeof UI.meldungenFehlerSchliessen === "function") UI.meldungenFehlerSchliessen();
-    return DS.motion.busy(k, arbeit, { done: !!(fertigText || k.querySelector(":scope > .ds-btn__faces > .ds-btn__face--done")) });
+    // Das Erfolgsgesicht zeigt DS.motion.busy nur, wo der Knopf eines hat.
+    return DS.motion.busy(k, arbeit);
   }
 
 
@@ -1528,7 +1516,7 @@ const UI = (function () {
     // Ein titel ist immer ein Tooltip; ohne titel zeigt der Chip seinen
     // eigenen Text nur, solange er mit «…» gekürzt ist.
     if (o.titel) c.setAttribute("data-tip", o.titel);
-    else if (!istLeer(o.text)) c.setAttribute("data-tip-abgeschnitten", text(o.text));
+    else if (!istLeer(o.text)) c.setAttribute("data-tip", text(o.text));
     fokusSetzen(c, o.fokus);
     if (o.deaktiviert) {
       if (o.href) c.setAttribute("aria-disabled", "true");
@@ -2086,7 +2074,8 @@ const UI = (function () {
      aria-disabled (fokussierbar, der Tooltip nennt den Grund: ein Wert aus
      dem Abgleich), deaktiviert = aria-disabled im gesperrten Aussehen.
      Beide bleiben fokussierbar (disabled verlöre Fokus und Tooltip); ihre
-     Klicks schluckt der Zuhörer bei den Knöpfen (input[aria-disabled]). */
+     Klick, Leertaste und Klick aufs Label sperrt die Wache von Dashboard-
+     Style (DS.motion.guard) für aria-disabled. */
   function schalter(optionen) {
     const o = optionen || {};
     const s = el("label", "ds-switch" + (o.klasse ? " " + o.klasse : ""));
@@ -2117,12 +2106,10 @@ const UI = (function () {
       k.checked = an || gesperrt;
       if (gesperrt || deaktiviert) k.setAttribute("aria-disabled", "true");
       else k.removeAttribute("aria-disabled");
-      // Der Tooltip hängt am Kästchen (Tastatur) und an der Spur (Zeiger):
-      // in einer Schalterzeile hat das Label keinen eigenen Kasten.
-      for (const t of [k, spur]) {
-        if (tipp) t.setAttribute("data-tip", tipp);
-        else t.removeAttribute("data-tip");
-      }
+      // Der Tooltip hängt am Kästchen: es deckt die Spur ab (Dashboard-Style
+      // 2.0), Zeiger und Tastatur treffen also beide dasselbe Element.
+      if (tipp) k.setAttribute("data-tip", tipp);
+      else k.removeAttribute("data-tip");
       s.dispatchEvent(new CustomEvent("schalterwechsel", { detail: { an: an || gesperrt, gesperrt: gesperrt } }));
     }
 
@@ -2625,7 +2612,7 @@ const UI = (function () {
       if (e.beiKlick) z.addEventListener("click", e.beiKlick);
       if (tag !== "div") fokusSetzen(z, e.fokus);
       if (e.titel) z.setAttribute("data-tip", e.titel);
-      else z.setAttribute("data-tip-abgeschnitten", text(e.text));
+      else z.setAttribute("data-tip", text(e.text));
       z.appendChild(el("span", "verteilung-name", e.text));
       z.appendChild(el("span", "verteilung-zahl", zahlFormat(Number(e.zahl) || 0)));
       z.appendChild(balken(e.anteil !== undefined ? e.anteil : (Number(e.zahl) || 0) / groesste));

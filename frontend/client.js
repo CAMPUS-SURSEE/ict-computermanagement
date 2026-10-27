@@ -1243,7 +1243,8 @@ function installiertFuellen(ausEingabe, gebaut) {
    Tippen die Art (Treffer ↔ Leerzustand), gleitet der Wechsel. */
 function trefferAbgleichen(ort, neu, ausEingabe) {
   const schluessel = function (liste) { return liste.map(k => k && k.getAttribute ? k.getAttribute("data-ds-key") : "").join("|"); };
-  const vorher = schluessel(Array.from(ort.children));
+  // Laufzeitknoten von Dashboard-Style (der Wächter von watchScrolled) zählen nicht.
+  const vorher = schluessel(Array.from(ort.children).filter(k => !k.hasAttribute("data-ds-keep")));
   if (ausEingabe && vorher && vorher !== schluessel(neu)) {
     Bewegung.umordnen(ort, function (o) { UI.abgleichen(ort, neu, o); });
   } else {
@@ -2109,25 +2110,21 @@ async function inhaberSchreiben(schritte, geraetFelder) {
    nachgeladen wird; der Dialog und seine übrigen Knöpfe sind so lange
    gesperrt (mit Grund, nicht disabled), Kopfaktionen und Speicherleiste
    sperrt F.beschaeftigt. Gelungen schliesst der Dialog und der Fokus
-   geht dorthin, wo die Person weiterarbeitet; bei einem Fehler bleibt er
-   offen, frei und mit der Meldung darüber. → true, wenn es geklappt hat. */
-async function imDialogAusfuehren(d, ja, arbeit) {
-  const ok = await F.imDialog(d, ja, arbeit);
-  if (ok) fokusNachAktion();
-  return ok;
+   geht dorthin, wo die Person weiterarbeitet (fokusNachAktion); bei einem
+   Fehler bleibt er offen, frei und mit der Meldung darüber. → true, wenn
+   es geklappt hat. */
+function imDialogAusfuehren(d, ja, arbeit) {
+  return F.imDialog(d, ja, arbeit);
 }
 
 /* Nach einer Schnellaktion gibt es den auslösenden Knopf oft nicht mehr
-   («Ins Lager legen» wird zu «Ausgeben an …»): Dashboard-Style gibt den
-   Fokus dann der Tafel (main.ds-view). Stattdessen auf die erste Aktion
-   im Kopf (data-fokus «aktion-…», siehe kopfAktionen), sonst auf den
-   Titel – dort, wo die Person weiterarbeitet. */
+   («Ins Lager legen» wird zu «Ausgeben an …»). Dann fragt DS.overlay beim
+   Schliessen hier nach (UI.dialog({ fokusZurueck }), returnTo): die erste
+   Aktion im Kopf (data-fokus «aktion-…», siehe kopfAktionen), sonst der
+   Titel – dort, wo die Person weiterarbeitet, statt der Tafel. */
 function fokusNachAktion() {
-  const a = document.activeElement;
-  if (a && a !== document.body && !a.matches(".ds-view")) return;
   const kopf = $("g-kopf");
-  const ziel = (kopf && kopf.querySelector("[data-fokus^=\"aktion-\"]")) || $("g-titel");
-  if (ziel) ziel.focus({ preventScroll: true });
+  return (kopf && kopf.querySelector("[data-fokus^=\"aktion-\"]")) || $("g-titel");
 }
 
 function abgabeSchritte() {
@@ -2154,7 +2151,7 @@ function aktionsDialog(o) {
       UI.meldung(o.erfolg);
     }
   } });
-  const d = UI.dialog({ titel: o.titel, inhalt: inhalt, knoepfe: [abbrechen, ja], breit: true });
+  const d = UI.dialog({ titel: o.titel, inhalt: inhalt, knoepfe: [abbrechen, ja], breit: true, fokusZurueck: fokusNachAktion });
   return d;
 }
 
@@ -2229,7 +2226,7 @@ function inhaberEntfernenDialog(b) {
       });
       if (ok) UI.meldung("«" + personName(b) + "» ist nicht mehr eingetragen.");
     } });
-  const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], inhalt: [el("p", "ds-dialog__text",
+  const d = UI.dialog({ titel: titel, knoepfe: [abbrechen, ja], fokusZurueck: fokusNachAktion, inhalt: [el("p", "ds-dialog__text",
     "«" + personName(b) + "» ist danach nicht mehr Inhaber. Das Gerät selbst bleibt unverändert.")] });
 }
 
@@ -2254,22 +2251,23 @@ function inhaberWaehlenDialog(ausgabe, person) {
   const bisheriger = inhaber();
   const ausLager = ausgabe === true && geraeteStatus() !== "Aktiv";
   const titel = ausLager ? "Ausgeben an …" : (bisheriger ? "Inhaber wechseln" : "Inhaber festlegen");
-  const d = UI.dialog({ titel: titel, breit: true });
+  const d = UI.dialog({ titel: titel, breit: true, fokusZurueck: fokusNachAktion });
   let suchText = "";
+  // Suche und Trefferzahl stehen zwischen Titel und Körper und bleiben
+  // stehen; nur die Liste im Körper rollt (Dashboard-Style, «A search over
+  // a list»). Die feste Höhe hält den Dialog beim Filtern ruhig.
+  let zahl = null;
 
   function schritt1() {
     d.titel(titel);
-    // .dialog-liste (rahmen.css): rollt selbst und nimmt die Resthöhe des
-    // Dialogs; Suchfeld, Titel und Knöpfe bleiben stehen.
-    const liste = schluesselSetzen(el("div", "dialog-liste"), "liste");
-    liste.setAttribute("data-rolle", "treffer");
-    const zahl = schluesselSetzen(el("p", "ds-meta"), "zahl");
+    zahl = el("p", "ds-meta");
     zahl.setAttribute("aria-live", "polite");
-    const suche = schluesselSetzen(UI.suchfeld({ id: "g-inhaber-suche", platzhalter: "Name, Login oder Abteilung",
+    const suche = UI.suchfeld({ id: "g-inhaber-suche", platzhalter: "Name, Login oder Abteilung",
       label: "Person suchen", wert: suchText, verzoegerung: 100,
-      beiEingabe: function (w) { suchText = w; treffer(true); } }), "suche");
-    trefferFuellen(liste, zahl, false);
-    UI.abgleichen(d.inhalt, [suche, liste, zahl]);
+      beiEingabe: function (w) { suchText = w; treffer(true); } });
+    d.oben([suche, zahl]);
+    d.hoehe("560px");
+    trefferFuellen(d.inhalt, zahl, false);
     UI.abgleichen(d.knoepfe, [schluesselSetzen(UI.knopf({ text: "Abbrechen", variante: "leise",
       beiKlick: function () { d.schliessen("abbrechen"); } }), "abbrechen")]);
     const feld = $("g-inhaber-suche");
@@ -2277,9 +2275,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
   }
 
   function treffer(ausEingabe) {
-    const liste = d.inhalt.querySelector(":scope > .dialog-liste");
-    const zahl = d.inhalt.querySelector(":scope > [data-ds-key=\"zahl\"]");
-    if (liste && zahl) trefferFuellen(liste, zahl, ausEingabe);
+    if (zahl && zahl.isConnected) trefferFuellen(d.inhalt, zahl, ausEingabe);
   }
 
   /* Gesucht wird nur, was der Platzhalter verspricht: Name, Login und
@@ -2362,6 +2358,8 @@ function inhaberWaehlenDialog(ausgabe, person) {
         const ok = await imDialogAusfuehren(d, ja, function () { return inhaberSchreiben(schritte, geraetFelder); });
         if (ok) UI.meldung(ausLager ? "Ausgegeben an «" + personName(b) + "»." : "«" + personName(b) + "» ist jetzt Inhaber.");
       } }), "ja");
+    d.oben([]);
+    d.hoehe(null);
     UI.abgleichen(d.inhalt, teile);
     UI.abgleichen(d.knoepfe, [zurueck, ja]);
     ja.focus();

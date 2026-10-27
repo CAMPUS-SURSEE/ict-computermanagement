@@ -1060,13 +1060,22 @@ const Fenster = (function () {
        der Endzustand da und bekommt den Fokus. */
     F.loeschenDialog = function (ol) {
       const wort = String(ol.wort || "").trim();
-      const d = UI.dialog({ titel: ol.titel || "Löschen", breit: true });
-      if (ol.text) d.inhalt.appendChild(el("p", null, ol.text));
+      // Dashboard-Style, «Confirm by typing the name»: alertdialog, breit,
+      // Text, Warnung und das Feld im Körper.
+      const textId = UI.id(p + "loeschen-text");
+      const d = UI.dialog({ titel: ol.titel || "Löschen", breit: true, rolle: "alertdialog",
+        beschreibung: ol.text ? textId : null });
+      if (ol.text) {
+        const t = el("p", "ds-dialog__text", ol.text);
+        t.id = textId;
+        d.inhalt.appendChild(t);
+      }
       if (ol.warnung) d.inhalt.appendChild(UI.banner({ ton: "warnung", text: ol.warnung }));
 
       const feld = UI.eingabe({ art: "text", id: UI.id(p + "loeschen") });
       feld.autocomplete = "off";
       feld.spellcheck = false;
+      feld.setAttribute("autocapitalize", "off");
       d.inhalt.appendChild(UI.feld("Zur Bestätigung «" + wort + "» eingeben", feld, { klasse: "dialog-bestaetigung" }));
 
       const grund = "Zur Bestätigung «" + wort + "» eingeben.";
@@ -1082,7 +1091,7 @@ const Fenster = (function () {
         if (!laeuft) UI.knopfSperren(loeschen, passt() ? "" : grund);
       });
       feld.addEventListener("keydown", function (ev) {
-        if (ev.key === "Enter" && passt()) { ev.preventDefault(); loeschen.click(); }
+        if (ev.key === "Enter" && !ev.isComposing && passt()) { ev.preventDefault(); loeschen.click(); }
       });
 
       loeschen.addEventListener("click", async function () {

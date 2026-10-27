@@ -1218,13 +1218,16 @@
         const s = w.trim().toLowerCase();
         UI.kinderAbgleichen(trefferListe, zeilen.filter(function (z) { return !s || z.suchText.indexOf(s) !== -1; }));
       } });
-      // Die Trefferliste als .dialog-liste: sie rollt selbst und nimmt die
-      // Resthöhe; Titel, Suchfeld und Knöpfe bleiben stehen (rahmen.css).
+      // Die Suche steht zwischen Titel und Körper (d.oben), nur die
+      // Trefferliste im Körper rollt; die feste Höhe hält den Dialog beim
+      // Filtern ruhig (Dashboard-Style, «A search over a list»).
       const d = UI.dialog({
         titel: "Inhaber festlegen", breit: true,
-        inhalt: [suche, anhaengen(el("div", "dialog-liste"), [trefferListe])],
+        inhalt: [trefferListe],
         knoepfe: [knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } }), uebernehmen]
       });
+      d.oben([suche]);
+      d.hoehe("480px");
       uebernehmen.addEventListener("click", function () {
         d.schliessen("ja");
         UI.meldung("«" + gewaehlt + "» ist jetzt Inhaber.");
@@ -1239,7 +1242,7 @@
       const endgueltig = knopf({ text: "Löschen", variante: "primaer", deaktiviert: true, beschaeftigt: "Wird gelöscht …" });
       const abbrechen = knopf({ text: "Abbrechen", variante: "leise", beiKlick: function () { d.schliessen("abbrechen"); } });
       const textId = UI.id("sg-loeschen-text");
-      const text = el("p", null, "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.");
+      const text = el("p", "ds-dialog__text", "Die Zeile wird in den Papierkorb der SharePoint-Site verschoben und lässt sich dort 93 Tage lang zurückholen.");
       text.id = textId;
       const d = UI.dialog({
         titel: "Gerät löschen?", breit: true, beschreibung: textId,

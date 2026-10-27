@@ -74,7 +74,7 @@
 
 /* Ein Zwischentitel ausserhalb einer Karte (Blatt, Dialog) hat keinen
    eigenen Rand: dort setzt der Körper den Abstand (gap). */
-:is(.ds-sheet__body, .ds-dialog__box) > .ds-card__subtitle { margin: 0; }
+:is(.ds-sheet__body, .ds-dialog__body) > .ds-card__subtitle { margin: 0; }
 
 /* Ein langer Titel bricht in der Titelzeile statt sie zu sprengen; ein
    Sinnbild davor (UI.karte({ sinnbild })) hält Abstand. */

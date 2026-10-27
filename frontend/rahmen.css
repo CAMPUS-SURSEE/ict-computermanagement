@@ -35,11 +35,7 @@
      4. Seitenkopf (Zurück-Link, Teile-Zeile, Status, Aktionen)
      5. Gerüst der Detailseiten (.fenster-bereich)
      6. Schmale Fenster (≤ 900 / 720 / 600 / 359 px)
-     7. Dialog (Rollfläche zwischen Titel und Knöpfen)
-     8. Seitenblatt (Unterzeile, Fusszeile)
-     9. Meldung (Aktion)
-    10. Speicherleiste
-    11. Kontrastmodus und Druck
+     7. Kontrastmodus und Druck
 
    Regeln wie in bausteine.css: nur Tokens, keine @keyframes (die Namen
    ds-fade-in, ds-lift-in … stehen in vendor/dashboard-style/css/motion.css).
@@ -74,17 +70,6 @@
 }
 
 .ds-topbar__menu { flex-shrink: 0; }
-
-/* Wächter für data-scrolled (rahmen.js, wie bei Dashboard-Style): 1 px am
-   Anfang eines Rollers, der keinen Platz nimmt. Im Blatt gleicht er auch
-   den Abstand der Spalte aus. */
-.rollwaechter {
-  flex-shrink: 0;
-  height: 1px;
-  margin-bottom: -1px;
-}
-
-.ds-sheet__body > .rollwaechter { margin-bottom: calc(-1px - var(--ds-space-3)); }
 
 /* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
    Logo von Campus Sursee, Archivo breit (thema.css), der Punkt im
@@ -214,13 +199,10 @@
    scrollIntoView rollt den ganzen Rahmen samt Kopf aus dem Bild. */
 .ds-view { position: relative; }
 
-/* Die Bahn (.ds-content) füllt die Tafel nach unten: die Speicherleiste
-   (ohne eigene Höhe, nach der Bahn) steht dann auch bei kurzem Inhalt am
-   unteren Rand. --bahn-unten ist ihr unteres Polster (wie in
-   Dashboard-Style: Abstand, Platz für eine zweizeilige Meldung, 8 px). */
+/* --bahn-unten ist das untere Polster der Bahn (wie in Dashboard-Style:
+   Abstand, Platz für eine zweizeilige Meldung, 8 px). */
 .ds-view > .ds-content {
   --bahn-unten: calc(var(--ds-space-6) + var(--ds-toast-room) + var(--ds-space-2));
-  flex: 1 0 auto;
 }
 
 /* Ein einzelner Knopf auf Seitenebene behält seine Breite. */
@@ -269,36 +251,6 @@
     max-height: calc(100dvh - var(--ds-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
       - var(--bahn-unten) - var(--ds-space-2));
   }
-}
-
-/* Platz am Tafelende für die Speicherleiste (rahmen.js):
-   - [data-leiste], solange sie steht: --leiste-reserve = ihre Höhe +
-     Abstand unten + 8 px, als Mindestpolster der Bahn (bewusst der Bahn,
-     nicht der Tafel: das Polster von Dashboard-Style für Meldungen bleibt);
-   - [data-leiste-rest], nachdem sie ging, bis das Polster aus dem Bild ist
-     (--leiste-rest): sonst rutschte der Inhalt am Tafelende nach unten.
-   Eine offene Fehlermeldung hält ihren Platz über den Hook von
-   Dashboard-Style (.ds-view[data-toast-reserve], --ds-toast-reserve).
-   Steht beides, hält scroll-padding fokussierte Felder über Leiste UND
-   Meldung (Dashboard-Style kennt nur die Meldung). */
-.ds-view:is([data-leiste], [data-toast-reserve]) {
-  scroll-padding-bottom: calc(var(--leiste-reserve, 0px) + var(--ds-toast-reserve, 0px));
-}
-
-.ds-view:is([data-leiste], [data-leiste-rest]) > .ds-content {
-  padding-bottom: max(var(--bahn-unten), var(--leiste-rest, 0px), var(--leiste-reserve, 0px));
-}
-
-/* Steht die Leiste UND ist ein Fehler offen, hält ebenfalls die Bahn den
-   Platz für beide: das Polster von Dashboard-Style auf der Tafel schöbe
-   die klebende Leiste um seine Höhe hoch, unter die Meldung, die
-   rahmen.js über der Ruhelage der Leiste ausgerichtet hat. */
-.ds-view[data-leiste][data-toast-reserve] {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.ds-view[data-leiste][data-toast-reserve] > .ds-content {
-  padding-bottom: max(var(--bahn-unten), calc(var(--leiste-reserve, 0px) + var(--ds-toast-reserve, 0px)));
 }
 
 /* Zustände der Seite: solange geladen wird oder ein Fehler steht, ist der
@@ -497,266 +449,7 @@
 
 
 /* ==================================================================
-   7. Dialog (UI.dialog, UI.bestaetigen)
-   Eine Spalte aus Titel, Inhalt (.dialog-inhalt) und Knopfzeile: ist der
-   Dialog höher als das Fenster, bleiben Titel und Knöpfe stehen, und NUR
-   der Inhalt dazwischen rollt – eine einzige Rollfläche. Dashboard-Style
-   rollt die ganze Fläche; dann läge «Abbrechen» unter dem Rand.
-   ================================================================== */
-
-.ds-dialog__box {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 560 px für Formulare und Listen (UI.dialog({ breit: true })). */
-.dialog-breit { --ds-dialog-width: 560px; }
-
-/* Hat der Dialog beim Öffnen noch nichts Fokussierbares, parkt
-   DS.overlay den Fokus auf der Fläche (tabindex -1): ohne Ring. */
-.ds-dialog__box[tabindex="-1"]:focus { outline: none; }
-
-.ds-dialog__title,
-.ds-dialog__actions { flex-shrink: 0; }
-
-.ds-dialog__actions:empty { display: none; }
-
-/* Der Inhalt ist die Rollfläche; er schrumpft als Einziger, seine Kinder
-   nie (ausser einer Liste, unten). Der Fokusring eines Felds am Rand
-   würde vom Rollen abgeschnitten: der Inhalt greift um diesen Raum in das
-   Polster der Fläche aus und gibt ihn innen als Polster zurück. */
-.dialog-inhalt {
-  --dialog-fokusraum: calc(var(--ds-focus-width) + var(--ds-focus-offset));
-  display: flex;
-  flex-direction: column;
-  flex: 0 1 auto;
-  gap: var(--ds-space-4);
-  min-width: 0;
-  min-height: 0;
-  margin: calc(-1 * var(--dialog-fokusraum));
-  padding: var(--dialog-fokusraum);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ds-line-2) transparent;
-}
-
-.dialog-inhalt > * { flex-shrink: 0; }
-.dialog-inhalt:empty { display: none; }
-
-/* Fliesstext im Dialog nennt die Folge (wie .ds-dialog__text); 8 px unter
-   dem Titel statt 16. :where hält die Gewichtung tief (Tonklassen gewinnen). */
-:where(.dialog-inhalt) > p {
-  margin: 0;
-  color: var(--ds-text-2);
-  font: var(--ds-font-body);
-}
-
-.dialog-inhalt:has(> p:first-child, > .ds-dialog__text:first-child) {
-  margin-top: calc(-1 * (var(--dialog-fokusraum) + var(--ds-space-2)));
-}
-
-/* Eine Liste im Dialog (.dialog-liste: Treffer einer Suche) rollt selbst
-   und nimmt die Resthöhe (höchstens 420 px). Bliebe ihr nicht einmal Platz
-   für gut eine Zeile, setzt rahmen.js data-knapp: dann steht die Liste in
-   voller Länge im Inhalt, der Inhalt ist die eine Rollfläche, und was
-   direkt über der Liste steht (das Suchfeld), bleibt oben stehen. */
-.dialog-inhalt > .dialog-liste {
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 420px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ds-line-2) transparent;
-}
-
-.ds-dialog__box[data-knapp] .dialog-inhalt > .dialog-liste {
-  flex-shrink: 0;
-  max-height: none;
-  overflow: visible;
-}
-
-/* Klebt an der Innenkante; zwei Schatten in Flächenfarbe decken den
-   Fokusraum darüber und 8 px darunter. */
-.ds-dialog__box[data-knapp] .dialog-inhalt > :has(+ .dialog-liste) {
-  position: sticky;
-  top: 0;
-  z-index: var(--ds-z-raised);
-  background: var(--ds-surface);
-  box-shadow:
-    0 calc(-1 * var(--dialog-fokusraum)) 0 0 var(--ds-surface),
-    0 var(--ds-space-2) 0 0 var(--ds-surface);
-}
-
-/* Die Bestätigung durch Eintippen (F.loeschenDialog, .dialog-bestaetigung)
-   ist ein .ds-field wie jedes andere: die Klasse ist nur ein Haken, ohne
-   eigene Regel. */
-
-
-/* ==================================================================
-   8. Seitenblatt (UI.blatt)
-   ================================================================== */
-
-/* Mit Unterzeile («47 von 163») bleibt der Kopf 64 px hoch: Titel und Zahl
-   stehen zusammen mittig, das Polster gibt nach. */
-.ds-sheet__head:has(.blatt-unter:not(:empty)) { padding-block: var(--ds-space-2); }
-
-.blatt-kopf-text {
-  min-width: 0;
-  display: grid;
-}
-
-/* Unterzeile im Kopf, z. B. die Trefferzahl – live. */
-.blatt-unter {
-  margin: 0;
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-}
-
-.blatt-unter:empty { display: none; }
-
-.blatt-schliessen { flex-shrink: 0; }
-
-/* Der Körper rollt (min-height 0 in der Spalte), mit ruhigem Griff, und
-   ist positioniert: .ds-sr-Texte rollen mit und bleiben im Körper. */
-.ds-sheet__body {
-  position: relative;
-  min-height: 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ds-line-2) transparent;
-}
-
-/* Knöpfe direkt im Körper behalten ihre eigene Breite. */
-.ds-sheet__body > .ds-btn { align-self: flex-start; }
-
-/* Im Blatt stehen Auswahllisten (79 SCCM-Spalten, Beschaffungsjahre) in
-   voller Länge: es rollt nur das Blatt, nie zusätzlich eine Liste darin. */
-.ds-sheet__body .mehrfach { max-height: none; }
-
-/* Optionale Fusszeile (Trefferzahl, «Fertig»): bleibt stehen, der Körper
-   rollt darüber. */
-.blatt-fuss {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ds-space-2) var(--ds-space-3);
-  padding:
-    var(--ds-space-3)
-    max(var(--ds-space-6), env(safe-area-inset-right))
-    calc(var(--ds-space-3) + env(safe-area-inset-bottom))
-    var(--ds-space-6);
-  border-top: 1px solid var(--ds-line);
-}
-
-.blatt-fuss:empty { display: none; }
-
-/* Über einer Fusszeile reicht ein kleineres Polster als die 32 px von
-   Dashboard-Style. Ist ein Fehler offen, kommt der Meldungsplatz dazu
-   (--ds-toast-reserve, rahmen.js misst ihn ab der Unterkante des Körpers):
-   diese Regel ohne Ebene schlägt die von Dashboard-Style und muss ihn
-   darum selbst mitrechnen. */
-.ds-sheet__panel:has(> .blatt-fuss:not(:empty)) .ds-sheet__body {
-  padding-bottom: calc(var(--ds-space-6) + var(--ds-toast-reserve, 0px));
-}
-
-@media (max-width: 600px) {
-  .blatt-fuss {
-    padding-inline: max(var(--ds-space-4), env(safe-area-inset-left)) max(var(--ds-space-4), env(safe-area-inset-right));
-  }
-}
-
-
-/* ==================================================================
-   9. Meldung (Snackbar, UI.meldung)
-   Stapel, Platz neben der Schublade und im Blatt, Ansage und Bewegung
-   bringt DS.overlay.toast; rahmen.js setzt nur --ds-toast-bottom über
-   einer sichtbaren Speicherleiste. Hier steht nur die Aktion.
-   ================================================================== */
-
-/* Aktion in der Meldung («Rückgängig»): Text-Knopf in der inversen
-   Primärfarbe, wie Material es vorsieht. */
-.meldung-aktion.ds-btn {
-  --ds-btn-color: var(--ds-inverse-primary);
-  --ds-btn-hover-color: var(--ds-inverse-primary);
-  flex-shrink: 0;
-  margin: calc(-1 * var(--ds-space-1)) 0 calc(-1 * var(--ds-space-1)) auto;
-}
-
-.meldung-aktion + .ds-toast__close { margin-left: 0; }
-
-.meldung-aktion:focus-visible { outline-color: var(--ds-on-inverse); }
-
-
-/* ==================================================================
-   10. Speicherleiste (UI.speicherleiste)
-   Schwebt unten in der Tafel, 24 px von ihren Kanten (auf breiten Tafeln
-   bündig mit der Bahn). Sie klebt im Roller nach der Bahn, trägt aber
-   keine Höhe bei: der negative Rand oben ist ihre eigene Höhe
-   (--leiste-hoehe, rahmen.js misst sie) plus der Abstand unten. Am
-   Tafelende liegt sie so im unteren Polster der Bahn, und Kommen und
-   Gehen verschieben nichts. Den Platz darüber hält die Tafel frei,
-   solange sie steht ([data-leiste], Abschnitt 3).
-   Sie kommt und geht immer wieder: Ein- und Austritt spielt .ds-presence
-   von Dashboard-Style (rahmen.js schaltet nur hidden um; ein Umschalten
-   mitten im Übergang macht vom aktuellen Stand weiter).
-   ================================================================== */
-
-.speicherleiste {
-  --leiste-unten: var(--ds-space-6);
-  position: sticky;
-  bottom: var(--leiste-unten);
-  z-index: var(--ds-z-sticky);
-  flex-shrink: 0;
-  margin:
-    calc(-1 * (var(--leiste-hoehe, calc(var(--ds-space-12) + var(--ds-space-2))) + var(--leiste-unten)))
-    max(var(--ds-space-6), (100% - var(--ds-content-max)) / 2)
-    var(--leiste-unten);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ds-space-2) var(--ds-space-3);
-  min-height: calc(var(--ds-space-12) + var(--ds-space-2));
-  padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-2) var(--ds-space-5);
-  border-radius: var(--ds-radius-dialog);
-  background: var(--ds-surface);
-  box-shadow: var(--ds-elev-overlay);
-  outline: 1px solid transparent;
-}
-
-.speicherleiste-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: grid;
-}
-
-.speicherleiste-anzahl {
-  color: var(--ds-text);
-  font: var(--ds-font-label);
-  font-variant-numeric: tabular-nums;
-}
-
-.speicherleiste-knoepfe {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-2);
-  margin-left: auto;
-}
-
-@media (max-width: 600px) {
-  .speicherleiste {
-    --leiste-unten: var(--ds-space-4);
-    margin-inline: var(--ds-space-4);
-  }
-}
-
-
-/* ==================================================================
-   11. Kontrastmodus und Druck
+   7. Kontrastmodus und Druck
    ================================================================== */
 
 /* Im Kontrastmodus trägt der aktive Eintrag die Systemfarbe der Auswahl
@@ -784,7 +477,6 @@
    Dazu: keine Speicherleiste, keine Schnellaktionen im Seitenkopf, und die
    seitenfüllende Liste läuft über alle Seiten statt nur ihren Ausschnitt. */
 @media print {
-  .speicherleiste,
   .seitenkopf-aktionen { display: none; }
 
   .tabelle-rahmen {
