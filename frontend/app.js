@@ -2847,7 +2847,9 @@ function zahlenNachfuehren(wurzel, vorher) {
     gezeigteZahlen.set(schluessel, wert);
     const n = da.get(schluessel);
     if (alt === undefined || alt === wert || !n || !vorher.has(n)) continue;
-    const zahl = n.querySelector(".ds-tile__value, .ds-kv-list__row > strong");
+    // Nur der Knoten, der allein die Zahl hält: in der klickbaren Bestands-
+    // karte steht vor ihr im selben <strong> das Sinnbild mit dem Wort.
+    const zahl = n.querySelector(".ds-tile__value, .kennwert-zahl, .ds-kv-list--bars .ds-kv-list__row > strong");
     if (zahl) Bewegung.hochzaehlen(zahl, wert, { von: alt });
   }
   neueZahlen = new Map();

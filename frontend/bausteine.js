@@ -1527,7 +1527,9 @@ const UI = (function () {
         wert.appendChild(sinnbild(ton[1], 16, "ds-kv-list__icon ds-kv-list__icon--" + ton[0]));
         wert.appendChild(el("span", "ds-sr", ton[2] + ": "));
       }
-      wert.appendChild(document.createTextNode(leer ? "–" : (typeof e.wert === "number" ? zahlFormat(e.wert) : String(e.wert))));
+      // Die Zahl in einem eigenen Knoten: das Nachzählen (DS.motion.countUp)
+      // schreibt textContent und liesse sonst Sinnbild und Wort mitfallen.
+      wert.appendChild(el("span", "kennwert-zahl", leer ? "–" : (typeof e.wert === "number" ? zahlFormat(e.wert) : String(e.wert))));
       anhaengen(z, [el("span", null, text(e.name)), wert]);
       li.appendChild(z);
       ul.appendChild(li);
