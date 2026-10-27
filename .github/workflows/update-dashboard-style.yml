@@ -1,11 +1,12 @@
 # Keeps a vendored copy of Dashboard-Style on the latest main.
 #
 # Copy this file to .github/workflows/update-dashboard-style.yml in a project
-# that vendors Dashboard-Style (docs/install.md) and adjust the three values
-# under `env`. Once a day it compares the commit in <DEST>/VERSION with main of
+# that vendors Dashboard-Style (docs/install.md) and adjust the values under
+# `env`. Once a day it compares the commit in <DEST>/VERSION with main of
 # Dashboard-Style: unchanged, the run ends after that one request; changed, it
-# vendors main, runs your checks, commits the new copy to the default branch
-# and starts your build.
+# vendors main, verifies the copy against its SHA256SUMS (tools/verify.sh, no
+# Node needed), runs the project check and your checks, commits the new copy
+# to the default branch and starts your build.
 #
 # Why a build has to be started explicitly: a push made with GITHUB_TOKEN does
 # not trigger other workflows (GitHub prevents loops), but workflow_dispatch
@@ -32,6 +33,16 @@ concurrency:
 env:
   # Where the copy lives, relative to the repository root.
   DEST: frontend/vendor/dashboard-style
+  # The toolchain your checks need: node (actions/setup-node, when the
+  # repository has a package.json), go (actions/setup-go, when it has a
+  # go.mod) or none (only the shell; the copy still verifies with
+  # tools/verify.sh). Uncomment another setup step below for anything else.
+  SETUP: node
+  # Optional: the project check of the copy (docs/install.md, "Check a
+  # project"), for example
+  #   node "$DEST/tools/check-project.mjs" --config ds-check.json
+  # Needs Node (SETUP: node). Empty to skip.
+  CHECK: node "$DEST/tools/check-project.mjs" --config ds-check.json
   # Shell command that must pass before the update is committed (tests,
   # linters); empty to skip. Runs after the copy was replaced.
   VERIFY: pwsh -NoProfile -File code/Pruefe-Frontend.ps1
@@ -65,11 +76,28 @@ jobs:
         run: |
           curl -fsSL "https://raw.githubusercontent.com/$REPO/${{ steps.compare.outputs.latest }}/scripts/vendor.sh" -o "$RUNNER_TEMP/vendor.sh"
           sh "$RUNNER_TEMP/vendor.sh" "${{ steps.compare.outputs.latest }}" "$DEST"
+          # The copy verifies itself: every file against SHA256SUMS, nothing added or linked.
+          sh "$DEST/tools/verify.sh" "$DEST"
 
       - uses: actions/setup-node@v5
-        if: steps.compare.outputs.changed == 'true' && env.VERIFY != '' && hashFiles('package.json') != ''
+        if: steps.compare.outputs.changed == 'true' && env.SETUP == 'node' && (env.VERIFY != '' || env.CHECK != '') && (hashFiles('package.json') != '' || env.CHECK != '')
         with:
           node-version: 22
+
+      - uses: actions/setup-go@v5
+        if: steps.compare.outputs.changed == 'true' && env.SETUP == 'go' && env.VERIFY != '' && hashFiles('go.mod') != ''
+        with:
+          go-version-file: go.mod
+
+      # Another toolchain: add its setup step here, guarded like the two above.
+      # - uses: actions/setup-python@v5
+      #   if: steps.compare.outputs.changed == 'true' && env.VERIFY != ''
+      #   with:
+      #     python-version: '3.12'
+
+      - name: Check
+        if: steps.compare.outputs.changed == 'true' && env.CHECK != ''
+        run: ${{ env.CHECK }}
 
       - name: Verify
         if: steps.compare.outputs.changed == 'true' && env.VERIFY != ''

@@ -73,17 +73,13 @@
                    ds.js. Entfernt Dashboard-Style etwas, scheitert so schon «Verify» der
                    nächtlichen Aktualisierung (.github/workflows/update-dashboard-style.yml),
                    statt dass die Seite erst im Browser wirft.
-   11. Veraltet    keine Namen, die Dashboard-Style als veraltet führt (bis 2.0 noch da, dann weg).
-                   Abgeleitet aus der Kopie: jede Stelle in ds.css und ds.js, deren Kommentar mit
-                   «Deprecated» beginnt, und die Keyframes, Tokens, Klassen oder Exporte direkt
-                   danach. Dazu eine gepflegte Liste aus dem CHANGELOG von Dashboard-Style
-                   (1.0.0 bis 1.6.2; dort stehen auch Verbote, die kein Kommentar trägt):
-                   --ds-ease, --ds-spinner-sm-track, --ds-state-pulse, --ds-loop-pulse, ds-pulse,
-                   ds-indeterminate, ds-sink-out, ds-scale-out, ds-slide-out, .ds-btn__swap,
-                   easeOutCubic, prefersReducedMotion, prefers-reduced-motion, .ds-motion-full,
-                   .ds-toast--shown und --ds-toast-shift(-y) von Hand, .ds-view--leaving
-                   (DS.motion.transition), role bzw. aria-live auf .ds-toasts im JS (im HTML:
-                   Prüfung 12), data-open auf .ds-combo, --ds-spinner-track im Thema.
+   11. Veraltet    keine Namen, die Dashboard-Style als veraltet oder entfernt führt: jeder Eintrag
+                   von vendor/dashboard-style/deprecations.json (seit 2.0, mit Suchmuster; eine neue
+                   Fassung der Kopie bringt ihre Einträge mit). Dazu von Hand, was die Datei nicht
+                   führt: prefersReducedMotion, prefers-reduced-motion, .ds-motion-full,
+                   .ds-toast--shown und --ds-toast-shift(-y) von Hand, role bzw. aria-live auf
+                   .ds-toasts im JS (im HTML: Prüfung 12), data-open auf .ds-combo im JS,
+                   --ds-spinner-track im Thema.
    12. Gerüst      Jede Seite hat das Gerüst der Referenz-App von Dashboard-Style: kein <style>
                    (die Inhaltsrichtlinie erlaubt nur Stilvorlagen), <body> ohne ds-*-Klassen,
                    darin div.ds-app mit data-seite und in dieser Reihenfolge a.ds-skip, .ds-topbar,
@@ -577,7 +573,22 @@ $AlteKlassen = @(
     'schublade-indikator', 'schublade-schleier', 'tafel-rahmen', 'tafel', 'bahn', 'seitenkopf', 'seitenkopf-titel', 'seitenkopf-lead',
     'dialog', 'dialog-schleier', 'dialog-flaeche', 'dialog-titel', 'dialog-text', 'dialog-knoepfe',
     'blatt', 'blatt-schleier', 'blatt-flaeche', 'blatt-breit', 'blatt-kopf', 'blatt-titel', 'blatt-koerper',
-    'meldungen', 'meldung', 'meldung-fehler', 'meldung-info', 'meldung-text', 'meldung-schliessen', 'tipp', 'aktiv', 'ungueltig'
+    'meldungen', 'meldung', 'meldung-fehler', 'meldung-info', 'meldung-text', 'meldung-schliessen', 'tipp', 'aktiv', 'ungueltig',
+    # Mit Dashboard-Style 2.0 durch dessen Teile ersetzt (STYLEGUIDE.md, Abschnitt 13).
+    'b-kennzahlen', 'balken-fuell', 'banner-knoepfe', 'blatt-fuss', 'blatt-kopf-text', 'blatt-schliessen',
+    'blatt-unter', 'chip', 'chip-entfernbar', 'chip-text', 'chip-x', 'chip-zeile', 'code-block', 'datenzeile-form',
+    'datenzeile-hinweis', 'datenzeile-name', 'datenzeile-wert', 'dialog-breit', 'dialog-inhalt', 'dialog-liste',
+    'geaendert-text', 'hinweis-zeile', 'hinweis-zeile-inhalt', 'hinweis-zeile-text', 'hinweis-zeile-titel',
+    'kennwert-ton', 'kennwerte-klickbar', 'kopf-abmelden', 'kopf-konto', 'kopf-konto-trenner', 'kuerzel',
+    'legende-marke', 'listen-zeile', 'listen-zeile-aktionen', 'listen-zeile-pfeil', 'listen-zeile-text',
+    'listen-zeile-titel', 'listen-zeile-unter', 'mehrfach', 'meldung-aktion', 'mit-sinnbild', 'rollwaechter',
+    'saeule-fuell', 'schalter-feld-huelle', 'schalter-gesperrt', 'schalter-name', 'schalter-schloss',
+    'schalter-text', 'schalter-unter', 'schalter-zusatz', 'schublade-zurueck', 'seitenkopf-aktionen',
+    'seitenkopf-pfad', 'seitenkopf-status', 'seitenkopf-text', 'seitenkopf-zeile', 'speicherleiste-anzahl',
+    'speicherleiste-knoepfe', 'speicherleiste-text', 'verteilung-klickbar', 'verteilung-name', 'verteilung-zahl',
+    'verteilung-zeile', 'zaehler', 'zaehler-still', 'zeitachse-aktionen', 'zeitachse-eintrag', 'zeitachse-kopf',
+    'zeitachse-text', 'zeitachse-titel', 'zeitachse-zeit', 'zeitstrahl-achse', 'zeitstrahl-jahr', 'zeitstrahl-label',
+    'zeitstrahl-saeule', 'zeitstrahl-saeulen', 'zustand-fortschritt'
 )
 $alt = New-Object 'System.Collections.Generic.HashSet[string]'
 foreach ($k in $AlteKlassen) { [void]$alt.Add($k) }
@@ -968,10 +979,12 @@ Show-Pruefung '10. DS-API: jeder DS-Aufruf, jede ds-Klasse, jedes --ds-*/data-ds
 # 11. Keine Namen, die Dashboard-Style als veraltet führt
 # ---------------------------------------------------------------------------
 
-# Die gepflegte Liste folgt dem CHANGELOG von Dashboard-Style (1.6.0 «Deprecated»: alles, was bis
-# 2.0 noch geht; 1.6.2 --ds-state-pulse; 1.0.0 «Migration»: entfernt). Sie deckt auch, was die
-# Kopie in keinem Kommentar als veraltet markiert. Wer die Kopie aktualisiert und im CHANGELOG
-# neue Einträge unter «Deprecated» findet, trägt sie hier nach.
+# Die Liste kommt aus der Kopie selbst: vendor/dashboard-style/deprecations.json (seit 2.0) führt
+# jeden veralteten und jeden entfernten Namen mit einem Suchmuster. ICT verwendet beide nicht:
+# entfernte Namen wirken nicht mehr, veraltete fallen mit der nächsten Hauptversion weg. Eine neue
+# Fassung der Kopie bringt neue Einträge mit; hier ist nichts nachzutragen. Von Hand stehen nur
+# die Verbote, die die Datei nicht führt (Dinge, die vor 1.0 entfernt wurden oder die ICT
+# zusätzlich ausschliesst).
 $Veraltet = [ordered]@{}
 function Add-Veraltet {
     param([string]$Name, [string]$Muster, [string]$Grund, [string]$Nur)
@@ -984,50 +997,28 @@ function Get-NamensMuster {
     if ($Name -match '^[A-Za-z_$][\w$]*$') { return '(?<![\w$-])' + [regex]::Escape($Name) + '(?![\w$-])' }
     return '(?<![\w-])' + [regex]::Escape($Name) + '(?![\w-])'
 }
-Add-Veraltet '--ds-ease' (Get-NamensMuster '--ds-ease') 'veraltet seit 1.0, --ds-ease-emphasized'
-Add-Veraltet '--ds-spinner-sm-track' (Get-NamensMuster '--ds-spinner-sm-track') 'veraltet seit 1.0, die Farbmischung des kleinen Spinners ersetzt es'
-Add-Veraltet '--ds-state-pulse' (Get-NamensMuster '--ds-state-pulse') 'veraltet (1.6.2) mit ds-pulse'
-Add-Veraltet '--ds-loop-pulse' (Get-NamensMuster '--ds-loop-pulse') 'veraltet seit 1.4 mit ds-pulse'
-Add-Veraltet 'ds-pulse' (Get-NamensMuster 'ds-pulse') 'veraltet seit 1.4, Skelette laufen mit ds-skeleton-wave'
-Add-Veraltet 'ds-indeterminate' (Get-NamensMuster 'ds-indeterminate') 'veraltet seit 1.4, ds-progress-head und ds-progress-tail'
-Add-Veraltet 'ds-sink-out' (Get-NamensMuster 'ds-sink-out') 'veraltet seit 1.0, ds-fade-out mit ds-drop-out'
-Add-Veraltet 'ds-scale-out' (Get-NamensMuster 'ds-scale-out') 'veraltet seit 1.0, ds-fade-out mit ds-shrink-out'
-Add-Veraltet 'ds-slide-out' (Get-NamensMuster 'ds-slide-out') 'veraltet seit 1.0, ds-fade-out mit ds-shift-out'
-Add-Veraltet 'ds-btn__swap' (Get-NamensMuster 'ds-btn__swap') 'veraltet seit 1.1, .ds-btn__faces und DS.motion.busy'
-Add-Veraltet 'easeOutCubic' (Get-NamensMuster 'easeOutCubic') 'veraltet seit 1.0, countUp läuft auf --ds-ease-value'
+$befunde = New-Object System.Collections.Generic.List[string]
+$ausDatei = 0
+$depPfad = Join-Path $DsOrdner 'deprecations.json'
+if (-not (Test-Path -LiteralPath $depPfad -PathType Leaf)) {
+    $befunde.Add('vendor/dashboard-style/deprecations.json fehlt (Kopie älter als 2.0 oder unvollständig)')
+} else {
+    $dep = [IO.File]::ReadAllText($depPfad, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    foreach ($e in @($dep.names)) {
+        if (-not $e.pattern) { continue }
+        $ersatz = if ($e.replacement) { ', Ersatz: ' + $e.replacement } else { '' }
+        $grund = if ($e.removed) { 'entfernt in {0}{1}' -f $e.removed, $ersatz } else { 'veraltet seit {0}{1}' -f $e.deprecated, $ersatz }
+        Add-Veraltet $e.name $e.pattern $grund
+        $ausDatei++
+    }
+}
 Add-Veraltet 'prefersReducedMotion' (Get-NamensMuster 'prefersReducedMotion') 'entfernt in 1.0: es gibt keine reduzierte Bewegung, ein Aufruf wirft'
 Add-Veraltet 'prefers-reduced-motion' (Get-NamensMuster 'prefers-reduced-motion') 'entfernt in 1.0: Bewegung ist auf jedem Gerät gleich, keine eigene Weiche'
 Add-Veraltet 'ds-motion-full' (Get-NamensMuster 'ds-motion-full') 'entfernt in 1.0 (tut nichts mehr)'
 Add-Veraltet 'ds-toast--shown' (Get-NamensMuster 'ds-toast--shown') 'setzt DS.overlay.toast selbst, nie von Hand (1.3)'
-Add-Veraltet '--ds-toast-shift' '(?<![\w-])--ds-toast-shift(-y)?(?![\w-])' 'veraltet seit 1.3: DS.overlay.toast folgt dem Blatt selbst'
-Add-Veraltet 'ds-view--leaving' (Get-NamensMuster 'ds-view--leaving') 'von Hand getauscht; seit 1.5 DS.motion.transition (Rahmen.wechseln)'
-Add-Veraltet 'data-open auf .ds-combo' '\.ds-combo(?![\w-])\s*\[\s*data-open|<[^<>]*\sclass\s*=\s*"(?:[^"]*\s)?ds-combo(?:\s[^"]*)?"[^<>]*\sdata-open\b|<[^<>]*\sdata-open\b[^<>]*\sclass\s*=\s*"(?:[^"]*\s)?ds-combo(?:\s[^"]*)?"' 'veraltet seit 1.3: aria-expanded="true" am Feld dreht den Pfeil'
+Add-Veraltet '--ds-toast-shift' '(?<![\w-])--ds-toast-shift(-y)?(?![\w-])' 'schreibt nur DS.overlay (2.0): die Meldungen folgen Blatt und Speicherleiste selbst'
 Add-Veraltet '--ds-spinner-track im Thema' '(?<![\w-])--ds-spinner-track\s*:' 'der Bogen-Spinner hat seit 1.4 keine Spur; im Thema übermalte es die Spur des bestimmten Rings' $ThemaCss
 
-# Abgeleitet aus der Kopie: ein Kommentar, der mit «Deprecated» beginnt, und direkt danach (bis
-# zum nächsten Kommentar) Keyframes, ein Token, eine Klasse oder ein Export.
-$abgeleitet = 0
-foreach ($n in @($DsBuendel, $DsSkript)) {
-    if (-not $Ds.ContainsKey($n)) { continue }
-    $roh = $Ds[$n].Roh
-    foreach ($m in [regex]::Matches($roh, '/\*+[\s*]*Deprecated\b[\s\S]*?\*/')) {
-        $rest = $roh.Substring($m.Index + $m.Length)
-        $naechster = $rest.IndexOf('/*')
-        if ($naechster -ge 0) { $rest = $rest.Substring(0, $naechster) }
-        $namen = @()
-        if ($rest -match '^\s*@keyframes\s') { foreach ($k in [regex]::Matches($rest, '@keyframes\s+([\w-]+)')) { $namen += $k.Groups[1].Value } }
-        elseif ($rest -match '^\s*(--[\w-]+)\s*:') { $namen += $Matches[1] }
-        elseif ($rest -match '^\s*\.(ds-[\w-]+)\s*\{') { $namen += $Matches[1] }
-        elseif ($rest -match '^\s*(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)') { $namen += $Matches[1] }
-        $wo = '{0}:{1}' -f $Ds[$n].Name, (Get-ZeileNr $Ds[$n] $m.Index)
-        foreach ($name in $namen) {
-            $abgeleitet++
-            Add-Veraltet $name (Get-NamensMuster $name) ('in der Kopie als veraltet markiert, ' + $wo)
-        }
-    }
-}
-
-$befunde = New-Object System.Collections.Generic.List[string]
 foreach ($d in $Dateien) {
     foreach ($name in $Veraltet.Keys) {
         $v = $Veraltet[$name]
@@ -1055,7 +1046,7 @@ foreach ($d in $Js) {
         }
     }
 }
-Show-Pruefung '11. Keine veralteten Namen von Dashboard-Style' $befunde ('{0} Namen; {1} markiert die Kopie selbst als veraltet' -f $Veraltet.Count, $abgeleitet)
+Show-Pruefung '11. Keine veralteten Namen von Dashboard-Style' $befunde ('{0} Namen, {1} davon aus deprecations.json der Kopie' -f $Veraltet.Count, $ausDatei)
 
 # ---------------------------------------------------------------------------
 # 12. Seitengerüst wie die Referenz-App von Dashboard-Style
