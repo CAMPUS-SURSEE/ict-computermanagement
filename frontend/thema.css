@@ -81,8 +81,6 @@
   /* Wortmarke «ICT.INVENTAR» (rahmen.css). */
   --schrift-marke:       Archivo, 'Trade Gothic Next', 'Helvetica Neue', Arial, sans-serif;
   --gewicht-marke:       650;
-  /* Name und E-Mail in der Konto-Kapsel des Kopfs, danach «…». */
-  --konto-breit:         240px;
   /* Diagramme (Balken, Säulen, Zeitstrahl): Rollen statt Farben. */
   --diagramm-a:          var(--ds-primary);
   --diagramm-b:          var(--ds-accent);

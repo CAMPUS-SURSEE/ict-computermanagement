@@ -45,7 +45,7 @@
    Zustände an .ds-app: data-drawer-open (modale Schublade offen; setzt
    DS.overlay), data-drawer-hidden (Seite ohne Schublade), data-scrolled
    (Tafel gerollt: Kante und Tönung oben; DS.dom.watchScrolled setzt es),
-   data-zurueck (Zurück-Eintrag steht).
+   und data-ds-* von Dashboard-Style.
    Der Ladebalken (span.ds-loadbar#ladebalken) steht nur, solange die Seite
    lädt, in .ds-content vor der Bahn; Dialoge und Blätter hängen als
    <dialog> am Ende von body; die Meldungsregion .ds-toasts steht ohne
@@ -219,8 +219,6 @@ const Rahmen = (function () {
      Konstanten
      ================================================================== */
 
-  /** Ab hier zeigt das Konto nur noch die Initiale (Dashboard-Style shell.css, rahmen.css Abschnitt 6). */
-  const SCHMAL_ABFRAGE = "(max-width: 720px)";
   const PRODUKT = "ICT-Inventar";
   const LISTE_SPEICHER = "ictinventar.listen";
   /** So lange gilt eine gemerkte Listenadresse in einem neuen Tab (ein
@@ -267,12 +265,6 @@ const Rahmen = (function () {
 
   function fokusbereit(k) {
     return !!k && k.isConnected && !k.closest("[inert]") && k.getClientRects().length > 0;
-  }
-
-  /* Ein Abstand aus den Tokens von Dashboard-Style in px (--ds-space-2 …):
-     JS rechnet mit denselben Massen wie das CSS, nie mit eigenen Zahlen. */
-  function abstand(token) {
-    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
   }
 
   function fehlerMeldungAusnahme(fehler) {
@@ -459,14 +451,13 @@ const Rahmen = (function () {
   let app = body ? body.querySelector(":scope > .ds-app") : null;
   const seite = app ? app.getAttribute("data-seite") : null;
   const bereit = !!seite;
-  const schmalAbfrage = window.matchMedia ? window.matchMedia(SCHMAL_ABFRAGE) : null;
 
   let sprungmarke = null, kopf = null, schublade = null, schubladeListe = null, schleier = null;
   let schubladeZurueck = null;
   let menueKnopf = null, tafelRahmen = null, tafel = null, inhaltRahmen = null, bahn = null;
   let ladebalken = null, region = null;
   let zustandsBlock = null, vorfuehrBanner = null;
-  let kapsel = null, kontoEl = null, kontoInitiale = null, kontoName = null, kontoEmail = null;
+  let kapsel = null, kontoText = null, kontoInitiale = null, kontoName = null, kontoEmail = null;
   let kapselTrenner = null, abmeldenKnopf = null, abmeldenRueckruf = null;
   let indikator = null;
 
@@ -505,7 +496,10 @@ const Rahmen = (function () {
   let markeSchriftDa = false;
 
   function wortmarke() {
-    const w = el("span", "wortmarke");
+    // Eine Marke nur aus dem Namen (.ds-brand__name): Dashboard-Style setzt
+    // ihren Text auf die Kante der Navigationssinnbilder und lässt ihn auf
+    // dem Telefon stehen.
+    const w = el("span", "ds-brand__name wortmarke");
     w.appendChild(document.createTextNode("ICT"));
     w.appendChild(el("span", "wortmarke-punkt", "."));
     w.appendChild(document.createTextNode("INVENTAR"));
@@ -617,42 +611,37 @@ const Rahmen = (function () {
     marke.setAttribute("aria-label", "ICT-Inventar, zur Übersicht");
     marke.appendChild(wortmarke());
 
-    // Rechts EINE Kapsel: Initiale, Name und E-Mail, ein Trenner, «Abmelden».
-    kapsel = el("div", "kopf-konto");
+    // Rechts EINE Kapsel (.ds-account--capsule): die Initiale in jeder
+    // Breite (role=img, nennt das Konto selbst und zeigt es im Tooltip,
+    // auch auf Antippen), Name und E-Mail daneben (aria-hidden, unter
+    // 720 px weg), ein Trenner und «Abmelden».
+    kapsel = el("div", "ds-account ds-account--capsule");
     kapsel.hidden = true;
-
-    kontoEl = el("div", "ds-account");
-    kontoEl.hidden = true;
-    kontoInitiale = el("span", "ds-account__avatar");
-    const kontoText = el("div", "ds-account__text");
+    kontoText = el("div", "ds-account__text");
+    kontoText.setAttribute("aria-hidden", "true");
     kontoName = el("div", "ds-account__name");
     kontoEmail = el("div", "ds-account__email");
     kontoText.appendChild(kontoName);
     kontoText.appendChild(kontoEmail);
-    kontoEl.appendChild(kontoInitiale);
-    kontoEl.appendChild(kontoText);
+    kontoInitiale = el("span", "ds-account__avatar");
+    kontoInitiale.setAttribute("role", "img");
+    kontoInitiale.tabIndex = 0;
+    kontoText.hidden = true;
+    kontoInitiale.hidden = true;
 
-    kapselTrenner = el("span", "kopf-konto-trenner");
+    kapselTrenner = el("span", "ds-account__divider");
     kapselTrenner.setAttribute("aria-hidden", "true");
 
-    abmeldenKnopf = knopf({ text: "Abmelden", variante: "leise", klasse: "kopf-abmelden" });
+    abmeldenKnopf = knopf({ text: "Abmelden", variante: "leise" });
     abmeldenKnopf.hidden = true;
     abmeldenKnopf.addEventListener("click", function (ev) { if (abmeldenRueckruf) abmeldenRueckruf(ev); });
 
-    kapsel.appendChild(kontoEl);
-    kapsel.appendChild(kapselTrenner);
-    kapsel.appendChild(abmeldenKnopf);
+    UI.anhaengen(kapsel, [kontoText, kontoInitiale, kapselTrenner, abmeldenKnopf]);
 
     UI.leeren(kopf);
     kopf.appendChild(menueKnopf);
     kopf.appendChild(marke);
     kopf.appendChild(kapsel);
-
-    initialeEinrichten();
-    if (schmalAbfrage) {
-      if (schmalAbfrage.addEventListener) schmalAbfrage.addEventListener("change", initialeEinrichten);
-      else if (schmalAbfrage.addListener) schmalAbfrage.addListener(initialeEinrichten);
-    }
 
     // Vorbelegen mit dem Konto der letzten Seite (siehe kopfGemerkt). Ein
     // vorbelegtes «Abmelden» bleibt bis zum Aufruf der Seite ohne Wirkung.
@@ -673,8 +662,9 @@ const Rahmen = (function () {
     const schubladeKopf = el("div", "ds-drawer__head");
     schubladeKopf.setAttribute("aria-hidden", "true");
     schubladeKopf.appendChild(wortmarke());
-    // Der Zurück-Eintrag steht über der Liste und rollt nicht mit ihr.
-    schubladeZurueck = el("div", "schublade-zurueck");
+    // Der Zurück-Eintrag (.ds-drawer__back) steht über der Liste und rollt
+    // nicht mit ihr; eine Haarlinie auf der Textkante trennt ihn ab.
+    schubladeZurueck = el("div", "ds-drawer__back");
     schubladeZurueck.hidden = true;
     schubladeListe = el("div", "ds-drawer__list");
     UI.leeren(schublade);
@@ -696,10 +686,6 @@ const Rahmen = (function () {
     DS.dom.watchScrolled(tafel);
 
     schubladeListe.addEventListener("click", beiSchubladeKlick);
-
-    if (typeof ResizeObserver === "function") {
-      new ResizeObserver(function () { ueberlaufPruefen(); }).observe(schubladeListe);
-    }
   }
 
   function indexAktiv() {
@@ -741,18 +727,25 @@ const Rahmen = (function () {
     k.setAttribute("data-schluessel", String(e.schluessel));
     if (e.sinnbild) k.appendChild(UI.sinnbild(e.sinnbild, 20));
     k.appendChild(el("span", "ds-drawer__label", e.text));
-    k.appendChild(el("span", "schublade-zahl"));
+    // Zähler am Ende (.ds-drawer__count); der Screenreader liest «Benutzer, 12».
+    const zaehler = el("span", "ds-drawer__count");
+    zaehler.hidden = true;
+    zaehler.appendChild(el("span", "ds-sr", ", "));
+    zaehler.appendChild(el("span", "schublade-zahl"));
+    k.appendChild(zaehler);
     return k;
   }
 
   /* Die Pille (DS.indicator über Bewegung.indikator) folgt aria-current
      selbst und gleitet zum neuen Eintrag. Neu gesetzt springt sie an ihren
-     Platz: beim Bauen der Liste und vor dem ersten Inhalt. */
+     Platz: beim Bauen der Liste und vor dem ersten Inhalt. zeigen (reveal):
+     ist die Liste höher als das Fenster, rollt nur sie den aktiven Eintrag
+     ins Bild und behält ihren Griff sichtbar (.ds-drawer__list--overflow). */
   function pilleSetzen() {
     if (indikator) { indikator.zerstoeren(); indikator = null; }
     if (!eintraege().length) return;
     indikator = Bewegung.indikator(schubladeListe, {
-      aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator"
+      aktiv: "[aria-current=\"page\"]", klasse: "ds-drawer__indicator", zeigen: true
     });
   }
 
@@ -777,15 +770,14 @@ const Rahmen = (function () {
     // beim Laden an seinen Platz, die Pille springt (gleitet nicht).
     markieren(aktiv);
     pilleSetzen();
-    aktivZeigen();
   }
 
   /* Zurück-Eintrag der Detailseiten: ein schlichter Link zur Liste (keine
      Pille, kein beiWahl – er verlässt die Seite). Er steht über den Gruppen
      und trägt den Namen der Liste; der Pfeil sagt «zurück», das aria-label
-     auch dem Screenreader. Solange er steht (.ds-app[data-zurueck]), weicht
-     der Zurück-Link über dem Seitentitel, wenn die Schublade fest daneben
-     steht (rahmen.css Abschnitt 4). */
+     auch dem Screenreader. Solange er steht und die Schublade fest daneben
+     steht (über 900 px), blendet Dashboard-Style den Zurück-Link über dem
+     Seitentitel (.ds-page-head__back) aus. */
   const zurueckStand = { signatur: null };
 
   function zurueckSetzen(z) {
@@ -795,11 +787,11 @@ const Rahmen = (function () {
     zurueckStand.signatur = signatur;
     UI.leeren(schubladeZurueck);
     schubladeZurueck.hidden = !gueltig;
-    app.toggleAttribute("data-zurueck", gueltig);
     if (!gueltig) return;
     const a = el("a", "ds-drawer__item schublade-eintrag-zurueck");
     a.href = z.href;
     a.setAttribute("aria-label", "Zurück zu " + z.text);
+    a.setAttribute("data-tip", "Zurück zu " + z.text);
     a.appendChild(UI.sinnbild("pfeilLinks", 20));
     a.appendChild(el("span", "ds-drawer__label", z.text));
     schubladeZurueck.appendChild(a);
@@ -852,7 +844,6 @@ const Rahmen = (function () {
     // Eintrag) springt die Pille, statt beim Laden schon zu gleiten;
     // danach folgt sie aria-current selbst.
     if (!inhaltGezeigt) pilleSetzen();
-    aktivZeigen();
   }
 
   function zahl(schluessel, wert) {
@@ -861,36 +852,12 @@ const Rahmen = (function () {
     if (!k) return;
     const text = (wert === null || wert === undefined || wert === false || wert === "")
       ? "" : (typeof wert === "number" ? zahlText(wert) : String(wert));
-    const z = k.querySelector(".schublade-zahl");
-    const warLeer = z.textContent === "";
-    UI.textSetzen(z, text);
+    const zaehler = k.querySelector(".ds-drawer__count");
+    const warLeer = zaehler.hidden;
+    UI.textSetzen(zaehler.querySelector(".schublade-zahl"), text);
+    zaehler.hidden = !text;
     // Ein Zähler, der erscheint, ploppt; ein neuer Wert ändert sich ohne Bewegung.
-    if (warLeer && text) Bewegung.eintreten(z, "ploppen");
-  }
-
-  function ueberlaufPruefen() {
-    if (!schubladeListe) return false;
-    const ueber = schubladeListe.scrollHeight > schubladeListe.clientHeight + 1;
-    schubladeListe.classList.toggle("ds-drawer__list--overflow", ueber);
-    return ueber;
-  }
-
-  /* Hält den aktiven Eintrag in einer Liste sichtbar, die höher ist als das
-     Fenster. Nur die Liste rollt, sofort (scrollIntoView rollte auch die
-     Seite); ihr Griff bleibt sichtbar, solange sie überläuft. */
-  function aktivZeigen() {
-    if (!ueberlaufPruefen()) return;
-    const k = schubladeListe.querySelector("[aria-current=\"page\"]");
-    if (!k) return;
-    const rand = abstand("--ds-space-2");
-    const l = schubladeListe.getBoundingClientRect();
-    const r = k.getBoundingClientRect();
-    let d = 0;
-    if (r.top < l.top + rand) d = r.top - l.top - rand;
-    else if (r.bottom > l.bottom - rand) {
-      d = Math.min(r.bottom - l.bottom + rand, r.top - l.top - rand);
-    }
-    schubladeListe.scrollTop += d;
+    if (warLeer && text) Bewegung.eintreten(zaehler, "ploppen");
   }
 
   /* Ein schlichter Klick auf einen Eintrag geht an beiWahl. Kam er aus der
@@ -935,8 +902,8 @@ const Rahmen = (function () {
   function schubladeOeffnen(optionen) {
     if (!bereit || app.hasAttribute("data-drawer-hidden")) return;
     const o = optionen && !(optionen instanceof Event) ? optionen : {};
+    // DS.overlay fokussiert den aktiven Eintrag; der Fokus rollt ihn ins Bild.
     DS.overlay.open(schublade, { opener: o.ausloeser || menueKnopf });
-    aktivZeigen();
   }
 
   function schubladeSchliessen() {
@@ -948,34 +915,22 @@ const Rahmen = (function () {
      Kopf: Konto und Abmelden in einer Kapsel
      ================================================================== */
 
-  /* Die Kapsel zeigt sich, sobald sie etwas trägt; der Trenner nur
-     zwischen Konto und «Abmelden». */
+  /* Die Kapsel zeigt sich, sobald sie etwas trägt; den Trenner vor einem
+     verborgenen «Abmelden» blendet Dashboard-Style selbst aus. */
   function kapselAbgleichen() {
-    kapsel.hidden = kontoEl.hidden && abmeldenKnopf.hidden;
-    kapselTrenner.hidden = kontoEl.hidden || abmeldenKnopf.hidden;
+    const ohneKonto = kontoInitiale.hidden;
+    kapsel.hidden = ohneKonto && abmeldenKnopf.hidden;
+    kapselTrenner.hidden = ohneKonto;
   }
 
-  /* Breit stehen Name und E-Mail daneben: die Initiale ist dann Schmuck.
-     Schmal (≤ 720 px) steht sie allein und nennt das Konto selbst – als
-     Tabstopp mit Tooltip, auch auf Antippen (tippAufBild unten). */
-  function initialeEinrichten() {
-    const allein = !!(schmalAbfrage && schmalAbfrage.matches);
-    if (allein) {
-      kontoInitiale.tabIndex = 0;
-      kontoInitiale.setAttribute("role", "img");
-      kontoInitiale.removeAttribute("aria-hidden");
-    } else {
-      if (document.activeElement === kontoInitiale) kontoInitiale.blur();
-      kontoInitiale.removeAttribute("tabindex");
-      kontoInitiale.removeAttribute("role");
-      kontoInitiale.setAttribute("aria-hidden", "true");
-    }
-  }
-
+  /* Die Initiale nennt das Konto in jeder Breite (aria-label, Tooltip);
+     Name und E-Mail daneben sind nur fürs Auge (aria-hidden). */
   function kontoZeigen(k) {
     const name = k && k.name ? String(k.name) : "";
     const email = k && (k.email || k.adresse) ? String(k.email || k.adresse) : "";
-    kontoEl.hidden = !name && !email;
+    const ohne = !name && !email;
+    kontoText.hidden = ohne;
+    kontoInitiale.hidden = ohne;
     UI.textSetzen(kontoName, name || email);
     UI.textSetzen(kontoEmail, name ? email : "");
     const erstes = Array.from((name || email).trim())[0] || "?";
@@ -1037,10 +992,9 @@ const Rahmen = (function () {
   }
 
   /* ==================================================================
-     Seitenkopf: EIN Bauer für den Kopf jeder Ansicht (.ds-page-head:
-     Titel und Lead) und jeder Detailseite (dazu der Zurück-Link darüber,
-     die Teile-Zeile, Status-Chips und Aktionen rechts – Dashboard-Style
-     kennt keine). Leere Teile nehmen keinen Platz (rahmen.css :empty).
+     Seitenkopf: EIN Bauer für den Kopf jeder Ansicht und jeder Detailseite
+     (.ds-page-head von Dashboard-Style mit __back, __row, __text, __status
+     und __actions). Leere Teile nehmen keinen Platz (Dashboard-Style).
      ================================================================== */
 
   function teileListe(unter) {
@@ -1079,23 +1033,28 @@ const Rahmen = (function () {
     wurzel.classList.add("ds-page-head");
     if (o.id) wurzel.id = o.id;
 
-    // Zurück-Link «‹ ADMIN-Clients»: ein echter Link (Mittelklick = neuer Tab).
-    const pfad = el("a", "ds-btn ds-btn--text ds-btn--sm seitenkopf-pfad");
-    pfad.appendChild(UI.sinnbild("chevronLinks", 16));
+    // Zurück-Link «‹ ADMIN-Clients»: ein echter Link (Mittelklick = neuer
+    // Tab); der Screenreader liest «Zurück zu ADMIN-Clients». Steht die
+    // Schublade fest daneben und trägt sie den Zurück-Eintrag, blendet
+    // Dashboard-Style ihn aus.
+    const pfad = el("a", "ds-btn ds-btn--text ds-btn--sm ds-page-head__back");
+    pfad.appendChild(UI.sinnbild("pfeilLinks", 18));
+    pfad.appendChild(el("span", "ds-sr", "Zurück zu "));
     const pfadText = el("span");
     pfad.appendChild(pfadText);
     pfad.hidden = true;
 
-    const zeile = el("div", "seitenkopf-zeile");
-    const textTeil = el("div", "seitenkopf-text");
+    const zeile = el("div", "ds-page-head__row");
+    const textTeil = el("div", "ds-page-head__text");
     // Programmatisches Fokusziel beim Seiten- und Zustandswechsel (ohne Ring).
     const titel = el("h" + (o.ebene || 1), "ds-page-head__title");
     titel.tabIndex = -1;
     if (o.titelId) titel.id = o.titelId;
     const lead = el("p", "ds-page-head__lead");
-    const unter = el("p", "seitenkopf-unter");
-    const status = el("div", "seitenkopf-status");
-    const aktionen = el("div", "seitenkopf-aktionen");
+    // Die Teile-Zeile («Haus A · Latitude 5540 · SN …») sieht aus wie der Lead.
+    const unter = el("p", "ds-page-head__lead seitenkopf-unter");
+    const status = el("div", "ds-page-head__status");
+    const aktionen = el("div", "ds-page-head__actions");
     UI.anhaengen(textTeil, [titel, lead, unter, status]);
     UI.anhaengen(zeile, [textTeil, aktionen]);
     UI.anhaengen(wurzel, [pfad, zeile]);
@@ -1190,14 +1149,14 @@ const Rahmen = (function () {
       bahn.setAttribute("data-zustand", "laden");
       ladebalkenZeigen();
       const block = el("div", "zustand-laden");
-      ladeMeta = el("p", "zustand-fortschritt");
-      // Die Zeile ändert sich laufend («ADMIN-Clients 50 / …»): sie wäre als
-      // Live-Region zu gesprächig; angesagt wird der Text des Skeletts.
+      // Die Fortschrittszeile (.ds-skeleton__note) steht unter den
+      // Platzhaltern für Titel und Lead: der Titel-Platzhalter liegt so
+      // genau dort, wo der Seitentitel erscheinen wird. Sie ändert sich
+      // laufend («ADMIN-Clients 50 / …») und wäre als Teil der Live-Region
+      // zu gesprächig; angesagt wird der Text des Skeletts.
+      ladeMeta = el("p", "ds-skeleton__note");
       ladeMeta.setAttribute("aria-hidden", "true");
       ladeSkelett = UI.skelettSeite({ karten: o.karten || 2, text: o.text || "Wird geladen …" });
-      // Die Meta-Zeile steht unter den Platzhaltern für Titel und Lead (wo
-      // sonst der Lead stünde): der Titel-Platzhalter liegt so genau dort,
-      // wo der Seitentitel erscheinen wird.
       ladeSkelett.insertBefore(ladeMeta, ladeSkelett.querySelector(".ds-skeleton__card"));
       block.appendChild(ladeSkelett);
       UI.leeren(zustandsBlock).appendChild(block);

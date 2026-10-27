@@ -11,16 +11,17 @@
      │ Schublade │ ╭── .ds-panel > main.ds-view#tafel ──────────────────╮ │
      │ Gruppen,  │ │  .ds-content > .ds-page#inhalt (max. 1280, Abstand 20)│ │
      │ 48-px-    │ │   Seitenkopf · Karten · Kacheln · Tabellen …          │ │
-     │ Pillen    │ │                                   [Speicherleiste]    │ │
+     │ Pillen    │ │                   [Speicherleiste .ds-savebar]        │ │
      └───────────┴─╰───────────────────────────────────────────────────────╯─┘
 
-   Hier steht nur, was es nur bei ICT gibt (Wortmarke, Konto-Kapsel,
-   Zurück-Eintrag und Zähler der Schublade, Zustände der Seite, Seitenkopf
-   mit Zurück-Link und Aktionen, Speicherleiste, Rollflächen im Dialog,
-   Unterzeile und Fuss im Blatt, Aktion in der Meldung) und die wenigen
-   Abweichungen vom Rahmen von Dashboard-Style, je mit Grund. Dashboard-
-   Style liegt in @layer ds.*; diese Datei ist ungelagert und gewinnt
-   darum immer – sie überschreibt nur, was ICT wirklich anders will.
+   Hier steht nur, was es nur bei ICT gibt (Wortmarke, Zustände der
+   Seite, Gerüst der Detailseiten) und die wenigen Abweichungen vom Rahmen
+   von Dashboard-Style, je mit Grund. Konto-Kapsel, Zurück-Eintrag und
+   Zähler der Schublade, Seitenkopf mit Zurück-Link und Aktionen, Dialog
+   mit Körper, Seitenblatt mit Unterzeile und Fuss, Speicherleiste und
+   Meldungen bringt Dashboard-Style 2.0 selbst. Dashboard-Style liegt in
+   @layer ds.*; diese Datei ist ungelagert und gewinnt darum immer – sie
+   überschreibt nur, was ICT wirklich anders will.
 
    Die Seitenübergänge zwischen den HTML-Seiten bringt Dashboard-Style
    selbst: vendor/dashboard-style/css/optional/view-transitions.css (in
@@ -29,13 +30,11 @@
    ein und wächst, Kopf und Schublade bleiben stehen.
 
    Inhalt:
-     1. Seitengerüst und Kopf (Wortmarke, Konto-Kapsel, Roll-Wächter)
-     2. Schublade (Zurück-Eintrag, Zähler, Knopf-Einträge)
-     3. Tafel: Platz am Ende, Tabellenansichten, Zustände
-     4. Seitenkopf (Zurück-Link, Teile-Zeile, Status, Aktionen)
-     5. Gerüst der Detailseiten (.fenster-bereich)
-     6. Schmale Fenster (≤ 900 / 720 / 600 / 359 px)
-     7. Kontrastmodus und Druck
+     1. Kopf: Wortmarke
+     2. Tafel: Tabellenansichten, Zustände
+     3. Seitenkopf (Text-Knöpfe in den Aktionen)
+     4. Gerüst der Detailseiten (.fenster-bereich)
+     5. Kontrastmodus und Druck
 
    Regeln wie in bausteine.css: nur Tokens, keine @keyframes (die Namen
    ds-fade-in, ds-lift-in … stehen in vendor/dashboard-style/css/motion.css).
@@ -45,35 +44,40 @@
 
 
 /* ==================================================================
-   1. Seitengerüst und Kopf
+   1. Kopf: Wortmarke
+   Die Konto-Kapsel
+   (.ds-account--capsule), Zurück-Eintrag und Zähler der Schublade
+   (.ds-drawer__back, .ds-drawer__count) bringt Dashboard-Style.
    ================================================================== */
 
 /* Die Wortmarke steht über der linken KANTE der Navigationssinnbilder
-   (Dashboard-Style mittet ein 32-px-Logo auf ihrer Achse). Die Kante ist
-   die Achse von Dashboard-Style (--ds-drawer-icon-axis, gesetzt von
-   .ds-app--drawer) minus das halbe 20-px-Sinnbild. Die Gruppentitel
-   beginnen auf derselben Linie. Ohne Schublade (Neu-Formulare) bleibt sie,
-   wo sie mit Schublade steht: beim Wechsel Liste → «Neuer …» rückt der
-   Kopf nicht. */
-.ds-app--drawer {
-  --sinnbild-kante: calc(var(--ds-drawer-icon-axis) - 10px);
-}
-
-/* Nur mit fester Schublade: darunter gelten die Abstände von
-   Dashboard-Style (Kopf am Menüknopf) und unten die eigene Regel ohne
-   Schublade (§6). Gilt mit und ohne Schublade ([data-drawer-hidden]):
-   diese Datei hat keine Ebene und schlägt beide Regeln von Dashboard-Style. */
+   (der Achse von Dashboard-Style, --ds-drawer-icon-axis, minus das halbe
+   20-px-Sinnbild), auf derselben Linie wie die Gruppentitel. Ohne
+   Schublade (Neu-Formulare) bleibt sie, wo sie mit Schublade steht: beim
+   Wechsel Liste → «Neuer …» rückt der Kopf nicht. Dashboard-Style 2.0
+   kennt dieselbe Ausrichtung für eine Marke nur aus dem Namen, aber ihr
+   Selektor verschachtelt :has() und greift darum in keinem Browser
+   (gemeldet); bis dahin hier. Abweichung, STYLEGUIDE.md Abschnitt 5. */
 @media (min-width: 901px) {
-  .ds-app--drawer .ds-topbar {
-    padding-left: max(var(--sinnbild-kante), env(safe-area-inset-left));
+  .ds-app--drawer > .ds-topbar {
+    padding-left: max(calc(var(--ds-drawer-icon-axis) - 10px), env(safe-area-inset-left));
   }
 }
 
-.ds-topbar__menu { flex-shrink: 0; }
+/* Ohne «Abmelden» (Vorführmodus) endet die Konto-Kapsel nach dem Text mit
+   dem Polster einer Pille, auf dem Telefon (nur die Initiale) gleich weit
+   wie vorne; Dashboard-Style rechnet hinten mit dem Text-Knopf. Nur das
+   Polster; Abweichung, STYLEGUIDE.md Abschnitt 5. */
+.ds-account--capsule:has(> .ds-btn[hidden]) { padding-right: var(--ds-space-4); }
+
+@media (max-width: 720px) {
+  .ds-account--capsule:has(> .ds-btn[hidden]) { padding-right: var(--ds-space-2); }
+}
 
 /* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
    Logo von Campus Sursee, Archivo breit (thema.css), der Punkt im
-   Campus-Grün. Grösse und Zeilenhöhe der Titelrolle (22/28). */
+   Campus-Grün. Grösse und Zeilenhöhe der Titelrolle (22/28) wie
+   .ds-brand__name; auf dem Telefon die Rolle des Lesetexts. */
 .wortmarke {
   font: var(--ds-font-title);
   font-family: var(--schrift-marke);
@@ -105,99 +109,19 @@
   vertical-align: baseline;
 }
 
-/* Rechts EINE Kapsel aus Konto und «Abmelden»: weiss auf dem getönten
-   Grund wie die Tafel darunter, 1 px Haarlinie, Pillenform. Links die
-   Initiale (immer sichtbar) mit Name und E-Mail, nach einem Trenner der
-   Text-Knopf. 48 px hoch, Polster 8 links, 4 rechts. */
-.kopf-konto {
-  display: flex;
-  align-items: center;
-  flex-shrink: 1;
-  min-width: 0;
-  min-height: var(--ds-space-12);
-  margin-left: auto;
-  padding: 0 var(--ds-space-1) 0 var(--ds-space-2);
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-action);
-  background: var(--ds-surface);
-}
-
-/* Ohne «Abmelden» (Vorführmodus) endet die Kapsel nach dem Text. */
-.kopf-konto:has(> .kopf-abmelden[hidden]) { padding-right: var(--ds-space-4); }
-
-/* .ds-account in der Kapsel: Initiale vorne und immer da, der Text links
-   bündig und höchstens --konto-breit breit. */
-.kopf-konto > .ds-account { margin-left: 0; }
-
-.kopf-konto .ds-account__text {
-  max-width: var(--konto-breit);
-  text-align: left;
-}
-
-.kopf-konto .ds-account__avatar { display: grid; }
-.ds-account__email:empty { display: none; }
-
-.kopf-konto-trenner {
-  flex-shrink: 0;
-  width: 1px;
-  height: var(--ds-space-6);
-  margin: 0 var(--ds-space-1) 0 var(--ds-space-4);
-  background: var(--ds-line);
-}
-
-.kopf-abmelden { flex-shrink: 0; }
-
-
-/* ==================================================================
-   2. Schublade
-   ================================================================== */
-
-/* Einträge sind Links oder (Styleguide, Abschnitte) Knöpfe. Kein
-   Tipp-Blitz auf Links: der Eintrag hat seine eigene Zustandsschicht
-   (Dashboard-Style schaltet ihn nur bei button.ds-drawer__item ab). */
-.ds-drawer__item { -webkit-tap-highlight-color: transparent; }
-
-/* Der Text nimmt den Platz, der Zähler steht am Ende. */
-.ds-drawer__label { flex: 1; }
-
-/* Zähler am Ende des Eintrags: eine Beschriftung, keine Pille – auf der
-   Pastell-Pille wäre ein Pastell-Zähler unsichtbar. */
-.schublade-zahl {
-  flex-shrink: 0;
-  margin-left: var(--ds-space-2);
-  color: inherit;
-  font: var(--ds-font-caption);
-  font-variant-numeric: tabular-nums;
-}
-
-.schublade-zahl:empty { display: none; }
-
-/* Zurück-Eintrag der Detailseiten (Rahmen.navigation zurueck): steht über
-   der Liste und rollt nicht mit ihr. Er sieht aus wie ein Eintrag (Klasse
-   .schublade-eintrag-zurueck als Haken); eine Haarlinie auf der Textkante
-   trennt ihn von den Bereichen des Datensatzes. */
-.schublade-zurueck {
-  flex-shrink: 0;
-  padding: var(--ds-space-1) var(--ds-space-3) 0;
-}
-
-.schublade-zurueck::after {
-  content: '';
-  display: block;
-  height: 1px;
-  margin: var(--ds-space-2) var(--ds-space-4) var(--ds-space-1);
-  background: var(--ds-line);
+@media (max-width: 600px) {
+  .wortmarke {
+    font: var(--ds-font-reading);
+    font-family: var(--schrift-marke);
+    font-stretch: 112%;
+    font-weight: var(--gewicht-marke);
+  }
 }
 
 
 /* ==================================================================
-   3. Tafel: Platz am Ende, Tabellenansichten, Zustände
+   2. Tafel: Tabellenansichten, Zustände
    ================================================================== */
-
-/* Positioniert, damit absolut platzierte Nachfahren (.ds-sr-Texte) in ihr
-   bleiben: sonst hängen sie am Fenster, verlängern das Dokument, und ein
-   scrollIntoView rollt den ganzen Rahmen samt Kopf aus dem Bild. */
-.ds-view { position: relative; }
 
 /* --bahn-unten ist das untere Polster der Bahn (wie in Dashboard-Style:
    Abstand, Platz für eine zweizeilige Meldung, 8 px). */
@@ -205,8 +129,7 @@
   --bahn-unten: calc(var(--ds-space-6) + var(--ds-toast-room) + var(--ds-space-2));
 }
 
-/* Ein einzelner Knopf auf Seitenebene behält seine Breite. */
-.ds-page > .ds-btn,
+/* Ein einzelner Knopf im Bereich behält seine Breite (wie in .ds-page). */
 .fenster-bereich > .ds-btn { justify-self: start; }
 
 /* Tabellenansichten (Rahmen.fest): Bei genug Platz rollt die Tafel nicht,
@@ -273,123 +196,42 @@
 
 .bahn-zustand:empty { display: none; }
 
-/* Das Skelett samt Fortschrittszeile erscheint verzögert (Dashboard-Style,
-   --ds-delay-loader); der Ladebalken steht davor in .ds-content. */
+/* Das Skelett samt Fortschrittszeile (.ds-skeleton__note) erscheint
+   verzögert (Dashboard-Style, --ds-delay-loader); der Ladebalken steht
+   davor in .ds-content. */
 .zustand-laden {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ds-space-4);
 }
 
-/* Die Fortschrittszeile steht im Skelett an der Stelle des Leads. */
-.zustand-fortschritt {
-  margin: calc(-1 * var(--ds-space-2)) 0 0;
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-}
-
-.zustand-fortschritt:empty { display: none; }
-
 
 /* ==================================================================
-   4. Seitenkopf (UI.seitenkopf)
-   Titel und Lead sind .ds-page-head; dazu der Zurück-Link darüber, die
-   Teile-Zeile, Status-Chips und Aktionen rechts (auf schmalen Bahnen
-   darunter).
+   3. Seitenkopf (UI.seitenkopf: .ds-page-head mit __back, __row, __text,
+      __status und __actions von Dashboard-Style)
    ================================================================== */
 
-.ds-page-head:empty { display: none; }
+/* Kopfaktionen sind Text-Knöpfe (STYLEGUIDE.md Abschnitt 4): der letzte
+   hängt sein Polster in den Rand, sein Text endet auf der Kante von Banner
+   und Karten darunter. Auf schmaler Bahn stehen die Aktionen links unter
+   dem Titel, und jeder Text-Knopf hängt sein Polster links hinaus; die
+   Lücke gleicht das aus, damit der erste JEDER Zeile mit dem Titel
+   fluchtet. Nur Ränder und die Lücke (Anordnung); Abweichung,
+   STYLEGUIDE.md Abschnitt 5. */
+.ds-page-head__actions:has(> .ds-btn--text:last-child) { margin-right: calc(-1 * var(--ds-space-3)); }
 
-/* Zurück-Link «‹ ADMIN-Clients» (Text-Knopf, klein): sein Polster hängt in
-   den Rand, damit der Text auf der Titelkante steht. */
-.seitenkopf-pfad {
-  justify-self: start;
-  margin: 0 0 var(--ds-space-1) calc(-1 * var(--ds-space-3));
-}
-
-/* Steht die Schublade fest daneben und trägt sie den Zurück-Eintrag, wäre
-   der Link hier doppelt. */
-@media (width > 900px) {
-  .ds-app[data-zurueck] .seitenkopf-pfad { display: none; }
-}
-
-.seitenkopf-zeile {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--ds-space-3) var(--ds-space-4);
-  min-width: 0;
-}
-
-.seitenkopf-text {
-  flex: 1 1 20rem;
-  min-width: 0;
-  display: grid;
-  gap: var(--ds-space-1);
-}
-
-/* Lead und Teile-Zeile mit tabellarischen Ziffern («47 von 163»); die
-   Teile-Zeile sieht aus wie der Lead von Dashboard-Style. */
-.ds-page-head__lead { font-variant-numeric: tabular-nums; }
-
-.seitenkopf-unter {
-  margin: 0;
-  max-width: var(--ds-measure);
-  color: var(--ds-text-2);
-  font: var(--ds-font-body);
-  font-variant-numeric: tabular-nums;
-  text-wrap: pretty;
-}
-
-.ds-page-head__lead:empty,
-.seitenkopf-unter:empty { display: none; }
-
-.seitenkopf-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ds-space-2);
-  margin-top: var(--ds-space-2);
-}
-
-.seitenkopf-status:empty { display: none; }
-
-.seitenkopf-aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ds-space-2);
-  margin-left: auto;
-}
-
-.seitenkopf-aktionen:empty { display: none; }
-
-/* Ein Text-Knopf hinten hängt sein Polster in den Rand: sein Text endet
-   auf der Kante von Banner und Karten darunter. */
-.seitenkopf-aktionen:has(> .ds-btn--text:last-child) { margin-right: calc(-1 * var(--ds-space-3)); }
-
-/* Schmale Bahn: die Aktionen stehen links unter dem Titel, und der erste
-   Text-Knopf JEDER Zeile fluchtet mit dem Titel, auch nach einem Umbruch.
-   Wie .ds-card__links von Dashboard-Style: jeder Text-Knopf hängt sein
-   Polster in den Rand, die Lücke gleicht das wieder aus (sichtbar bleibt
-   space-2 zwischen den Knöpfen). Kopfaktionen sind Text-Knöpfe (§4). */
 @container ds-content (max-width: 600px) {
-  .seitenkopf-aktionen,
-  .seitenkopf-aktionen:has(> .ds-btn--text:last-child) {
-    justify-content: flex-start;
+  .ds-page-head__actions:has(> .ds-btn--text:last-child) {
     column-gap: calc(var(--ds-space-2) + var(--ds-space-3));
-    margin-left: 0;
     margin-right: 0;
   }
 
-  .seitenkopf-aktionen > .ds-btn--text { margin-left: calc(-1 * var(--ds-space-3)); }
+  .ds-page-head__actions > .ds-btn--text { margin-left: calc(-1 * var(--ds-space-3)); }
 }
 
 
 /* ==================================================================
-   5. Gerüst der Detailseiten
+   4. Gerüst der Detailseiten
    Der Bereich, den fenster.js je nach Navigation füllt: Karten im
    Seitenrhythmus untereinander.
    ================================================================== */
@@ -406,79 +248,19 @@
 
 
 /* ==================================================================
-   6. Schmale Fenster
+   5. Kontrastmodus und Druck
    ================================================================== */
 
-/* Modale Schublade (Grenze von Dashboard-Style, shell.css und DS.overlay): der
-   Kopf rückt an den Menüknopf (Dashboard-Style); ohne Schublade steht er
-   schon ab 900 px am schmalen Seitenrand von 16 px, nicht erst ab 600. */
-@media (max-width: 900px) {
-  .ds-app--drawer[data-drawer-hidden] .ds-topbar { padding-left: max(var(--ds-space-4), env(safe-area-inset-left)); }
-}
-
-/* Konto als Initiale: Name und E-Mail weichen, die Kapsel bleibt. */
-@media (max-width: 720px) {
-  .kopf-konto-trenner { margin-left: var(--ds-space-2); }
-  .kopf-konto:has(> .kopf-abmelden[hidden]) { padding-right: var(--ds-space-2); }
-}
-
-/* Telefone: die Wortmarke kleiner, die Bahn mit weniger Polster unten. */
-@media (max-width: 600px) {
-  .ds-brand .wortmarke,
-  .ds-drawer__head .wortmarke {
-    font: var(--ds-font-reading);
-    font-family: var(--schrift-marke);
-    font-stretch: 112%;
-    font-weight: var(--gewicht-marke);
-  }
-
-  .ds-view > .ds-content { --bahn-unten: calc(var(--ds-space-4) + var(--ds-toast-room) + var(--ds-space-2)); }
-}
-
-/* 320 px (400 % Zoom): kein Platz für Wortmarke, Initiale und «Abmelden».
-   Ohne Initiale (und Trenner) bleiben Name und E-Mail für Screenreader
-   (Dashboard-Style blendet sie unsichtbar ein); die Kapsel trägt dann nur
-   «Abmelden», im Vorführmodus gar nichts. */
-@media (max-width: 359px) {
-  .kopf-konto .ds-account__avatar,
-  .kopf-konto-trenner { display: none; }
-
-  .kopf-konto { padding-left: var(--ds-space-1); }
-  .kopf-konto:has(> .kopf-abmelden[hidden]) { display: none; }
-}
-
-
-/* ==================================================================
-   7. Kontrastmodus und Druck
-   ================================================================== */
-
-/* Im Kontrastmodus trägt der aktive Eintrag die Systemfarbe der Auswahl
-   (wie ein gewählter Listeneintrag) statt eines Umrisses: der Umriss ist
-   der Fokusring, mit und ohne Fokus sähe er gleich aus. Weil der Eintrag
-   seine Farben dann selbst setzt, nennt auch sein Fokusring eine
-   Systemfarbe. */
+/* Kontrastmodus: den aktiven Eintrag der Schublade zeichnet
+   Dashboard-Style als Auswahl (SelectedItem). */
 @media (forced-colors: active) {
-  .ds-drawer__list .ds-drawer__item[aria-current="page"] {
-    forced-color-adjust: none;
-    outline: none;
-    background: Highlight;
-    color: HighlightText;
-  }
-
-  .ds-drawer__list .ds-drawer__item[aria-current="page"]:focus-visible {
-    outline: 2px solid CanvasText;
-    outline-offset: var(--ds-focus-offset);
-  }
-
   .wortmarke-punkt { forced-color-adjust: none; background: CanvasText; }
 }
 
-/* Gedruckt wird nur der Inhalt (Dashboard-Style blendet den Rahmen aus).
-   Dazu: keine Speicherleiste, keine Schnellaktionen im Seitenkopf, und die
-   seitenfüllende Liste läuft über alle Seiten statt nur ihren Ausschnitt. */
+/* Gedruckt wird nur der Inhalt (Dashboard-Style blendet den Rahmen, die
+   Speicherleiste und die Aktionen im Seitenkopf aus). Dazu läuft die
+   seitenfüllende Liste über alle Seiten statt nur ihren Ausschnitt. */
 @media print {
-  .seitenkopf-aktionen { display: none; }
-
   .tabelle-rahmen {
     height: auto;
     max-height: none;

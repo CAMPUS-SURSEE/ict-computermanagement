@@ -21,34 +21,12 @@
 
 @layer grund {
 
-  /* Überschriften: Satzschreibung, nie fett, nie gesperrt, ohne Browser-
-     Ränder; die Rolle folgt der Stufe. Bausteine mit eigener Klasse
-     (.ds-card__title, .ds-dialog__title, .ds-page-head__title …) setzen
-     ihre Rolle selbst und gewinnen. */
-  :where(.ds-base) :is(h1, h2, h3, h4, h5, h6) {
-    margin: 0;
-    letter-spacing: 0;
-  }
-
-  :where(.ds-base) h1 { font: var(--ds-font-headline); }
-  :where(.ds-base) h2 { font: var(--ds-font-subtitle); }
-  :where(.ds-base) :is(h3, h4, h5, h6) { font: var(--ds-font-label); }
-
-  /* Ein nachgestelltes Sinnbild im Link (↗ extern) hält etwas Luft;
-     Knöpfe, Kacheln und Zeilen setzen ihren Abstand selbst. Davor steht
-     meist ein Textknoten, kein Element: darum genügt :last-child (ein
-     Link nur mit Sinnbild ist ein .ds-btn und ausgenommen). Senkrecht
-     mittet es .icon (bausteine.css). */
-  :where(.ds-base) a:not(.ds-btn, .chip, .ds-tile, .listen-zeile, .verteilung-zeile) > svg:last-child {
-    margin-left: var(--ds-space-1);
-  }
-
-  /* Ränder 0: leiser Text, Kennwerte und die ICT-eigenen Blöcke tragen
-     keine Browser-Ränder. In einer Karte setzt der Kartenrhythmus von
+  /* Ränder 0: die ICT-eigenen Blöcke tragen keine Browser-Ränder
+     (.ds-muted, .ds-kv-list und die Überschriften unter .ds-base setzt
+     Dashboard-Style 2.0 selbst auf 0, die Überschriften auch auf ihre
+     Rollen). In einer Karte setzt der Kartenrhythmus von
      Dashboard-Style (.ds-card > * + *) den Abstand darüber; in Blättern
      und Dialogen der Körper (gap). */
-  .ds-muted,
-  .ds-kv-list,
   .datenzeilen,
   .hinweise,
   .zeitachse,

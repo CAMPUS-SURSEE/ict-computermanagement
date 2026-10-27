@@ -389,10 +389,11 @@
      Bewegung.wechseln(aktualisieren, { art = 'durchblenden' | 'vor' | 'zurueck' | 'behaelter', von })
        → Promise                                                         = DS.motion.transition
        Nur Navigation (Ansichtswechsel), nie Daten.
-     Bewegung.indikator(spur, { aktiv, klasse, beobachten = true, name }) → { aktualisieren(), zerstoeren() }
+     Bewegung.indikator(spur, { aktiv, klasse, beobachten = true, name, zeigen }) → { aktualisieren(), zerstoeren() }
                                                                          = DS.indicator.createIndicator
        Die Pille folgt aria-current/-pressed/-selected/-checked selbst;
-       aktualisieren() braucht es nur mit beobachten: false.
+       aktualisieren() braucht es nur mit beobachten: false. zeigen (reveal):
+       die Spur rollt den aktiven Eintrag selbst ins Bild.
      Bewegung.kachelZahlMerken(wertKnoten, ziel, wertText, schluessel)   nur für UI.kachel:
        merkt den Rohwert fürs Hochzählen (am Knoten bzw. je Schlüssel) und
        zählt im Format von wertText (Text davor und danach, Nachkommastellen).
@@ -598,7 +599,8 @@ const Bewegung = (function () {
   function indikator(spur, o) {
     const w = o || {};
     const i = DS.indicator.createIndicator(spur, {
-      active: w.aktiv, className: w.klasse || "", observe: w.beobachten !== false, name: w.name || ""
+      active: w.aktiv, className: w.klasse || "", observe: w.beobachten !== false, name: w.name || "",
+      reveal: !!w.zeigen
     });
     return {
       aktualisieren: function () { i.update(); },
