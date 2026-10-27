@@ -1464,8 +1464,9 @@
     } });
     const schublade = knopf({ text: "Schublade öffnen", sinnbild: "menue", beiKlick: function () {
       // Der Fokus kommt nach dem Schliessen auf diesen Knopf zurück, nicht auf den Menüknopf.
-      if (window.matchMedia("(max-width: 900px)").matches) Rahmen.schublade.oeffnen({ ausloeser: schublade });
-      else info("Die Schublade wird erst unter 900 px Breite modal.");
+      // Ab wann sie modal ist, sagt Dashboard-Style selbst (dieselbe Abfrage wie shell.css).
+      if (window.matchMedia(DS.overlay.DRAWER_QUERY).matches) Rahmen.schublade.oeffnen({ ausloeser: schublade });
+      else info("Die Schublade wird erst in einem schmaleren Fenster modal " + DS.overlay.DRAWER_QUERY + ".");
     } });
 
     return abschnitt("rahmen", "Rahmen",
