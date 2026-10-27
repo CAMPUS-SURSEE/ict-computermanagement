@@ -32,7 +32,7 @@
    Inhalt:
      1. Kopf: Wortmarke
      2. Tafel: Tabellenansichten, Zustände
-     3. Seitenkopf (Text-Knöpfe in den Aktionen)
+     3. Seitenkopf (umgebrochene Text-Knöpfe in den Aktionen)
      4. Gerüst der Detailseiten (.fenster-bereich)
      5. Kontrastmodus und Druck
 
@@ -50,28 +50,18 @@
    (.ds-drawer__back, .ds-drawer__count) bringt Dashboard-Style.
    ================================================================== */
 
-/* Die Wortmarke steht über der linken KANTE der Navigationssinnbilder
-   (der Achse von Dashboard-Style, --ds-drawer-icon-axis, minus das halbe
-   20-px-Sinnbild), auf derselben Linie wie die Gruppentitel. Ohne
-   Schublade (Neu-Formulare) bleibt sie, wo sie mit Schublade steht: beim
-   Wechsel Liste → «Neuer …» rückt der Kopf nicht. Dashboard-Style 2.0
-   kennt dieselbe Ausrichtung für eine Marke nur aus dem Namen, aber ihr
-   Selektor verschachtelt :has() und greift darum in keinem Browser
-   (gemeldet); bis dahin hier. Abweichung, STYLEGUIDE.md Abschnitt 5. */
+/* Die Wortmarke ist eine Marke nur aus dem Namen (.ds-brand >
+   .ds-brand__name): mit Schublade setzt Dashboard-Style sie über die
+   linke KANTE der Navigationssinnbilder (die Achse --ds-drawer-icon-axis
+   minus das halbe 20-px-Sinnbild), auf dieselbe Linie wie die
+   Gruppentitel. Ohne Schublade (Neu-Formulare, data-drawer-hidden) rückte
+   sie auf 24 px; hier bleibt sie, wo sie mit Schublade steht, damit beim
+   Wechsel Liste → «Neuer …» der Kopf nicht rückt. Nur das Polster;
+   Abweichung, STYLEGUIDE.md Abschnitt 5. */
 @media (min-width: 901px) {
-  .ds-app--drawer > .ds-topbar {
+  .ds-app--drawer[data-drawer-hidden] > .ds-topbar {
     padding-left: max(calc(var(--ds-drawer-icon-axis) - 10px), env(safe-area-inset-left));
   }
-}
-
-/* Ohne «Abmelden» (Vorführmodus) endet die Konto-Kapsel nach dem Text mit
-   dem Polster einer Pille, auf dem Telefon (nur die Initiale) gleich weit
-   wie vorne; Dashboard-Style rechnet hinten mit dem Text-Knopf. Nur das
-   Polster; Abweichung, STYLEGUIDE.md Abschnitt 5. */
-.ds-account--capsule:has(> .ds-btn[hidden]) { padding-right: var(--ds-space-4); }
-
-@media (max-width: 720px) {
-  .ds-account--capsule:has(> .ds-btn[hidden]) { padding-right: var(--ds-space-2); }
 }
 
 /* Wortmarke «ICT.INVENTAR» statt Logo und Produktname: Versalien wie im
@@ -177,19 +167,17 @@
       __status und __actions von Dashboard-Style)
    ================================================================== */
 
-/* Kopfaktionen sind Text-Knöpfe (STYLEGUIDE.md Abschnitt 4): der letzte
-   hängt sein Polster in den Rand, sein Text endet auf der Kante von Banner
-   und Karten darunter. Auf schmaler Bahn stehen die Aktionen links unter
-   dem Titel, und jeder Text-Knopf hängt sein Polster links hinaus; die
-   Lücke gleicht das aus, damit der erste JEDER Zeile mit dem Titel
-   fluchtet. Nur Ränder und die Lücke (Anordnung); Abweichung,
-   STYLEGUIDE.md Abschnitt 5. */
-.ds-page-head__actions:has(> .ds-btn--text:last-child) { margin-right: calc(-1 * var(--ds-space-3)); }
-
+/* Kopfaktionen sind Text-Knöpfe (STYLEGUIDE.md Abschnitt 4). Dashboard-
+   Style hängt das Polster des letzten in den Rand und, auf schmaler Bahn
+   (die Aktionen links unter dem Titel), das des ersten. Bricht die Reihe
+   dort um (Client: «Ins Lager legen», «Archivieren», «Löschen …»), stünde
+   der erste Knopf der zweiten Zeile 12 px hinter dem Titel. Darum hängt
+   hier jeder Text-Knopf sein Polster links hinaus, und die Lücke gleicht
+   das aus: der erste JEDER Zeile fluchtet mit dem Titel. Nur Ränder und
+   die Lücke (Anordnung); Abweichung, STYLEGUIDE.md Abschnitt 5. */
 @container ds-content (max-width: 600px) {
   .ds-page-head__actions:has(> .ds-btn--text:last-child) {
     column-gap: calc(var(--ds-space-2) + var(--ds-space-3));
-    margin-right: 0;
   }
 
   .ds-page-head__actions > .ds-btn--text { margin-left: calc(-1 * var(--ds-space-3)); }

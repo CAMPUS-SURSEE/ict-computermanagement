@@ -5,7 +5,7 @@
    ds.base, ds.components, ds.motion, ds.utilities). CSS ohne Ebene gewinnt
    gegen jede Ebene, egal wie spezifisch: Eine blanke Regel «h2 { … }» in
    bausteine.css schlüge darum auch .ds-dialog__title oder .ds-card__title.
-   Was nur Grundzustand ist (Rollen der Überschriften, Ränder 0), steht
+   Was nur Grundzustand ist (Ränder 0, die Lage der Sinnbilder), steht
    deshalb hier in der Ebene «grund», die VOR «ds» kommt: Jede Klasse von
    Dashboard-Style (Kartenrhythmus, Titelrollen, eigene Ränder) gewinnt
    dagegen, ICT-CSS ohne Ebene (thema.css, bausteine.css, rahmen.css,
@@ -29,5 +29,14 @@
      darüber; in Blättern und Dialogen der Körper (gap). */
   .anzahl {
     margin: 0;
+  }
+
+  /* Sinnbild aus DS.icons (UI.sinnbild setzt die Klasse; Strich, Farbe und
+     Enden schreibt DS.icons.iconElement): mittig in der Zeile, schrumpft
+     nie. Nur Grundzustand: wo Dashboard-Style ein Sinnbild selbst setzt
+     (vor einer Meta-Zeile, .ds-kv-list__icon, in Links), gewinnt es. */
+  .icon {
+    flex-shrink: 0;
+    vertical-align: middle;
   }
 }

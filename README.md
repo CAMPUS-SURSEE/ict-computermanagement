@@ -214,7 +214,7 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 Stand 27.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
 mit je einem Namensraum, kein einziges Inline-Skript und kein `<style>` (die Inhaltsrichtlinie in `_headers` verbietet
-beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 2.0.0, das gemeinsame
+beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 2.1.0, das gemeinsame
 Design-System (dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung, Überlagerungen und Sinnbilder liegen als
 unveränderte, mit Prüfsummen festgenagelte Kopie in `frontend/vendor/dashboard-style/`. Darauf setzt ICT-Inventar nur
 das Campus-Thema (`thema.css`), ein paar Grundregeln darunter (`grund.css`) und die Bausteine, die es nur hier gibt

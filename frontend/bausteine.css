@@ -15,7 +15,8 @@
    wirklich anders will (Abschnitt 1, je mit Grund), und ändert gemeinsame
    Bausteine sonst nur über ihre Hooks (--ds-stack-gap, --ds-btn-* …).
    Grundregeln, die Bausteine NICHT schlagen dürfen (Ränder 0 der
-   ICT-Blöcke), stehen in grund.css in der Ebene «grund» vor «ds».
+   ICT-Blöcke, die Lage des Sinnbilds .icon), stehen in grund.css in der
+   Ebene «grund» vor «ds».
 
    Regeln wie in Dashboard-Style: nur Tokens (--ds-* und die ICT-Tokens aus
    thema.css), keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale,
@@ -28,7 +29,7 @@
    INHALT
    ------------------------------------------------------------------
    1. Abweichungen von Dashboard-Style (je mit Grund)
-   2. Sinnbild, Tonklassen, Ergebniszahl (.icon .t-* .anzahl)
+   2. Tonklassen, Ergebniszahl (.t-* .anzahl; das Sinnbild .icon in grund.css)
    3. Raster (.karten .karte-breit .karte-inhalt .karte-kopf-aktionen)
    4. Datenzeilen (.datenzeile-neben .datenzeile-zeile)
    5. Hinweisliste (.hinweise)
@@ -75,22 +76,6 @@
 .ds-stack { --ds-stack-gap: var(--ds-space-5); }
 .ds-card .ds-stack { --ds-stack-gap: var(--ds-space-4); }
 
-/* Schalterliste (UI.schalterListe): Dashboard-Style 2.0.0 legt jede Zeile
-   auf ein Raster aus zwei (schmal drei) Zeilen: Name, Unterzeile, schmal
-   der Zusatz. Zwischen ihnen bleibt aber die Lücke des einzelnen
-   Schalters (12 px) stehen: die Unterzeile hinge 12 px unter dem Namen,
-   und ohne Unterzeile stünde der Name über der Mitte von Schalter und
-   Wort. Darum ohne Zeilenlücke, und ohne Unterzeile reicht der Name über
-   alle Zeilen (schmal mit sichtbarem Zusatz über die beiden ersten). Nur
-   Anordnung (gemeldet, STYLEGUIDE.md, Abschnitt 5). */
-.ds-switch-list > .ds-switch { row-gap: 0; }
-
-.ds-switch-list > .ds-switch:not(:has(> .ds-switch__hint)) > .ds-switch__label { grid-row: 1 / 3; }
-
-.ds-switch-list > .ds-switch:not(:has(> .ds-switch__hint, > .ds-switch__meta > :not([hidden]))) > .ds-switch__label {
-  grid-row: 1 / -1;
-}
-
 /* Status-Chip: ein langer Text bricht im Chip um. */
 .status-text { min-width: 0; overflow-wrap: anywhere; }
 
@@ -101,15 +86,8 @@
 
 
 /* ==================================================================
-   2. Sinnbild, Tonklassen, Ergebniszahl
+   2. Tonklassen, Ergebniszahl (das Sinnbild .icon steht in grund.css)
    ================================================================== */
-
-/* Sinnbild aus DS.icons (UI.sinnbild setzt die Klasse; Strich, Farbe und
-   Enden schreibt DS.icons.iconElement): mittig in der Zeile, schrumpft nie. */
-.icon {
-  flex-shrink: 0;
-  vertical-align: middle;
-}
 
 /* Tonklassen für Text und Sinnbilder; Status immer zusammen mit Sinnbild
    oder Wort, nie Farbe allein. «Info» ist neutral – es gibt kein Blau. */
@@ -149,14 +127,16 @@
 .ds-grid-2 > .karte-breit { grid-column: 1 / -1; }
 
 /* Karten nebeneinander teilen eine Höhe; ihre Fusszeilen liegen unten auf
-   einer Linie – wie .ds-grid-2 in Dashboard-Style, hier fürs .karten. */
+   einer Linie, und auch die höchste Karte behält 16 px vor ihrer
+   Fusszeile – wie .ds-grid-2 in Dashboard-Style (seit 2.1.0), hier fürs
+   .karten. */
 .karten > .ds-card:has(> .ds-card__links) {
   display: flex;
   flex-direction: column;
 }
 
 .karten > .ds-card > .ds-card__links { margin-top: auto; }
-:is(.karten, .ds-grid-2) > .ds-card > :has(+ .ds-card__links) { margin-bottom: var(--ds-space-4); }
+.karten > .ds-card > :has(+ .ds-card__links) { margin-bottom: var(--ds-space-4); }
 
 /* Inhaltsbereich einer Karte (UI.karte): ein leerer nimmt keinen Platz. */
 .karte-inhalt:empty { display: none; }
@@ -312,10 +292,3 @@
    ================================================================== */
 
 .zeitachse-still { --ds-timeline-dot-color: var(--ds-line-2); }
-
-/* Sinnbild vor der Meta-Zeile (Abgleich: «sync»), auf die Textzeile
-   gesetzt. Abweichung, STYLEGUIDE.md Abschnitt 5. */
-.ds-timeline__meta > .icon {
-  margin-right: var(--ds-space-1);
-  vertical-align: -3px;
-}

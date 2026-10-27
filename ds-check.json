@@ -17,20 +17,8 @@
     {
       "rule": "restyle",
       "file": "frontend/bausteine.css",
-      "selector": ".ds-switch-list > .ds-switch",
-      "reason": "Dashboard-Style 2.0.0 lässt in der Schalterliste die Lücke des einzelnen Schalters (12 px) auch zwischen Name und Unterzeile stehen; ohne Zeilenlücke steht die Unterzeile unter dem Namen und beide mittig zum Schalter (nur Anordnung, gemeldet, STYLEGUIDE.md, Abschnitt 5)"
-    },
-    {
-      "rule": "hidden",
-      "file": "frontend/bausteine.css",
-      "selector": ".ds-switch-list > .ds-switch:not(:has(> .ds-switch__hint, > .ds-switch__meta > :not([hidden]))) > .ds-switch__label",
-      "reason": "keine [hidden]-Regel: der Selektor fragt nur, ob der Zusatz «Geändert» sichtbar ist, und legt den Namen dann über alle Rasterzeilen"
-    },
-    {
-      "rule": "restyle",
-      "file": "frontend/bausteine.css",
       "selector": ".karten > .ds-card:has(> .ds-card__links)",
-      "reason": "Karten in .karten (auto-fit-Raster, das Dashboard-Style nicht hat) teilen ihre Höhe und legen die Fusszeile unten an wie in .ds-grid-2; nur Anordnung (STYLEGUIDE.md, Abschnitt 5)"
+      "reason": "Karten in .karten (auto-fit-Raster, das Dashboard-Style nicht hat) teilen ihre Höhe und legen die Fusszeile unten an wie in .ds-grid-2, mit 16 px davor auch in der höchsten Karte; nur Anordnung (STYLEGUIDE.md, Abschnitt 5)"
     },
     {
       "rule": "restyle",
@@ -40,27 +28,9 @@
     },
     {
       "rule": "restyle",
-      "file": "frontend/bausteine.css",
-      "selector": ".ds-timeline__meta > .icon",
-      "reason": "das ICT-Sinnbild «Abgleich» vor der Meta-Zeile der Zeitachse; nur seine Ausrichtung auf der Textzeile (STYLEGUIDE.md, Abschnitt 5)"
-    },
-    {
-      "rule": "restyle",
       "file": "frontend/rahmen.css",
-      "selector": ".ds-app--drawer > .ds-topbar",
-      "reason": "Wortmarke ohne Bildmarke auf der Kante der Navigationssinnbilder: der Selektor von Dashboard-Style 2.0.0 dafür verschachtelt :has() und greift in keinem Browser (STYLEGUIDE.md, Abschnitt 5)"
-    },
-    {
-      "rule": "restyle",
-      "file": "frontend/rahmen.css",
-      "selector": ".ds-account--capsule:has(> .ds-btn[hidden])",
-      "reason": "Konto-Kapsel ohne «Abmelden» (Vorführmodus): Dashboard-Style rechnet hinten mit dem Text-Knopf und lässt nach dem Text nur 4 px; nur das Polster (STYLEGUIDE.md, Abschnitt 5)"
-    },
-    {
-      "rule": "hidden",
-      "file": "frontend/rahmen.css",
-      "selector": ".ds-account--capsule:has(> .ds-btn[hidden])",
-      "reason": "keine [hidden]-Regel: der Selektor fragt nur, ob «Abmelden» verborgen ist, und setzt das Polster der Kapsel"
+      "selector": ".ds-app--drawer[data-drawer-hidden] > .ds-topbar",
+      "reason": "Wortmarke auch ohne Schublade (Neu-Formulare) auf der Kante der Navigationssinnbilder, wo Dashboard-Style sie mit Schublade setzt: beim Wechsel Liste → «Neuer …» rückt der Kopf nicht; nur das Polster (STYLEGUIDE.md, Abschnitt 5)"
     },
     {
       "rule": "restyle",
@@ -78,7 +48,7 @@
       "rule": "restyle",
       "file": "frontend/rahmen.css",
       "selector": ".ds-page-head__actions:has(> .ds-btn--text:last-child)",
-      "reason": "Text-Knöpfe im Seitenkopf hängen ihr Polster in den Rand und fluchten mit Titel und Karten; nur Ränder und Lücke (STYLEGUIDE.md, Abschnitt 5)"
+      "reason": "schmal brechen die Text-Knöpfe im Seitenkopf um: jeder hängt sein Polster in den Rand, und die Lücke gleicht das aus, damit der erste JEDER Zeile mit dem Titel fluchtet (Dashboard-Style richtet nur den ersten Knopf aus); nur Ränder und Lücke (STYLEGUIDE.md, Abschnitt 5)"
     }
   ]
 }

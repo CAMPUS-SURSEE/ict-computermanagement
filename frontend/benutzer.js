@@ -815,11 +815,17 @@ function programmZeile(spalte) {
     "recht-" + spalte.i);
   z.spalte = spalte;
   z.geaendert = geaendert;
+  z.zusatz.hidden = geaendert.hidden;
   return z;
 }
 
+/* «Geändert» zeigen oder verbergen, und mit ihm den Zusatz der Zeile
+   (.ds-switch__meta): ein leerer, aber sichtbarer Zusatz hielte in der
+   schmalen Schalterliste seine Zeile frei, und Name und Wort stünden 2 px
+   über der Mitte des Schalters. */
 function zeileNachfuehren(z) {
   z.geaendert.hidden = !entwurf.istGeaendert(z.spalte.i);
+  z.zusatz.hidden = z.geaendert.hidden;
 }
 
 /* Zähler an der Werkzeugleiste und an jeder Karte, an Ort und Stelle. */
