@@ -212,7 +212,8 @@
        schlichte Reihe (Status-Chips, Links).
      UI.zaehler(zahl, still?) → span.ds-badge (still: .ds-badge--neutral; .setzen(zahl))
        leer (null/"") ohne Platz; .setzen von leer auf eine Zahl ploppt
-       einmal, Wert → Wert ohne Bewegung.
+       herein, von einer Zahl auf leer hinaus (danach hidden), Wert → Wert
+       ohne Bewegung.
 
    Formulare
      UI.eingabe({ art: 'text'|'zahl'|'datum'|'textbereich'|'auswahl'|'suche'|'mail'|'telefon',
@@ -1654,10 +1655,23 @@ const UI = (function () {
      bleibt sie ruhig, weil ein Bauer auch beim Neuzeichnen läuft. */
   function zaehler(zahl, still) {
     const z = el("span", "ds-badge" + (still ? " ds-badge--neutral" : ""), zahl);
+    /* Wie «A count badge» in docs/motion.md von Dashboard-Style: eine Zahl,
+       die erscheint, ploppt herein, eine, die geht, ploppt hinaus (mit der
+       alten Zahl, danach hidden); dazwischen wechselt die Zahl ohne
+       Bewegung. Eine Zahl, die kommt, während die Plakette noch geht
+       (.ds-leave), holt sie von dort zurück. */
     z.setzen = function (n) {
-      const warLeer = z.textContent === "";
-      textSetzen(z, n);
-      if (warLeer && z.textContent !== "") Bewegung.eintreten(z, "ploppen");
+      const t = text(n);
+      const gezeigt = !z.hidden && z.textContent !== "" && !z.classList.contains("ds-leave");
+      if (t === "") {
+        if (gezeigt) Bewegung.austreten(z, "ploppen", { dann: "verbergen" });
+        return z;
+      }
+      textSetzen(z, t);
+      if (!gezeigt) {
+        z.hidden = false;
+        Bewegung.eintreten(z, "ploppen");
+      }
       return z;
     };
     return z;

@@ -1910,8 +1910,9 @@ function zeichneChips(tab, art) {
         nachFilter(tab);
       } }));
   }
-  /* Geht ein Chip mit dem Fokus, gibt DS.motion.flip ihn an den nächsten
-     Chip (sonst den vorigen, sonst den Filterknopf) weiter. */
+  /* Den Fokus eines entfernten Chips gibt chipEntfernen selbst weiter
+     (nie an «Alle Filter entfernen»); geht er sonst verloren, nimmt ihn
+     DS.motion.flip bzw. zuletzt der Filterknopf. */
   schluesselSetzen(liste);
   if (!art) UI.abgleichen(k.chips, liste);
   else Bewegung.umordnen(k.chips, function (o) { UI.abgleichen(k.chips, liste, o); },
@@ -1919,8 +1920,19 @@ function zeichneChips(tab, art) {
 }
 
 /* Der Schlüssel eines Chips nennt Filter und Wert: ein behaltener Chip
-   entfernt darum immer genau seinen Filter. */
+   entfernt darum immer genau seinen Filter. Hatte der Chip den Fokus,
+   geht er vorher an den nächsten Chip, sonst den vorigen, sonst an den
+   Filterknopf – nie an «Alle Filter entfernen», das in derselben Reihe
+   steht: wer mit Enter einen Filter nach dem anderen entfernt, soll nicht
+   beim nächsten Druck alle übrigen verlieren. (DS.motion.flip liesse den
+   Fokus auf das nächste Element der Reihe fallen, auch auf den Knopf.) */
 function chipEntfernen(tab, chip, entfernen) {
+  const k = knoten[tab];
+  if (document.activeElement === chip) {
+    const alle = Array.from(k.chips.querySelectorAll(":scope > .ds-chip:not([data-ds-leaving])"));
+    const i = alle.indexOf(chip);
+    (alle[i + 1] || alle[i - 1] || k.filterKnopf).focus({ preventScroll: true });
+  }
   entfernen();
   nachFilter(tab);
 }

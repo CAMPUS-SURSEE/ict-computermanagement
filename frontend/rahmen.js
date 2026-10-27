@@ -82,7 +82,8 @@
    Rahmen.aktiv(schluessel)          aktiver Eintrag, die Pille gleitet (vor dem ersten
                                      Inhalt springt sie)
    Rahmen.zahl(schluessel, wert)     Zähler am Eintrag (leer/null = keiner); erscheint
-                                     er (leer → Wert), ploppt er einmal
+                                     er (leer → Wert), ploppt er herein, geht er
+                                     (Wert → leer), ploppt er hinaus
    Rahmen.konto({name, email})       Konto rechts im Kopf: Kapsel mit Initiale, Name
                                      und E-Mail (≤ 720 px nur die Initiale)
    Rahmen.abmelden(beiKlick|null)    Text-Knopf «Abmelden» in derselben Kapsel
@@ -853,11 +854,19 @@ const Rahmen = (function () {
     const text = (wert === null || wert === undefined || wert === false || wert === "")
       ? "" : (typeof wert === "number" ? zahlText(wert) : String(wert));
     const zaehler = k.querySelector(".ds-drawer__count");
-    const warLeer = zaehler.hidden;
+    // Ein Zähler, der erscheint, ploppt herein, einer, der geht, mit der
+    // alten Zahl hinaus (danach hidden); ein neuer Wert ändert sich ohne
+    // Bewegung. Kommt eine Zahl, während er noch geht, kehrt er zurück.
+    const gezeigt = !zaehler.hidden && !zaehler.classList.contains("ds-leave");
+    if (!text) {
+      if (gezeigt) Bewegung.austreten(zaehler, "ploppen", { dann: "verbergen" });
+      return;
+    }
     UI.textSetzen(zaehler.querySelector(".schublade-zahl"), text);
-    zaehler.hidden = !text;
-    // Ein Zähler, der erscheint, ploppt; ein neuer Wert ändert sich ohne Bewegung.
-    if (warLeer && text) Bewegung.eintreten(zaehler, "ploppen");
+    if (!gezeigt) {
+      zaehler.hidden = false;
+      Bewegung.eintreten(zaehler, "ploppen");
+    }
   }
 
   /* Ein schlichter Klick auf einen Eintrag geht an beiWahl. Kam er aus der
