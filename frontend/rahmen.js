@@ -496,11 +496,13 @@ const Rahmen = (function () {
   const markenWartend = [];
   let markeSchriftDa = false;
 
-  function wortmarke() {
-    // Eine Marke nur aus dem Namen (.ds-brand__name): Dashboard-Style setzt
-    // ihren Text auf die Kante der Navigationssinnbilder und lässt ihn auf
-    // dem Telefon stehen.
-    const w = el("span", "ds-brand__name wortmarke");
+  function wortmarke(imKopf) {
+    // In der Kopfleiste eine Marke nur aus dem Namen (.ds-brand__name):
+    // Dashboard-Style setzt ihren Text auf die Kante der Navigations-
+    // sinnbilder und lässt ihn auf dem Telefon stehen. Im Kopf der
+    // Schublade nur .wortmarke: dort blendete Dashboard-Style einen
+    // .ds-brand__name unter 600 px aus (die Ausnahme gilt nur in .ds-brand).
+    const w = el("span", imKopf ? "ds-brand__name wortmarke" : "wortmarke");
     w.appendChild(document.createTextNode("ICT"));
     w.appendChild(el("span", "wortmarke-punkt", "."));
     w.appendChild(document.createTextNode("INVENTAR"));
@@ -610,7 +612,7 @@ const Rahmen = (function () {
     const marke = el("a", "ds-brand");
     marke.href = adresse.liste(STARTZIEL);
     marke.setAttribute("aria-label", "ICT-Inventar, zur Übersicht");
-    marke.appendChild(wortmarke());
+    marke.appendChild(wortmarke(true));
 
     // Rechts EINE Kapsel (.ds-account--capsule): die Initiale in jeder
     // Breite (role=img, nennt das Konto selbst und zeigt es im Tooltip,
