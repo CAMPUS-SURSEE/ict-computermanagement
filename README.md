@@ -68,7 +68,7 @@ Stand: 08.09.2026 · Betrieb: ICT-Services Campus Sursee
 | **eine Kamera erfassen** | **nicht nötig** und im Frontend nicht möglich: Kameras in Milestone legt der Sync selbst an. Eine ausgebaute Kamera bleibt erhalten, wenn ihr Status vor dem Entfernen aus Milestone auf **`Lager`** steht |
 | **eine Kamera bewerten** | Kameraseite → Bereich **«Bewertung»** (Zuständig, Bildqualität, Positionierung, Verbesserungen, Bewertet am) |
 | **nachschlagen, wie das Frontend aussehen soll** | `frontend/STYLEGUIDE.md` (Regeln auf Dashboard-Style: Campus-Thema, eigene Bausteine, Abweichungen) und `frontend/styleguide.html` (lebende Übersicht, ohne Anmeldung) – Abschnitt 1, «Dateien im Ordner `frontend`» |
-| **das Design-System (Dashboard-Style) aktualisieren** | meist **nicht nötig**: `.github/workflows/update-dashboard-style.yml` holt jede Nacht den neusten Stand von `main`, prüft ihn mit `Pruefe-Frontend.ps1` und veröffentlicht. Von Hand im Wurzelordner dieses Repositorys `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` (Dashboard-Style als Checkout daneben; `-From ..\Dashboard-Style` für den lokalen Stand), danach `Pruefe-Frontend.ps1` und `styleguide.html` ansehen. Die Kopie nie von Hand ändern (`frontend/STYLEGUIDE.md`, Abschnitt 11) |
+| **das Design-System (Dashboard-Style) aktualisieren** | meist **nicht nötig**: `.github/workflows/update-dashboard-style.yml` holt jede Nacht den neusten Stand von `main`, prüft ihn mit `tools/check-project.mjs` der Kopie und `Pruefe-Frontend.ps1` und veröffentlicht. Von Hand im Wurzelordner dieses Repositorys `..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style` (Dashboard-Style als Checkout daneben; `-From ..\Dashboard-Style` für den lokalen Stand), danach `Pruefe-Frontend.ps1`, `node frontend/vendor/dashboard-style/tools/check-project.mjs --config ds-check.json` und `styleguide.html` ansehen. Die Kopie nie von Hand ändern (`frontend/STYLEGUIDE.md`, Abschnitt 11) |
 | **wissen, was zu tun ist, wenn die nächtliche Aktualisierung scheitert** | `frontend/STYLEGUIDE.md`, Abschnitt 11.1: Bis zur Behebung bleibt die Seite auf dem alten Stand |
 | **als Agent oder neu im Repository die Regeln kennen** | `AGENTS.md` im Wurzelordner: Befehle, Konventionen, sensible Daten und Design-Regeln in Kurzform (`CLAUDE.md` verweist darauf) |
 | **das Frontend neu veröffentlichen** | Änderung in `frontend` nach `main` pushen – Cloudflare Pages baut und veröffentlicht von selbst (Abschnitt 7.4) |
@@ -214,7 +214,7 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 Stand 23.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
 mit je einem Namensraum, kein einziges Inline-Skript und kein `<style>` (die Inhaltsrichtlinie in `_headers` verbietet
-beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 1.6.2, das gemeinsame
+beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 2.0.0, das gemeinsame
 Design-System (dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung, Überlagerungen und Sinnbilder liegen als
 unveränderte, mit Prüfsummen festgenagelte Kopie in `frontend/vendor/dashboard-style/`. Darauf setzt ICT-Inventar nur
 das Campus-Thema (`thema.css`), ein paar Grundregeln darunter (`grund.css`) und die Bausteine, die es nur hier gibt
@@ -233,11 +233,11 @@ Seitenkopf; Änderungen speichert die Leiste, die unten erscheint, sobald etwas 
 
 | Datei | Zweck |
 |---|---|
-| `vendor/dashboard-style/` | Dashboard-Style: `ds.css` (alle Bausteine, in Kaskaden-Ebenen `@layer ds.*`), `css/optional/view-transitions.css` (Seitenübergänge zwischen den HTML-Seiten), `ds.js` (`DS`: `motion` Bewegung, `indicator` gleitende Pille, `dom` stilles Abgleichen, `ripple` Druckwelle, `icons` Sinnbilder, `overlay` Dialoge, Blätter, Meldungen, Tooltips), Google Sans mit Lizenz, `VERSION`, `SHA256SUMS` – **nie von Hand ändern**, nur mit `vendor.ps1` ersetzen (`STYLEGUIDE.md`, Abschnitt 11) |
-| `grund.css` | Grundregeln, die keinen Baustein von Dashboard-Style schlagen dürfen (Überschriften, Ränder 0), in der Ebene `@layer grund` vor `ds`; als erste Stilvorlage geladen |
+| `vendor/dashboard-style/` | Dashboard-Style: `ds.css` (alle Bausteine, in Kaskaden-Ebenen `@layer ds.*`), `css/optional/view-transitions.css` (Seitenübergänge zwischen den HTML-Seiten), `ds.js` (`DS`: `motion` Bewegung, `indicator` gleitende Pille, `dom` stilles Abgleichen, `ripple` Druckwelle, `icons` Sinnbilder, `overlay` Dialoge, Blätter, Meldungen, Tooltips), Google Sans mit Lizenz, `tools/` (Prüfwerkzeuge), `deprecations.json`, `VERSION`, `SHA256SUMS` – **nie von Hand ändern**, nur mit `vendor.ps1` ersetzen (`STYLEGUIDE.md`, Abschnitt 11) |
+| `grund.css` | Grundregeln, die keinen Baustein von Dashboard-Style schlagen dürfen (Ränder 0), in der Ebene `@layer grund` vor `ds`; als erste Stilvorlage geladen |
 | `thema.css` | Campus-Thema: Farben von Campus Sursee auf den Rollen von Dashboard-Style, die eigenen Tokens, Schrift der Wortmarke |
 | `schriften/` | Archivo für die Wortmarke, selbst gehostet (Lizenz SIL OFL 1.1, `OFL.txt` daneben) |
-| `bausteine.css`, `bausteine.js` | die eigenen Bausteine und ein Bauer je Baustein (gemeinsame bauen das Markup von Dashboard-Style): Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Sinnbilder … (`UI`), dazu `Bewegung` über `DS.motion` |
+| `bausteine.css`, `bausteine.js` | die eigenen Bausteine und ein Bauer je Baustein (gemeinsame bauen das Markup von Dashboard-Style): Knöpfe, Karten, Kacheln, Felder, Tabellen, Chips, Schalter, Listen, Diagramme, Sinnbilder … (`UI`), dazu `Bewegung` über `DS.motion`; `bausteine.css` trägt nur, was es nur hier gibt |
 | `rahmen.css`, `rahmen.js` | Rahmen aller Seiten (Kopf, Navigation, Tafel, Lade- und Fehlerzustand, Ansichtswechsel), Dialog, Seitenblatt, Meldung und Tooltip über `DS.overlay`, dazu die Speicherleiste (`Rahmen`, ergänzt `UI`) |
 | `fenster.js` | gemeinsames Gerüst der Detailseiten: Seitenkopf, Bereiche, Speichern, Löschen, Nachladen (`Fenster`) |
 | `verlauf.js`, `verlauf.css` | Verlauf auf der Geräte-, Benutzer-, Telefon-, Kamera- und Kamerarollen-Seite (`Verlauf`) |
@@ -285,8 +285,11 @@ Tokens und ICT-Namen, Google Fonts) zurückkommen, die Kopie von Dashboard-Style
 Seite sie in der richtigen Reihenfolge lädt, jeder Aufruf von `DS.*`, jede Klasse `ds-*` und jedes Sinnbild in der
 Kopie wirklich vorkommt, kein veralteter Name von Dashboard-Style benutzt wird, jede Seite das Gerüst der
 Referenz-App hat, die Seiten-CSS nur Layout enthalten und kein Geviertstrich «—» im Code steht – je Prüfung «OK» oder
-die Fundstellen mit Datei und Zeile, Exit-Code 0/1, erwartet «alle 14 Prüfungen OK». Was danach im Browser anzusehen
-ist, steht in `STYLEGUIDE.md`, Abschnitt 10.3.
+die Fundstellen mit Datei und Zeile, Exit-Code 0/1, erwartet «alle 14 Prüfungen OK». Dazu prüft das Werkzeug von
+Dashboard-Style selbst die Projektregeln (im Wurzelordner, Node 18 oder neuer):
+`node frontend/vendor/dashboard-style/tools/check-project.mjs --config ds-check.json`, erwartet «0 errors, 0
+warnings»; die bewussten Abweichungen stehen in `ds-check.json` mit Grund. Was danach im Browser anzusehen ist, steht
+in `STYLEGUIDE.md`, Abschnitt 10.3.
 
 ---
 
@@ -847,7 +850,7 @@ Erwartete Ausgabe: `Ergebnis: 439 bestanden, 0 fehlgeschlagen`.
 | Frontend: Ansicht «EDU-Clients» oder «Software» ist leer und nennt konfig.js | `eduClientListId` bzw. `softwareListId` steht noch auf dem Platzhalter | ID von Hand eintragen und neu deployen |
 | Frontend: «Neues Programm» meldet «Keine Schreibberechtigung» beim Anlegen der Spalte | Das Konto darf in SharePoint keine Spalten anlegen | Entweder das Konto berechtigen oder die Spalte mit `Ergaenze-Spalten.ps1 -Listen Benutzer` nachziehen |
 | Frontend: die Konsole meldet einen Verstoss gegen die Inhaltsrichtlinie («Refused to …»), ein Stil oder Skript fehlt | ein `<style>`, ein Inline-Skript, ein `on*`-Attribut oder eine fremde Adresse in einer Seite | in eine `.css`- bzw. `.js`-Datei verschieben bzw. die Adresse mit Grund in `frontend/_headers` nachtragen; `code\serve.ps1` zeigt den Verstoss schon lokal, `Pruefe-Frontend.ps1` (Prüfungen 5 und 12) vor dem Push |
-| Frontend: die nächtliche Aktualisierung von Dashboard-Style scheitert in «Verify» | der neue Stand entfernt oder markiert etwas als veraltet, das ICT-Inventar noch benutzt (Prüfungen 10 und 11 nennen die Stellen) | `frontend/STYLEGUIDE.md`, Abschnitt 11.1; die Seite bleibt bis dahin auf dem alten Stand |
+| Frontend: die nächtliche Aktualisierung von Dashboard-Style scheitert in «Check» oder «Verify» | der neue Stand entfernt oder markiert etwas als veraltet, das ICT-Inventar noch benutzt (Prüfungen 10 und 11 bzw. `check-project.mjs` nennen die Stellen) | `frontend/STYLEGUIDE.md`, Abschnitt 11.1; die Seite bleibt bis dahin auf dem alten Stand |
 | Umlaute in der Konsole falsch | OEM-Codepage | nur Anzeige; Log, JSON und SharePoint sind UTF-8 |
 | Ein `.ps1` bricht mit «Zeichenfolge hat kein Abschlusszeichen» ab | Datei wurde ohne UTF-8-BOM gespeichert; PowerShell 5.1 liest sie dann als ANSI und zerlegt die Umlaute | Datei mit BOM speichern (`New-Object Text.UTF8Encoding($true)`). JSON dagegen bleibt **ohne** BOM, sonst kann der Browser es nicht lesen |
 

@@ -2,7 +2,7 @@
    die deutsche Hülle um die Bewegung von Dashboard-Style («Bewegung»).
 
    Jeder Baustein hat hier genau EINEN Bauer: die gemeinsamen bauen das
-   Markup von Dashboard-Style 1.6.2 (.ds-*-Klassen aus vendor/dashboard-
+   Markup von Dashboard-Style 2.0 (.ds-*-Klassen aus vendor/dashboard-
    style/ds.css), die ICT-eigenen das aus bausteine.css. Seiten bauen nur
    über UI.*, Rahmen.* (rahmen.js), Bewegung.* (unten, über DS.motion) und
    F.* (fenster.js). rahmen.js hängt die Überlagerungen und weitere
@@ -331,7 +331,7 @@
 
 /* ==================================================================
    Bewegung – die deutsche Hülle um DS.motion und DS.indicator
-   (vendor/dashboard-style/ds.js, Dashboard-Style 1.6.2). Jede Funktion
+   (vendor/dashboard-style/ds.js, Dashboard-Style 2.0). Jede Funktion
    reicht an genau eine Funktion von Dashboard-Style weiter; Zeiten,
    Kurven, Unterbrechung (ein späterer Aufruf übernimmt vom aktuellen
    Stand), inert und Fokus regelt Dashboard-Style. Hier stehen nur die

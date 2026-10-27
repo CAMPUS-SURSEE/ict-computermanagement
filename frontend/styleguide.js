@@ -3,7 +3,7 @@
    Baut jeden Baustein in seinen Zuständen, und zwar ausschliesslich über
    die Bauer der Fundament-Dateien: UI.* (bausteine.js und rahmen.js),
    Rahmen.* und Bewegung.* – die ihrerseits die Bausteine und die Bewegung
-   von Dashboard-Style 1.6.2 setzen (.ds-*, DS.motion, DS.overlay, DS.dom,
+   von Dashboard-Style 2.0 setzen (.ds-*, DS.motion, DS.overlay, DS.dom,
    DS.ripple, DS.indicator aus vendor/dashboard-style/). Der Abschnitt
    «Grundlagen» zeigt das Campus-Thema, die Version der eingecheckten Kopie
    (aus vendor/dashboard-style/VERSION) und verweist auf den Styleguide von
@@ -811,8 +811,8 @@
             + "Esc leert sie, die Zahl rechts schliesst die Leiste ab." }, [leiste])
         ]),
         karte({ titel: "Schalter", unter: "Der Schalter von Dashboard-Style: ein Klick schaltet an Ort und Stelle um, der "
-          + "Griff gleitet und federt. ICT-eigen ist die Sperre: an und gesperrt zeigt das Schloss im Griff, der Tooltip "
-          + "nennt die Gruppe; gesperrte und deaktivierte bleiben fokussierbar." }, [einzeln, schalter])
+          + "Griff gleitet und federt. Gesperrt (.ds-switch--locked) zeigt das Schloss im Griff, der Tooltip am Kästchen "
+          + "nennt die Gruppe; gesperrte und deaktivierte bleiben fokussierbar. Mehrere Zeilen: UI.schalterListe." }, [einzeln, schalter])
       ]);
   }
 
@@ -1367,8 +1367,9 @@
     zeitpunkt.tabIndex = 0;
     UI.tipp(zeitpunkt, UI.zeitText("2026-10-12T12:05:00Z"));
 
-    // Tooltip nur bei Abschneiden (data-tip-abgeschnitten): derselbe Chip
-    // zeigt ihn in der schmalen Spalte, in der breiten nicht.
+    // Tooltip nur bei Abschneiden (Dashboard-Style vergleicht data-tip mit
+    // dem sichtbaren Text): derselbe Chip zeigt ihn in der schmalen Spalte,
+    // in der breiten nicht.
     const LANG = "Bemerkung: Leihgerät für die Weiterbildung";
     const abgeschnitten = reihe([
       anhaengen(el("div", "sg-schmal"), [UI.chip({ text: LANG, href: "#ueberlagerungen" })]),

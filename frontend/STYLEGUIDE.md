@@ -1,10 +1,10 @@
 # Styleguide «ICT-Inventar»
 
-Stand: 23.10.2026 · Gilt für alle Seiten unter `frontend/` (index, client, benutzer, telefon, software, kamera,
+Stand: 27.10.2026 · Gilt für alle Seiten unter `frontend/` (index, client, benutzer, telefon, software, kamera,
 kamerarolle und styleguide.html).
 
 **Massgebend ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)**, das gemeinsame Design-System
-(Material 3 im Aufbau der Google-Konsolen), heute in der Fassung **1.6.2**. Es liegt als unveränderte Kopie in
+(Material 3 im Aufbau der Google-Konsolen), heute in der Fassung **2.0.0**. Es liegt als unveränderte Kopie in
 `vendor/dashboard-style/` und bringt Tokens, Bausteine, Bewegung, Überlagerungen und Sinnbilder mit. Seine
 Dokumentation (Englisch) gilt hier ohne Abstriche:
 
@@ -16,7 +16,9 @@ Dokumentation (Englisch) gilt hier ohne Abstriche:
 | Bewegung, `DS.motion`, `DS.indicator`, `DS.dom` | [docs/motion.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/motion.md) |
 | Sinnbilder, `DS.icons` | [docs/icons.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/icons.md) |
 | Design-Regeln | [docs/rules.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/rules.md) |
-| Kopie anlegen und prüfen, Kaskaden-Ebenen, mehrere Seiten | [docs/install.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/install.md) |
+| Kopie anlegen und prüfen, Kaskaden-Ebenen, mehrere Seiten, ein Projekt prüfen | [docs/install.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/install.md) |
+| Muster (Listen, Datensätze, Speichern, Filtern) | [docs/patterns.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/docs/patterns.md) |
+| Was sich mit 2.0 geändert hat | [CHANGELOG.md](https://github.com/saschazesiger/Dashboard-Style/blob/main/CHANGELOG.md), Abschnitt 2.0.0 («Migration») |
 | Neutraler Styleguide | `styleguide/index.html` im Repository (läuft auch von der Festplatte) |
 
 Dieses Dokument nennt nur, was ICT-Inventar **darüber hinaus** festlegt: das Campus-Thema, die Bausteine, die es nur
@@ -43,16 +45,16 @@ Inhalt: 1 Grundlage · 2 Campus-Thema · 3 Layout · 4 Bausteine · 5 Abweichung
 
 | Was | Wo | Regel |
 |---|---|---|
-| Kopie | `vendor/dashboard-style/` (`ds.css`, `ds.js`, `css/` samt `css/optional/`, `js/`, `fonts/`, `LICENSE`, `VERSION`, `SHA256SUMS`) | **Nie von Hand ändern.** Aktualisiert wird sie nur mit `vendor.ps1`/`vendor.sh` (§11); `code/Pruefe-Frontend.ps1` vergleicht jede Datei mit `SHA256SUMS`. `.gitattributes` schützt den Ordner vor umgeschriebenen Zeilenenden (`-text`) und führt ihn für GitHub als fremden Code (`linguist-vendored`). |
-| Gültigkeitsbereich | `<html class="ds-theme ds-base">` | Die Tokens hängen an `.ds-theme` (nicht an `:root`); `.ds-base` setzt Grund, Schrift, Links, Code, Fokus, `[hidden]` und die Bildlaufsperre `body.ds-no-scroll`, die `DS.overlay` braucht. |
-| Kaskaden-Ebenen | `ds.css` in `@layer ds.tokens, ds.base, ds.components, ds.motion, ds.utilities`; `grund.css` in `@layer grund` | CSS **ohne** Ebene schlägt jede Ebene, gleich wie spezifisch. Darum: `thema.css`, `bausteine.css`, `rahmen.css` und die Seiten-CSS stehen ohne Ebene und überschreiben einen gemeinsamen Baustein nur, wo ICT es wirklich anders will (mit Grund, §5) – keine doppelten Klassen, kein `!important`, keine `:where()`-Kniffe gegen Dashboard-Style, lieber seine Hooks (`--ds-btn-*`, `--ds-table-row-hover` …). Grundregeln, die keinen Baustein schlagen dürfen (Rollen der Überschriften h1–h6, Ränder 0 der ICT-Blöcke), stehen in `grund.css`: sie wird als **erste** Stilvorlage geladen und legt mit `@layer grund, ds;` die Reihenfolge fest. |
+| Kopie | `vendor/dashboard-style/` (`ds.css`, `ds.js`, `css/` samt `css/optional/`, `js/`, `fonts/`, `themes/`, `tools/`, `deprecations.json`, `tokens.json`, `ds.d.ts`, `LICENSE`, `VERSION`, `SHA256SUMS`) | **Nie von Hand ändern.** Aktualisiert wird sie nur mit `vendor.ps1`/`vendor.sh` (§11); `code/Pruefe-Frontend.ps1` vergleicht jede Datei mit `SHA256SUMS`. `.gitattributes` schützt den Ordner vor umgeschriebenen Zeilenenden (`-text`) und führt ihn für GitHub als fremden Code (`linguist-vendored`). |
+| Gültigkeitsbereich | `<html class="ds-theme ds-base">` | Die Tokens hängen an `.ds-theme` (nicht an `:root`); `.ds-base` setzt Grund, Schrift, Links, Code, Fokus, `[hidden]`, die Rollen der Überschriften h1–h6 (seit 2.0) und die Bildlaufsperre `body.ds-no-scroll`, die `DS.overlay` braucht. |
+| Kaskaden-Ebenen | `ds.css` in `@layer ds.tokens, ds.base, ds.components, ds.motion, ds.utilities`; `grund.css` in `@layer grund` | CSS **ohne** Ebene schlägt jede Ebene, gleich wie spezifisch. Darum: `thema.css`, `bausteine.css`, `rahmen.css` und die Seiten-CSS stehen ohne Ebene und überschreiben einen gemeinsamen Baustein nur, wo ICT es wirklich anders will (mit Grund, §5) – keine doppelten Klassen, kein `!important`, keine `:where()`-Kniffe gegen Dashboard-Style, lieber seine Hooks (`--ds-btn-*`, `--ds-table-row-hover` …). Grundregeln, die keinen Baustein schlagen dürfen (Ränder 0 der ICT-Blöcke), stehen in `grund.css`: sie wird als **erste** Stilvorlage geladen und legt mit `@layer grund, ds;` die Reihenfolge fest. |
 | CSS | `ds.css` (alle Dateien in Kaskadenreihenfolge), `css/optional/view-transitions.css` | Danach `thema.css`, `bausteine.css`, `rahmen.css`, die Seitenvorlage (§12). `view-transitions.css` schaltet die Seitenübergänge zwischen den HTML-Seiten ein (§6.2). |
-| JavaScript | `ds.js`, klassisch → `window.DS` mit `DS.motion`, `DS.indicator`, `DS.dom`, `DS.ripple`, `DS.icons`, `DS.overlay` | Seiten rufen `DS` nicht direkt auf; die deutschen Hüllen sind die Schnittstelle: `Bewegung.*` → `DS.motion` und `DS.indicator` (§6.1); `UI.beschaeftigt` → `DS.motion.busy`; `UI.abgleichen`, `Rahmen.stillZeichnen`, `F.zeichneBereich` → `DS.dom.morphChildren`; `UI.dialog`, `UI.bestaetigen`, `UI.blatt` und die modale Schublade → `DS.overlay.open/close`; `UI.meldung` → `DS.overlay.toast`; Tooltips → `data-tip` und `DS.overlay.tooltips`; `UI.sinnbild` → `DS.icons.iconElement`. `rahmen.js` startet einmal je Seite `DS.ripple.attach(document)` und `DS.overlay.tooltips(document)`. Kein `DS.icons.icon()` und kein `DS.dom.morphHtml` (beide arbeiten mit HTML-Text). |
+| JavaScript | `ds.js`, klassisch → `window.DS` mit `DS.motion`, `DS.indicator`, `DS.dom`, `DS.ripple`, `DS.icons`, `DS.overlay` | Seiten rufen `DS` nicht direkt auf; die deutschen Hüllen sind die Schnittstelle: `Bewegung.*` → `DS.motion` und `DS.indicator` (§6.1); `UI.beschaeftigt` → `DS.motion.busy`; `UI.abgleichen`, `Rahmen.stillZeichnen`, `F.zeichneBereich` → `DS.dom.morphChildren`; `UI.dialog`, `UI.bestaetigen`, `UI.blatt` und die modale Schublade → `DS.overlay.open/close`; `UI.ebeneOffen` → `DS.overlay.topmost`; `UI.meldung` → `DS.overlay.toast`; `UI.speicherleiste` → `DS.overlay.savebar`; Tooltips → `data-tip` und `DS.overlay.tooltips`; `UI.fortschritt` → `DS.dom.progress`; die Kanten der Tafel und seitlicher Roller → `DS.dom.watchScrolled`, `DS.dom.scrollEdges`; `UI.sinnbild` → `DS.icons.iconElement`. `rahmen.js` startet einmal je Seite `DS.ripple.attach(document)` (Welle und die Wache `DS.motion.guard`: ein beschäftigter, gerade erfolgreicher oder `aria-disabled` Knopf nimmt weder Klick noch Taste an) und `DS.overlay.tooltips(document)`. Kein `DS.icons.icon()` und kein `DS.dom.morphHtml` (beide arbeiten mit HTML-Text). |
 | Schriften | `vendor/dashboard-style/fonts/` (Google Sans), `schriften/` (Archivo) | Beide selbst gehostet, Lizenz SIL OFL 1.1 je als `OFL.txt` daneben. Kein Google Fonts; die Inhaltsrichtlinie in `_headers` erlaubt Schriften nur von `'self'`. |
 
 Namen: Tokens heissen `--ds-*`, Klassen `.ds-*`, die Keyframes `ds-*`, Attribute `data-ds-*`. Deutsch bleiben die
 sichtbaren Texte, die JS-Namensräume (`UI.knopf`, `Rahmen.zustand`, `Bewegung.eintreten`, `F.feld`) und die Klassen
-und Tokens der ICT-eigenen Bausteine (`.speicherleiste`, `.zeitachse`, `--diagramm-a`). Die Tabelle alt → neu steht
+und Tokens der ICT-eigenen Bausteine (`.wortmarke`, `.zahlmarke`, `--campus-gruen`). Die Tabelle alt → neu steht
 in §13.
 
 Grundsätze (aus Dashboard-Style, hier verbindlich): getönter Grund mit **einer** weissen Tafel als einzigem Roller;
@@ -85,10 +87,15 @@ richtig hat (Textfarben #1f1f1f/#444746/#747775, Statusfarben, Radien, Schatten,
 | `--ds-surface-highest` | `#e2e3e1` | Schalterspur aus, Skelettlinien |
 | `--ds-line` | `#e2e3e1` | passive Haarlinie: Karten, Trenner, Tabellenzeilen |
 | `--ds-primary` | `#1a3c25` | gefüllter Knopf, Text-Knopf, Links, Fokus, Schalter an, Fortschritt, Zeitachsenpunkt |
-| `--ds-primary-hover` / `-pressed` | `#2c4c36` / `#153220` | Referenzwerte (Primär + 8 % Weiss bzw. dunkler) |
 | `--ds-accent` / `--ds-on-accent` | `#cfdfad` / `#1a3c25` | **die einzige Tönung**: aktive Navigation, gewählter Chip, Tonal-Knopf, Zähler, Leerzustand-Scheibe, Spur von Fortschritt und Ladebalken, Textauswahl |
-| `--ds-inverse-primary` | `#a1d73b` | Erfolgs-Sinnbild und Aktion in der Meldung |
-| `--ds-link-underline` | `rgba(26, 60, 37, .4)` | Linie unter Links in Ruhe |
+| `--ds-inverse-primary` | `#a1d73b` | Erfolgs-Sinnbild und Text-Knopf in der Meldung |
+| `--ds-chart-2` | `#5a8410` | zweite Diagrammreihe («Ersatz geplant» im Zeitstrahl): ein Grün der Campus-Familie mit 3:1 auf Fläche und Spur statt des Orange von Dashboard-Style |
+| `--ds-meter-track` (Hook) | `var(--ds-accent)` | Spur der Balken (`.ds-meter`) im Pastell |
+| `--ds-list-current-bg` (Hook) | `var(--ds-surface-low)` | die aktuelle Zeile einer Zeilenliste («dieses Gerät») ruhig getönt statt im Pastell der Navigation |
+| `--ds-form-rows-control-max` (Hook) | `560px` | Felder in Formularzeilen höchstens 560 px breit |
+
+Hover und Druck des gefüllten Knopfs (Primär + 8 % Weiss bzw. + 15 % Schwarz) und die Linie unter Links (Primär zu
+40 %) leitet Dashboard-Style seit 2.0 aus `--ds-primary` ab; das Thema setzt sie nicht mehr.
 
 **Kein Blau**, auch kein blaues «Info»: neutral = `--ds-surface-low` + grünes Sinnbild. Kontrast: `--ds-text-3`
 erreicht 4.5:1 **nur auf Weiss**; das Pastell hat gegen Weiss 1.42:1 – eine Auswahl trägt darum immer zusätzlich ein
@@ -101,17 +108,12 @@ Häkchen, das Gewicht 500 oder ein `aria-*`-Attribut.
 | `--campus-gruen` | `#84b819` | nur Dekoration: der Punkt der Wortmarke, nie Text |
 | `--schrift-marke` | `Archivo, 'Trade Gothic Next', 'Helvetica Neue', Arial, sans-serif` | nur die Wortmarke (das Campus-Logo ist in Trade Gothic Next gesetzt; Archivo in 112 % Breite kommt ihm am nächsten) |
 | `--gewicht-marke` | `650` | nur die Wortmarke |
-| `--konto-breit` | `240px` | Name und E-Mail in der Konto-Kapsel, danach «…» |
-| `--diagramm-a` / `-b` | `var(--ds-primary)` / `var(--ds-accent)` | Balken, Säulen, Zeitstrahl (b = Vergleichsreihe) |
-| `--diagramm-gefahr` / `-warnung` | `var(--ds-error)` / `var(--ds-warning)` | überfällig / im laufenden Geschäftsjahr |
 
-**Laufzeit- und Komponentenvariablen** der eigenen Bausteine setzen Bauer, `rahmen.js` und das CSS der Bausteine, nie
-Seiten: `--anteil` (Balken, Säulen, Zeitstrahl), `--rollleiste` (`UI.rollKanten`: Breite einer senkrechten
-Rollleiste, die Blende lässt sie aus), `--leiste-hoehe`, `--leiste-reserve`, `--leiste-rest` (Speicherleiste, von
-`rahmen.js` gemessen), dazu im CSS `--leiste-unten`, `--bahn-unten`, `--dialog-fokusraum`, `--sinnbild-kante`. Von
-Dashboard-Style setzt der Code nur die dokumentierten Hooks `--ds-progress` (auf `.ds-progress`), `--ds-toast-bottom`
-(Meldungen über der Speicherleiste) und `--ds-toast-reserve` mit `data-toast-reserve` (Platz für einen stehenden
-Fehler); alle übrigen `--ds-toast-*`, `--ds-indicator-*`, `--ds-i` … setzt Dashboard-Style selbst.
+**Laufzeitvariablen** setzen nur die Bauer und Dashboard-Style, nie Seiten: der Anteil eines Balkens oder einer
+Säule ist `--ds-share` (gesetzt von `UI.balken`, `UI.saeulen`, `UI.verteilung` und dem Zeitstrahl), der einer
+Fortschrittsanzeige `--ds-progress` über `DS.dom.progress`. Platz für Meldungen und Speicherleiste
+(`--ds-toast-reserve`, `--ds-toast-lift`, die Masse der Speicherleiste), die Pille (`--ds-indicator-*`) und die
+Staffelung (`--ds-i`) schreibt Dashboard-Style selbst, das Attribut `data-toast-reserve` ebenso.
 
 ---
 
@@ -135,15 +137,15 @@ Das Gerüst ist das der Referenz-App von Dashboard-Style (docs/components.md, «
 
 | Teil | Klasse / Bau | Regeln |
 |---|---|---|
-| Seite | `div.ds-app.ds-app--drawer[data-seite]`, erstes Element in `<body>` | Raster aus Kopf, Schublade, Tafel; rollt nie. `rahmen.js` baut Kopf und Schublade **sofort beim Laden** aus dem Gerüst (§10.1). Zustände an `.ds-app`: `data-drawer-open` (setzt `DS.overlay`), `data-drawer-hidden`, `data-scrolled` (Tafel gerollt; ein 1-px-Wächter `.rollwaechter` mit IntersectionObserver setzt es), `data-zurueck`. |
+| Seite | `div.ds-app.ds-app--drawer[data-seite]`, erstes Element in `<body>` | Raster aus Kopf, Schublade, Tafel; rollt nie. `rahmen.js` baut Kopf und Schublade **sofort beim Laden** aus dem Gerüst (§10.1). Zustände an `.ds-app`: `data-drawer-open` (setzt `DS.overlay`), `data-drawer-hidden`, `data-scrolled` (Tafel gerollt; setzt `DS.dom.watchScrolled`), `data-zurueck`. |
 | Sprungmarke | `a.ds-skip` | «Zum Inhalt», Ziel `#inhalt`. |
-| Kopf | `div.ds-topbar#kopf` (rahmen.js) | Links [Menüknopf ≤ 900 px] und die **Wortmarke** «ICT.INVENTAR» (`.wortmarke`, Link zur Übersicht) auf der linken Kante der Navigationssinnbilder. Rechts **auf allen Seiten** EINE Kapsel `.kopf-konto` (48 px, Pille, weiss, Haarlinie) mit `.ds-account` (Initiale 32 px, Name, E-Mail bis `--konto-breit`), Trenner und «Abmelden» (Text-Knopf). Das Konto der vorigen Seite belegt den Kopf vom ersten Bild an vor (sessionStorage); die Wortmarke wartet höchstens 300 ms auf Archivo. Vorführmodus: Konto «Vorführmodus», kein «Abmelden». |
+| Kopf | `div.ds-topbar#kopf` (rahmen.js) | Links [Menüknopf ≤ 900 px] und die **Wortmarke** «ICT.INVENTAR» (`.wortmarke`, Link zur Übersicht) auf der linken Kante der Navigationssinnbilder. Rechts **auf allen Seiten** EINE Kapsel `.ds-account.ds-account--capsule` (48 px, Pille, weiss, Haarlinie): Initiale 32 px in jeder Breite (`role=img` mit Tooltip), Name und E-Mail (`aria-hidden`, bis 240 px), `.ds-account__divider` und «Abmelden» (Text-Knopf). Das Konto der vorigen Seite belegt den Kopf vom ersten Bild an vor (sessionStorage); die Wortmarke wartet höchstens 300 ms auf Archivo. Vorführmodus: Konto «Vorführmodus», kein «Abmelden». |
 | Schleier | `div.ds-scrim` vor der Schublade | nur für die modale Schublade (≤ 900 px). |
-| Schublade | `nav.ds-drawer#schublade[tabindex=-1]` über `Rahmen.navigation` bzw. `F.navZeichnen` | Gruppentitel in Satzschreibung, Einträge 48-px-Pillen (`.ds-drawer__item`), Zähler `.schublade-zahl` rechts. Aktiv: gleitende Pille (`DS.indicator`, folgt `aria-current` selbst) + 500 + `aria-current="page"`. Einträge sind echte Links. Hauptseite: je Modul zuerst seine «Übersicht», dann die Listen · «Geräte»: Übersicht, ADMIN-Clients, EDU-Clients · «Verzeichnis»: Übersicht, Benutzer, Telefonnummern, Software · «Videoüberwachung»: Übersicht, Kameras, Kamerarechte (`Rahmen.HAUPTZIELE`, einzige Quelle). Detailseiten: zuoberst der Zurück-Eintrag `.schublade-zurueck` («← ADMIN-Clients», Link zur gemerkten Liste), darunter die Bereiche des Datensatzes in Gruppen. |
+| Schublade | `nav.ds-drawer#schublade[tabindex=-1]` über `Rahmen.navigation` bzw. `F.navZeichnen` | Gruppentitel in Satzschreibung, Einträge 48-px-Pillen (`.ds-drawer__item`), Zähler `.ds-drawer__count` rechts; den aktiven Eintrag einer langen Liste rollt `DS.indicator` ins Bild. Aktiv: gleitende Pille (`DS.indicator`, folgt `aria-current` selbst) + 500 + `aria-current="page"`. Einträge sind echte Links. Hauptseite: je Modul zuerst seine «Übersicht», dann die Listen · «Geräte»: Übersicht, ADMIN-Clients, EDU-Clients · «Verzeichnis»: Übersicht, Benutzer, Telefonnummern, Software · «Videoüberwachung»: Übersicht, Kameras, Kamerarechte (`Rahmen.HAUPTZIELE`, einzige Quelle). Detailseiten: zuoberst der Zurück-Eintrag `.ds-drawer__back` («← ADMIN-Clients», Link zur gemerkten Liste, Haarlinie darunter), darunter die Bereiche des Datensatzes in Gruppen. |
 | Ohne Schublade | `navigation({ verstecken: true })` → `[data-drawer-hidden]` | Neu-Formulare, Fehler- und Endzustand der Detailseiten: Tafel volle Breite, die Wortmarke bleibt an ihrer Stelle. |
 | Tafel | `.ds-panel > main.ds-view#tafel[tabindex=-1]` | Weiss, Radius 20 oben, einziger Roller. |
 | Ladebalken | `span.ds-loadbar#ladebalken` | Muster von Dashboard-Style: steht nur, solange die Seite lädt, in `.ds-content` vor der Bahn, erscheint nach `--ds-delay-loader` und geht mit `DS.motion.leave`. Kein statisches Markup. |
-| Bahn | `.ds-content > .ds-page#inhalt` | Höchstens 1280 px (`--ds-content-max`), eine Spalte, 20 px Abstand; unten Platz für eine zweizeilige Meldung (`--bahn-unten`). Container `ds-content` (von Dashboard-Style): schmale Darstellungen richten sich nach der Bahn. `data-zustand="laden\|fehler\|ende"` blendet den Seiteninhalt aus (`.bahn-zustand`). |
+| Bahn | `.ds-content > .ds-page#inhalt` | Höchstens 1280 px (`--ds-content-max`), eine Spalte, 20 px Abstand; unten Platz für eine Meldung (Dashboard-Style). Container `ds-content` (von Dashboard-Style): schmale Darstellungen richten sich nach der Bahn. `data-zustand="laden\|fehler\|ende"` blendet den Seiteninhalt aus (`.bahn-zustand`). |
 | Meldungen | `div.ds-toasts` direkt nach `.ds-app` | genau eine Region je Seite, **ohne** `role` und `aria-live` (die Ansagen legt `DS.overlay.toast` selbst daneben an; Prüfung 12). |
 
 ### 3.2 Hauptseite (`index.html`)
@@ -155,9 +157,10 @@ Das Gerüst ist das der Referenz-App von Dashboard-Style (docs/components.md, «
 - Jede Ansicht beginnt mit einem Seitenkopf (h1 24/32, ohne Lead).
 - **Tabellenansichten:** Werkzeugleiste `.ds-action-bar` (Suche · «Filter» · «Spalten» mit Zahl · «CSV» · rechts
   Trefferzahl und «Neuer …» – bei «Benutzer» keiner, die Liste pflegt der Abgleich), darunter die Chips aktiver
-  Filter, darunter der Tabellenrahmen `.tabelle-rahmen` mit `table.ds-table.ds-table--interactive` (der Name ist der
-  Zeilenlink `a.ds-table__row-link`; «Kompakte Zeilen» setzt `.ds-table--dense`). `Rahmen.fest(true)`: ab
-  601 × 720 px rollt die Tafel nicht, die Liste füllt den Rest und rollt selbst (Kopf und erste Spalte kleben).
+  Filter, darunter der Tabellenrahmen `.ds-table-wrap--fill` (Haken `.tabelle-rahmen`) mit
+  `table.ds-table.ds-table--interactive.ds-table--pin-first` (der Name ist der Zeilenlink `a.ds-table__row-link`;
+  «Kompakte Zeilen» setzt `.ds-table--dense`). `Rahmen.fest(true)` setzt `.ds-view--fill`: ab 601 × 720 px rollt
+  die Tafel nicht, die Liste füllt den Rest und rollt selbst (Kopf und erste Spalte kleben).
 - **Übersicht**, je Modul eine (Geräte, Verzeichnis, Videoüberwachung; Inhalt aus `MODUL` in `app.js`):
   Handlungsbedarf (interaktive Karten mit Zahlmarke vor dem Titel, `UI.karte({ href, marke })`, Gefahr vor Warnung,
   bei Gefahr zusätzlich der Status «Dringend»; leer: Erfolgsbanner) · Bestand (eine Karte je Liste: Hauptzahl als
@@ -172,7 +175,7 @@ In der Bahn stehen nur `header.ds-page-head#<p>-kopf` und `div.fenster-bereich#<
 
 | Teil | Regeln |
 |---|---|
-| Seitenkopf (`F.seitenkopf`) | Zurück-Link `.seitenkopf-pfad` («‹ ADMIN-Clients», Text-Knopf klein) zur **gemerkten Listenadresse samt Suche, Filtern und Sortierung** – nur, wo die Schublade ihn nicht trägt (Neu-Modus, Fehler- und Endzustand, Fenster ≤ 900 px); Titel h1; Teile-Zeile («Haus A / 1. OG · Latitude 5540 · …»); Status-Chips nur für Abweichungen; **Schnellaktionen rechts** als Text-Knöpfe mit Sinnbild, **«Löschen …» zuletzt**. Gesperrt mit Grund, solange etwas ungespeichert ist; die Knöpfe bleiben stehen, nur die Sperre wechselt (§4.4). |
+| Seitenkopf (`F.seitenkopf`) | Zurück-Link `.ds-page-head__back` («← ADMIN-Clients») zur **gemerkten Listenadresse samt Suche, Filtern und Sortierung** – nur, wo die Schublade ihn nicht trägt (Neu-Modus, Fehler- und Endzustand, Fenster ≤ 900 px); Titel h1; Teile-Zeile («Haus A / 1. OG · Latitude 5540 · …»); Status-Chips nur für Abweichungen; **Schnellaktionen rechts** als Text-Knöpfe mit Sinnbild, **«Löschen …» zuletzt**. Gesperrt mit Grund, solange etwas ungespeichert ist; die Knöpfe bleiben stehen, nur die Sperre wechselt (§4.4). |
 | Bereich (`F.zeichneBereich`) | Karten im 20-px-Rhythmus (`.fenster-bereich`, `.ds-stack`, `.karten`, `.ds-grid-2`). Derselbe Bereich wird **still abgeglichen** (`DS.dom.morphChildren`, §4): Fokus, Schreibmarke, Rollstand, Tooltip und laufende Spinner bleiben, kein Auftritt spielt noch einmal. |
 | Bereichswechsel (`F.bereichWechseln`) | Adresse per `replaceState` (`#stammdaten`), die Pille gleitet, Inhalt über `Rahmen.wechseln` (`DS.motion.transition`, «fade-through»), Raster staffeln. |
 | Zustände | `F.zeigeLaden`, `F.ladefehler`/`F.zeigeFehler` (mit Zurück-Link, ohne Schublade), Endzustand nach dem Löschen mit «Zur Liste». |
@@ -182,13 +185,14 @@ In der Bahn stehen nur `header.ds-page-head#<p>-kopf` und `div.fenster-bereich#<
 
 | Grenze | Verhalten |
 |---|---|
-| Fenster ≤ 1100 px | Kacheln 4 → 2 Spalten |
+| jede Breite | Kacheln: so viele je Zeile, wie 176 px breit Platz haben, höchstens vier (die drei Kennzahlen des Benutzers drei, `.ds-tiles--3`), jede Zeile gefüllt; auf dem Telefon eine je Zeile |
 | Bahn ≤ 1040 / ≤ 520 px | genau vier Fakten: 2 × 2 / untereinander |
 | Fenster ≤ 900 px | **Schublade modal** über `DS.overlay`: Menüknopf links im Kopf, Schleier, gleitet von links, Fokusfalle, Esc, schliesst bei Wahl. `.ds-grid-2` einspaltig. |
 | Bahn ≤ 760 px (Dialog, Blatt: Fenster ≤ 760 px) | Formularraster einspaltig |
-| Fenster ≤ 720 px | Konto als Initiale in der Kapsel (Tooltip mit Name und E-Mail, ein Tabstopp); Chip-Trenner weg |
-| Bahn ≤ 600 px | Seitenkopf-Aktionen links unter dem Titel |
-| Fenster ≤ 600 px | Tafel randlos (Oberkante bleibt rund); Wortmarke 16/24; Kartenpolster 16; Blatt volle Breite ohne Radius; Meldung über die ganze Breite; Speicherleiste 16 px vom Rand; Feldtext 16 px; Aktionen von Listenzeilen und Chips von Schalterzeilen rutschen unter den Text |
+| Fenster ≤ 720 px | Konto nur mit der Initiale in der Kapsel (Tooltip mit Name und E-Mail, ein Tabstopp); Chip-Trenner weg |
+| Bahn ≤ 600 px | Seitenkopf-Aktionen links unter dem Titel; die Suche einer Werkzeugleiste nimmt eine eigene Zeile |
+| Fenster ≤ 600 px | Tafel randlos (Oberkante bleibt rund); Wortmarke 16/24; Kartenpolster 16; Blatt volle Breite ohne Radius; Meldung über die ganze Breite; Speicherleiste 16 px vom Rand; Feldtext 16 px; Aktionen von Listenzeilen rutschen unter den Text |
+| Schalterliste ≤ 560 px | Zusatz-Chips rutschen unter den Namen |
 | unter 601 × 720 px | Tabellenansichten rollen mit der Tafel (§3.2) |
 | Fenster ≤ 359 px (320 px, 400 % Zoom) | Kapsel nur mit «Abmelden» (Konto nur für Screenreader) |
 
@@ -202,10 +206,10 @@ zurück, setzen Text nur per `textContent`, nehmen Optionen als Objekt, schreibe
 - `fokus: 'schluessel'` setzt `data-fokus` – damit finden Abgleich und Rückfokus das Element wieder (jedes
   Bedienelement ohne `id` braucht es);
 - `titel` ist der Tooltip, geschrieben als **`data-tip`** und gezeigt von `DS.overlay.tooltips`; wiederholt er nur
-  den sichtbaren Text (gekürzte Namen, Chips, Tabellenzellen), steht er in **`data-tip-abgeschnitten`** und zeigt sich
-  nur, solange der Text wirklich abgeschnitten ist (`UI.tipp` entscheidet das selbst). Nie das Browser-`title`;
+  den sichtbaren Text (gekürzte Namen, Chips, Tabellenzellen), zeigt Dashboard-Style ihn nur, solange der Text
+  wirklich abgeschnitten ist. Nie das Browser-`title`;
 - was sich an Ort und Stelle ändert, hat Methoden am Knoten (`.setzen()` …): umschalten, nicht neu bauen. Der
-  Zustand steht dabei im DOM (Schalter: `data-an`, `.schalter-gesperrt`; Hinweisplatz: `data-hinweis-schluessel`),
+  Zustand steht dabei im DOM (Schalter: `data-an`, `.ds-switch--locked`; Hinweisplatz: `data-hinweis-schluessel`),
   nicht in einer Closure, und Teil-ids sind stabil – ein abgeglichener Knoten trägt so immer den richtigen Zustand.
 
 **Neu zeichnen heisst still abgleichen.** Wo ein Bereich, eine Liste oder ein Kopf nach Daten neu entsteht, werden die
@@ -214,7 +218,8 @@ angeglichen – nie leeren und neu einhängen. Der Schlüssel eines Knotens ist 
 Karten und Bedienelemente mit Zuhörer tragen einen, damit ein behaltener Knoten immer zum selben Datensatz gehört.
 Behaltene Knoten behalten ihre Zuhörer vom ersten Bauen: Handler lesen den aktuellen Stand (Modulvariablen, Entwurf)
 statt Werte einzuschliessen, oder der Behälter hört (Delegation), oder der Teilbaum trägt `data-ds-replace` (wird dann
-ersetzt statt gepatcht). Ein Knoten aus einem Bereich ist nur bis zum nächsten `F.zeichneBereich` der gezeigte: wer
+ersetzt statt gepatcht), oder `UI.abgleichen({ beiBehalten })` (das `onKeep` von Dashboard-Style) gibt den Zustand
+an den behaltenen Knoten weiter (`F.seitenkopf`: der `beiKlick` der Kopfknöpfe). Ein Knoten aus einem Bereich ist nur bis zum nächsten `F.zeichneBereich` der gezeigte: wer
 später nachführt, sucht ihn über `id` bzw. `data-fokus`. Einzelheiten: Kopfkommentare von `bausteine.js`
 (`UI.abgleichen`, `UI.kinderAbgleichen`), `rahmen.js` (`Rahmen.stillZeichnen`) und `fenster.js`.
 
@@ -225,54 +230,53 @@ Aussehen, Masse und Zustände stehen in [docs/components.md](https://github.com/
 | Bauer | Markup / Dashboard-Style | Hinweise für ICT |
 |---|---|---|
 | `UI.knopf({ text, variante, sinnbild, klein, weiter, titel, label, gedrueckt, deaktiviert, gesperrt, beschaeftigt, fertig, href, fokus, … })` | `.ds-btn` + `--primary` / `--tonal` / `--text` (`'leise'`) / `--quiet` (`'still'`) / `--icon` (`'sinnbild'`) / `--disc` (`'scheibe'`) / `--sm` (`klein`) | genau **eine** gefüllte Hauptaktion je Bereich; keine roten Knöpfe; «…» am Ende heisst Rückfrage folgt; `weiter: true` hängt einen Pfeil an (er bewegt sich beim Hover nicht); gedrückt = `aria-pressed`; `beschaeftigt: 'Wird gespeichert …'`/`fertig: 'Gespeichert'` bauen die Gesichter schon beim Bauen, der Knopf springt dann nie in der Breite |
-| `UI.beschaeftigt(knopf, arbeit, { text, fertig })` → Promise, `UI.knopfSperren(knopf, grund)` | `[aria-busy]` + `.ds-btn__faces` über `DS.motion.busy`; `[aria-disabled]` | **gesperrt mit Grund** bleibt fokussierbar, der Tooltip nennt den Grund, Klicks schluckt `bausteine.js` – immer so für Schnellaktionen. Beschäftigt: `aria-busy` sofort, das Gesicht mit Spinner erst nach `--ds-delay-loader`, dann mindestens `--ds-hold-loader`; mit `fertig` danach das Erfolgsgesicht für `--ds-hold-success`. Scheitert `arbeit`, ist der Knopf sofort frei und das Promise verworfen; das Ergebnis meldet die Seite (`UI.meldung`) |
+| `UI.beschaeftigt(knopf, arbeit, { text, fertig })` → Promise, `UI.knopfSperren(knopf, grund)` | `[aria-busy]` + `.ds-btn__faces` über `DS.motion.busy`; `[aria-disabled]` | **gesperrt mit Grund** bleibt fokussierbar, der Tooltip nennt den Grund, Klick, Enter, Leertaste und Absenden sperrt die Wache von Dashboard-Style (`DS.motion.guard`, von `DS.ripple.attach`) – immer so für Schnellaktionen. Beschäftigt: `aria-busy` sofort, das Gesicht mit Spinner erst nach `--ds-delay-loader`, dann mindestens `--ds-hold-loader`; mit `fertig` danach das Erfolgsgesicht für `--ds-hold-success`. Scheitert `arbeit`, ist der Knopf sofort frei und das Promise verworfen; das Ergebnis meldet die Seite (`UI.meldung`) |
 | `UI.status(text, ton, { sinnbild, titel })` | `.ds-status` + `--ok` / `--warning` / `--error` / `--running` | Töne `erfolg`, `warnung`, `gefahr`, `neutral`, `laeuft`, `wartet` (Uhr), `aus` (Verbot); `.setzen()` lässt Farbe und Sinnbild gleiten. Der **Normalfall bekommt keinen Chip** (§4.3); «Frei» (Telefonnummer) ist neutral mit `checkKreis` |
-| `UI.banner({ titel, text, ton, knopf, rolle })` | `.ds-alert` + `--success` / `--warning` / `--error` | `info` neutral, nie blau; Rolle `alert` bei `gefahr`, sonst `status`, `null` = keine; Knöpfe kompakt (`.ds-btn--sm`), mehrere in `.banner-knoepfe` (§5); Kommen und Gehen über `Bewegung.umordnen` |
+| `UI.banner({ titel, text, ton, knopf, rolle })` | `.ds-alert` + `--success` / `--warning` / `--error` | `info` neutral, nie blau; Rolle `alert` bei `gefahr`, sonst `status`, `null` = keine; Titel fett vorn im Text; Knöpfe kompakt (`.ds-btn--sm`) in `.ds-alert__actions`, die unter den Text rutschen, wird er schmaler als 256 px; Kommen und Gehen über `Bewegung.umordnen` |
 | `UI.leerzustand({ sinnbild, titel, text, aktion })` | `.ds-empty` | höchstens ein Satz, höchstens eine Aktion (tonal) |
 | `UI.hinweis`, `UI.meta`, `UI.teile` | `p.ds-muted`, `p.ds-meta`, `.ds-parts` | |
-| `UI.spinner(klein, { verzoegert })`, `UI.ladezeile`, `UI.skelettSeite`, `UI.fortschritt({ anteil, text, detail, unbestimmt, wartet, flach })` | `.ds-spinner(--sm)`, `.ds-loading` mit `.ds-loader--sm`, `.ds-skeleton`, `.ds-progress` (`--indeterminate`, `--waiting`, `--flat`) | Ladeanzeigen erst nach `--ds-delay-loader`, dann mindestens `--ds-hold-loader` (`Bewegung.ladeAbwarten` = `DS.motion.settleLoader`); der Bogen-Spinner steht nur in Knopf, Status-Chip oder `.ds-loading`, frei nur mit `verzoegert`; `--ds-progress` steht auf `.ds-progress`; `flach` für dichte Zellen |
-| `UI.karte({ titel, unter, aktionen, fuss, sinnbild, breit, gefuellt, ebene, href, beiKlick, fokus, marke })` | `section.ds-card` (`--filled`, `--interactive` mit `.ds-card__action`), `.ds-card__row`, `__title`, `__links`; dazu die ICT-Hilfen `.karte-inhalt`, `.karte-kopf-aktionen`, `.karte-marke` | `unter` nur, wo er Nicht-Offensichtliches sagt; Zwischentitel `.ds-card__subtitle`, Teil `.ds-subsection`. Mit `href`/`beiKlick` öffnet die ganze Karte etwas (der Titel wird Link bzw. Knopf, Aktionen darin bleiben bedienbar); `marke: UI.zahlmarke(n, ton)` setzt die Zahlmarke vor den Titel (Handlungsbedarf) |
-| `UI.kachel({ text, wert, unter, ton, zahl, schluessel, beiKlick, href, … })`, `UI.kacheln` | `.ds-tiles > .ds-tile` (als `button`/`a` klickbar) | **die Zahl wird nie gefärbt**; `ton` setzt nur ein Sinnbild; `zahl` ist der Rohwert fürs Hochzählen beim ersten Zeigen (am Knoten gemerkt, nicht im Markup), gezählt im Format von `wert`; mit `schluessel` (`data-ds-key`) zählt sie nach einem stillen Neuzeichnen vom gezeigten Wert (`Bewegung.kennzahlenStill`) |
-| `UI.kennwerte`, `UI.fakten` | `ul.ds-kv-list`, `dl.ds-facts` | klickbare Kennwerte: `.kennwerte-klickbar` (§4.2) |
-| `UI.feld`, `UI.eingabe`, `UI.feldFehler`, `UI.ankreuzen` | `.ds-field`, `.ds-input` (`--filled`), `.ds-field__hint(--error)`, `.ds-check(--sm)` | Beschriftung immer **über** dem Feld; Raster `.ds-form-grid--2/--3`, `.ds-field--full`, Reihe `.ds-inline-form`, Aktionszeile `.ds-form-actions` |
-| `UI.suchfeld({ kuerzel: '/', … })` | `.ds-search` + `kbd.kuerzel` | Esc leert eine gefüllte Suche (und nur das) |
-| `UI.schalter`, `UI.schalterZeile` | `label.ds-switch` mit `input[type=checkbox][role=switch]`, `.ds-switch__label`, `.ds-switch__state` | ein Klick schaltet an Ort und Stelle um, der Griff gleitet; die Sperre mit Schloss ist ICT-eigen (§4.2) |
-| `UI.chip({ text, gewaehlt, art: 'kaestchen'\|'radio', name, wert, beiKlick, … })`, `UI.chips(chips, { legende })` | `label.ds-chip` (`input.ds-chip__input` + `.ds-chip__body` mit Haken); `fieldset.ds-chips` mit `legend.ds-sr` bzw. `div.ds-chips` | Umschalt-Chip mit `gewaehlt`; `art: 'radio'` = genau einer der Gruppe. Eine Reihe ohne Umschalt-Chip ist `div.chip-zeile` (ICT, §4.2); Chips mit × und Aktions-Chips sind ICT-eigen |
+| `UI.spinner(klein, { verzoegert })`, `UI.ladezeile`, `UI.skelettSeite`, `UI.fortschritt({ anteil, text, detail, unbestimmt, wartet, flach })` | `.ds-spinner(--sm)`, `.ds-loading` mit `.ds-loader--sm`, `.ds-skeleton` (Fortschrittszeile `.ds-skeleton__note`), `.ds-progress` (`--indeterminate`, `--waiting`, `--flat`; Anteil und ARIA über `DS.dom.progress`) | Ladeanzeigen erst nach `--ds-delay-loader`, dann mindestens `--ds-hold-loader` (`Bewegung.ladeAbwarten` = `DS.motion.settleLoader`); der Bogen-Spinner steht nur in Knopf, Status-Chip oder `.ds-loading`, frei nur mit `verzoegert`; `--ds-progress` steht auf `.ds-progress`; `flach` für dichte Zellen |
+| `UI.karte({ titel, unter, aktionen, fuss, sinnbild, breit, gefuellt, ebene, href, beiKlick, fokus, marke })` | `section.ds-card` (`--filled`, `--interactive` mit `.ds-card__action`), `.ds-card__row`, `__title`, `__links`; dazu die ICT-Hilfen `.karte-inhalt`, `.karte-kopf-aktionen`, `.karte-marke` |  `unter` nur, wo er Nicht-Offensichtliches sagt; Zwischentitel `.ds-card__subtitle`, Teil `.ds-subsection`. Mit `href`/`beiKlick` öffnet die ganze Karte etwas (der Titel wird Link bzw. Knopf, Aktionen darin bleiben bedienbar); `marke: UI.zahlmarke(n, ton)` setzt die Zahlmarke vor den Titel (Handlungsbedarf) |
+| `UI.kachel({ text, wert, unter, ton, zahl, schluessel, beiKlick, href, … })`, `UI.kacheln` | `.ds-tiles > .ds-tile` (als `button`/`a` klickbar; ohne Wert `.ds-tile__value--empty`; drei je Zeile `.ds-tiles--3`) | **die Zahl wird nie gefärbt**; `ton` setzt nur ein Sinnbild; `zahl` ist der Rohwert fürs Hochzählen beim ersten Zeigen (am Knoten gemerkt, nicht im Markup), gezählt im Format von `wert`; mit `schluessel` (`data-ds-key`) zählt sie nach einem stillen Neuzeichnen vom gezeigten Wert (`Bewegung.kennzahlenStill`) |
+| `UI.kennwerte`, `UI.fakten` | `ul.ds-kv-list`, `dl.ds-facts` | klickbare Kennwerte: `.ds-kv-list--interactive` mit `.ds-kv-list__row` und `.ds-kv-list__icon` (Ton mit Wort für den Screenreader); leerer Wert `strong.ds-muted` |
+| `UI.datenzeilen`, `UI.feldZeile`, `UI.formZeile`, `UI.schloss`, `F.feld` | Lesen `dl.ds-facts.ds-facts--rows`, Bearbeiten `.ds-form.ds-form--rows` (Lesezeilen darin `.ds-field__value`), Schloss `.ds-lock` nach dem Wert, geändert `.ds-field--changed` mit `.ds-field__changed` | Name/Wert-Zeilen; Schloss «Vom Abgleich gesetzt.»; geändert = Punkt + «(geändert)» |
+| `UI.hinweise`, `UI.hinweisZeile` | `.ds-alert.ds-alert--plain` (Titel `.ds-alert__title`) untereinander | Befunde in einer Karte; der Ton färbt nur das Sinnbild |
+| `UI.listenZeile`, `UI.zeilenliste` | `ul.ds-list` (`--interactive`), `.ds-list__item`, `__title` mit `.ds-list__action`, `__meta`, `__actions`; aktuell `aria-current` | ganze Zeile öffnet ihr Ziel, Aktionen bleiben bedienbar |
+| `UI.zeitachse` (Grundlage von `Verlauf`) | `ol.ds-timeline` | automatische Einträge grau (`.zeitachse-still`, Hook `--ds-timeline-dot-color`) mit `sync` |
+| `UI.balken`, `UI.saeulen`, `UI.verteilung`; der Zeitstrahl in `app.js` | `.ds-meter`, `.ds-columns--mini`, `.ds-kv-list--bars` (klickbar `--interactive`); `.ds-columns--grouped` in `.ds-scroll-x` mit `.ds-legend` | Anteil `--ds-share`, die Füllung beschnitten; wachsen nur beim ersten Zeigen (`Bewegung.aufziehen`); Farben nur die Diagrammrollen (§2.1) |
+| `UI.feld`, `UI.eingabe`, `UI.feldFehler`, `UI.feldHinweis`, `UI.ankreuzen`, `UI.mehrfach` | `.ds-field`, `.ds-input` (`--filled`), `.ds-field__hint(--error, --success)` mit Sinnbild vorne, `.ds-check(--sm)`, `.ds-check-list` mit `.ds-check__count` | Beschriftung immer **über** dem Feld; Raster `.ds-form-grid--2/--3`, `.ds-field--full`, Reihe `.ds-inline-form`, Aktionszeile `.ds-form-actions` |
+| `UI.suchfeld({ kuerzel: '/', … })` | `.ds-search` + `kbd.ds-kbd.ds-search__key` | Esc leert eine gefüllte Suche (und nur das); das Kürzel weicht mit Fokus, Wert und auf Touch-Geräten |
+| `UI.schalter`, `UI.schalterZeile`, `UI.schalterListe` | `label.ds-switch` mit `input[type=checkbox][role=switch]`, `.ds-switch__label`, `__hint`, `__meta`, `__state`; gesperrt `.ds-switch--locked` mit `.ds-switch__icon` (Schloss); `.ds-switch-list` | ein Klick schaltet an Ort und Stelle um, der Griff gleitet; der Tooltip hängt am Kästchen; gesperrt und deaktiviert sind `aria-disabled` (fokussierbar, die Wache sperrt den Klick) |
+| `UI.chip({ text, gewaehlt, art: 'kaestchen'\|'radio', name, wert, beiKlick, entfernen, href, … })`, `UI.chips(chips, { legende })`, `UI.zaehler(zahl, still)` | Umschalter `label.ds-chip` (`input.ds-chip__input` + `.ds-chip__body` mit Haken); mit `entfernen` der Eingabe-Chip `button.ds-chip.ds-chip--input` mit ×, sonst der Aktions-Chip `button`/`a.ds-chip`; Reihe `fieldset.ds-chips` mit `legend.ds-sr`, aus Chip-Knöpfen `div.ds-chips[role=group]`; Zähler `.ds-badge` (`--neutral`) | Umschalt-Chip mit `gewaehlt`; `art: 'radio'` = genau einer der Gruppe. Ein langer Text endet mit «…» (höchstens 240 px), der Tooltip zeigt ihn ganz. Geht ein Chip mit dem Fokus, gibt ihn `Bewegung.umordnen` (`flip`) an den Nachbarn. Der Zähler ploppt nur von leer auf eine Zahl |
 | `UI.tabelle` | `.ds-table-wrap > table.ds-table` | schlicht in Karten; die Randblende beim seitlichen Rollen kommt von Dashboard-Style |
 | `UI.tabellenKopf` | `th[aria-sort]` mit `.ds-table__sort`, `.ds-table__sort-arrow`; `.ds-table--dense` | `thead` einmal bauen, `sortierungSetzen` nachführen; der Pfeil steht nur an der sortierten Spalte und dreht sich für «ab» über `aria-sort` |
-| `UI.tabellenRahmen(table, { vorNeuemTab })` | `table.ds-table--interactive` mit `a.ds-table__row-link` | klickbare Zeilen nur so (§4.3); der Rahmen selbst ist ICT-eigen (§4.2) |
+| `UI.tabellenRahmen(table, { id, klasse })` | `.ds-table-wrap.ds-table-wrap--fill` mit `table.ds-table--interactive.ds-table--pin-first` und `a.ds-table__row-link` | klickbare Zeilen nur so (§4.3); Kopf und erste Spalte kleben, den Klick in eine Zelle reicht `DS.ripple` an den Zeilenlink weiter (auch Ctrl-, Shift- und Mittelklick); die Kanten meldet `DS.dom.scrollEdges` |
 | `UI.sinnbild(name, groesse, klasse)` | `<svg class="icon">` aus `DS.icons.iconElement` | `UI.SINNBILDER` ordnet die deutschen Namen den Glyphen von `DS.icons` zu; ein neues Sinnbild kommt zuerst in Dashboard-Style, dann hier ein deutscher Name. Grössen: 20 Navigation/Icon-Knöpfe/Banner, 16 in Knöpfen/Status-Chips/Listen, 18 in Chips (führendes Sinnbild, Häkchen, ×), 24 Leerzustand. Unbekannter Name → `console.error` |
-| `Rahmen.*`, `UI.dialog`, `UI.bestaetigen`, `UI.blatt`, `UI.meldung`, `UI.tipp` | `.ds-app`, `.ds-topbar`, `.ds-drawer`, `.ds-panel`, `.ds-view`, `.ds-page-head`, `dialog.ds-dialog`, `dialog.ds-sheet`, `.ds-toasts > .ds-toast`, `[data-tip]` (→ `.ds-tooltip`) | §3, §7 |
+| `Rahmen.*`, `UI.seitenkopf`, `UI.dialog`, `UI.bestaetigen`, `UI.blatt`, `UI.meldung`, `UI.tipp`, `UI.speicherleiste` | `.ds-app`, `.ds-topbar`, `.ds-account--capsule`, `.ds-drawer` (`__back`, `__count`), `.ds-panel`, `.ds-view` (`--fill`), `.ds-page-head` (`__back`, `__row`, `__text`, `__lead`, `__status`, `__actions`), `dialog.ds-dialog` (`__body`, `--wide`), `dialog.ds-sheet` (`__heading`, `__subtitle`, `__foot`), `.ds-toasts > .ds-toast`, `[data-tip]` (→ `.ds-tooltip`), `.ds-savebar` | §3, §7 |
 
 ### 4.2 Bausteine, die es nur in ICT-Inventar gibt
 
-Klassen in `bausteine.css` (Bausteine) und `rahmen.css` (Rahmen und Überlagerungen), gebaut von denselben Bauern. Sie
-folgen denselben Regeln wie Dashboard-Style, lesen nur `--ds-*`-Tokens und die ICT-Tokens aus §2.2 und nutzen darunter
-das Druckmodell von Dashboard-Style: drückbare ICT-Bausteine tragen `data-ds-ripple` (Welle und `.ds-pressed` von
-`DS.ripple`), die Zustandsebene in der Inhaltsfarbe, Druck in `--ds-dur-micro`, und gesperrt über `--ds-disabled-*`.
+Klassen in `bausteine.css` (Bausteine) und `rahmen.css` (Rahmen), gebaut von denselben Bauern. Sie folgen denselben
+Regeln wie Dashboard-Style und lesen nur `--ds-*`-Tokens und die ICT-Tokens aus §2.2. Seit Dashboard-Style 2.0 bringt
+es fast alles selbst, was ICT früher nachbaute (Chips mit ×, Zähler, Schaltersperre, Zeilenliste, Datenzeilen,
+Zeitachse, Diagramme, Speicherleiste, Seitenkopf, Konto-Kapsel; §13). Ein eigenes drückbares Element bekäme
+`.ds-pressable` (Zustandsebene, Fokusring und Welle von Dashboard-Style), nie eine eigene Zustandsebene.
 
 | Baustein | Klassen | Bauer | Warum eigen |
 |---|---|---|---|
 | Wortmarke | `.wortmarke`, `.wortmarke-punkt` | `rahmen.js` | Zeichen des Inventars: Archivo 650, 112 % breit, Versalien, Punkt in `--campus-gruen`; steht auf der linken **Kante** der Navigationssinnbilder (eine Textmarke hat keine Achse) |
-| Konto-Kapsel | `.kopf-konto`, `.kopf-konto-trenner`, `.kopf-abmelden` | `Rahmen.konto`, `Rahmen.abmelden` | Konto und «Abmelden» in einer Pille |
-| Schublade: Zurück, Zähler | `.schublade-zurueck`, `.schublade-eintrag-zurueck`, `.schublade-zahl` | `Rahmen.navigation` | Detailseiten führen zur gemerkten Liste zurück |
-| Seitenkopf-Zusätze | `.seitenkopf-pfad`, `-zeile`, `-text`, `-unter`, `-status`, `-aktionen` | `UI.seitenkopf`, `F.seitenkopf` | Zurück-Link, Status und Schnellaktionen neben dem Titel; `F.seitenkopf` gleicht an Ort und Stelle ab (Kopfaktionen nur mit `beiKlick`, gesperrt über `gesperrt:` bzw. `F.beschaeftigt`) |
-| Zustände der Seite | `.bahn-zustand`, `.bahn-vorfuehrung`, `.zustand-laden`, `.zustand-fortschritt`, `.rollwaechter` | `Rahmen.zustand`, `Rahmen.vorfuehrung` | Laden, Fehler, Ende, Vorführband; Wächter für `data-scrolled` |
+| Zustände der Seite | `.bahn-zustand`, `.bahn-vorfuehrung`, `.zustand-laden` | `Rahmen.zustand`, `Rahmen.vorfuehrung` | Laden (Skelett mit `.ds-skeleton__note`), Fehler, Ende, Vorführband |
 | Detailbereich | `.fenster-bereich` | `F.zeichneBereich` | Gerüst der Detailseiten |
-| Speicherleiste | `.speicherleiste*` | `F.speicherleisteZeichnen`, `UI.speicherleiste` | genau ein Speicherweg (§7.5) |
-| Rollflächen in Dialog und Blatt | `.dialog-inhalt`, `.dialog-liste`, `.dialog-breit`, `.blatt-unter`, `.blatt-fuss`, `.meldung-aktion` | `UI.dialog`, `UI.blatt`, `UI.meldung` | nur der Inhalt rollt, Unterzeile und Fusszeile im Blatt, Aktion in der Meldung (§5, §7) |
-| Chips mit ×, Aktions-Chip, Reihe, Zähler | `.chip`, `.chip-entfernbar`, `.chip-x`, `.chip-text`, `.chip-zeile`, `.zaehler(-still)` | `UI.chip({ entfernen })` bzw. `UI.chip({ href \| beiKlick })` ohne `gewaehlt`, `UI.chips`, `UI.zaehler` | Dashboard-Style hat nur Chips auf Kästchen; ICT braucht entfernbare aktive Filter («Hersteller: HP ×») und Chips, die eine Seite öffnen. Masse, Druck und gesperrt wie `.ds-chip`. Zähler ploppt nur von leer auf eine Zahl |
+| Karten-Hilfen | `.karten`, `.karte-breit`, `.karte-inhalt`, `.karte-kopf-aktionen` | `UI.karte` | Kartenraster nach Platz (420 px), Inhaltsbereich mit dem Kartenrhythmus, Aktionen neben dem Titel |
 | Karte mit Zahlmarke | `.karte-marke`, `.zahlmarke` | `UI.karte({ marke })`, `UI.zahlmarke` | Handlungsbedarf: Zahlmarke tonal nach Dringlichkeit vor Titel und Beschreibung |
-| Datenzeilen | `.datenzeilen`, `.datenzeile*`, `.schloss`, `.geaendert` | `UI.datenzeilen`, `UI.feldZeile`, `UI.formZeile`, `F.feld` | Name/Wert-Zeilen zum Lesen und Bearbeiten; Schloss «Vom Abgleich gesetzt.»; geändert = Punkt + «(geändert)» |
-| Hinweisliste | `.hinweise`, `.hinweis-zeile*` | `UI.hinweise`, `UI.hinweisZeile` | der Ton färbt nur das Sinnbild |
-| Formular-Zusätze | `.eingabe-schmal`, `.mit-sinnbild`, `.hinweis-platz`, `.mehrfach` | `UI.eingabe({ schmal })`, `UI.feldHinweis`, `UI.hinweisPlatz`, `UI.mehrfach` | schmale Felder, Live-Hinweis, Kästchenliste mit Zahlen |
-| Schalter mit Sperre, Schalterzeile | `.schalter-gesperrt`, `.schalter-schloss`, `.schalter-zeile`, `.schalter-feld`, `-name`, `-text`, `-unter`, `-zusatz` | `UI.schalter`, `UI.schalterZeile` | an und gesperrt (Schloss im Griff, `aria-disabled`, Tooltip nennt die AD-Gruppe); `.ds-switch` kennt die Sperre nicht |
-| Liste über die ganze Seite | `.tabelle-rahmen`, `.tabelle-kopf-text`, `.name-link` | `UI.tabellenRahmen`, `UI.rollKanten` | eigener Roller, Kopf und erste Spalte kleben, Blende nur bei mehr Spalten rechts. Weil die klebende erste Spalte den Zeilenlink von Dashboard-Style auf ihre Zelle begrenzt, reicht der Rahmen einen Klick in eine Zelle an den Zeilenlink weiter (Ctrl-, Shift- und Mittelklick: neuer Tab; nicht bei markiertem Text); die Welle ist dort aus (`data-ds-ripple="off"`) |
-| Zeilenliste | `.zeilenliste`, `.listen-zeile*` | `UI.listenZeile`, `UI.zeilenliste` | ganze Zeile klickbar mit Pfeil und Welle, solange sie keine Aktionen hat |
-| Zeitachse | `.zeitachse*` | `UI.zeitachse` | Grundlage des Verlaufs; automatische Einträge grau mit `sync` |
-| Balken, Säulen, Verteilung | `.balken*`, `.saeulen`, `.saeule*`, `.verteilung*`, `.kennwert*`, `.kennwerte-klickbar` | `UI.balken`, `UI.saeulen`, `UI.verteilung`, `UI.kennwerte` | Anteil als `scaleX`/`scaleY` über `--anteil`; Farben nur `--diagramm-*`; wachsen nur beim ersten Zeigen (`.ds-enter--fill-x/-y`) |
+| Datenzeilen-Zusätze | `.datenzeile-neben`, `.datenzeile-zeile` | `UI.feldZeile` | leise Angabe neben dem Wert («vor 3 Tagen»), Knopfzeile unter einem Feld |
+| Hinweisliste | `.hinweise` | `UI.hinweise` | Befunde (`.ds-alert--plain`) ohne Lücke untereinander |
+| Formular-Zusätze | `.eingabe-schmal`, `.hinweis-platz` | `UI.eingabe({ schmal })`, `UI.hinweisPlatz` | schmale Felder, Live-Hinweis am Getippten |
+| Liste über die ganze Seite | `.tabelle-rahmen`, `.tabelle-kopf-text`, `.name-link` | `UI.tabellenRahmen`, `UI.tabellenKopf` | nur Masse: Tabelle so breit wie ihr Inhalt, erste Spalte mindestens 180 px; Kopf mit Erklärung als Tabstopp; Name in 500 |
+| Zeitachse still | `.zeitachse-still` | `UI.zeitachse` | Abgleich-Einträge mit grauem Punkt |
+| Zeitstrahl-Marke | `.zeitstrahl-marke`, `.zeitstrahl-legende` (`styles.css`) | `app.js` | das Sinnbild «überfällig» reitet auf seiner Säule |
 | Verlauf | `verlauf.css` (`vl-*`) | `Verlauf.zeichnen` (`verlauf.js`) | genau eine Karte «Verlauf»; gespeichert wird über den Entwurf und die Speicherleiste |
-| Hilfen | `.icon`, `.t-erfolg/-warnung/-gefahr/-info/-leise/-still/-stark`, `.kuerzel`, `.code-block`, `.anzahl` | – | Tonklassen nur zusammen mit Sinnbild oder Wort |
+| Hilfen | `.icon`, `.t-erfolg/-warnung/-gefahr/-info/-leise/-still/-stark`, `.anzahl`, `.status-text` | – | Tonklassen nur zusammen mit Sinnbild oder Wort; Ergebniszahl einer Liste |
 
 ### 4.3 Regeln, die für ICT dazukommen
 
@@ -317,26 +321,45 @@ Projekt gelten (§11).
 | Thema | Dashboard-Style | ICT-Inventar | Warum |
 |---|---|---|---|
 | Thema | neutral, Google-Blau | Campus-Grün, getönter Grund (§2) | Erscheinungsbild von Campus Sursee |
-| Markenzeichen | `.ds-brand`: 32-px-Logo auf der Achse der Navigationssinnbilder | Wortmarke auf ihrer **Kante** (`--sinnbild-kante`) | eine Textmarke hat keine Achse |
-| Stapel | `.ds-stack` 16 px (20 px nur direkt in `.ds-page`) | 20 px auch verschachtelt, in Karten 16 px | Bereiche der Detailseiten sind Stapel in einem Stapel |
-| Banner mit Knöpfen | ein Knopf rechts | Knopf kompakt (32 px), auch mehrere (`.banner-knoepfe`), rutscht unter den Text, wenn dieser schmaler als 8em würde | lange Warnungen mit Handlung |
-| Kachelwert | schrumpft mit der Kachel | dazu «…», wenn er auch verkleinert nicht passt | Texte statt Zahlen in Kacheln |
-| Datumsfeld unter 720 px | Polster 8 px (zwei Daten nebeneinander auf 320 px) | 12 px wie jedes Feld | die Datumsfelder der Seiten stehen einzeln; der Wert bleibt auf der Kante der übrigen Felder |
-| Knopf mit Gesichtern und Sinnbild vorne | kürzeres Polster nur, wenn das Sinnbild direktes Kind des Knopfs ist | kürzeres Polster (12 px) auch in den Gesichtern von `DS.motion.busy` (Hook `--ds-btn-padding-start`) | Kopfaktionen mit Sinnbild springen sonst beim Bauen der Gesichter |
-| Knopf, der ein Blatt öffnet | tonal nur mit `aria-pressed` | tonal, solange `aria-expanded="true"` (über die Hooks von `.ds-btn`) | «Filter» und «Spalten» schalten nichts um; `aria-pressed` wäre für den Screenreader falsch |
-| Zeilenliste im ersten Auftritt | Eintritt in der Standarddauer | `--ds-enter-duration: var(--ds-dur-fast)` auf den Einträgen | Listen sind länger als Kartenraster |
-| Kennwerte | Polster auch unter der letzten Zeile | unten ohne Polster, lange Namen brechen | oft der letzte Block einer Karte |
-| Dialog | die ganze Fläche rollt | nur der Inhalt zwischen Titel und Knöpfen rollt (`.dialog-inhalt`, `.dialog-liste`) | «Abbrechen» darf nie unter den Rand rutschen |
-| Seitenblatt | Kopf und Körper | dazu Unterzeile (live, «47 von 163») und klebende Fusszeile (`.blatt-fuss`) | Filter- und Spaltenblatt |
-| Aktion in der Meldung | Knopf in der Meldung wie jeder Knopf | Text-Knopf in `--ds-inverse-primary` (`.meldung-aktion`) | Aktion («Neu laden») hebt sich auf der dunklen Meldung ab, wie Material es vorsieht |
-| Schleier von Dialog und Blatt | ein Klick auf den Schleier schliesst | schliesst nur mit einem eigenen einfachen Klick: nicht mit dem zweiten Klick eines Doppelklicks und nicht in den ersten 300 ms (`rahmen.js`) | der Doppelklick, der eine Ebene öffnet, schlösse sie sonst gleich wieder |
+| Markenzeichen | `.ds-brand`: 32-px-Logo auf der Achse der Navigationssinnbilder; eine Marke nur aus dem Namen auf deren Kante | Wortmarke auf der Kante der Sinnbilder (`rahmen.css`) | der Selektor von Dashboard-Style 2.0.0 für eine Marke nur aus dem Namen verschachtelt `:has()` und greift nicht (gemeldet) |
+| Stapel | `.ds-stack` 16 px (20 px direkt in `.ds-page`) | 20 px auch verschachtelt, in Karten 16 px (Hook `--ds-stack-gap`) | Bereiche der Detailseiten sind Stapel in einem Stapel |
+| Kartenraster | `.ds-grid-2`: Karten teilen ihre Höhe | dasselbe für `.karten` (Raster nach Platz) | Fusszeilen nebeneinander auf einer Linie |
+| Feldfehler ausserhalb eines Felds | ohne Abstand | 4 px darüber | Fehler unter einer Datenzeile oder Suche |
+| Kästchenliste im Seitenblatt | höchstens 264 px, rollt | ganze Länge (Hook `--ds-check-list-max-height`) | das Blatt rollt schon; zwei Rollflächen ineinander wären eine Falle |
+| Schalterliste | Name und Unterzeile mit 12 px Lücke; ohne Unterzeile steht der Name über der Mitte | keine Zeilenlücke; ohne Unterzeile reicht der Name über alle Zeilen (nur Anordnung) | Fehler in Dashboard-Style 2.0.0 (gemeldet) |
+| Konto-Kapsel ohne «Abmelden» | nach dem Text 4 px (rechnet mit dem Knopf) | Polster einer Pille | Vorführmodus |
+| Seitenkopf-Aktionen | Text-Knöpfe mit ihrem Polster | der letzte hängt sein Polster in den Rand; schmal fluchtet der erste jeder Zeile mit dem Titel | Text der Aktionen auf der Kante von Banner und Karten |
+| Tabellenansicht in `.ds-view--fill` | das letzte Kind der Seite füllt den Rest | die sichtbare Ansicht (`.ansicht`) ist die Spalte, deren Liste den Rest nimmt | die Hauptseite trägt alle Ansichten, nur eine ist sichtbar |
+| Zustände der Seite | – | `data-zustand` blendet den Inhalt der Bahn aus | nichts Halbfertiges vor dem ersten Skript |
+
+Jede dieser Abweichungen steht ausserdem mit Grund in `ds-check.json` (Ausnahmen von `tools/check-project.mjs`).
 
 Das Übrige, das früher hier stand (eigener Ladebalken, eigene Randblende der Tabelle in einer Karte, eigene
 Seitenübergänge, eigene Meldungen über der Speicherleiste, Filter-Chips und Schalter als Knöpfe, 14 px Feldtext auf
-dem Telefon), läuft heute über Dashboard-Style bzw. dessen Hooks und ist keine Abweichung mehr.
+dem Telefon; seit 2.0 auch Banner mit mehreren Knöpfen, «…» im Kachelwert, Datumsfelder unter 720 px, das Polster der
+Gesichter, die Tönung des Knopfs, der ein Blatt öffnet, der kürzere erste Auftritt der Zeilenliste, Kennwerte ohne
+Polster unten, der Dialog mit einer Rollfläche, Unterzeile und Fusszeile im Blatt, die Aktion in der Meldung, der
+Schutz des Schleiers vor Doppelklicks, Kartentitel und Fusszeile der Karte, Kontrastmodus der Schublade, die Suche auf
+eigener Zeile und die drei Kennzahlen), läuft heute über Dashboard-Style bzw. dessen Hooks und ist keine Abweichung
+mehr.
 
-**Sichtbar anders als vor der Umstellung auf Dashboard-Style 1.6.2** (bewusst; geprüft mit Bildschirmfotos aller
-Seiten im Vorführmodus):
+**Sichtbar anders seit Dashboard-Style 2.0** (bewusst; geprüft mit Bildschirmfotos aller Seiten und Bereiche im
+Vorführmodus bei 1440 und 390 px):
+
+- **Kacheln** füllen ihre Zeile nach Platz (mindestens 176 px): auf dem Telefon steht eine je Zeile statt zwei, ein
+  langer Wert passt dann ganz.
+- **Datenzeilen, Befunde und Zeilenlisten** in den Massen von Dashboard-Style: Datenzeilen etwas höher, Befunde mit
+  etwas mehr Luft, Zeilenlisten dichter; das Schloss steht nach dem Wert, das Ton-Sinnbild klickbarer Kennwerte vor der
+  Zahl.
+- **Diagramme:** Balken und Säulen füllen sich beschnitten statt gestaucht; «Ersatz geplant» ist ein kräftigeres Grün
+  statt Pastell mit Kontur; die Zeitstrahlen tragen eine Legende von Dashboard-Style.
+- **Aktive Filter** enden bei 240 px mit «…» (der Tooltip zeigt sie ganz); die Zahlen der Kästchenliste stehen in der
+  Meta-Schrift.
+- **Schalter:** das Schloss der Sperre ist 16 px gross, der Griff dafür grösser.
+- **Schublade:** der Zurück-Eintrag trägt eine Haarlinie; der Kontrastmodus zeigt den aktiven Eintrag als Auswahl.
+- **Tooltips** erscheinen auf Touch-Geräten beim Antippen eines Bildes oder eines gesperrten Knopfs.
+
+**Sichtbar anders seit der Umstellung auf Dashboard-Style 1.6.2** (Oktober 2026):
 
 - **Felder auf dem Telefon:** Feldtext 16 px wie in Dashboard-Style (iOS zoomt sonst); Suchfelder und Textbereiche
   sind dort etwas höher.
@@ -372,10 +395,10 @@ CSS, JS oder HTML. Das eigene CSS nennt sie nur beim Namen (`ds-fade-in` …). W
 über `DS.overlay` (Dialog, Blatt, Schublade) oder `.ds-presence`, Einmaliges über `.ds-enter`/`.ds-leave` bzw.
 `Bewegung.eintreten`/`austreten` – nie beides auf einem Element.
 
-Balken und Säulen, die beim ersten Zeigen wachsen, laufen über `ds-fill-x`/`ds-fill-y` mit `.ds-enter--fill-x`/
-`--fill-y`. Diese sind dafür in Dashboard-Style aufgenommen worden: wachsende Balken braucht jedes Dashboard, und
-Keyframes dürfen nur an einem Ort stehen. Ein Übergang (`transition`) hätte nicht gereicht – er spielt nur bei einer
-Wertänderung, nicht beim ersten Zeichnen.
+Balken und Säulen, die beim ersten Zeigen wachsen, laufen seit 2.0 über `--ds-share` mit `.ds-enter--fill`
+(`DS.motion.enterAll(…, 'fill')`, Keyframes `ds-fill-share`): die Füllung wird beschnitten, nicht gestaucht. Die
+früheren `ds-fill-x`/`ds-fill-y` mit `.ds-enter--fill-x`/`--fill-y` sind in Dashboard-Style veraltet (Prüfung 11). Ein
+neuer Wert gleitet über das registrierte `--ds-share` von selbst.
 
 ### 6.1 `Bewegung.*` (in `bausteine.js`, über `DS.motion` und `DS.indicator`)
 
@@ -384,16 +407,16 @@ Fokus regelt Dashboard-Style.
 
 | Aufruf | Dashboard-Style | Zweck |
 |---|---|---|
-| `eintreten(el, variante)` → Promise | `enter` | Varianten `blenden`, `skalieren`, `schieben`, `tausch`, `verzoegert`, `ploppen`, `aufziehen`, `aufrichten` (= `fade`, `scale`, `slide`, `swap`, `delayed`, `pop`, `fill-x`, `fill-y`); hebt `hidden` und `inert` auf |
+| `eintreten(el, variante)` → Promise | `enter` | Varianten `blenden`, `skalieren`, `schieben`, `tausch`, `verzoegert`, `ploppen`, `fuellen` (= `fade`, `scale`, `slide`, `swap`, `delayed`, `pop`, `fill`); hebt `hidden` und `inert` auf |
 | `austreten(el, variante, { dann: 'entfernen'\|'verbergen'\|'behalten', fokus })` → Promise | `leave` | Varianten `sinken`, `skalieren`, `schieben`, `ploppen`; ein Fokus darin geht vorher auf `fokus`, sonst zum Auslöser |
 | `abbrechen(el)` | `cancel` | laufende Bewegung beenden |
 | `aufdecken(el)` → Promise | `cancel` + `enter('swap')` | frischer Inhalt ersetzt einen Platzhalter |
-| `auftritt(behaelter, { wurzel })` | `staggerOnce`, `countUp` | erster Auftritt einer Ansicht: staffelt `.karten`, `.ds-grid-2`, `.ds-stack`, `.ds-tiles`, `.zeilenliste` (nur einmal, nur Sichtbares), zählt Kacheln hoch, zieht Balken auf |
+| `auftritt(behaelter, { wurzel })` | `staggerOnce`, `countUp` | erster Auftritt einer Ansicht: staffelt `.karten`, `.ds-grid-2`, `.ds-stack`, `.ds-tiles`, `.ds-list` (nur einmal, nur Sichtbares), zählt Kacheln hoch, zieht Balken auf |
 | `hochzaehlen(el, ziel, { format, dauer, von })` → `{ cancel(), finished }` | `countUp` | zählt vom gezeigten Wert, Standardformat de-CH («1’284») |
 | `kennzahlenStill(wurzel, zeichnen)` | `countUp` | stilles Neuzeichnen mit Kennzahlen: Kacheln mit `schluessel` und `zahl` zählen vom gezeigten zum neuen Wert |
-| `aufziehen(behaelter)` | `enter('fill-x'/'fill-y')` | Balken und Säulen wachsen einmal |
-| `ladeAbwarten(start, { element, verzoegerung, mindestens })` → Promise | `settleLoader` | eine sichtbar gewordene Ladeanzeige hält ihre Mindestzeit |
-| `umordnen(behaelter, aendern(o), { eintraege, live, max, halten })` → Promise | `flip` | Einträge gleiten an ihren Platz, neue blenden ein, entfernte aus; Muster `Bewegung.umordnen(liste, o => UI.abgleichen(liste, neu, o))`; `live: true` hält eine Umordnung aus Abfragedaten an, solange Zeiger oder Fokus in der Liste sind |
+| `aufziehen(behaelter)` | `enterAll(…, 'fill')` | `.ds-meter` und `.ds-columns__col` füllen sich einmal bis zu ihrem `--ds-share` |
+| `ladeAbwarten(start, { element, verzoegerung, mindestens })` → Promise | `settleLoader` (eine Zahl als zweites Argument geht als `{ now }` weiter) | eine sichtbar gewordene Ladeanzeige hält ihre Mindestzeit |
+| `umordnen(behaelter, aendern(o), { eintraege, live, max, halten, fokusErsatz })` → Promise | `flip` | Einträge gleiten an ihren Platz, neue blenden ein, entfernte aus; geht der Eintrag mit dem Fokus, bekommt ihn derselbe Teil des Nachbarn, ohne Nachbarn `fokusErsatz` (`refocus`); Muster `Bewegung.umordnen(liste, o => UI.abgleichen(liste, neu, o))`; `live: true` hält eine Umordnung aus Abfragedaten an, solange Zeiger oder Fokus in der Liste sind |
 | `wechseln(aktualisieren, { art: 'durchblenden'\|'vor'\|'zurueck'\|'behaelter', von })` → Promise | `transition` | nur Navigation, nie Daten |
 | `abgeschlossen(el, { zeit, ereignis, eigenschaft, … })` → Promise | `settled` | Hilfe für eigene Abläufe; ohne `zeit` rechnet Dashboard-Style die Frist |
 | `indikator(spur, { aktiv, klasse, beobachten, name })` | `DS.indicator.createIndicator` | gleitende Pille; folgt `aria-current`/`-pressed`/`-selected`/`-checked` selbst |
@@ -428,22 +451,26 @@ Dialog, Blatt, modale Schublade und Meldungen öffnen und schliessen **nur über
 Dashboard-Style: natives `<dialog class="ds-dialog">` bzw. `<dialog class="ds-sheet">`, die Schublade
 `nav.ds-drawer`, die Region `.ds-toasts`. Dashboard-Style regelt Fokus hinein und zurück zum Auslöser (nie auf
 `body`), Fokusfalle und `inert`, die gemeinsame Esc-Reihenfolge (erst der Tooltip, dann die oberste Ebene), die
-gezählte Bildlaufsperre und den z-Stapel; Meldungen wandern in einen offenen Dialog bzw. ein offenes Blatt. Die deutschen Hüllen
-legen nur dazu, was Dashboard-Style nicht hat:
+gezählte Bildlaufsperre und den z-Stapel; Meldungen wandern in einen offenen Dialog bzw. ein offenes Blatt. Seit 2.0
+auch, was ICT früher selbst baute: eine Ebene, deren Arbeit läuft, bleibt offen (`data-ds-busy`); der Grund des
+Schliessens kommt mit dem Ereignis `ds-close`; der Schleier schliesst nur mit einem eigenen einfachen Klick (nicht mit
+dem zweiten eines Doppelklicks, nicht in den ersten `--ds-delay-dismiss`); der Fokus geht an ein **neu gezeichnetes**
+Gegenstück des Auslösers (dieselbe `id`) bzw. an `returnTo`; Esc in einer gefüllten Suche in Dialog oder Blatt leert
+erst die Suche. Die deutschen Hüllen legen nur dazu:
 
-- `sperren(true)` während einer Arbeit: dann schliessen weder Esc noch Schleier noch `[data-close]`;
-- `beiSchliessen(grund)` mit `'esc'`, `'schleier'`, `'knopf'`, `'schliessen'` oder dem Grund der Seite;
-- Rückfokus an ein **neu gezeichnetes** Gegenstück des Auslösers (über `data-fokus` oder `id`);
-- der Schleier schliesst nur mit einem eigenen einfachen Klick (§5);
-- `UI.ebeneOffen()`: synchrone Abfrage «ist eine Überlagerung offen» (aus dem DOM), die die Tastenkürzel der Seiten
-  (Esc, Ctrl+S, `/`) fragen.
+- `sperren(true)` während einer Arbeit (setzt `data-ds-busy`): dann schliessen weder Esc noch Schleier noch
+  `[data-close]`;
+- `beiSchliessen(grund)` mit `'esc'`, `'schleier'`, `'knopf'`, `'schliessen'` oder dem Grund der Seite (aus `ds-close`);
+- Rückfokus über `data-fokus` oder `fokusZurueck()` (`returnTo`), etwa wenn eine Schnellaktion ihren Knopf ersetzt;
+- `UI.ebeneOffen()`: synchrone Abfrage «ist eine Überlagerung offen» (`DS.overlay.topmost`), die die Tastenkürzel der
+  Seiten (Esc, Ctrl+S, `/`) fragen.
 
 ### 7.1 Dialog
 `UI.dialog({ titel, inhalt, knoepfe, breit, rolle, fokus, beschreibung, beiSchliessen, klasse })` · `UI.bestaetigen({ titel, text, ja, nein = 'Abbrechen', breit })` → `Promise<boolean>`
-- `dialog.ds-dialog`; 400 px für Fragen, `breit` 560 px für Listen und Formulare. Text nennt die Folge.
-- **Eine Rollfläche:** nur der Inhalt zwischen Titel und Knöpfen rollt (§5). Eine Trefferliste trägt `.dialog-liste`:
-  sie rollt selbst und nimmt die Resthöhe; reicht diese nicht für gut eine Zeile, rollt der ganze Inhalt, und das
-  Suchfeld klebt oben (`data-knapp`). Nie eine eigene Höchsthöhe in der Seiten-CSS.
+- `dialog.ds-dialog`; 400 px für Fragen, `breit` 560 px (`.ds-dialog--wide`) für Listen und Formulare. Text nennt die Folge.
+- **Eine Rollfläche:** nur der Körper (`.ds-dialog__body`) zwischen Titel und Knöpfen rollt. Eine Suche über einer
+  Trefferliste steht über `d.oben([…])` fest zwischen Titel und Körper; `d.hoehe('560px')` hält den Dialog beim Filtern
+  gleich hoch (`--ds-dialog-height`). Nie eine eigene Höchsthöhe in der Seiten-CSS.
 - Fokus startet auf `fokus`, sonst im ersten Feld, sonst auf dem ersten Knopf; `UI.bestaetigen` (`alertdialog`)
   startet auf «Abbrechen» und löst bei Esc, Schleier und «Abbrechen» mit `false` auf. Nie `window.confirm` oder
   `alert`.
@@ -455,8 +482,8 @@ legen nur dazu, was Dashboard-Style nicht hat:
 
 ### 7.2 Seitenblatt
 `UI.blatt({ titel, unter, inhalt, fuss, breite: 560|720, beiSchliessen, klasse })`
-- `dialog.ds-sheet` von rechts; Kopf mit Titel, optional Unterzeile (`.blatt-unter`, live), × (`[data-close]`); der
-  Fokus startet auf ×. Fusszeile `.blatt-fuss` bleibt stehen (rechtsbündig: «Filter zurücksetzen» tonal – ohne
+- `dialog.ds-sheet` von rechts; Kopf mit Titel, optional Unterzeile (`.ds-sheet__heading` mit `.ds-sheet__subtitle`,
+  live), × (`[data-close]`); der Fokus startet auf ×. Fusszeile `.ds-sheet__foot` bleibt stehen (rechtsbündig: «Filter zurücksetzen» tonal – ohne
   Filter gesperrt mit «Kein Filter aktiv.» –, «Fertig» primär).
 - **Filter und Spalten der Listen** stehen in einem Blatt; Änderungen wirken sofort. Filter: Trefferzahl live in der
   Unterzeile; jeder gesetzte Filter steht danach als entfernbarer Chip über der Liste. Spalten: Vorlagen, dann die
@@ -468,27 +495,30 @@ legen nur dazu, was Dashboard-Style nicht hat:
 - `DS.overlay.toast` in der Region `.ds-toasts` (unten links in der Tafel; bei offenem Dialog oder Blatt in dessen
   Ebene). Erfolg und Info gehen nach `dauer` bzw. der Lesezeit von Dashboard-Style (aus der Länge des Texts; hält,
   solange Zeiger oder Fokus darauf liegen); **Fehler und Meldungen mit Aktion bleiben** mit ×; höchstens drei.
-- ICT dazu: dieselbe Meldung ersetzt die stehende, statt sich zu stapeln; ein neuer Fehler ersetzt den offenen;
-  solange ein Fehler steht, hält die Tafel (bzw. das Blatt) an ihrem Ende Platz frei (`data-toast-reserve`).
-- Liegt immer **über** einer sichtbaren Speicherleiste (`--ds-toast-bottom`). Angesagt wird über die Ansage-Regionen,
-  die Dashboard-Style neben `.ds-toasts` anlegt.
+- Seit 2.0 von Dashboard-Style: dieselbe Meldung startet die stehende neu, statt sich zu stapeln (`restart`); ein neuer
+  Fehler ersetzt den offenen (`key: 'fehler'`); solange eine Meldung steht, hält die Tafel (bzw. das Blatt) an ihrem
+  Ende Platz frei (`reserve`); die Aktion ist ein Text-Knopf in `--ds-inverse-primary` (`action`).
+- Liegt immer **über** einer sichtbaren Speicherleiste (Dashboard-Style hebt die Region selbst). Angesagt wird über die
+  Ansage-Regionen, die Dashboard-Style neben `.ds-toasts` anlegt.
 
 ### 7.4 Tooltip
 `UI.tipp(element, text|null)` – gezeigt von `DS.overlay.tooltips(document)` (einmal in `rahmen.js`) für jedes
-`[data-tip]`. Verzögerung, Aufwärmen, Esc und «nie auf Touch» regelt Dashboard-Style; ICT ergänzt zwei Dinge: Ein Text,
-der nur den sichtbaren Text wiederholt, steht in `data-tip-abgeschnitten` und wird beim Zeigen nur dann zu `data-tip`,
-wenn der Text abgeschnitten ist; ein Bild ohne eigene Handlung (`role="img"`, etwa die Initiale im Kopf) zeigt seinen
-Tooltip auch beim Antippen. Ein Element, das nur einen Tooltip trägt, braucht `tabindex="0"`.
+`[data-tip]`. Verzögerung, Aufwärmen und Esc regelt Dashboard-Style, seit 2.0 auch, was ICT früher selbst baute: ein
+Tooltip, der nur den sichtbaren Text wiederholt, zeigt sich nur, solange der Text abgeschnitten ist; ein Bild ohne
+eigene Handlung (`role="img"`, etwa die Initiale im Kopf) oder ein gesperrter Knopf zeigt seinen Tooltip auf
+Touch-Geräten beim Antippen, die übrigen beim langen Drücken. Ein Element, das nur einen Tooltip trägt, braucht
+`tabindex="0"`; am Schalter hängt der Tooltip am Kästchen.
 
 ### 7.5 Speicherleiste
 `F.speicherleisteZeichnen({ neuModus, anzahl, neuText })` · `UI.speicherleiste({ beiSpeichern, beiVerwerfen, fokusZiel })`
-- Schwebt unten in der Tafel, bündig mit der Bahn, Radius wie ein Dialog, `--ds-elev-overlay`. Links «1 Änderung»,
-  rechts «Verwerfen» (Text) und «Speichern» (primär, mit Gesichtern «Wird gespeichert …»). Neu-Modus: «2 Angaben
-  erfasst», «Formular leeren», «Anlegen».
-- Sie trägt keine Höhe bei; solange sie steht, hält die Tafel darüber Platz frei.
-- Sie kommt und geht bei jeder Änderung und jedem Speichern: `.ds-presence` von Dashboard-Style (nur `hidden`
-  umschalten; ein Umschalten mitten im Übergang macht vom aktuellen Stand weiter). Während des Austritts ist sie
-  `inert` und ihr Inhalt eingefroren.
+- `.ds-savebar` von Dashboard-Style über `DS.overlay.savebar`: schwebt unten in der Tafel, bündig mit der Bahn. Links
+  «1 Änderung», rechts «Verwerfen» (Text) und «Speichern» (primär, mit Gesichtern «Wird gespeichert …»). Neu-Modus:
+  «2 Angaben erfasst», «Formular leeren», «Anlegen».
+- Sie trägt keine Höhe bei; solange sie steht, hält die Tafel darüber Platz frei, und ein fokussiertes Feld, das sie
+  verdeckte, rollt darüber (Dashboard-Style).
+- Sie kommt und geht bei jeder Änderung und jedem Speichern als `.ds-presence` (nur `hidden` umschalten; ein Umschalten
+  mitten im Übergang macht vom aktuellen Stand weiter). Während des Austritts ist sie `inert` und ihr Inhalt
+  eingefroren.
 - Fehler stehen als Meldung darüber + Feldfehler. Nach einem gescheiterten Schreiben heisst der Knopf «Nochmals
   speichern»; nach einem Konflikt (409/412) bietet die Meldung «Neu laden».
 - Speichern läuft nur über `F.speicherAblauf` (der Knopf ist beschäftigt, solange `schreiben()` läuft:
@@ -568,7 +598,7 @@ In Karten genügt oft ein Satz (`UI.hinweis`). Nie ein leerer Bereich.
 | Warnung mit Handlung | Banner, Text links, Knopf rechts |
 | Vergleich mit der Flotte | Kennwert mit Erklärung, darunter Säulen |
 | Verteilung | `UI.verteilung`, höchstens 8 Zeilen + «und n weitere …» |
-| Lange Texte | Titel und Werte brechen um; Tabellenzellen, Chips und Blatttitel enden mit «…», der Tooltip zeigt den ganzen Text (`data-tip-abgeschnitten`) |
+| Lange Texte | Titel und Werte brechen um; Tabellenzellen, Chips und Blatttitel enden mit «…», der Tooltip zeigt den ganzen Text (nur, solange er abgeschnitten ist) |
 | Vorführmodus (`?mock=1`) | `Rahmen.vorfuehrung` / `F.bandZeichnen`: Warnbanner als erster Block mit «Vorführdaten zurücksetzen»; der Text kommt aus `rahmen.js` |
 
 ---
@@ -582,7 +612,7 @@ der Überlagerungen, Ansagen der Meldungen, Druckstile des Rahmens) bringt Dashb
 |---|---|
 | Tab / Shift+Tab | erst die Sprungmarke «Zum Inhalt» (`.ds-skip`), dann Kopf, Schublade, Tafel; in Ebenen bleibt Tab in der Ebene |
 | `/` | springt in die Suche der aktuellen Liste |
-| Esc | verbirgt einen Tooltip, dann: 1. schliesst die oberste Ebene · 2. leert eine gefüllte Suche · 3. Detailseite: fragt, ob die Änderungen verworfen werden |
+| Esc | verbirgt einen Tooltip, dann: 1. leert eine gefüllte Suche in einer Ebene · 2. schliesst die oberste Ebene · 3. leert eine gefüllte Suche der Seite · 4. Detailseite: fragt, ob die Änderungen verworfen werden |
 | Ctrl/Cmd+S | speichert, wenn es etwas zu speichern gibt und keine Ebene offen ist (`UI.ebeneOffen()`) |
 | Enter | im Löschdialog: löst aus, sobald das Wort stimmt |
 | Ctrl-/Mittelklick | auf Zeilen (auch in eine Zelle), Namen, Schubladen-Einträgen, «Neuer …»: neuer Tab |
@@ -596,13 +626,12 @@ der Überlagerungen, Ansagen der Meldungen, Druckstile des Rahmens) bringt Dashb
 - **ARIA:** Schublade `nav` mit `aria-label`, aktiver Eintrag `aria-current="page"`; Menüknopf `aria-controls` +
   `aria-expanded`; Knopf, der ein Blatt öffnet, `aria-haspopup="dialog"` + `aria-expanded`; Schalter `role="switch"`,
   gesperrt `aria-disabled`; Felder `<label for>`, Fehler `aria-invalid` + `aria-describedby`, Kästchengruppen
-  `fieldset`/`legend`; Tabellen `caption` (nur Screenreader) und `aria-sort`; Schloss `role="img"` mit Grund;
+  `fieldset`/`legend`, Reihen aus Chip-Knöpfen `role=group` mit Namen; Tabellen `caption` (nur Screenreader) und `aria-sort`; Schloss `role="img"` mit Grund;
   Sinnbilder immer `aria-hidden`; `.ds-sr`-Texte «(geändert)», «(zu prüfen)», «(dringend)».
-- **Kontrastmodus** (`forced-colors: active`): der aktive Schubladen-Eintrag, ein Knopf mit offenem Blatt und der
-  aktive Filter-Chip mit × tragen `Highlight`/`HighlightText`; das Schloss der Schaltersperre ist `Highlight`;
-  Balken, Säulen, Zahlmarken und der Punkt der Wortmarke bleiben sichtbar (`rahmen.css` Abschnitt 11,
-  `bausteine.css`). Die Speicherleiste trägt wie Dialog, Blatt und Meldung einen durchsichtigen Umriss, den das
-  System malt.
+- **Kontrastmodus** (`forced-colors: active`): alles Gemeinsame regelt Dashboard-Style (aktiver Schubladen-Eintrag als
+  `SelectedItem`, Knopf mit offenem Blatt und Eingabe-Chip als `Highlight`, gesperrte Bedienelemente `GrayText`,
+  Schloss, Diagramme, Umrisse von Dialog, Blatt, Meldung und Speicherleiste). ICT ergänzt nur die Zahlmarke (Umriss)
+  und den Punkt der Wortmarke (`bausteine.css`, `rahmen.css`).
 - **Druck:** nur der Inhalt (Dashboard-Style blendet Rahmen, Ladebalken und Meldungen aus), dazu ohne Speicherleiste
   und Schnellaktionen; die seitenfüllende Liste läuft über alle Seiten.
 
@@ -658,7 +687,7 @@ darf, einen Eintrag in `LISTEN_KONFIG`). Werkzeugleiste, Filterblatt, Filter-Chi
 3. **Nur für ICT:** Klasse in `bausteine.css` (Rahmen und Überlagerungen in `rahmen.css`), Bauer in `bausteine.js` bzw.
    `rahmen.js` mit Kopfkommentar-Eintrag, nur Tokens (`--ds-*`, ICT-Tokens aus `thema.css`). Ein neuer Wert wird ein
    Token in `thema.css`. Keyframes gibt es nur in Dashboard-Style; Bewegung nur über `Bewegung.*`/`DS.motion`;
-   Sinnbilder nur über `DS.icons` + `UI.SINNBILDER`; drückbar mit `data-ds-ripple` und dem Druckmodell (§4.2).
+   Sinnbilder nur über `DS.icons` + `UI.SINNBILDER`; drückbar nur mit `.ds-pressable` (§4.2).
 4. Hover in `@media (hover: hover)`; eigene Media-Queries mitbringen; Kontrastmodus bedenken.
 5. In `styleguide.js` ein Muster in allen Zuständen ergänzen (nur über die Bauer) und diese Datei (§4.2) nachführen.
 
@@ -684,16 +713,30 @@ erwartet ist «Ergebnis: alle 14 Prüfungen OK», Exit-Code 0. Geprüft wird der
 | 4. JavaScript | kein `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval`, `new Function`, kein `(window.)confirm/alert/prompt`, kein Browser-`title`; kein `DS.icons.icon()`, kein `DS.dom.morphHtml` |
 | 5. HTML | kein Inline-`<script>`, keine `on*`-Attribute, keine `javascript:`-Adressen |
 | 6. MSAL | gleiche `integrity` und `crossorigin="anonymous"` auf allen Seiten, die MSAL laden |
-| 7. Altlasten | keine alten Klassen und Tokens (§13), kein `design.css`/`bewegung.*`, kein Google Fonts (auch nicht in `_headers`); keine ICT-Namen, die mit der Umstellung auf Dashboard-Style 1.6 weggefallen sind (`Bewegung.reduziert`, `UI.beschaeftigtAbwarten`, die alte Form `UI.beschaeftigt(knopf, true\|false)`, `UI.knopfSperre`, `UI.feldFrei`, `Rahmen.erstauftritt`, `Rahmen.bereit`, `setzen({ beschaeftigt … })`, `umschalten:`, `data-tipp` …) |
+| 7. Altlasten | keine alten Klassen und Tokens (§13), kein `design.css`/`bewegung.*`, kein Google Fonts (auch nicht in `_headers`); keine ICT-Klassen, die Dashboard-Style 2.0 ersetzt hat (§13); keine ICT-Namen, die mit der Umstellung auf Dashboard-Style 1.6 weggefallen sind (`Bewegung.reduziert`, `UI.beschaeftigtAbwarten`, die alte Form `UI.beschaeftigt(knopf, true\|false)`, `UI.knopfSperre`, `UI.feldFrei`, `Rahmen.erstauftritt`, `Rahmen.bereit`, `setzen({ beschaeftigt … })`, `umschalten:`, `data-tipp` …) |
 | 8. Kopie | `vendor/dashboard-style/` stimmt mit `SHA256SUMS` überein: keine Datei geändert, fehlend oder dazugekommen (auch versteckte), kein symbolischer Link; `VERSION` vorhanden |
 | 9. Seiten | `class="ds-theme ds-base"` auf `<html>`; Stilvorlagen in der Reihenfolge `grund.css` (als erste), `fonts.css`, `ds.css`, `css/optional/view-transitions.css`, `thema.css`, `bausteine.css`, `rahmen.css`, falls gebraucht `verlauf.css`, die Blätter der Seite zuletzt; `ds.js` vor `bausteine.js`; eine Seite mit `view-transitions.css` trägt `<link rel="expect" href="#…" blocking="render">`, dessen Ziel direkt nach `rahmen.js` steht; jede verlinkte Datei (auch die Schriften in `thema.css`) existiert |
 | 10. DS-API | was der eigene Code von Dashboard-Style nennt, gibt es in der Kopie: jedes `DS.<modul>.<name>` (auch über ein Kürzel wie `const M = DS.motion;`) ist ein Export von `ds.js`, jede Glyphe in `UI.SINNBILDER` steht in `DS.icons`, jede Klasse `ds-*` in `ds.css`, jedes `--ds-*` und `data-ds-*` in `ds.css` oder `ds.js`. Die Listen liest das Skript aus der Kopie selbst |
-| 11. Veraltet | keine Namen, die Dashboard-Style als veraltet führt: was die Kopie mit «Deprecated» markiert, dazu eine gepflegte Liste aus dem CHANGELOG (`--ds-ease`, `--ds-spinner-sm-track`, `--ds-state-pulse`, `--ds-loop-pulse`, `ds-pulse`, `ds-indeterminate`, `ds-sink-out`/`-scale-out`/`-slide-out`, `.ds-btn__swap`, `easeOutCubic`, `prefersReducedMotion`, `prefers-reduced-motion`, `.ds-motion-full`, `.ds-toast--shown` und `--ds-toast-shift` von Hand, `.ds-view--leaving`, `role`/`aria-live` auf `.ds-toasts`, `data-open` auf `.ds-combo`, `--ds-spinner-track` im Thema) |
+| 11. Veraltet | keine Namen, die Dashboard-Style als veraltet oder entfernt führt: jeder Eintrag von `vendor/dashboard-style/deprecations.json` (mit Suchmuster; eine neue Fassung der Kopie bringt ihre Einträge mit), dazu von Hand, was die Datei nicht führt (`prefersReducedMotion`, `prefers-reduced-motion`, `.ds-motion-full`, `.ds-toast--shown` und `--ds-toast-shift` von Hand, `role`/`aria-live` auf `.ds-toasts` und `data-open` auf `.ds-combo` im JS, `--ds-spinner-track` im Thema) |
 | 12. Seitengerüst | kein `<style>`, `<body>` ohne `ds-*`-Klassen; `div.ds-app[data-seite]` als erstes Element in `<body>`, darin in dieser Reihenfolge `a.ds-skip`, `.ds-topbar`, `.ds-scrim`, `nav.ds-drawer`, `.ds-panel`, `main.ds-view`, `.ds-content`, `.ds-page`; nach `.ds-app` genau ein `div.ds-toasts` ohne `role` und `aria-live` |
 | 13. Seiten-CSS | die Blätter mit Präfix (`benutzer.css` b-, `client.css` g-, `kamera.css` km-, `kamerarolle.css` kr-, `software.css` sw-, `telefon.css` tf-, `verlauf.css` vl-) enthalten nur Layout (§10.1, Schritt 3); ausgenommen mit Grund `styles.css` (Hauptseite, trägt den Zeitstrahl) und `styleguide.css` (Farbfelder, Masse, Bühne); eine unbekannte neue Stilvorlage wird gemeldet |
 | 14. Text | kein Geviertstrich «—» im eigenen CSS, JS, HTML und in `_headers`, auch nicht in Kommentaren |
 
-Mit `-Ordner <Pfad>` prüft es eine Kopie. Was es nicht sieht – Aussehen, Bewegung, Bedienung und ob ein Aufruf von
+**Die Projektregeln von Dashboard-Style** prüft dessen Werkzeug aus der Kopie (Node 18 oder neuer), im Wurzelordner:
+
+```sh
+node frontend/vendor/dashboard-style/tools/check-project.mjs --config ds-check.json
+node frontend/vendor/dashboard-style/tools/verify.mjs --dir frontend/vendor/dashboard-style
+```
+
+`check-project.mjs` prüft die Regeln des Blocks «Design-System: Dashboard-Style» aus `AGENTS.md` (Kopie, Klassen,
+veraltete Namen, eigene Keyframes, Thema, Kaskaden-Ebenen, `[hidden]`, Umgestalten von `.ds-*`-Bausteinen, Attribute,
+die Dashboard-Style schreibt, `innerHTML`, eigene Zustandsebenen); erwartet ist «0 errors, 0 warnings». Jede bewusste
+Abweichung (§5) steht in `ds-check.json` als Ausnahme mit Grund. Die ICT-Klassen tragen kein gemeinsames Präfix: die
+Literale prüft darum Prüfung 3. `verify.mjs` (oder `sh …/tools/verify.sh`) prüft die Kopie gegen ihre `SHA256SUMS`
+wie Prüfung 8.
+
+Mit `-Ordner <Pfad>` prüft `Pruefe-Frontend.ps1` eine Kopie. Was es nicht sieht – Aussehen, Bewegung, Bedienung und ob ein Aufruf von
 `UI.*`, `Rahmen.*`, `Bewegung.*` oder `F.*` einen Export trifft (die bekannten weggefallenen Namen fängt Prüfung 7) –,
 zeigt erst der Browser.
 
@@ -713,37 +756,43 @@ zeigt erst der Browser.
 
 ## 11. Dashboard-Style aktualisieren
 
-Die Kopie ist auf einen Commit von Dashboard-Style festgenagelt (`vendor/dashboard-style/VERSION`; heute 1.6.2).
+Die Kopie ist auf einen Commit von Dashboard-Style festgenagelt (`vendor/dashboard-style/VERSION`; heute 2.0.0).
 Normalerweise kommt ein neuer Stand von selbst: `.github/workflows/update-dashboard-style.yml` (Vorlage aus
 Dashboard-Style) vergleicht jede Nacht um 02.30 Uhr UTC den Commit in `VERSION` mit `main`; ist er neu, holt es die
-Kopie, lässt `Pruefe-Frontend.ps1` laufen und committet auf `main`, worauf Cloudflare Pages neu baut. Sonst endet der
+Kopie, prüft sie gegen ihre Prüfsummen (`tools/verify.sh`), lässt `tools/check-project.mjs` («Check») und
+`Pruefe-Frontend.ps1` («Verify») laufen und committet auf `main`, worauf Cloudflare Pages neu baut. Sonst endet der
 Lauf ohne Build. Von Hand geht es so:
 
-1. **Änderungen lesen:** `CHANGELOG.md` von Dashboard-Style, auch die Abschnitte «Deprecated». Was dort als veraltet
-   steht, gleich umstellen (Prüfung 11 meldet es, und die nächste Hauptversion entfernt es); benennt der neue Stand
-   Tokens, Klassen oder JS-Exporte um oder entfernt er sie (dort eine neue Hauptversion), dann `grund.css`,
-   `thema.css`, `bausteine.css`, `rahmen.css` und die Bauer nachführen.
+1. **Änderungen lesen:** `CHANGELOG.md` von Dashboard-Style, bei einer neuen Hauptversion zuerst deren Tabelle
+   «Migration» und die geänderten Vorgaben, dazu die Abschnitte «Deprecated». Was dort als veraltet steht, gleich
+   umstellen (Prüfung 11 und `check-project.mjs` melden es aus `deprecations.json`, und die nächste Hauptversion
+   entfernt es); benennt der neue Stand Tokens, Klassen oder JS-Exporte um oder entfernt er sie, dann `grund.css`,
+   `thema.css`, `bausteine.css`, `rahmen.css` und die Bauer nachführen. Bringt er einen Teil, den ICT selbst baut,
+   den Bauer darauf umstellen und die eigene Klasse entfernen (§4.2, §13).
 2. **Kopie ersetzen** mit dem Werkzeug von Dashboard-Style (`scripts/` in dessen Repository; hier liegt es als
    Checkout neben diesem Repository), im Wurzelordner dieses Repositorys:
 
    ```powershell
    # Windows PowerShell 5.1: den neusten Stand von main auf GitHub holen …
    ..\Dashboard-Style\scripts\vendor.ps1 frontend\vendor\dashboard-style
+   # … einen bestimmten Stand (Zweig, Tag oder Commit) …
+   ..\Dashboard-Style\scripts\vendor.ps1 <ref> frontend\vendor\dashboard-style
    # … oder aus dem lokalen Checkout mit gebautem dist/
    ..\Dashboard-Style\scripts\vendor.ps1 -From ..\Dashboard-Style frontend\vendor\dashboard-style
    # nur prüfen, ob die Kopie zu ihrer SHA256SUMS passt
    ..\Dashboard-Style\scripts\vendor.ps1 -Check frontend\vendor\dashboard-style
    ```
 
-   bzw. `sh ../Dashboard-Style/scripts/vendor.sh frontend/vendor/dashboard-style` (oder `--from ../Dashboard-Style`,
-   `--check`). `main` ist immer lieferbar, ein Update braucht keinen Tag-Wechsel; ein bestimmter Stand geht mit
-   `vendor.ps1 <ref> …`. Das Werkzeug ersetzt den Ordner als Ganzes und schreibt `VERSION` (mit dem genauen Commit)
-   und `SHA256SUMS` neu. Nie einzelne Dateien von Hand kopieren oder ändern.
+   bzw. `sh ../Dashboard-Style/scripts/vendor.sh [<ref>] frontend/vendor/dashboard-style` (oder `--from
+   ../Dashboard-Style`, `--check`). `main` ist immer lieferbar, ein Update braucht keinen Tag-Wechsel. Das Werkzeug
+   ersetzt den Ordner als Ganzes und schreibt `VERSION` (mit dem genauen Commit) und `SHA256SUMS` neu. Nie einzelne
+   Dateien von Hand kopieren oder ändern.
 3. **Prüfen:** `code\Pruefe-Frontend.ps1` (Prüfung 8 vergleicht die Prüfsummen, Prüfung 1 und 2 finden verschwundene
-   Tokens und Keyframes, Prüfung 10 entfernte JS-Exporte, Klassen und Sinnbilder, Prüfung 11 neu als veraltet
-   markierte Namen), dann `styleguide.html` und die Seiten mit `?mock=1` bei 1440, 900 und 390 px ansehen.
-4. **Einchecken:** Der Ordner ist in `.gitattributes` als `-text` markiert; Git schreibt die Zeilenenden nicht um, und
-   Cloudflare Pages liefert die Dateien Byte für Byte aus.
+   Tokens und Keyframes, Prüfung 10 entfernte JS-Exporte, Klassen und Sinnbilder, Prüfung 11 veraltete Namen) und
+   `node frontend/vendor/dashboard-style/tools/check-project.mjs --config ds-check.json` (§10.3), dann
+   `styleguide.html` und die Seiten mit `?mock=1` bei 1440, 900 und 390 px ansehen.
+4. **Einchecken:** Kopie und Anpassungen zusammen. Der Ordner ist in `.gitattributes` als `-text` markiert; Git
+   schreibt die Zeilenenden nicht um, und Cloudflare Pages liefert die Dateien Byte für Byte aus.
 
 Fehlt Dashboard-Style etwas, das jedes Projekt brauchen kann, wird es **dort** ergänzt (mit Doku, Tests und CHANGELOG)
 und dann wie oben übernommen – nie in der Kopie.
@@ -755,9 +804,9 @@ alten Stand; jede Nacht versucht es der Lauf von Neuem.
 
 | Schritt scheitert | Bedeutung | Vorgehen |
 |---|---|---|
-| «Verify» | `Pruefe-Frontend.ps1` findet Fehler mit dem neuen Stand; nichts ist committet | lokal nachstellen (Schritte 2 und 3 oben), im `CHANGELOG.md` nachsehen, was umbenannt, entfernt oder als veraltet markiert wurde, den eigenen Code nachführen und Kopie und Anpassung **zusammen** committen. Liegt der Fehler in Dashboard-Style selbst, wird er dort behoben; der nächste Lauf übernimmt ihn |
+| «Check» oder «Verify» | `check-project.mjs` bzw. `Pruefe-Frontend.ps1` findet Fehler mit dem neuen Stand; nichts ist committet | lokal nachstellen (Schritte 2 und 3 oben), im `CHANGELOG.md` nachsehen, was umbenannt, entfernt oder als veraltet markiert wurde, den eigenen Code nachführen und Kopie und Anpassung **zusammen** committen. Liegt der Fehler in Dashboard-Style selbst, wird er dort behoben; der nächste Lauf übernimmt ihn |
 | «Compare with main of Dashboard-Style» | die GitHub-API oder das Netz war nicht erreichbar | Lauf später erneut starten |
-| «Vendor main» | Dashboard-Style war nicht erreichbar oder sein `main` ist unvollständig | Lauf später erneut starten; bleibt der Fehler, in Dashboard-Style beheben |
+| «Vendor main» | Dashboard-Style war nicht erreichbar, sein `main` ist unvollständig, oder die Kopie passt nicht zu ihren Prüfsummen (`tools/verify.sh`) | Lauf später erneut starten; bleibt der Fehler, in Dashboard-Style beheben |
 | «Commit and push» | der Push auf `main` wurde abgelehnt, meist durch einen Zweigschutz | den Zweigschutz für den Bot freigeben oder die Kopie von Hand aktualisieren (oben) |
 
 Danach in GitHub unter Actions → «Update Dashboard-Style» → *Run workflow* neu starten oder die nächste Nacht
@@ -770,12 +819,12 @@ Update durchgeht.**
 
 | Datei | Inhalt | Namensraum |
 |---|---|---|
-| `vendor/dashboard-style/` | Dashboard-Style 1.6.2: `ds.css`, `ds.js`, `css/` (samt `css/optional/view-transitions.css`), `js/`, `fonts/` (Google Sans + `OFL.txt`), `LICENSE`, `VERSION`, `SHA256SUMS` – **nie von Hand ändern** | `DS` |
-| `grund.css` | Grundregeln unter Dashboard-Style in `@layer grund` (Rollen der Überschriften, Ränder 0); erste Stilvorlage | – |
+| `vendor/dashboard-style/` | Dashboard-Style 2.0.0: `ds.css`, `ds.js`, `css/` (samt `css/optional/view-transitions.css`), `js/`, `fonts/` (Google Sans + `OFL.txt`), `themes/`, `tools/` (`verify`, `check-theme`, `check-project`), `deprecations.json`, `tokens.json`, Typen `*.d.ts`, `LICENSE`, `VERSION`, `SHA256SUMS` – **nie von Hand ändern** | `DS` |
+| `grund.css` | Grundregeln unter Dashboard-Style in `@layer grund` (Ränder 0); erste Stilvorlage | – |
 | `thema.css` | Campus-Thema: Werte für Rollen von Dashboard-Style, ICT-Tokens, `@font-face` Archivo | – |
 | `schriften/` | Archivo (Wortmarke), selbst gehostet aus `@fontsource-variable/archivo` 5.3.0, mit `OFL.txt` | – |
 | `bausteine.css` | die ICT-eigenen Bausteine und die Abweichungen von Dashboard-Style (§4.2, §5) | – |
-| `rahmen.css` | was Rahmen und Überlagerungen über Dashboard-Style hinaus brauchen (Wortmarke, Konto, Zurück-Eintrag, Zustände, Seitenkopf, Rollflächen in Dialog und Blatt, Aktion der Meldung, Speicherleiste) | – |
+| `rahmen.css` | was der Rahmen über Dashboard-Style hinaus braucht (Wortmarke, Zustände der Seite, Aktionen im Seitenkopf, Detailbereich, Tabellenansicht als Spalte) | – |
 | `bausteine.js` | DOM-Helfer und Abgleich (über `DS.dom`), Sinnbilder (über `DS.icons`), Bauer aller Bausteine; `Bewegung` (über `DS.motion`, `DS.indicator`) | `UI`, `Bewegung` |
 | `rahmen.js` | Rahmen, Navigation, Zustände, Ansichtswechsel; Überlagerungen über `DS.overlay`, Speicherleiste, Adressen; startet `DS.ripple` und `DS.overlay.tooltips` | `Rahmen`; ergänzt `UI.dialog/bestaetigen/blatt/ebeneOffen/meldung/meldungenFehlerSchliessen/tipp/speicherleiste/seitenkopf/adresse` |
 | `fenster.js` | Gerüst der Detailseiten | `Fenster.erstellen()` → `F` |
@@ -789,6 +838,7 @@ Update durchgeht.**
 | `client.*`, `benutzer.*`, `telefon.*`, `software.*`, `kamera.*`, `kamerarolle.*` | Detailseiten (`.css` nur Seitenlayout, Prüfung 13) | – |
 | `styleguide.html`, `styleguide.js`, `styleguide.css` | lebende Übersicht (`styleguide.css`: Layout der Seite, Farbfelder, Bühne) | – |
 | `STYLEGUIDE.md` | dieses Dokument | – |
+| `../ds-check.json` | Beschreibung des Frontends für `tools/check-project.mjs` mit den Ausnahmen (§5, §10.3) | – |
 | `_headers` | Sicherheitsheader und Inhaltsrichtlinie (Cloudflare Pages), mit einer Erklärung je Regel | – |
 
 Ladereihenfolge auf jeder Seite (klassische Skripte, ohne `defer`; MSAL-Zeile samt SRI unverändert lassen):
@@ -867,7 +917,7 @@ Dashboard-Style veraltet ist, steht das heutige Ziel (Prüfung 11).
 | `--knopf-*` | `--ds-btn-*` | | `--i`, `--fortschritt`, `--indikator-*` | `--ds-i`, `--ds-progress`, `--ds-indicator-*` |
 | | | | `--eintritt-*`, `--austritt-*`, `--bewegung-weg/-skala` | `--ds-enter-*`, `--ds-leave-*`, `--ds-motion-distance/-scale` |
 
-Geblieben (nur ICT): `--campus-gruen`, `--schrift-marke`, `--gewicht-marke`, `--konto-breit`, `--diagramm-*` (§2.2).
+Geblieben (nur ICT): `--campus-gruen`, `--schrift-marke`, `--gewicht-marke` (§2.2). `--konto-breit` und `--diagramm-*` sind mit Dashboard-Style 2.0 weggefallen (unten).
 
 **Klassen**
 
@@ -887,7 +937,7 @@ Geblieben (nur ICT): `--campus-gruen`, `--schrift-marke`, `--gewicht-marke`, `--
 | `.feld-eingabe`, `.feld-gefuellt` | `.ds-input`, `.ds-input--filled` | | `.blatt`, `-schleier`, `-flaeche`, `-breit`, `-kopf`, `-titel`, `-koerper` | `dialog.ds-sheet` (nativ), `__backdrop`, `__panel`, `__panel--wide`, `__head`, `__title`, `__body` |
 | `.feld-raster(-3)`, `.feld-voll`, `.feld-reihe` | `.ds-form-grid--2/--3`, `.ds-field--full`, `.ds-inline-form` | | `.meldungen`, `.meldung`, `-fehler`, `-info`, `-text`, `-schliessen` | `.ds-toasts`, `.ds-toast`, `--error`, `--info`, `__text`, `__close` (gebaut von `DS.overlay.toast`) |
 | `.suchfeld`, `.suche` | `.ds-search`, `.ds-input` | | `.tipp` | `[data-tip]`; das `.ds-tooltip` baut `DS.overlay.tooltips` |
-| `.ankreuzen(-klein)` | `.ds-check(--sm)` | | `.eintritt` (+ `--blenden` … `--aufrichten`) | `.ds-enter` (+ `--fade`, `--scale`, `--slide`, `--swap`, `--delayed`, `--pop`, `--fill-x`, `--fill-y`) |
+| `.ankreuzen(-klein)` | `.ds-check(--sm)` | | `.eintritt` (+ `--blenden` … `--aufrichten`) | `.ds-enter` (+ `--fade`, `--scale`, `--slide`, `--swap`, `--delayed`, `--pop`, `--fill`) |
 | `.aktionszeile`, `.werkzeugleiste` | `.ds-form-actions`, `.ds-action-bar` | | `.austritt` (+ `--sinken`, `--skalieren`, `--schieben`) | `.ds-leave` (+ `--sink`, `--scale`, `--slide`) |
 | `.tabelle`, `-schlicht-rahmen`, `-sortierung`, `.dicht` | `.ds-table`, `.ds-table-wrap`, `.ds-table__sort`, `.ds-table--dense` | | `.staffel`, `.aufklappbar`, `.veraltet` | `.ds-stagger`, `.ds-collapsible`, `.ds-stale` |
 | `.chips`, `.chips-trenner` | `.ds-chips`, `.ds-chips__divider` | | `.hat-indikator`, `.indikator(--sofort)` | `.ds-has-indicator`, `.ds-indicator(--instant)` |
@@ -895,7 +945,7 @@ Geblieben (nur ICT): `--campus-gruen`, `--schrift-marke`, `--gewicht-marke`, `--
 
 **Keyframes:** `einblenden`/`ausblenden` → `ds-fade-in`/`ds-fade-out`, `anheben` → `ds-lift-in`, `wachsen` →
 `ds-grow-in`, `einschieben` → `ds-shift-in`, `einrollen`/`ausrollen` → `ds-roll-in`/`ds-roll-out`, `aufploppen` →
-`ds-pop-in`, `zeichnen` → `ds-draw`, `aufziehen`/`aufrichten` → `ds-fill-x`/`ds-fill-y`, `drehen` → `ds-spin`. Gehende
+`ds-pop-in`, `zeichnen` → `ds-draw`, `aufziehen`/`aufrichten` → `ds-fill-share` über `--ds-share` (`ds-fill-x`/`ds-fill-y` sind seit 2.0 veraltet), `drehen` → `ds-spin`. Gehende
 Elemente laufen auf `ds-fade-out` plus einer reinen Bewegung: `absinken` → `ds-drop-out`, `schrumpfen` →
 `ds-shrink-out`, `wegschieben` → `ds-shift-out` (die alten Ziele `ds-sink-out`, `ds-scale-out`, `ds-slide-out` sind in
 Dashboard-Style veraltet). `pulsieren` → `ds-skeleton-wave` (Skelette; `ds-pulse` ist veraltet), `unbestimmt` →
@@ -935,3 +985,39 @@ meldet die meisten):
 | `<style>@view-transition { navigation: auto; }</style>` in jeder Seite | `css/optional/view-transitions.css` + `<link rel="expect">` (§10.1) |
 | `--ds-input-font` und `--ds-spinner-track` in `thema.css` | entfällt (Feldtext 16 px auf dem Telefon, Bogen-Spinner ohne Spur wie in Dashboard-Style) |
 | `.ds-table--interactive` nachgebaut (`cursor: pointer` auf Zeilen, `zeileOeffnen`) | `table.ds-table--interactive` + `a.ds-table__row-link`, Zellklick über `UI.tabellenRahmen` |
+
+**Umstellung auf Dashboard-Style 2.0.0 (Oktober 2026).** Was ICT nachgebaut hatte, kommt jetzt aus Dashboard-Style;
+die ICT-Klassen gibt es nicht mehr (Prüfung 7 meldet sie). Die Bauer behalten ihre Namen.
+
+| Alt (ICT) | Neu (Dashboard-Style 2.0) |
+|---|---|
+| `.kopf-konto`, `.kopf-konto-trenner`, `.kopf-abmelden`, `--konto-breit` | `.ds-account--capsule`, `.ds-account__divider` |
+| `.schublade-zurueck`, Zähler ohne Klasse von Dashboard-Style | `.ds-drawer__back`, `.ds-drawer__count` |
+| `.seitenkopf-pfad`, `-zeile`, `-text`, `-status`, `-aktionen` | `.ds-page-head__back`, `__row`, `__text`, `__status`, `__actions` |
+| `.zustand-fortschritt`, `.rollwaechter` (Wächter für `data-scrolled`) | `.ds-skeleton__note`, `DS.dom.watchScrolled` |
+| `.dialog-inhalt`, `.dialog-liste`, `.dialog-breit`, `data-knapp` | `.ds-dialog__body`, `d.oben()`, `.ds-dialog--wide`, `--ds-dialog-height` |
+| `.blatt-kopf-text`, `.blatt-unter`, `.blatt-fuss` | `.ds-sheet__heading`, `__subtitle`, `__foot` |
+| Schliessgrund aus vorgemerkten Anlässen, Schleier-Sperre (300 ms), Esc-Sperre, `UEBERLAGERUNG_OFFEN` | `ds-close`, `--ds-delay-dismiss`, `data-ds-busy`, `DS.overlay.topmost` |
+| `.meldung-aktion`, eigenes Ersetzen gleicher Meldungen, `data-toast-reserve` von Hand | `toast()` mit `action`, `restart`, `key`, `reserve` |
+| `data-tip-abgeschnitten`, Antippen von Bildern nachgestellt | `data-tip` (Dashboard-Style zeigt ihn nur abgeschnitten; Touch-Tooltips) |
+| `.speicherleiste*`, `--leiste-hoehe/-reserve/-rest` | `.ds-savebar` über `DS.overlay.savebar` |
+| eigene Klick-Wache für gesperrte und beschäftigte Knöpfe | `DS.motion.guard` (von `DS.ripple.attach`) |
+| `.tabelle-rahmen` mit eigener Klebe- und Klicklogik, `.ds-view[data-fest]`, `UI.rollKanten`, `--rollleiste` | `.ds-table-wrap--fill`, `.ds-table--pin-first`, `.ds-view--fill`, `DS.dom.scrollEdges` (`.tabelle-rahmen` bleibt als Haken) |
+| `.zeilenliste`, `.listen-zeile*` | `.ds-list`, `.ds-list__item`, `__title`, `__action`, `__meta`, `__actions` |
+| `.datenzeilen`, `.datenzeile-name/-wert/-form/-hinweis`, `.schloss`, `.geaendert`, `.geaendert-text` | `.ds-facts--rows`, `.ds-form--rows`, `.ds-field__value`, `.ds-lock`, `.ds-field--changed`, `.ds-field__changed` |
+| `.hinweis-zeile*` | `.ds-alert--plain`, `.ds-alert__title` |
+| `.kennwerte-klickbar`, `.kennwert-ton`, `strong.leer` | `.ds-kv-list--interactive`, `__row`, `__icon`, `strong.ds-muted` |
+| `.mit-sinnbild` | `.ds-field__hint` mit Sinnbild vorne, `--success` |
+| `.zeitachse-*` | `.ds-timeline` (Haken `.zeitachse`) |
+| `.balken*`, `.saeulen`, `.saeule*`, `.verteilung-*`, `.zeitstrahl-*` (ausser der Marke), `.legende-marke`, `--diagramm-*`, `--anteil`, `.ds-enter--fill-x/-y` | `.ds-meter`, `.ds-columns` (`--mini`, `--grouped`), `.ds-kv-list--bars`, `.ds-legend`, `.ds-scroll-x`, `--ds-chart-*`, `--ds-share`, `.ds-enter--fill` |
+| `.chip`, `.chip-entfernbar`, `.chip-x`, `.chip-text`, `.chip-zeile` | `.ds-chip` (Knopf), `.ds-chip--input`, `__trailing`, `__label`, `.ds-chips` (`role=group`) |
+| `.zaehler`, `.zaehler-still` | `.ds-badge`, `.ds-badge--neutral` |
+| `.schalter-gesperrt`, `.schalter-schloss`, `.schalter-text`, `-name`, `-unter`, `-zusatz`, `.schalter-feld-huelle` | `.ds-switch--locked`, `.ds-switch__icon`, `__label`, `__hint`, `__meta`, `.ds-switch-list` (Haken `.schalter-zeile`, `.schalter-feld`) |
+| `.mehrfach`, `.anzahl` in der Kästchenliste | `.ds-check-list`, `.ds-check__count` |
+| `kbd.kuerzel` | `kbd.ds-kbd.ds-search__key` |
+| `.banner-knoepfe` | `.ds-alert__actions` |
+| `.code-block` | `.ds-code-block` (`--wrap`) |
+| `.ds-tile__value.leer` | `.ds-tile__value--empty` |
+| `.b-kennzahlen` | `.ds-tiles--3` |
+| `style-src-attr 'unsafe-inline'` in `_headers` | entfällt: `DS.dom.morphChildren` schreibt Stile über das CSSOM |
+| gepflegte Liste veralteter Namen in Prüfung 11 | `vendor/dashboard-style/deprecations.json` |
