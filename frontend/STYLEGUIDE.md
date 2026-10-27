@@ -324,6 +324,8 @@ Projekt gelten (§11).
 | Markenzeichen | `.ds-brand`: 32-px-Logo auf der Achse der Navigationssinnbilder; eine Marke nur aus dem Namen auf deren Kante | Wortmarke auf der Kante der Sinnbilder (`rahmen.css`) | der Selektor von Dashboard-Style 2.0.0 für eine Marke nur aus dem Namen verschachtelt `:has()` und greift nicht (gemeldet) |
 | Stapel | `.ds-stack` 16 px (20 px direkt in `.ds-page`) | 20 px auch verschachtelt, in Karten 16 px (Hook `--ds-stack-gap`) | Bereiche der Detailseiten sind Stapel in einem Stapel |
 | Kartenraster | `.ds-grid-2`: Karten teilen ihre Höhe | dasselbe für `.karten` (Raster nach Platz) | Fusszeilen nebeneinander auf einer Linie |
+| Karte mit Zahlmarke | `.ds-card__row`: Titel und Aktionen auf einer Zeile über der Beschreibung | in `.karte-marke` löst sich die Kopfzeile in das Raster der Karte auf (`display: contents`): die Zahlmarke steht vorne über Titel und Beschreibung, der Status rechts mittig (nur Anordnung) | Handlungsbedarf: die Zahl ist das Erste, was man liest (§4.2) |
+| Zeitachse, Meta-Sinnbild | Meta-Zeile nur aus Text | das 16-px-Sinnbild «Abgleich» vor der Meta-Zeile, auf die Textzeile gesetzt (nur seine Ausrichtung) | Einträge des Syncs sind auf einen Blick von Einträgen von Hand zu unterscheiden |
 | Feldfehler ausserhalb eines Felds | ohne Abstand | 4 px darüber | Fehler unter einer Datenzeile oder Suche |
 | Kästchenliste im Seitenblatt | höchstens 264 px, rollt | ganze Länge (Hook `--ds-check-list-max-height`) | das Blatt rollt schon; zwei Rollflächen ineinander wären eine Falle |
 | Schalterliste | Name und Unterzeile mit 12 px Lücke; ohne Unterzeile steht der Name über der Mitte | keine Zeilenlücke; ohne Unterzeile reicht der Name über alle Zeilen (nur Anordnung) | Fehler in Dashboard-Style 2.0.0 (gemeldet) |
@@ -352,7 +354,13 @@ Vorführmodus bei 1440 und 390 px):
   etwas mehr Luft, Zeilenlisten dichter; das Schloss steht nach dem Wert, das Ton-Sinnbild klickbarer Kennwerte vor der
   Zahl.
 - **Diagramme:** Balken und Säulen füllen sich beschnitten statt gestaucht; «Ersatz geplant» ist ein kräftigeres Grün
-  statt Pastell mit Kontur; die Zeitstrahlen tragen eine Legende von Dashboard-Style.
+  statt Pastell mit Kontur; die Zeitstrahlen tragen eine Legende von Dashboard-Style. In den Mini-Säulen des
+  Flottenvergleichs (Client) stehen die anderen Geräte im neutralen Grau von Dashboard-Style (`--ds-chart-neutral`)
+  statt im Pastell: das Pastell hätte auf der Fläche nur 1,4:1 statt der 3:1, die `check-theme.mjs` für Diagramme
+  verlangt. Die Balken (`.ds-meter`) laufen weiter auf dem Pastell (`--ds-meter-track`).
+- **Zeitachse** (`UI.zeitachse`, «Client und Aktivität»): Zeit und Quelle (`.ds-timeline__meta`) stehen wie im Markup
+  von Dashboard-Style auf einer eigenen Zeile unter dem Titel; ein langer Verlauf wird dadurch etwa doppelt so hoch.
+  Eine einzeilige Fassung gäbe es nur als Hook von Dashboard-Style, nicht als eigene Regel.
 - **Aktive Filter** enden bei 240 px mit «…» (der Tooltip zeigt sie ganz); die Zahlen der Kästchenliste stehen in der
   Meta-Schrift.
 - **Schalter:** das Schloss der Sperre ist 16 px gross, der Griff dafür grösser.
@@ -363,7 +371,8 @@ Vorführmodus bei 1440 und 390 px):
 
 - **Felder auf dem Telefon:** Feldtext 16 px wie in Dashboard-Style (iOS zoomt sonst); Suchfelder und Textbereiche
   sind dort etwas höher.
-- **Kartentitel** wieder 16 px; Dialog- und Blatttitel in der Titelrolle von Dashboard-Style (`grund.css`).
+- **Kartentitel** wieder 16 px; Dialog- und Blatttitel in der Titelrolle von Dashboard-Style (damals über `grund.css`, seit 2.0
+  setzt `.ds-base` sie selbst).
 - **Speichern-Knopf** von Anfang an so breit wie «Wird gespeichert …» (Gesichter von `DS.motion.busy`).
 - **Handlungsbedarf** als interaktive Karten mit Zahlmarke statt als Zeilenliste; die Karten sind höher (bei 1440 px
   zwei statt drei Spalten).
@@ -890,7 +899,7 @@ Bis 10.2026 hatte ICT-Inventar eine eigene deutsche Kopie des Design-Systems (`d
 `bewegung.js`, die gemeinsamen Teile von `rahmen.css`). Sie ist durch Dashboard-Style ersetzt; die alten Namen gibt es
 nicht mehr (Prüfung 7 meldet sie). Die JS-Namen (`UI.*`, `Rahmen.*`, `Bewegung.*`, `F.*`) sind geblieben; was bei der
 Umstellung auf Dashboard-Style 1.6.2 an ihnen wegfiel, steht am Ende. Wo das Ziel von damals inzwischen in
-Dashboard-Style veraltet ist, steht das heutige Ziel (Prüfung 11).
+Dashboard-Style veraltet oder entfernt ist, steht das heutige Ziel (Prüfung 11).
 
 **Tokens** (`:root` → `.ds-theme`)
 
@@ -913,7 +922,7 @@ Dashboard-Style veraltet ist, steht das heutige Ziel (Prüfung 11).
 | `--fokus`, `-breite`, `-abstand`, `-umriss`, `-ring` | `--ds-focus`, `-width`, `-offset`, `-outline`, `-ring` | | `--skala-eintritt`, `--skala-klein`, `--staffel` | `--ds-scale-enter`, `--ds-scale-small`, `--ds-stagger` |
 | `--kopf-hoch`, `--schublade-breit` | `--ds-topbar-height`, `--ds-drawer-width` | | `--verzoegerung-lader/-start` | `--ds-delay-loader/-boot` |
 | `--bahn-max`, `--mass`, `--meldung-platz` | `--ds-content-max`, `--ds-measure`, `--ds-toast-room` | | `--schleife-dreh/-dreh-schnell/-unbestimmt` | `--ds-loop-spin/-spin-fast/-indeterminate` |
-| `--zustand-hover/-hover-gross/-druck/-deaktiviert` | `--ds-state-hover/-hover-lg/-pressed/-disabled` | | `--schleife-puls` | entfällt (`--ds-loop-pulse` ist veraltet; Skelette laufen auf `--ds-loop-skeleton`) |
+| `--zustand-hover/-hover-gross/-druck/-deaktiviert` | `--ds-state-hover/-hover-lg/-pressed/-disabled` | | `--schleife-puls` | entfällt (`--ds-loop-pulse` ist in 2.0 entfernt; Skelette laufen auf `--ds-loop-skeleton`) |
 | `--z-erhoben/-klebend/-schublade/-dialog/-meldung` | `--ds-z-raised/-sticky/-drawer/-dialog/-toast` | | `--deckkraft-veraltet` | `--ds-state-stale` |
 | `--knopf-*` | `--ds-btn-*` | | `--i`, `--fortschritt`, `--indikator-*` | `--ds-i`, `--ds-progress`, `--ds-indicator-*` |
 | | | | `--eintritt-*`, `--austritt-*`, `--bewegung-weg/-skala` | `--ds-enter-*`, `--ds-leave-*`, `--ds-motion-distance/-scale` |
@@ -949,8 +958,8 @@ Geblieben (nur ICT): `--campus-gruen`, `--schrift-marke`, `--gewicht-marke` (§2
 `ds-pop-in`, `zeichnen` → `ds-draw`, `aufziehen`/`aufrichten` → `ds-fill-share` über `--ds-share` (`ds-fill-x`/`ds-fill-y` sind seit 2.0 veraltet), `drehen` → `ds-spin`. Gehende
 Elemente laufen auf `ds-fade-out` plus einer reinen Bewegung: `absinken` → `ds-drop-out`, `schrumpfen` →
 `ds-shrink-out`, `wegschieben` → `ds-shift-out` (die alten Ziele `ds-sink-out`, `ds-scale-out`, `ds-slide-out` sind in
-Dashboard-Style veraltet). `pulsieren` → `ds-skeleton-wave` (Skelette; `ds-pulse` ist veraltet), `unbestimmt` →
-`ds-progress-head`/`ds-progress-tail` (`ds-indeterminate` ist veraltet). Das eigene CSS nennt Keyframes ohnehin nur
+Dashboard-Style 2.0 entfernt). `pulsieren` → `ds-skeleton-wave` (Skelette; `ds-pulse` ist in 2.0 entfernt), `unbestimmt` →
+`ds-progress-head`/`ds-progress-tail` (`ds-indeterminate` ist in 2.0 entfernt). Das eigene CSS nennt Keyframes ohnehin nur
 selten; meist laufen sie über die Klassen und `DS.motion`.
 
 **Dateien:** `design.css` → `vendor/dashboard-style/ds.css` + `grund.css` + `thema.css` + `bausteine.css`;

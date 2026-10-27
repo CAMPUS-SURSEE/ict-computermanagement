@@ -782,7 +782,8 @@ const Fenster = (function () {
     };
 
     /* Solange F.beschaeftigt läuft, sind die Kopfaktionen gesperrt – mit
-       Grund im Tooltip, fokussierbar (bausteine.js schluckt ihre Klicks).
+       Grund im Tooltip, fokussierbar (die Wache von Dashboard-Style,
+       DS.motion.guard, sperrt ihre Klicks).
        data-f-gesperrt merkt sich den Tooltip des freien Knopfs; eine Sperre,
        die die Seite selbst gesetzt hat, bleibt unberührt. Ein Abgleich des
        Kopfs nimmt die Sperre mit den Attributen der Vorlage weg; danach

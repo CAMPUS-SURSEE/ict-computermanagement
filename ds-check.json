@@ -42,7 +42,7 @@
       "rule": "restyle",
       "file": "frontend/bausteine.css",
       "selector": ".ds-timeline__meta > .icon",
-      "reason": "das ICT-Sinnbild «Abgleich» vor der Meta-Zeile der Zeitachse; nur seine Ausrichtung auf der Textzeile"
+      "reason": "das ICT-Sinnbild «Abgleich» vor der Meta-Zeile der Zeitachse; nur seine Ausrichtung auf der Textzeile (STYLEGUIDE.md, Abschnitt 5)"
     },
     {
       "rule": "restyle",

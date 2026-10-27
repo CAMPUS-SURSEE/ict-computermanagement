@@ -2082,7 +2082,7 @@ function filterOeffnen(tab) {
   }
 
   /* Ohne Filter gesperrt (nachfuehren); Klicks auf den gesperrten Knopf
-     schluckt das Fundament. */
+     sperrt die Wache von Dashboard-Style (DS.motion.guard). */
   const zuruecksetzen = UI.knopf({ text: "Filter zurücksetzen", variante: "tonal", beiKlick: function () {
     filterZuruecksetzen(tab, false);
     nachFilter(tab);

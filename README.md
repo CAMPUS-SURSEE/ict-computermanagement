@@ -212,7 +212,7 @@ Netzwerkzugriff – genau das macht `Test-Inventar.ps1`.
 
 ### Dateien im Ordner `frontend`
 
-Stand 23.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
+Stand 27.10.2026. Das Frontend ist reines HTML, CSS und JavaScript ohne Bauschritt: klassische `<script>`-Dateien
 mit je einem Namensraum, kein einziges Inline-Skript und kein `<style>` (die Inhaltsrichtlinie in `_headers` verbietet
 beides). **Grundlage ist [Dashboard-Style](https://github.com/saschazesiger/Dashboard-Style)** 2.0.0, das gemeinsame
 Design-System (dasselbe wie in ChatBob): Tokens, Bausteine, Bewegung, Überlagerungen und Sinnbilder liegen als

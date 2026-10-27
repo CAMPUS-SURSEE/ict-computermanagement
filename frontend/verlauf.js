@@ -346,7 +346,8 @@ const Verlauf = (function () {
   }
 
   /* Ein Zuhörer je Art an der Karte. Ein gesperrter oder beschäftigter
-     Knopf kommt nicht an (bausteine.js schluckt seinen Klick). */
+     Knopf kommt nicht an (die Wache von Dashboard-Style, DS.motion.guard,
+     sperrt seinen Klick). */
   function verdrahten(karte, schluessel) {
     function artVon(knoten) {
       const block = knoten.closest(".vl-formular");
