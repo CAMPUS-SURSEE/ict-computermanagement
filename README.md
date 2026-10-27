@@ -199,7 +199,7 @@ ausserdem als `Inventar/sync-status.json` in die Dokumentbibliothek der Site; de
 | `Migriere-Inhaberschaft.ps1` | einmalig: stellt die Inhaberschaft vom PC-Namen («Computer») auf die Listen-ID des Geräts («AdminClientId») um, auf Wunsch löscht es danach «Computer» (Abschnitt 11) |
 | `Installiere-Sync.ps1` | bringt `code/server/` auf `adminsrv319` und richtet die geplante Aufgabe ein: Tests, Sicherung, Kopie mit Prüfsumme, Probelauf als SYSTEM, Aufgabe alle 30 Minuten (Abschnitt 2.5) |
 | `Test-Inventar.ps1` | Selbsttests + Syntaxprüfung aller Skripte in `code/` und `code/server/` |
-| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung, 14 Prüfungen: Tokens, Keyframes und Bewegungs-Tokens, Literale im eigenen CSS, kein `innerHTML` & Co., kein Inline-Skript, MSAL-Prüfsumme, Altlasten, unveränderte Kopie von Dashboard-Style, Ladereihenfolge, Aufrufe gegen die Schnittstelle der Kopie, veraltete Namen von Dashboard-Style, Seitengerüst, Seiten-CSS nur Layout, kein Geviertstrich (Abschnitt 1, «Dateien im Ordner `frontend`») |
+| `Pruefe-Frontend.ps1` | statische Prüfung des Frontends nach jeder Änderung, 14 Prüfungen: Tokens, Keyframes und Bewegungs-Tokens, Literale im eigenen CSS, kein `innerHTML` & Co., kein Inline-Skript, MSAL-Prüfsumme, Altlasten, unveränderte Kopie von Dashboard-Style, Ladereihenfolge, Aufrufe gegen die Schnittstelle der Kopie, entfernte Namen von Dashboard-Style (veraltete als Hinweis), Seitengerüst, Seiten-CSS nur Layout, kein Geviertstrich (Abschnitt 1, «Dateien im Ordner `frontend`») |
 | `serve.ps1` | kleiner Testserver für die lokale Vorschau des Frontends, mit den Headern aus `frontend/_headers` (Windows PowerShell 5.1 und PowerShell 7) |
 
 Die Arbeitsplatz-Skripte laden `Inventar-Gemeinsam.ps1` und die Konfiguration aus `server/` – es gibt
@@ -283,7 +283,8 @@ Bewegungs-Tokens setzt, das eigene CSS nur Tokens liest, kein `innerHTML`, `eval
 keine Seite ein Inline-Skript trägt, MSAL überall mit derselben Prüfsumme geladen wird, keine Altlasten (alte Klassen,
 Tokens und ICT-Namen, Google Fonts) zurückkommen, die Kopie von Dashboard-Style unverändert ist (`SHA256SUMS`), jede
 Seite sie in der richtigen Reihenfolge lädt, jeder Aufruf von `DS.*`, jede Klasse `ds-*` und jedes Sinnbild in der
-Kopie wirklich vorkommt, kein veralteter Name von Dashboard-Style benutzt wird, jede Seite das Gerüst der
+Kopie wirklich vorkommt, kein entfernter Name von Dashboard-Style benutzt wird (ein veralteter ist ein Hinweis, der
+den Exit-Code nicht ändert), jede Seite das Gerüst der
 Referenz-App hat, die Seiten-CSS nur Layout enthalten und kein Geviertstrich «—» im Code steht – je Prüfung «OK» oder
 die Fundstellen mit Datei und Zeile, Exit-Code 0/1, erwartet «alle 14 Prüfungen OK». Dazu prüft das Werkzeug von
 Dashboard-Style selbst die Projektregeln (im Wurzelordner, Node 18 oder neuer):

@@ -709,15 +709,15 @@ erwartet ist «Ergebnis: alle 14 Prüfungen OK», Exit-Code 0. Geprüft wird der
 |---|---|
 | 1. Tokens | jedes `var(--x)` im eigenen CSS ist definiert – im eigenen CSS, in `vendor/dashboard-style/ds.css` oder per `setProperty("--x")` in JS (auch `ds.js`); `var(--x, Ersatz)` gilt als Schalter |
 | 2. Bewegung | `@keyframes` nur in `vendor/dashboard-style/css/motion.css` (und `ds.css`); jeder genannte Keyframe-Name existiert dort; weder eigenes CSS noch JS (`setProperty`) setzt Bewegungs-Tokens (`--ds-dur/-ease/-distance/-scale/-delay/-loop/-hold-*`, `--ds-stagger`, `--ds-time-scale`); `thema.css` setzt keine Bewegungs-Hooks (§2) |
-| 3. Literale | das eigene CSS ausser `thema.css` hat keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale |
+| 3. Literale | das eigene CSS ausser `thema.css` hat keine Farb-, Radius-, Schrift-, Dauer- oder Kurven-Literale und keine eigene Zustandsebene (kein `::before` eines ICT-Elements in `currentColor` bzw. mit `--ds-state-hover/-pressed/-focus`; ein drückbares ICT-Element bekommt `.ds-pressable`) |
 | 4. JavaScript | kein `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval`, `new Function`, kein `(window.)confirm/alert/prompt`, kein Browser-`title`; kein `DS.icons.icon()`, kein `DS.dom.morphHtml` |
 | 5. HTML | kein Inline-`<script>`, keine `on*`-Attribute, keine `javascript:`-Adressen |
 | 6. MSAL | gleiche `integrity` und `crossorigin="anonymous"` auf allen Seiten, die MSAL laden |
-| 7. Altlasten | keine alten Klassen und Tokens (§13), kein `design.css`/`bewegung.*`, kein Google Fonts (auch nicht in `_headers`); keine ICT-Klassen, die Dashboard-Style 2.0 ersetzt hat (§13); keine ICT-Namen, die mit der Umstellung auf Dashboard-Style 1.6 weggefallen sind (`Bewegung.reduziert`, `UI.beschaeftigtAbwarten`, die alte Form `UI.beschaeftigt(knopf, true\|false)`, `UI.knopfSperre`, `UI.feldFrei`, `Rahmen.erstauftritt`, `Rahmen.bereit`, `setzen({ beschaeftigt … })`, `umschalten:`, `data-tipp` …) |
+| 7. Altlasten | keine alten Klassen und Tokens (§13), kein `design.css`/`bewegung.*`, kein Google Fonts (auch nicht in `_headers`); keine ICT-Klassen, die Dashboard-Style 2.0 ersetzt hat (§13); keine ICT-Namen, die mit der Umstellung auf Dashboard-Style 1.6 weggefallen sind (`Bewegung.reduziert`, `UI.beschaeftigtAbwarten`, die alte Form `UI.beschaeftigt(knopf, true\|false)`, `UI.knopfSperre`, `UI.feldFrei`, `Rahmen.erstauftritt`, `Rahmen.bereit`, `setzen({ beschaeftigt … })`, `umschalten:`, `data-tipp` …) und mit 2.0 (`UI.rollKanten`, `vorNeuemTab`, `data-tip-abgeschnitten`, `data-gerollt`) |
 | 8. Kopie | `vendor/dashboard-style/` stimmt mit `SHA256SUMS` überein: keine Datei geändert, fehlend oder dazugekommen (auch versteckte), kein symbolischer Link; `VERSION` vorhanden |
 | 9. Seiten | `class="ds-theme ds-base"` auf `<html>`; Stilvorlagen in der Reihenfolge `grund.css` (als erste), `fonts.css`, `ds.css`, `css/optional/view-transitions.css`, `thema.css`, `bausteine.css`, `rahmen.css`, falls gebraucht `verlauf.css`, die Blätter der Seite zuletzt; `ds.js` vor `bausteine.js`; eine Seite mit `view-transitions.css` trägt `<link rel="expect" href="#…" blocking="render">`, dessen Ziel direkt nach `rahmen.js` steht; jede verlinkte Datei (auch die Schriften in `thema.css`) existiert |
 | 10. DS-API | was der eigene Code von Dashboard-Style nennt, gibt es in der Kopie: jedes `DS.<modul>.<name>` (auch über ein Kürzel wie `const M = DS.motion;`) ist ein Export von `ds.js`, jede Glyphe in `UI.SINNBILDER` steht in `DS.icons`, jede Klasse `ds-*` in `ds.css`, jedes `--ds-*` und `data-ds-*` in `ds.css` oder `ds.js`. Die Listen liest das Skript aus der Kopie selbst |
-| 11. Veraltet | keine Namen, die Dashboard-Style als veraltet oder entfernt führt: jeder Eintrag von `vendor/dashboard-style/deprecations.json` (mit Suchmuster; eine neue Fassung der Kopie bringt ihre Einträge mit), dazu von Hand, was die Datei nicht führt (`prefersReducedMotion`, `prefers-reduced-motion`, `.ds-motion-full`, `.ds-toast--shown` und `--ds-toast-shift` von Hand, `role`/`aria-live` auf `.ds-toasts` und `data-open` auf `.ds-combo` im JS, `--ds-spinner-track` im Thema) |
+| 11. Veraltet | keine Namen, die Dashboard-Style als entfernt führt: jeder Eintrag von `vendor/dashboard-style/deprecations.json` mit `removed` (mit Suchmuster; eine neue Fassung der Kopie bringt ihre Einträge mit) ist ein Befund; ein nur veralteter Eintrag wirkt noch und erscheint als **Hinweis**, der den Exit-Code nicht ändert (sonst hielte eine Nebenversion, die etwas als veraltet markiert, die nächtliche Aktualisierung an; wie die Regel `deprecated` von `check-project.mjs`). Dazu von Hand, immer als Befund, was die Datei nicht führt (`prefersReducedMotion`, `prefers-reduced-motion`, `.ds-motion-full`, `.ds-toast--shown` und `--ds-toast-shift` von Hand, `role`/`aria-live` auf `.ds-toasts` und `data-open` auf `.ds-combo` im JS, `--ds-spinner-track` im Thema) |
 | 12. Seitengerüst | kein `<style>`, `<body>` ohne `ds-*`-Klassen; `div.ds-app[data-seite]` als erstes Element in `<body>`, darin in dieser Reihenfolge `a.ds-skip`, `.ds-topbar`, `.ds-scrim`, `nav.ds-drawer`, `.ds-panel`, `main.ds-view`, `.ds-content`, `.ds-page`; nach `.ds-app` genau ein `div.ds-toasts` ohne `role` und `aria-live` |
 | 13. Seiten-CSS | die Blätter mit Präfix (`benutzer.css` b-, `client.css` g-, `kamera.css` km-, `kamerarolle.css` kr-, `software.css` sw-, `telefon.css` tf-, `verlauf.css` vl-) enthalten nur Layout (§10.1, Schritt 3); ausgenommen mit Grund `styles.css` (Hauptseite, trägt den Zeitstrahl) und `styleguide.css` (Farbfelder, Masse, Bühne); eine unbekannte neue Stilvorlage wird gemeldet |
 | 14. Text | kein Geviertstrich «—» im eigenen CSS, JS, HTML und in `_headers`, auch nicht in Kommentaren |
@@ -732,8 +732,9 @@ node frontend/vendor/dashboard-style/tools/verify.mjs --dir frontend/vendor/dash
 `check-project.mjs` prüft die Regeln des Blocks «Design-System: Dashboard-Style» aus `AGENTS.md` (Kopie, Klassen,
 veraltete Namen, eigene Keyframes, Thema, Kaskaden-Ebenen, `[hidden]`, Umgestalten von `.ds-*`-Bausteinen, Attribute,
 die Dashboard-Style schreibt, `innerHTML`, eigene Zustandsebenen); erwartet ist «0 errors, 0 warnings». Jede bewusste
-Abweichung (§5) steht in `ds-check.json` als Ausnahme mit Grund. Die ICT-Klassen tragen kein gemeinsames Präfix: die
-Literale prüft darum Prüfung 3. `verify.mjs` (oder `sh …/tools/verify.sh`) prüft die Kopie gegen ihre `SHA256SUMS`
+Abweichung (§5) steht in `ds-check.json` als Ausnahme mit Grund. Die ICT-Klassen tragen kein gemeinsames Präfix, und die
+Regeln `literals` und `pressable` prüfen nur Selektoren mit dem Präfix aus `ds-check.json`: sie finden bei ICT nichts.
+Beides prüft darum Prüfung 3 (Literale und eigene Zustandsebenen). `verify.mjs` (oder `sh …/tools/verify.sh`) prüft die Kopie gegen ihre `SHA256SUMS`
 wie Prüfung 8.
 
 Mit `-Ordner <Pfad>` prüft `Pruefe-Frontend.ps1` eine Kopie. Was es nicht sieht – Aussehen, Bewegung, Bedienung und ob ein Aufruf von
@@ -765,8 +766,8 @@ Lauf ohne Build. Von Hand geht es so:
 
 1. **Änderungen lesen:** `CHANGELOG.md` von Dashboard-Style, bei einer neuen Hauptversion zuerst deren Tabelle
    «Migration» und die geänderten Vorgaben, dazu die Abschnitte «Deprecated». Was dort als veraltet steht, gleich
-   umstellen (Prüfung 11 und `check-project.mjs` melden es aus `deprecations.json`, und die nächste Hauptversion
-   entfernt es); benennt der neue Stand Tokens, Klassen oder JS-Exporte um oder entfernt er sie, dann `grund.css`,
+   umstellen (Prüfung 11 und `check-project.mjs` melden es aus `deprecations.json` als Hinweis bzw. Warnung, und die
+   nächste Hauptversion entfernt es; dann ist es ein Befund); benennt der neue Stand Tokens, Klassen oder JS-Exporte um oder entfernt er sie, dann `grund.css`,
    `thema.css`, `bausteine.css`, `rahmen.css` und die Bauer nachführen. Bringt er einen Teil, den ICT selbst baut,
    den Bauer darauf umstellen und die eigene Klasse entfernen (§4.2, §13).
 2. **Kopie ersetzen** mit dem Werkzeug von Dashboard-Style (`scripts/` in dessen Repository; hier liegt es als
@@ -788,7 +789,7 @@ Lauf ohne Build. Von Hand geht es so:
    ersetzt den Ordner als Ganzes und schreibt `VERSION` (mit dem genauen Commit) und `SHA256SUMS` neu. Nie einzelne
    Dateien von Hand kopieren oder ändern.
 3. **Prüfen:** `code\Pruefe-Frontend.ps1` (Prüfung 8 vergleicht die Prüfsummen, Prüfung 1 und 2 finden verschwundene
-   Tokens und Keyframes, Prüfung 10 entfernte JS-Exporte, Klassen und Sinnbilder, Prüfung 11 veraltete Namen) und
+   Tokens und Keyframes, Prüfung 10 entfernte JS-Exporte, Klassen und Sinnbilder, Prüfung 11 entfernte Namen als Befund, veraltete als Hinweis) und
    `node frontend/vendor/dashboard-style/tools/check-project.mjs --config ds-check.json` (§10.3), dann
    `styleguide.html` und die Seiten mit `?mock=1` bei 1440, 900 und 390 px ansehen.
 4. **Einchecken:** Kopie und Anpassungen zusammen. Der Ordner ist in `.gitattributes` als `-text` markiert; Git
@@ -971,13 +972,13 @@ meldet die meisten):
 | `UI.datenliste`, `UI.auswahlFuellen`, `UI.sortierKnopf`, `UI.meldungenAusrichten` | nur noch intern in `bausteine.js` bzw. `rahmen.js` (Vorschläge über `UI.eingabe({ vorschlaege })`, Sortierung über `UI.tabellenKopf`) |
 | `Rahmen.erstauftritt`, `Rahmen.bereit` | `Rahmen.zustand('inhalt')`, `Rahmen.wechseln`, `Bewegung.auftritt` |
 | `UI.tipp.verbergen`, `UI.meldung.fehlerSchliessen` | Esc und `DS.overlay`; `UI.meldungenFehlerSchliessen()` |
-| `data-tipp`, eigenes `.tipp`-Element | `data-tip` bzw. `data-tip-abgeschnitten`, gezeigt von `DS.overlay.tooltips` |
+| `data-tipp`, eigenes `.tipp`-Element | `data-tip`, gezeigt von `DS.overlay.tooltips` (das Zwischenziel `data-tip-abgeschnitten` ist mit 2.0 weggefallen, siehe unten) |
 | `#ansage` (eigene Live-Region), Meldungs-Timer 3,2 s, `--meldung-zusatz` | Ansagen, Lesezeit und Platz von `DS.overlay.toast` (`--ds-toast-bottom`, `--ds-toast-reserve`) |
 | eigene Ebenen für Dialog, Blatt und Schublade (`div`, eigene Fokusfalle) | natives `<dialog>` über `DS.overlay.open/close` (§7) |
 | `chip({ umschalten })`, Umschalt-Chip als `button.chip` mit `aria-pressed`, `.chip-haken` | `UI.chip({ gewaehlt })` → `label.ds-chip`; `art: 'radio'` für genau einen |
 | `UI.schalter` als eigener Knopf `.schalter` | `label.ds-switch` mit `input[role=switch]`; ICT-eigen nur `.schalter-gesperrt` |
 | `.knopf-weiter`, `knopf({ sinnbildGroesse })` | `UI.knopf({ weiter: true })` (Pfeil ohne eigene Klasse); feste Sinnbild-Grössen |
-| `listenZeile({ marke, pfeil })`, `zaehler({ ploppen })`, `skelettSeite({ ladeleiste })`, `F.zeichneBereich` mit `neuBauen` | entfällt (Zahlmarke über `UI.karte({ marke })`; der Zähler ploppt von selbst von leer auf eine Zahl) |
+| `listenZeile({ marke, pfeil })`, `zaehler({ ploppen })`, `skelettSeite({ ladeleiste })`, `F.zeichneBereich` mit `neuBauen` | entfällt (Zahlmarke über `UI.karte({ marke })`; der Zähler ploppt von selbst von leer auf eine Zahl herein und zurück hinaus) |
 | `.aufgabe*` (Handlungsbedarf als Zeilenliste) | `UI.karte({ href, marke })` mit `.karte-marke` |
 | `.wechsel-weg` | `Rahmen.wechseln` über `DS.motion.transition` |
 | `UI.bestaetigen(titel, frage, knopf)`, `UI.meldung(text, true\|"ton")`, `UI.knopf`/`banner`/`leerzustand`/`karte`/`kachel`/`formZeile` mit Positionsparametern, Status-Töne `info`/`leise`/`marke`/`fehler`/`ok` | nur noch die Formen mit Optionsobjekt und die Töne aus §4.1 |
@@ -999,10 +1000,10 @@ die ICT-Klassen gibt es nicht mehr (Prüfung 7 meldet sie). Die Bauer behalten i
 | `.blatt-kopf-text`, `.blatt-unter`, `.blatt-fuss` | `.ds-sheet__heading`, `__subtitle`, `__foot` |
 | Schliessgrund aus vorgemerkten Anlässen, Schleier-Sperre (300 ms), Esc-Sperre, `UEBERLAGERUNG_OFFEN` | `ds-close`, `--ds-delay-dismiss`, `data-ds-busy`, `DS.overlay.topmost` |
 | `.meldung-aktion`, eigenes Ersetzen gleicher Meldungen, `data-toast-reserve` von Hand | `toast()` mit `action`, `restart`, `key`, `reserve` |
-| `data-tip-abgeschnitten`, Antippen von Bildern nachgestellt | `data-tip` (Dashboard-Style zeigt ihn nur abgeschnitten; Touch-Tooltips) |
+| `data-tip-abgeschnitten`, Antippen von Bildern nachgestellt | `data-tip` (einen Tooltip gleich dem sichtbaren Text zeigt Dashboard-Style nur, solange dieser abgeschnitten ist; Touch-Tooltips) |
 | `.speicherleiste*`, `--leiste-hoehe/-reserve/-rest` | `.ds-savebar` über `DS.overlay.savebar` |
 | eigene Klick-Wache für gesperrte und beschäftigte Knöpfe | `DS.motion.guard` (von `DS.ripple.attach`) |
-| `.tabelle-rahmen` mit eigener Klebe- und Klicklogik, `.ds-view[data-fest]`, `UI.rollKanten`, `--rollleiste` | `.ds-table-wrap--fill`, `.ds-table--pin-first`, `.ds-view--fill`, `DS.dom.scrollEdges` (`.tabelle-rahmen` bleibt als Haken) |
+| `.tabelle-rahmen` mit eigener Klebe- und Klicklogik, `.ds-view[data-fest]`, `UI.rollKanten` (`data-gerollt`, `data-gerollt-x`), `UI.tabellenRahmen({ vorNeuemTab })`, `--rollleiste` | `.ds-table-wrap--fill`, `.ds-table--pin-first`, `.ds-view--fill`, `DS.dom.scrollEdges` (`.tabelle-rahmen` bleibt als Haken) |
 | `.zeilenliste`, `.listen-zeile*` | `.ds-list`, `.ds-list__item`, `__title`, `__action`, `__meta`, `__actions` |
 | `.datenzeilen`, `.datenzeile-name/-wert/-form/-hinweis`, `.schloss`, `.geaendert`, `.geaendert-text` | `.ds-facts--rows`, `.ds-form--rows`, `.ds-field__value`, `.ds-lock`, `.ds-field--changed`, `.ds-field__changed` |
 | `.hinweis-zeile*` | `.ds-alert--plain`, `.ds-alert__title` |

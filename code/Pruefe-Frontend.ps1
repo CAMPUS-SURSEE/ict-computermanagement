@@ -30,7 +30,11 @@
     3. Literale    Das eigene CSS ausser thema.css (bausteine.css, rahmen.css und die
                    Seitenvorlagen) enthält keine Farb-Literale (#hex, rgb(), hsl() …, Farbnamen),
                    keine Radius-, Schrift-, Dauer- oder Kurven-Literale (cubic-bezier, ease …) –
-                   nur Tokens. Farben, Schriften und Masse stehen nur im Thema (thema.css).
+                   nur Tokens. Farben, Schriften und Masse stehen nur im Thema (thema.css). Dazu
+                   keine eigene Zustandsebene: kein ::before eines ICT-Elements in currentColor
+                   bzw. mit --ds-state-hover/-pressed/-focus (dafür .ds-pressable; die Regeln
+                   «literals» und «pressable» von check-project.mjs greifen bei ICT nicht, weil die
+                   ICT-Klassen kein gemeinsames Präfix haben).
     4. JavaScript  kein innerHTML, outerHTML, insertAdjacentHTML, document.write, eval, new Function,
                    kein (window.)confirm, alert oder prompt, kein Browser-title (Tooltips: titel
                    bzw. UI.tipp setzen data-tip, gezeigt von DS.overlay.tooltips; document.title
@@ -49,7 +53,9 @@
                    weggefallen sind (Bewegung.reduziert, UI.beschaeftigtAbwarten, UI.knopfSperre,
                    UI.feldFrei, Rahmen.erstauftritt, Rahmen.bereit, die alte Form
                    UI.beschaeftigt(knopf, true|false), setzen({ beschaeftigt … }), umschalten:,
-                   data-tipp …): ein Aufruf davon wirft erst im Browser.
+                   data-tipp …) und mit dem Umbau auf 2.0 (UI.rollKanten, vorNeuemTab,
+                   data-tip-abgeschnitten, data-gerollt): ein Aufruf davon wirft erst im
+                   Browser, ein solches Attribut wirkt nicht mehr.
     8. Kopie       vendor\dashboard-style stimmt mit seiner SHA256SUMS überein: jede Datei hat ihre
                    Prüfsumme, keine fehlt, keine ist dazugekommen, keine ist ein symbolischer Link
                    (niemand hat die Kopie von Hand geändert; aktualisiert wird sie nur mit
@@ -73,13 +79,16 @@
                    ds.js. Entfernt Dashboard-Style etwas, scheitert so schon «Verify» der
                    nächtlichen Aktualisierung (.github/workflows/update-dashboard-style.yml),
                    statt dass die Seite erst im Browser wirft.
-   11. Veraltet    keine Namen, die Dashboard-Style als veraltet oder entfernt führt: jeder Eintrag
-                   von vendor/dashboard-style/deprecations.json (seit 2.0, mit Suchmuster; eine neue
-                   Fassung der Kopie bringt ihre Einträge mit). Dazu von Hand, was die Datei nicht
-                   führt: prefersReducedMotion, prefers-reduced-motion, .ds-motion-full,
-                   .ds-toast--shown und --ds-toast-shift(-y) von Hand, role bzw. aria-live auf
-                   .ds-toasts im JS (im HTML: Prüfung 12), data-open auf .ds-combo im JS,
-                   --ds-spinner-track im Thema.
+   11. Veraltet    keine Namen, die Dashboard-Style als entfernt führt: jeder Eintrag von
+                   vendor/dashboard-style/deprecations.json mit «removed» (seit 2.0, mit Suchmuster;
+                   eine neue Fassung der Kopie bringt ihre Einträge mit). Ein nur veralteter Eintrag
+                   (ohne «removed») wirkt noch und ist ein HINWEIS, der den Exit-Code nicht ändert:
+                   eine Nebenversion, die etwas als veraltet markiert, hält die nächtliche
+                   Aktualisierung nicht an (wie die Regel «deprecated» von check-project.mjs). Dazu
+                   von Hand, immer als Befund, was die Datei nicht führt: prefersReducedMotion,
+                   prefers-reduced-motion, .ds-motion-full, .ds-toast--shown und
+                   --ds-toast-shift(-y) von Hand, role bzw. aria-live auf .ds-toasts im JS (im
+                   HTML: Prüfung 12), data-open auf .ds-combo im JS, --ds-spinner-track im Thema.
    12. Gerüst      Jede Seite hat das Gerüst der Referenz-App von Dashboard-Style: kein <style>
                    (die Inhaltsrichtlinie erlaubt nur Stilvorlagen), <body> ohne ds-*-Klassen,
                    darin div.ds-app mit data-seite und in dieser Reihenfolge a.ds-skip, .ds-topbar,
@@ -277,6 +286,17 @@ function Show-Pruefung {
     foreach ($b in $sortiert) { Write-Host ('          {0}' -f $b) }
 }
 
+# Hinweise: gemeldet, aber ohne Einfluss auf das Ergebnis (Prüfung 11, veraltete Namen).
+$script:HinweisAnzahl = 0
+function Show-Hinweise {
+    param([string]$Titel, $Fundstellen)
+    $liste = @($Fundstellen)
+    if ($liste.Count -eq 0) { return }
+    $script:HinweisAnzahl += $liste.Count
+    Write-Host ('  HINWEIS {0} – {1} Fundstelle(n)' -f $Titel, $liste.Count) -ForegroundColor Yellow
+    foreach ($b in ($liste | Sort-Object)) { Write-Host ('          {0}' -f $b) }
+}
+
 Write-Host ('Pruefe-Frontend: {0}  ({1} CSS, {2} JS, {3} HTML, Dashboard-Style in vendor\dashboard-style)' -f $Ordner, $Css.Count, $Js.Count, $Html.Count)
 Write-Host ''
 
@@ -452,7 +472,29 @@ foreach ($d in $OhneThema) {
         }
     }
 }
-Show-Pruefung '3. Eigenes CSS ohne Farb-, Radius-, Schrift-, Dauer- und Kurven-Literale' $befunde (($OhneThema | ForEach-Object { $_.Name }) -join ', ')
+# Keine eigene Zustandsebene: ein ::before eines ICT-Elements (eine Klasse ohne ds-) in
+# currentColor bzw. mit der Deckkraft eines Zustands (--ds-state-hover/-pressed/-focus) baut nach,
+# was .ds-pressable bringt (Zustandsebene, Fokusring, Welle). Die Regel «pressable» von
+# check-project.mjs sieht das bei ICT nicht: sie prüft nur Selektoren mit dem Präfix aus
+# ds-check.json, und die ICT-Klassen haben kein gemeinsames.
+foreach ($d in $OhneThema) {
+    foreach ($m in [regex]::Matches($d.Ohne, '(?<sel>[^{};]+)\{(?<inhalt>[^{}]*)\}')) {
+        $sel = $m.Groups['sel'].Value.Trim()
+        if ($sel.StartsWith('@')) { continue }
+        $eigeneVorher = $false
+        foreach ($teil in ($sel -split ',')) {
+            if ($teil -match '::before' -and [regex]::IsMatch($teil, '\.(?!ds-)-?[A-Za-z][\w-]*')) { $eigeneVorher = $true }
+        }
+        if (-not $eigeneVorher) { continue }
+        $inhalt = $m.Groups['inhalt'].Value
+        if ($inhalt -match '--ds-state-(hover|pressed|focus)(?![\w-])' -or $inhalt -match '(?i)background(-color)?\s*:\s*currentColor') {
+            $roh = $m.Groups['sel'].Value
+            $nr = Get-ZeileNr $d ($m.Groups['sel'].Index + $roh.Length - $roh.TrimStart().Length)
+            $befunde.Add((Get-Fundstelle $d $nr 'eigene Zustandsebene (::before); ein drückbares ICT-Element bekommt .ds-pressable'))
+        }
+    }
+}
+Show-Pruefung '3. Eigenes CSS ohne Farb-, Radius-, Schrift-, Dauer- und Kurven-Literale und ohne eigene Zustandsebene' $befunde (($OhneThema | ForEach-Object { $_.Name }) -join ', ')
 
 # ---------------------------------------------------------------------------
 # 4. JavaScript: keine Markup- und Code-aus-Text-Schnittstellen, keine Browser-Dialoge
@@ -655,7 +697,12 @@ $Altlasten = @(
     @{ Muster = '(?<![\w$])Bewegung\s*\.\s*zahlenHochzaehlen(?![\w$])'; Art = 'Bewegung.zahlenHochzaehlen (kein Export mehr; Bewegung.kennzahlenStill)' },
     @{ Muster = '(?<![\w$])setzen\(\s*\{[^{}]*(?<![\w$])beschaeftigt\s*:'; Art = 'speicherleiste().setzen({ beschaeftigt }) (weggefallen; UI.beschaeftigt)' },
     @{ Muster = '(?<![\w$-])umschalten\s*:'; Art = 'Option umschalten: (weggefallen; UI.chip({ art: ''radio'' }))' },
-    @{ Muster = '(?<![\w-])data-tipp(?![\w-])|dataset\s*\.\s*tipp(?![\w$])'; Art = 'data-tipp (Tooltips über data-tip und DS.overlay.tooltips)' }
+    @{ Muster = '(?<![\w-])data-tipp(?![\w-])|dataset\s*\.\s*tipp(?![\w$])'; Art = 'data-tipp (Tooltips über data-tip und DS.overlay.tooltips)' },
+    # Weggefallen mit dem Umbau auf Dashboard-Style 2.0 (STYLEGUIDE.md, Abschnitt 13).
+    @{ Muster = '(?<![\w$])rollKanten(?![\w$])'; Art = 'UI.rollKanten (weggefallen; Rollkanten setzt UI.tabellenRahmen über DS.dom.scrollEdges)' },
+    @{ Muster = '(?<![\w$])vorNeuemTab(?![\w$])'; Art = 'Option vorNeuemTab von UI.tabellenRahmen (weggefallen; den Zellklick leitet UI.tabellenRahmen an den Zeilenlink)' },
+    @{ Muster = '(?<![\w-])data-tip-abgeschnitten(?![\w-])|dataset\s*\.\s*tipAbgeschnitten(?![\w$])'; Art = 'data-tip-abgeschnitten (weggefallen; data-tip, Dashboard-Style zeigt einen Tooltip gleich dem Text nur abgeschnitten)' },
+    @{ Muster = '(?<![\w-])data-gerollt(-x)?(?![\w-])'; Art = 'data-gerollt(-x) (weggefallen; Rollkanten über DS.dom.scrollEdges)' }
 )
 foreach ($d in $Dateien) {
     foreach ($a in $Altlasten) {
@@ -976,20 +1023,23 @@ foreach ($s in $dsExporte.Values) { $exportZahl += $s.Count }
 Show-Pruefung '10. DS-API: jeder DS-Aufruf, jede ds-Klasse, jedes --ds-*/data-ds-* gibt es in der Kopie' $befunde ('{0} Aufrufe gegen {1} Exporte in {2} Modulen, {3} Klassen-Nennungen' -f $apiZahl, $exportZahl, $dsExporte.Count, $klassenZahl)
 
 # ---------------------------------------------------------------------------
-# 11. Keine Namen, die Dashboard-Style als veraltet führt
+# 11. Keine Namen, die Dashboard-Style als entfernt führt; veraltete als Hinweis
 # ---------------------------------------------------------------------------
 
 # Die Liste kommt aus der Kopie selbst: vendor/dashboard-style/deprecations.json (seit 2.0) führt
-# jeden veralteten und jeden entfernten Namen mit einem Suchmuster. ICT verwendet beide nicht:
-# entfernte Namen wirken nicht mehr, veraltete fallen mit der nächsten Hauptversion weg. Eine neue
-# Fassung der Kopie bringt neue Einträge mit; hier ist nichts nachzutragen. Von Hand stehen nur
-# die Verbote, die die Datei nicht führt (Dinge, die vor 1.0 entfernt wurden oder die ICT
-# zusätzlich ausschliesst).
+# jeden veralteten und jeden entfernten Namen mit einem Suchmuster. Ein entfernter Name (Feld
+# «removed») wirkt nicht mehr: er ist ein Befund. Ein nur veralteter Name wirkt bis zur nächsten
+# Hauptversion weiter: er ist ein Hinweis, der den Exit-Code nicht ändert – sonst hielte eine
+# Nebenversion von Dashboard-Style, die etwas als veraltet markiert, die nächtliche Aktualisierung
+# («Verify») samt ihren Fehlerbehebungen an, obwohl nichts kaputt ist (wie die Regel
+# «deprecated» von check-project.mjs). Eine neue Fassung der Kopie bringt neue Einträge mit; hier
+# ist nichts nachzutragen. Von Hand stehen nur die Verbote, die die Datei nicht führt (Dinge, die
+# vor 1.0 entfernt wurden oder die ICT zusätzlich ausschliesst); sie sind immer Befunde.
 $Veraltet = [ordered]@{}
 function Add-Veraltet {
-    param([string]$Name, [string]$Muster, [string]$Grund, [string]$Nur)
+    param([string]$Name, [string]$Muster, [string]$Grund, [string]$Nur, [switch]$NurHinweis)
     if ($Veraltet.Contains($Name)) { return }
-    $Veraltet[$Name] = [pscustomobject]@{ Muster = $Muster; Grund = $Grund; Nur = $Nur }
+    $Veraltet[$Name] = [pscustomobject]@{ Muster = $Muster; Grund = $Grund; Nur = $Nur; NurHinweis = [bool]$NurHinweis }
 }
 function Get-NamensMuster {
     <# Ganzes Wort: CSS-Namen mit Bindestrich, JS-Namen mit $. #>
@@ -998,6 +1048,7 @@ function Get-NamensMuster {
     return '(?<![\w-])' + [regex]::Escape($Name) + '(?![\w-])'
 }
 $befunde = New-Object System.Collections.Generic.List[string]
+$hinweise = New-Object System.Collections.Generic.List[string]
 $ausDatei = 0
 $depPfad = Join-Path $DsOrdner 'deprecations.json'
 if (-not (Test-Path -LiteralPath $depPfad -PathType Leaf)) {
@@ -1008,7 +1059,7 @@ if (-not (Test-Path -LiteralPath $depPfad -PathType Leaf)) {
         if (-not $e.pattern) { continue }
         $ersatz = if ($e.replacement) { ', Ersatz: ' + $e.replacement } else { '' }
         $grund = if ($e.removed) { 'entfernt in {0}{1}' -f $e.removed, $ersatz } else { 'veraltet seit {0}{1}' -f $e.deprecated, $ersatz }
-        Add-Veraltet $e.name $e.pattern $grund
+        Add-Veraltet $e.name $e.pattern $grund -NurHinweis:(-not $e.removed)
         $ausDatei++
     }
 }
@@ -1024,7 +1075,11 @@ foreach ($d in $Dateien) {
         $v = $Veraltet[$name]
         if ($v.Nur -and $d.Name -ne $v.Nur) { continue }
         foreach ($m in [regex]::Matches($d.Ohne, $v.Muster)) {
-            $befunde.Add((Get-Fundstelle $d (Get-ZeileNr $d $m.Index) ('veraltet in Dashboard-Style: {0} ({1})' -f $name, $v.Grund)))
+            if ($v.NurHinweis) {
+                $hinweise.Add((Get-Fundstelle $d (Get-ZeileNr $d $m.Index) ('veraltet in Dashboard-Style: {0} ({1})' -f $name, $v.Grund)))
+            } else {
+                $befunde.Add((Get-Fundstelle $d (Get-ZeileNr $d $m.Index) ('entfernt bzw. verboten: {0} ({1})' -f $name, $v.Grund)))
+            }
         }
     }
 }
@@ -1046,7 +1101,8 @@ foreach ($d in $Js) {
         }
     }
 }
-Show-Pruefung '11. Keine veralteten Namen von Dashboard-Style' $befunde ('{0} Namen, {1} davon aus deprecations.json der Kopie' -f $Veraltet.Count, $ausDatei)
+Show-Pruefung '11. Keine entfernten Namen von Dashboard-Style' $befunde ('{0} Namen, {1} davon aus deprecations.json der Kopie' -f $Veraltet.Count, $ausDatei)
+Show-Hinweise '11. Veraltete Namen von Dashboard-Style (wirken noch; vor der nächsten Hauptversion ersetzen)' $hinweise
 
 # ---------------------------------------------------------------------------
 # 12. Seitengerüst wie die Referenz-App von Dashboard-Style
@@ -1184,4 +1240,7 @@ if ($script:Fehlerhaft) {
     exit 1
 }
 Write-Host ('Ergebnis: alle {0} Prüfungen OK' -f $script:Anzahl) -ForegroundColor Green
+if ($script:HinweisAnzahl) {
+    Write-Host ('          dazu {0} Hinweis(e) auf veraltete Namen von Dashboard-Style (Prüfung 11)' -f $script:HinweisAnzahl) -ForegroundColor Yellow
+}
 exit 0
