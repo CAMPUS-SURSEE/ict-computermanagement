@@ -123,56 +123,22 @@
    2. Tafel: Tabellenansichten, Zustände
    ================================================================== */
 
-/* --bahn-unten ist das untere Polster der Bahn (wie in Dashboard-Style:
-   Abstand, Platz für eine zweizeilige Meldung, 8 px). */
-.ds-view > .ds-content {
-  --bahn-unten: calc(var(--ds-space-6) + var(--ds-toast-room) + var(--ds-space-2));
-}
-
 /* Ein einzelner Knopf im Bereich behält seine Breite (wie in .ds-page). */
 .fenster-bereich > .ds-btn { justify-self: start; }
 
-/* Tabellenansichten (Rahmen.fest): Bei genug Platz rollt die Tafel nicht,
-   die Ansicht ist eine Spalte (Seitenkopf, Werkzeugleiste, Chips) und die
-   Tabelle füllt den Rest und rollt selbst. Unten genügt der normale
-   Abstand. Darunter (Telefon, niedrige Fenster, 200 % Zoom) blieben für
-   die Liste nur 0–3 Zeilen: dann rollt die Tafel wie jede Seite. */
-.ds-view[data-fest] > .ds-content {
-  --bahn-unten: var(--ds-space-6);
-  padding-bottom: var(--bahn-unten);
-}
-
+/* Tabellenansichten (Rahmen.fest: .ds-view--fill von Dashboard-Style):
+   bei genug Platz rollt die Tafel nicht, und die sichtbare Ansicht, das
+   letzte Kind der Bahn, füllt den Rest. Sie ist eine Spalte im
+   Seitenrhythmus (Seitenkopf, Werkzeugleiste, Chips), deren Liste
+   (.ds-table-wrap--fill) den Rest nimmt und selbst rollt. Darunter rollt
+   die Tafel, und Dashboard-Style begrenzt die Liste. */
 @media (min-width: 601px) and (min-height: 720px) {
-  .ds-view[data-fest] { overflow: hidden; }
-
-  .ds-view[data-fest] > .ds-content,
-  .ds-view[data-fest] > .ds-content > .ds-page {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Die sichtbare Ansicht füllt den Rest als Spalte im Seitenrhythmus;
-     darin nimmt .tabelle-rahmen (flex 1, eigener Roller) den Platz. */
-  .ds-view[data-fest] > .ds-content > .ds-page > :not(.bahn-zustand, .bahn-vorfuehrung, [hidden]) {
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
+  .ds-view--fill .ansicht {
     display: flex;
     flex-direction: column;
     gap: var(--ds-space-5);
-  }
-}
-
-/* Zu wenig Platz: die Liste bleibt ein eigener Roller (nur so kleben Kopf
-   und erste Spalte), ist aber höchstens so hoch wie die Tafel ohne ihr
-   unteres Polster: das Mausrad rollt erst die Liste, an ihrem Ende wieder
-   die Tafel. */
-@media (max-width: 600px), (max-height: 719.98px) {
-  .ds-view[data-fest] .tabelle-rahmen {
-    max-height: calc(100dvh - var(--ds-topbar-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
-      - var(--bahn-unten) - var(--ds-space-2));
+    min-width: 0;
+    min-height: 0;
   }
 }
 
@@ -184,7 +150,7 @@
 .ds-page[data-zustand="laden"] > :not(.bahn-vorfuehrung, .bahn-zustand),
 .ds-page[data-zustand="fehler"] > :not(.bahn-vorfuehrung, .bahn-zustand),
 .ds-page[data-zustand="ende"] > :not(.bahn-vorfuehrung, .bahn-zustand) {
-  display: none !important;
+  display: none;
 }
 
 .bahn-zustand {
@@ -257,14 +223,6 @@
   .wortmarke-punkt { forced-color-adjust: none; background: CanvasText; }
 }
 
-/* Gedruckt wird nur der Inhalt (Dashboard-Style blendet den Rahmen, die
-   Speicherleiste und die Aktionen im Seitenkopf aus). Dazu läuft die
-   seitenfüllende Liste über alle Seiten statt nur ihren Ausschnitt. */
-@media print {
-  .tabelle-rahmen {
-    height: auto;
-    max-height: none;
-    overflow: visible;
-    border-radius: 0;
-  }
-}
+/* Gedruckt wird nur der Inhalt: Dashboard-Style blendet den Rahmen, die
+   Speicherleiste und die Aktionen im Seitenkopf aus, und die seitenfüllende
+   Liste läuft über alle Seiten statt nur ihren Ausschnitt. */

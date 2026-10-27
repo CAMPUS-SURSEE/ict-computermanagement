@@ -1284,9 +1284,10 @@ function tabellenGeruest(tab) {
   /* Jede Zeile öffnet ihren Datensatz (Dashboard-Style
      .ds-table--interactive: Zeiger, Zustands- und Fokusebene, Fokusring
      auf der Zeile). Ihr Link ist der Name (.ds-table__row-link); einen
-     Klick in die übrigen Zellen reicht UI.tabellenRahmen an ihn weiter
-     (die klebende erste Spalte begrenzt ihn auf seine Zelle). Vor einem
-     neuen Tab merkt sich die Seite die Liste für dessen Zurück-Link. */
+     Klick in die übrigen Zellen reicht DS.ripple an ihn weiter (die
+     klebende erste Spalte, .ds-table--pin-first, begrenzt ihn auf seine
+     Zelle). Vor einem neuen Tab merkt sich die Seite die Liste für dessen
+     Zurück-Link (linkGeoeffnet). */
   const tabelle = el("table", "ds-table ds-table--interactive");
   tabelle.id = tab + "-tabelle";
   tabelle.appendChild(el("caption", "ds-sr", titel));
@@ -1294,8 +1295,7 @@ function tabellenGeruest(tab) {
   const koerper = el("tbody");
   koerper.id = tab + "-koerper";
   anhaengen(tabelle, [kopfZeile, koerper]);
-  const rahmen = UI.tabellenRahmen(tabelle, { id: tab + "-rahmen",
-    vorNeuemTab: function () { UI.adresse.listeMerken(); } });
+  const rahmen = UI.tabellenRahmen(tabelle, { id: tab + "-rahmen" });
   rahmen.setAttribute("data-rolle", tab + "-rahmen");
 
   /* Der Leerzustand steht in einer umrandeten Fläche an der Stelle der
@@ -1305,16 +1305,19 @@ function tabellenGeruest(tab) {
 
   anhaengen(ansicht, [kopf, leiste, chips, rahmen, leer]);
 
-  /* EIN Zuhörer für alle Links der Zeilen (sie werden abgeglichen, nicht
-     neu gebaut): ein Link (Datensatz, Inhaber, Gerät, auch der von
-     UI.tabellenRahmen weitergereichte Zeilenklick) arbeitet wie jeder
-     Link; vorher merkt sich die Seite die Liste und, im selben Tab, die
-     Stelle darin. */
+  /* EIN Zuhörer für alle Klicks in den Zeilen (sie werden abgeglichen,
+     nicht neu gebaut): ein Link (Datensatz, Inhaber, Gerät) arbeitet wie
+     jeder Link; vorher merkt sich die Seite die Liste und, im selben Tab,
+     die Stelle darin. Ein Klick in eine Zelle ohne eigenes Bedienelement
+     kommt vor DS.ripple hier vorbei, das ihn danach an den Zeilenlink
+     weiterreicht (schlicht als dessen Klick, sonst in einem neuen Tab):
+     auch dafür ist die Liste schon gemerkt. */
   function linkGeoeffnet(ev) {
-    const link = ev.target.closest ? ev.target.closest("a[href]") : null;
-    const tr = link ? link.closest("tr[data-id]") : null;
+    const tr = ev.target.closest ? ev.target.closest("tr[data-id]") : null;
     if (!tr) return;
     UI.adresse.listeMerken();
+    const link = ev.target.closest("a[href]");
+    if (!link) return;
     const neuerTab = ev.type === "auxclick" || ev.ctrlKey || ev.metaKey || ev.shiftKey;
     if (!neuerTab) stelleMerken(tr.getAttribute("data-id"));
   }

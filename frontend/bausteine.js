@@ -279,15 +279,14 @@
        aria-sort an allen sortierbaren th; .sortierungSetzen(schluessel, richtung).
        Der Pfeil (.ds-table__sort-arrow) steht nur an der sortierten Spalte;
        «ab» dreht ihn über aria-sort am th auf der Feder statt zu springen.
-     UI.tabellenRahmen(table, { id, klasse, vorNeuemTab(link, zeile) }) → div.tabelle-rahmen
-       (mit rollKanten). Ist table .ds-table--interactive (je Zeile ein
-       a.ds-table__row-link), öffnet auch ein Klick in eine Zelle ohne eigenes
-       Bedienelement den Zeilenlink: schlicht über den Link selbst, Ctrl-,
-       Shift- und Mittelklick in einem neuen Tab (vorNeuemTab läuft davor);
-       mit markiertem Text nicht. Die klebende erste Spalte begrenzt den
-       Link von Dashboard-Style sonst auf die erste Zelle. Die Welle ist aus
-       (data-ds-ripple="off": sie bliebe in der ersten Zelle beschnitten),
-       gedrückt zeigt die Zeile die Druckebene.
+     UI.tabellenRahmen(table, { id, klasse }) → div.ds-table-wrap.ds-table-wrap--fill.tabelle-rahmen
+       Liste über die ganze Seite (Dashboard-Style: eigener Scroller, Kopf
+       klebt, table bekommt .ds-table--pin-first, die erste Spalte klebt;
+       Kanten über DS.dom.scrollEdges). Ist table .ds-table--interactive (je
+       Zeile ein a.ds-table__row-link), öffnet auch ein Klick in eine Zelle
+       ohne eigenes Bedienelement den Zeilenlink (DS.ripple: schlicht über
+       den Link selbst, Ctrl-, Shift- und Mittelklick in einem neuen Tab,
+       mit markiertem Text nicht), und die Welle läuft über die ganze Zeile.
      UI.rollKanten(element) → element; setzt data-gerollt-x / data-gerollt beim Rollen
        und data-mehr-rechts, solange rechts noch Inhalt liegt (auch nach Grössenwechseln),
        dazu --rollleiste (Breite einer senkrechten Rollleiste; die Blende lässt sie aus).
@@ -2385,56 +2384,27 @@ const UI = (function () {
     return element;
   }
 
-  /* Rahmen einer seitenfüllenden Liste (eigener Scroller, klebender Kopf
-     und erste Spalte). Klickbare Zeilen (.ds-table--interactive): der
-     Zeilenlink von Dashboard-Style spannt sich über seine Zelle, und die
-     klebt beim seitlichen Rollen (sie ist selbst positioniert); über die
-     ganze Zeile gezogen läge er über den übrigen Links der Zeile. Darum
-     reicht EIN Zuhörer am Rahmen einen Klick in eine Zelle ohne eigenes
-     Bedienelement an ihn weiter. Wer Text markiert hat, wollte kopieren. */
-  const EIGENE_BEDIENUNG = "a[href], button, input, select, textarea, label, [tabindex]";
-
-  function zeilenKlickWeiterleiten(r, vorNeuemTab) {
-    function zeileUndLink(ev) {
-      const ziel = ev.target instanceof Element ? ev.target : null;
-      const tr = ziel ? ziel.closest("tbody tr") : null;
-      if (!tr || !r.contains(tr)) return null;
-      const bedienung = ziel.closest(EIGENE_BEDIENUNG);
-      if (bedienung && tr.contains(bedienung)) return null;
-      const link = tr.querySelector(".ds-table__row-link");
-      return link ? { tr: tr, link: link } : null;
-    }
-    function oeffnen(ev) {
-      if (ev.type === "click" && ev.button !== 0) return;
-      const t = zeileUndLink(ev);
-      if (!t) return;
-      const auswahl = window.getSelection ? window.getSelection() : null;
-      if (auswahl && String(auswahl) && t.tr.contains(auswahl.anchorNode)) return;
-      const neuerTab = ev.type === "auxclick" || ev.ctrlKey || ev.metaKey || ev.shiftKey;
-      ev.preventDefault();
-      if (!neuerTab) { t.link.click(); return; }
-      if (vorNeuemTab) vorNeuemTab(t.link, t.tr);
-      window.open(t.link.href, "_blank", "noopener");
-    }
-    r.addEventListener("click", oeffnen);
-    r.addEventListener("auxclick", function (ev) { if (ev.button === 1) oeffnen(ev); });
-    // Unter Windows startet ein Mittelklick ausserhalb eines Links sonst das
-    // automatische Rollen – dann kommt kein auxclick.
-    r.addEventListener("mousedown", function (ev) { if (ev.button === 1 && zeileUndLink(ev)) ev.preventDefault(); });
-  }
-
+  /* Rahmen einer seitenfüllenden Liste: .ds-table-wrap--fill von
+     Dashboard-Style (eigener Scroller mit Haarlinie, klebender Kopf, Zellen
+     mit «…») mit .ds-table--pin-first (die erste Spalte klebt, ihre
+     Haarlinie erscheint beim seitlichen Rollen, die Blende nur rechts).
+     DS.dom.scrollEdges meldet die Kanten auch ohne rollgebundene
+     Animationen. Klickbare Zeilen (.ds-table--interactive): einen Klick in
+     eine Zelle ohne eigenes Bedienelement reicht DS.ripple an den
+     Zeilenlink weiter (Ctrl-, Shift- und Mittelklick in einem neuen Tab,
+     mit markiertem Text nicht) und lässt die Welle über die ganze Zeile
+     laufen. Wer vor einem neuen Tab etwas tun muss, hört auf click und
+     auxclick der Zeile (app.js: Liste merken). */
   function tabellenRahmen(tabellenKnoten, optionen) {
     const o = optionen || {};
-    const r = el("div", "tabelle-rahmen" + (o.klasse ? " " + o.klasse : ""));
+    const r = el("div", "ds-table-wrap ds-table-wrap--fill tabelle-rahmen" + (o.klasse ? " " + o.klasse : ""));
     if (o.id) r.id = o.id;
     if (tabellenKnoten) {
+      tabellenKnoten.classList.add("ds-table--pin-first");
       r.appendChild(tabellenKnoten);
-      if (tabellenKnoten.classList.contains("ds-table--interactive")) {
-        tabellenKnoten.setAttribute("data-ds-ripple", "off");
-        zeilenKlickWeiterleiten(r, o.vorNeuemTab);
-      }
     }
-    return rollKanten(r);
+    DS.dom.scrollEdges(r);
+    return r;
   }
 
 

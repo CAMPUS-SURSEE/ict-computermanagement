@@ -841,113 +841,20 @@
 
 /* ==================================================================
    10. Liste über die ganze Seite (UI.tabellenRahmen)
-   Der Rahmen ist ein eigener Scroller: der Kopf klebt oben, die erste
-   Spalte links (Dashboard-Style schliesst das für .ds-table-wrap aus).
-   Die Kopflinie ist ein Schatten, weil zusammengefallene Rahmen
-   mitrollen. Zellen brechen nicht um, lange Werte enden mit «…» (4 px
-   Rand, damit Fokusringe von Links sichtbar bleiben). Klickbare Zeilen
-   sind .ds-table--interactive von Dashboard-Style (UI.tabellenRahmen).
+   Der Rahmen ist .ds-table-wrap--fill mit .ds-table--pin-first von
+   Dashboard-Style: eigener Scroller, Kopf und erste Spalte kleben, Zellen
+   brechen nicht um und enden mit «…». Hier nur die Masse: die Tabelle
+   ist so breit wie ihr Inhalt (mindestens wie der Rahmen), damit auch die
+   Spaltenköpfe auf schmalen Bahnen nicht umbrechen, und die erste Spalte
+   (der Name, über den die Zeile öffnet) mindestens 180 px.
    ================================================================== */
-
-.tabelle-rahmen {
-  position: relative;
-  isolation: isolate;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-surface);
-  scrollbar-width: thin;
-  scrollbar-color: var(--ds-line-2) transparent;
-  /* Zeilen-Hover von Dashboard-Style, aber deckend: die klebende erste
-     Spalte muss verdecken, was unter ihr durchrollt. */
-  --ds-table-row-hover: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-hover-lg) * 100%), var(--ds-surface));
-}
 
 .tabelle-rahmen > .ds-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.tabelle-rahmen > .ds-table td {
-  max-width: 280px;
-  overflow: clip;
-  overflow-clip-margin: var(--ds-space-1);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tabelle-rahmen > .ds-table :is(th, td):first-child { min-width: 180px; }
-
-.tabelle-rahmen > .ds-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: calc(var(--ds-z-raised) + 1);
-  border-bottom: 0;
-  background: var(--ds-surface);
-  box-shadow: inset 0 -1px 0 var(--ds-line);
-}
-
-.tabelle-rahmen > .ds-table :is(th, td):first-child {
-  position: sticky;
-  left: 0;
-  z-index: var(--ds-z-raised);
-  background: var(--ds-surface);
-}
-
-.tabelle-rahmen > .ds-table thead th:first-child { z-index: calc(var(--ds-z-raised) + 2); }
-
-/* Den Hover malt Dashboard-Style auf die Zellen; die klebende erste
-   Spalte hat oben ihre eigene Fläche und nimmt ihn darum hier – ebenso
-   die Fokus- und die Druckebene der klickbaren Zeile, deckend gemischt
-   (unter ihr rollt die Zeile durch). */
-@media (hover: hover) {
-  .tabelle-rahmen > .ds-table tbody tr:hover > :first-child { background-color: var(--ds-table-row-hover); }
-}
-
-.tabelle-rahmen > .ds-table--interactive tbody tr:has(.ds-table__row-link:focus-visible) > :first-child {
-  background-color: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-focus) * 100%), var(--ds-surface));
-}
-
-.tabelle-rahmen > .ds-table--interactive tbody tr:is(:active, .ds-pressed):not(:has(:is(a[href], button):not(.ds-table__row-link):active)) > :first-child {
-  background-color: color-mix(in srgb, var(--ds-text) calc(var(--ds-state-pressed) * 100%), var(--ds-surface));
-}
-
-/* Der Zeilenlink spannt sich nur über die klebende erste Zelle (die
-   übrigen Zellen reicht UI.tabellenRahmen an ihn weiter). Dashboard-Style
-   hebt die übrigen Bedienelemente der Zeile über ihn; hier lägen sie
-   damit beim seitlichen Rollen über der klebenden Spalte. */
-.tabelle-rahmen > .ds-table--interactive tbody td:not(:first-child) :is(a[href], button, [tabindex]) { z-index: auto; }
-
-/* Die Haarlinie rechts der ersten Spalte erscheint nur beim seitlichen
-   Rollen (UI.rollKanten setzt data-gerollt-x). */
-.tabelle-rahmen > .ds-table :is(th, td):first-child::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--ds-line);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-.tabelle-rahmen[data-gerollt-x] > .ds-table :is(th, td):first-child::after { opacity: 1; }
-
-/* Blende nur rechts und nur, solange es dort weitergeht (links klebt die
-   erste Spalte, die Haarlinie sagt dort genug). Die senkrechte Rollleiste
-   (--rollleiste, UI.rollKanten) bleibt von der Blende ausgenommen. */
-.tabelle-rahmen[data-mehr-rechts] {
-  -webkit-mask-image: linear-gradient(to left, var(--ds-text) var(--rollleiste, 0px), transparent var(--rollleiste, 0px),
-    var(--ds-text) calc(var(--rollleiste, 0px) + var(--ds-space-8)));
-  mask-image: linear-gradient(to left, var(--ds-text) var(--rollleiste, 0px), transparent var(--rollleiste, 0px),
-    var(--ds-text) calc(var(--rollleiste, 0px) + var(--ds-space-8)));
-}
 
 /* Text eines nicht sortierbaren Kopfs mit Erklärung: ein Tabstopp für den
    Tooltip (UI.tabellenKopf); der Ring folgt dem Radius des Sortierknopfs. */

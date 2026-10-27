@@ -11,12 +11,12 @@
    Bewegung.aufziehen (DS.motion), gedrückt wird im Druckmodell von
    Dashboard-Style (data-ds-ripple, .ds-pressed, --ds-dur-micro).
 
-   Gerüst: rahmen.css macht die sichtbare Tabellenansicht (Rahmen.fest)
-   zur Spalte, in der .tabelle-rahmen selbst rollt. Übersicht und Software
-   rollen mit der Tafel.
+   Gerüst: rahmen.css macht die sichtbare Tabellenansicht (Rahmen.fest,
+   .ds-view--fill) zur Spalte, in der die Liste (.ds-table-wrap--fill)
+   selbst rollt. Übersicht und Software rollen mit der Tafel.
 
-   Klassen ohne eigene Regel (Haken für app.js und die Prüfskripte):
-   .ansicht (jede Ansicht in index.html), .bestand-karte, .planung,
+   Klassen ohne eigene Regel hier (Haken für app.js und die Prüfskripte):
+   .ansicht (jede Ansicht in index.html; rahmen.css), .bestand-karte, .planung,
    .planung-karte. */
 
 

@@ -117,9 +117,9 @@
                                      verschwundener Fokus geht samt Schreibmarke an sein
                                      Gegenstück (data-fokus, id, sonst dieselbe Stelle,
                                      sonst der Seitentitel)
-   Rahmen.fest(an)                   Tafel rollt nicht (Tabellenansichten), solange das
-                                     Fenster ≥ 601 × 720 px ist; darunter rollt sie, und
-                                     die Liste ist höchstens so hoch wie die Tafel
+   Rahmen.fest(an)                   Tafel rollt nicht (Tabellenansichten, .ds-view--fill),
+                                     solange das Fenster ≥ 601 × 720 px ist; darunter rollt
+                                     sie, und die Liste ist höchstens so hoch wie die Tafel
    Rahmen.dokumentTitel(text)        «text – ICT-Inventar»
    Rahmen.schublade.oeffnen({ausloeser}) / .schliessen() → Promise / .offen()
                                      (DS.overlay; nur ≤ 900 px modal). ausloeser bekommt
@@ -1391,9 +1391,13 @@ const Rahmen = (function () {
     });
   }
 
+  /* .ds-view--fill von Dashboard-Style: wo Platz ist (ab 601 × 720 px),
+     rollt die Tafel nicht und das letzte sichtbare Kind der Bahn (die
+     Ansicht) füllt den Rest; darunter rollt sie, und die Liste ist
+     höchstens etwas weniger hoch als das Fenster. */
   function fest(an) {
-    if (!tafel || tafel.hasAttribute("data-fest") === !!an) return;
-    tafel.toggleAttribute("data-fest", !!an);
+    if (!tafel || tafel.classList.contains("ds-view--fill") === !!an) return;
+    tafel.classList.toggle("ds-view--fill", !!an);
     // Eine Tafel, die jetzt nicht mehr rollt, behält sonst Kante und Tönung.
     M.resyncScroll(tafel);
   }
