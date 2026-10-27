@@ -3,7 +3,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data: https://www.campus-sursee.ch; font-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; base-uri 'none'; form-action 'self' https://login.microsoftonline.com; frame-ancestors 'none'
 
 # Hinweise zur Richtlinie oben. Wird eine dieser Adressen je geändert, muss sie
 # auch hier nachgeführt werden, sonst blockiert der Browser den Aufruf
@@ -38,16 +38,16 @@
 #                               styleguide.css. Wer je ein <style>…</style> in
 #                               eine Seite schreibt, muss hier 'unsafe-inline'
 #                               ergänzen: besser eine .css-Datei.
-#   style-src-attr              Nur style-ATTRIBUTE. Beim stillen Neuzeichnen
-#     'unsafe-inline'           (DS.dom.morphChildren: Rahmen.stillZeichnen,
-#                               UI.abgleichen) gleicht Dashboard-Style das
-#                               style-Attribut eines stehen gebliebenen Knotens
-#                               mit setAttribute an; darin stehen die Custom
-#                               Properties, die Skripte über element.style
-#                               setzen (Säulen, Pille, Staffelung,
-#                               Speicherleiste). Das Setzen über element.style
-#                               selbst prüft der Browser nicht. Für Stile ist
-#                               das ungefährlich, für Skripte wäre es das nicht.
+#   (kein style-src-attr)       Style-ATTRIBUTE sind verboten. Skripte setzen
+#                               Stile nur über das CSSOM (element.style.
+#                               setProperty: Säulen, Pille, Staffelung,
+#                               Speicherleiste), das die Richtlinie nicht
+#                               prüft. Auch das stille Neuzeichnen von
+#                               Dashboard-Style (DS.dom.morphChildren:
+#                               Rahmen.stillZeichnen, UI.abgleichen) schreibt
+#                               Stile seit 2.0 über das CSSOM; bis 1.6 setzte
+#                               es das style-Attribut und brauchte hier
+#                               'unsafe-inline'.
 #   img-src data:               Dashboard-Style zeichnet das Häkchen jedes
 #                               Ankreuzfelds (.ds-check, Tabellen-Kästchen,
 #                               .ds-checkbox), die Wellen der

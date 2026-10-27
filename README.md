@@ -265,9 +265,8 @@ vollständige Vorlage steht in `STYLEGUIDE.md`, Abschnitte 10.1 und 12. Ausser M
 nichts von fremden Servern, auch keine Schriften.
 
 **Inhaltsrichtlinie** (`_headers`, je Regel dort erklärt): Skripte nur aus eigenen Dateien und MSAL von
-`cdn.jsdelivr.net`; Stile nur aus eigenen Stilvorlagen (`style-src 'self'`, kein `<style>`), dazu
-`style-src-attr 'unsafe-inline'` allein für `style`-Attribute, die Dashboard-Style beim stillen Abgleichen
-(`DS.dom.morphChildren`) anpasst; Bilder von `'self'`, `data:` (Masken in `ds.css`) und campus-sursee.ch (Favicon);
+`cdn.jsdelivr.net`; Stile nur aus eigenen Stilvorlagen (`style-src 'self'`, kein `<style>` und keine
+`style`-Attribute: Skripte und Dashboard-Style setzen Stile über das CSSOM); Bilder von `'self'`, `data:` (Masken in `ds.css`) und campus-sursee.ch (Favicon);
 Schriften nur von `'self'`; Verbindungen nur zum eigenen Ursprung, zu Microsoft Graph und zur Anmeldung von Microsoft. Eine neue fremde
 Adresse kommt nur mit Grund dazu, und zwar nur in `_headers`.
 
