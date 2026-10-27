@@ -80,6 +80,14 @@
   --ds-list-current-bg:  var(--ds-surface-low);
   --ds-form-rows-control-max: 560px;
 
+  /* Diagramme (Rollen von Dashboard-Style): Serie 1 ist das Campus-Grün
+     (--ds-primary, Standard), Serie 2 («Ersatz geplant» im Zeitstrahl) ein
+     helleres Grün aus derselben Familie statt des Orange von Dashboard-
+     Style – mit 3:1 auf Fläche, ruhiger Fläche und Spur (check-theme). Die
+     Balken (.ds-meter) laufen wie bisher auf dem Pastell. */
+  --ds-chart-2:          #5a8410;
+  --ds-meter-track:      var(--ds-accent);
+
   /* --- Nur ICT-Inventar --- */
 
   /* Der Punkt der Wortmarke: nur Dekoration, nie Text. */
@@ -87,9 +95,4 @@
   /* Wortmarke «ICT.INVENTAR» (rahmen.css). */
   --schrift-marke:       Archivo, 'Trade Gothic Next', 'Helvetica Neue', Arial, sans-serif;
   --gewicht-marke:       650;
-  /* Diagramme (Balken, Säulen, Zeitstrahl): Rollen statt Farben. */
-  --diagramm-a:          var(--ds-primary);
-  --diagramm-b:          var(--ds-accent);
-  --diagramm-gefahr:     var(--ds-error);
-  --diagramm-warnung:    var(--ds-warning);
 }

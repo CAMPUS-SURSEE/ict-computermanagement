@@ -5,11 +5,10 @@
    (thema.css), die ICT-eigenen Bausteine in bausteine.css (auch Zahlmarke
    und klickbare Kennwerte), Rahmen und Ebenen in rahmen.css. Hier steht
    nur, wie die Ansichten der Hauptseite angeordnet sind, dazu das Einzige,
-   was es nur hier gibt: der Zeitstrahl der Ersatzplanung (ICT-eigen,
-   Dashboard-Style hat kein Diagramm dafür). Werte nur über Tokens; keine
-   Keyframes: die Säulen wachsen beim ersten Zeigen über .saeule-fuell und
-   Bewegung.aufziehen (DS.motion), gedrückt wird im Druckmodell von
-   Dashboard-Style (data-ds-ripple, .ds-pressed, --ds-dur-micro).
+   was es nur hier gibt: das Sinnbild «überfällig» im Zeitstrahl der
+   Ersatzplanung (gruppierte Säulen von Dashboard-Style). Werte nur über
+   Tokens; keine Keyframes: die Säulen füllen sich beim ersten Zeigen über
+   Bewegung.aufziehen (DS.motion, .ds-enter--fill).
 
    Gerüst: rahmen.css macht die sichtbare Tabellenansicht (Rahmen.fest,
    .ds-view--fill) zur Spalte, in der die Liste (.ds-table-wrap--fill)
@@ -111,212 +110,24 @@
 }
 
 /* ==================================================================
-   4. Ersatzplanung: Zeitstrahl je Liste mit Ersatzjahr (ICT-eigen)
-   Je Geschäftsjahr zwei Säulen (beschafft, Ersatz geplant), die Höhe ist
-   ein scaleY über --anteil (.saeule-fuell, bausteine.css). Das laufende
-   Geschäftsjahr steht auf einer ruhigen Fläche, sein Jahr 500. Der Strahl
-   rollt in der Karte seitlich, nie die Seite; rechts blendet er aus,
-   solange es dort weitergeht (data-mehr-rechts setzt UI.rollKanten).
+   4. Ersatzplanung: Zeitstrahl je Liste mit Ersatzjahr
+   Gruppierte Säulen von Dashboard-Style (.ds-columns--grouped in
+   .ds-scroll-x, Legende .ds-legend; app.js zeitstrahl). Hier nur das
+   Sinnbild «überfällig», das auf seiner Säule reitet: über translate auf
+   der Höhe ihres Anteils (--ds-share, registriert und gleitend) wie der
+   Wert einer Säule von Dashboard-Style, nie über eine Layout-Eigenschaft.
    ================================================================== */
 
-/* Positioniert: unsichtbare Beschriftungen (.ds-sr, absolut) rollen mit
-   und weiten sonst die Tafel (waagrechtes Rollen der Seite auf dem Handy). */
-.zeitstrahl {
-  position: relative;
-  margin-inline: calc(-1 * var(--ds-space-1));
-  padding: 0 var(--ds-space-1) var(--ds-space-2);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--ds-line-2) transparent;
-}
-
-.zeitstrahl[data-mehr-rechts] {
-  mask-image: linear-gradient(to left, transparent, var(--ds-text) var(--ds-space-8));
-}
-
-.zeitstrahl[data-gerollt-x] {
-  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-space-8));
-}
-
-.zeitstrahl[data-gerollt-x][data-mehr-rechts] {
-  mask-image: linear-gradient(to right, transparent, var(--ds-text) var(--ds-space-8),
-    var(--ds-text) calc(100% - var(--ds-space-8)), transparent);
-}
-
-.zeitstrahl-achse {
-  display: flex;
-  gap: var(--ds-space-1);
-  width: max-content;
-  min-width: 100%;
-}
-
-.zeitstrahl-jahr {
-  display: grid;
-  flex: 1 0 auto;
-  grid-template-rows: auto auto;
-  justify-items: center;
-  gap: var(--ds-space-2);
-  min-width: 56px;
-  padding: var(--ds-space-2) var(--ds-space-1);
-  box-sizing: border-box;
-  border-radius: var(--ds-radius-sm);
-}
-
-.zeitstrahl-jahr.aktuell { background: var(--ds-surface-low); }
-
-/* Die Säulenfläche: oben Platz für die Marke einer vollen Säule, unten
-   die Grundlinie als Haarlinie. */
-.zeitstrahl-saeulen {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: var(--ds-space-1);
-  width: 100%;
-  height: 128px;
-  padding-top: var(--ds-space-5);
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--ds-line);
-}
-
-.zeitstrahl-saeule {
-  position: relative;
-  isolation: isolate;
-  container-type: size;
-  display: flex;
-  align-items: flex-end;
-  width: 16px;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ds-radius-xs) var(--ds-radius-xs) 0 0;
-  background: transparent;
-  color: var(--ds-text);
-}
-
-.zeitstrahl-saeule.beschafft > .saeule-fuell { background: var(--diagramm-a); }
-
-/* Pastell braucht eine feine Kante in Primärgrün, sonst verschwindet die
-   Säule auf der ruhigen Fläche des laufenden Jahrs. */
-.zeitstrahl-saeule.ersatz > .saeule-fuell {
-  background: var(--diagramm-b);
-  box-shadow: inset 0 0 0 1px var(--ds-primary);
-}
-
-.zeitstrahl-saeule.faellig > .saeule-fuell { background: var(--diagramm-warnung); }
-.zeitstrahl-saeule.ueberfaellig > .saeule-fuell { background: var(--diagramm-gefahr); }
-
-/* Überfällig zusätzlich mit Sinnbild über der Säule. Es steht über
-   translate auf der Höhe ihres Anteils (die Säule ist ein Grössen-Container,
-   100cqh = ihre Höhe) und gleitet so mit ihr: Dashboard-Style animiert nur
-   transform, translate & Co., nie eine Layout-Eigenschaft wie bottom. */
 .zeitstrahl-marke {
   position: absolute;
+  top: 0;
   left: 50%;
-  bottom: var(--ds-space-1);
   color: var(--ds-error);
-  translate: -50% calc(var(--anteil, 0) * -100cqh);
+  translate: -50% calc((1 - var(--ds-share)) * var(--ds-columns-height, 120px) - 100% - var(--ds-space-1));
   pointer-events: none;
-  transition: translate var(--ds-dur-glide) var(--ds-ease-value);
-}
-
-/* Nach dem ersten Zeigen gleitet eine Säule zu ihrem neuen Wert (Nachladen),
-   auf derselben Kurve wie Balken und Zahlen. */
-.zeitstrahl-saeule > .saeule-fuell { transition: transform var(--ds-dur-glide) var(--ds-ease-value); }
-
-/* Klickbare Säule: Ebene der grossen Ziele, etwas breiter als die Säule,
-   Fokusring von .ds-base. Gedrückt im Druckmodell von Dashboard-Style: die
-   Ebene in --ds-dur-micro, mit DS.ripple (data-ds-ripple) trägt die Welle
-   den Druck und die Ebene bleibt beim Hover. */
-button.zeitstrahl-saeule {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-button.zeitstrahl-saeule::before {
-  content: '';
-  position: absolute;
-  inset: 0 calc(-1 * var(--ds-space-1) / 2);
-  z-index: -1;
-  border-radius: var(--ds-radius-xs);
-  background: currentColor;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-@media (hover: hover) {
-  button.zeitstrahl-saeule:hover::before { opacity: var(--ds-state-hover-lg); }
-}
-
-button.zeitstrahl-saeule:focus-visible::before {
-  opacity: var(--ds-state-focus);
-  transition-duration: 0s;
-}
-
-button.zeitstrahl-saeule:is(:active, .ds-pressed)::before {
-  opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-micro);
-}
-
-.ds-ripples button.zeitstrahl-saeule:is(:active, .ds-pressed)::before { opacity: 0; }
-
-@media (hover: hover) {
-  .ds-ripples button.zeitstrahl-saeule:is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover-lg); }
-}
-
-.zeitstrahl-label {
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.zeitstrahl-jahr.aktuell .zeitstrahl-label {
-  color: var(--ds-text);
-  font: var(--ds-font-caption);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Legende unter einer Haarlinie: 10-px-Quadrate in denselben Farben wie
-   die Säulen (dieselben Klassen). */
-.zeitstrahl-legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-2) var(--ds-space-5);
-  margin: 0;
-  padding: var(--ds-space-3) 0 0;
-  border-top: 1px solid var(--ds-line);
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  list-style: none;
-}
-
-.zeitstrahl-legende > li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ds-space-2);
 }
 
 .zeitstrahl-legende > li > svg { margin-left: calc(-1 * var(--ds-space-1)); }
-
-.legende-marke {
-  flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: calc(var(--ds-radius-xs) / 2);
-}
-
-.legende-marke.beschafft { background: var(--diagramm-a); }
-.legende-marke.ersatz { background: var(--diagramm-b); box-shadow: inset 0 0 0 1px var(--ds-primary); }
-.legende-marke.faellig { background: var(--diagramm-warnung); }
-.legende-marke.ueberfaellig { background: var(--diagramm-gefahr); }
-
-@media (forced-colors: active) {
-  .legende-marke { forced-color-adjust: none; background: CanvasText; }
-  .zeitstrahl-jahr.aktuell { outline: 1px solid CanvasText; }
-}
 
 
 /* ==================================================================

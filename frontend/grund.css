@@ -27,8 +27,6 @@
      Rollen). In einer Karte setzt der Kartenrhythmus von
      Dashboard-Style (.ds-card > * + *) den Abstand darüber; in Blättern
      und Dialogen der Körper (gap). */
-  .hinweise,
-  .verteilung,
   .mehrfach,
   .code-block,
   .anzahl {

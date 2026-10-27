@@ -291,13 +291,6 @@
        ohne eigenes Bedienelement den Zeilenlink (DS.ripple: schlicht über
        den Link selbst, Ctrl-, Shift- und Mittelklick in einem neuen Tab,
        mit markiertem Text nicht), und die Welle läuft über die ganze Zeile.
-     UI.rollKanten(element) → element; setzt data-gerollt-x / data-gerollt beim Rollen
-       und data-mehr-rechts, solange rechts noch Inhalt liegt (auch nach Grössenwechseln),
-       dazu --rollleiste (Breite einer senkrechten Rollleiste; die Blende lässt sie aus).
-       Für ICT-eigene Roller (.tabelle-rahmen, der Zeitstrahl); .ds-table-wrap
-       blendet Dashboard-Style selbst aus. Ein erneuter Aufruf prüft die Kanten
-       nur neu: nach UI.abgleichen für jeden behaltenen Roller nötig (der
-       Abgleich gleicht seine Attribute der losgelösten Vorlage an).
 
    Listen
      UI.hinweisZeile({ ton: 'gefahr'|'warnung'|'info'|'erfolg', titel, text, sinnbild })
@@ -315,13 +308,14 @@
                      aktionen: [Knöpfe], klasse }]) → ol.ds-timeline
        (zeitSinnbild: 16-px-Sinnbild vor der Meta-Zeile, z. B. 'sync' beim Abgleich)
 
-   Diagramme
-     UI.balken(anteil 0..1, ton?: 'still'|'warnung'|'gefahr') → div.balken (.setzen(anteil):
+   Diagramme (Rollen --ds-chart-*, Anteil --ds-share; thema.css)
+     UI.balken(anteil 0..1, ton?: 'still'|'warnung'|'gefahr') → span.ds-meter (.setzen(anteil):
        der Balken gleitet auf --ds-ease-value)
-     UI.saeulen([zahl | { wert, titel, hervorgehoben }], { max, hervorheben: index, label })
-       → div.saeulen[role=img]
+     UI.saeulen([zahl | { wert, titel, hervorgehoben }], { max, hervorheben: index, label, klasse })
+       → figure.ds-columns.ds-columns--mini[role=img]
      UI.verteilung([{ text, zahl, anteil, titel, beiKlick, href, fokus }], { max, klasse })
-       → ul.verteilung (Name · Zahl · Balken; klickbare Zeilen mit Zustandsebene und Welle)
+       → ul.ds-kv-list.ds-kv-list--bars (Name · Zahl · Balken; mit Ziel
+       .ds-kv-list--interactive, Zeilen mit Zustandsebene und Welle)
      UI.fortschritt({ anteil, text, detail, unbestimmt, wartet, flach, label }) → div.ds-progress
        (.setzen({ … }) ändert nur, was sich ändert; --ds-progress steht auf
        .ds-progress, der Balken gleitet weiter. unbestimmt: zwei Segmente,
@@ -352,8 +346,9 @@
    API (Dashboard-Style rechts)
      Bewegung.eintreten(el, variante = '') → Promise                    = DS.motion.enter
        '' | 'blenden' | 'skalieren' | 'schieben' | 'tausch' | 'verzoegert' |
-       'ploppen' | 'aufziehen' | 'aufrichten'
-       (= '', fade, scale, slide, swap, delayed, pop, fill-x, fill-y)
+       'ploppen' | 'fuellen'
+       (= '', fade, scale, slide, swap, delayed, pop, fill: ein Balken oder eine
+       Säule füllt sich bis zu ihrem --ds-share)
        Hebt hidden und inert auf.
      Bewegung.austreten(el, variante = '', { dann = 'entfernen' | 'verbergen' | 'behalten', fokus })
        → Promise                                                         = DS.motion.leave
@@ -380,7 +375,8 @@
        schluessel und zahl gebaut ist (UI.kachel), zählt danach vom
        gezeigten Wert zum neuen, wenn sich ihre Zahl geändert hat; eine
        neue Kachel zeigt ihren Wert. Beim ersten Zeigen zählt auftritt.
-     Bewegung.aufziehen(behaelter)   .balken-fuell und .saeule-fuell wachsen einmal
+     Bewegung.aufziehen(behaelter)   .ds-meter und .ds-columns__col füllen sich einmal
+                                     (DS.motion.enterAll(…, 'fill'))
      Bewegung.ladeAbwarten(start, { element, verzoegerung, mindestens }) → Promise
                                                                          = DS.motion.settleLoader
        (mit element liest Dashboard-Style die Zeiten aus dessen Tokens)
@@ -412,7 +408,7 @@ const Bewegung = (function () {
   const M = DS.motion;
 
   const EINTRITT_VARIANTEN = { blenden: "fade", skalieren: "scale", schieben: "slide", tausch: "swap",
-    verzoegert: "delayed", ploppen: "pop", aufziehen: "fill-x", aufrichten: "fill-y" };
+    verzoegert: "delayed", ploppen: "pop", fuellen: "fill" };
   const AUSTRITT_VARIANTEN = { sinken: "sink", skalieren: "scale", schieben: "slide", ploppen: "pop" };
   const DANACH = { entfernen: "remove", verbergen: "hide", behalten: "keep" };
   const WECHSEL_ARTEN = { durchblenden: "fade-through", vor: "forward", zurueck: "back", behaelter: "container" };
@@ -556,17 +552,18 @@ const Bewegung = (function () {
     }
   }
 
-  /* Balken und Säulen wachsen nur beim ersten Zeigen ihres Elements. */
+  /* Balken (.ds-meter) und Säulen (.ds-columns__col) füllen sich nur beim
+     ersten Zeigen ihres Elements bis zu ihrem --ds-share (.ds-enter--fill,
+     in einem Zug, ohne Staffelung); danach gleitet ein neuer Anteil. */
   const aufgezogen = new WeakSet();
 
   function aufziehen(behaelter) {
-    for (const [selektor, variante] of [[".balken-fuell", "fill-x"], [".saeule-fuell", "fill-y"]]) {
-      for (const f of mitSelbst(behaelter, selektor)) {
-        if (aufgezogen.has(f)) continue;
-        aufgezogen.add(f);
-        M.enter(f, variante);
-      }
-    }
+    const neu = mitSelbst(behaelter, ".ds-meter, .ds-columns__col").filter(function (f) {
+      if (aufgezogen.has(f)) return false;
+      aufgezogen.add(f);
+      return true;
+    });
+    if (neu.length) M.enterAll(neu, "fill", { stagger: false });
   }
 
   function auftritt(behaelter, o) {
@@ -2383,67 +2380,6 @@ const UI = (function () {
     return kopf;
   }
 
-  /* Rollkanten für ICT-eigene Roller (.tabelle-rahmen, Zeitstrahl):
-     data-gerollt-x (seitlich gerollt → Haarlinie an der klebenden ersten
-     Spalte), data-gerollt (nach unten gerollt) und data-mehr-rechts
-     (rechts liegt noch Inhalt → eine Ausblende-Maske am rechten Rand, die
-     nur steht, solange es dort wirklich weitergeht). Ändert sich die
-     Grösse des Rollers oder seines Inhalts (erstes Kind), wird neu
-     geprüft. Die .ds-table-wrap blendet Dashboard-Style selbst aus. */
-  const beobachteteRoller = new WeakSet();
-  const rollerVon = new WeakMap();
-  const groessenBeobachter = typeof ResizeObserver === "function"
-    ? new ResizeObserver(function (eintraege) {
-      for (const e of eintraege) {
-        const r = rollerVon.get(e.target);
-        if (!r) continue;
-        // Ausgehängt (neu gezeichnet): nicht weiter beobachten, sonst hielte
-        // der Beobachter jede alte Tabelle fest.
-        if (!r.isConnected) {
-          for (const k of [r, r.firstElementChild]) if (k) groessenBeobachter.unobserve(k);
-          continue;
-        }
-        kantenPruefen(r);
-      }
-    })
-    : null;
-
-  function kantenPruefen(r) {
-    r.toggleAttribute("data-gerollt-x", r.scrollLeft > 0);
-    r.toggleAttribute("data-gerollt", r.scrollTop > 0);
-    r.toggleAttribute("data-mehr-rechts", r.scrollLeft + r.clientWidth < r.scrollWidth - 1);
-    // Breite der senkrechten Rollleiste: die Blende rechts lässt sie aus.
-    const leiste = r.offsetWidth - r.clientWidth - r.clientLeft * 2;
-    const alt = r.style.getPropertyValue("--rollleiste");
-    const neu = leiste > 0 ? leiste + "px" : "";
-    if (alt !== neu) {
-      if (neu) r.style.setProperty("--rollleiste", neu);
-      else r.style.removeProperty("--rollleiste");
-    }
-  }
-
-  /* Ein zweiter Aufruf auf demselben Roller prüft nur neu: nach einem
-     Abgleich (UI.abgleichen) steht der gezeigte Roller noch, trägt aber
-     die Attribute seiner losgelösten Vorlage, also keine Kanten. Ein
-     losgelöster Roller misst nichts (alles 0); der Grössenbeobachter
-     meldet ihn, sobald er eingehängt ist. */
-  function rollKanten(element) {
-    if (!element) return element;
-    if (!beobachteteRoller.has(element)) {
-      beobachteteRoller.add(element);
-      element.addEventListener("scroll", function () { kantenPruefen(element); }, { passive: true });
-      if (groessenBeobachter) {
-        for (const k of [element, element.firstElementChild]) {
-          if (!k) continue;
-          rollerVon.set(k, element);
-          groessenBeobachter.observe(k);
-        }
-      }
-    }
-    if (element.isConnected) kantenPruefen(element);
-    return element;
-  }
-
   /* Rahmen einer seitenfüllenden Liste: .ds-table-wrap--fill von
      Dashboard-Style (eigener Scroller mit Haarlinie, klebender Kopf, Zellen
      mit «…») mit .ds-table--pin-first (die erste Spalte klebt, ihre
@@ -2595,66 +2531,73 @@ const UI = (function () {
     return isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
   }
 
-  /* 4-px-Balken für Verteilungen; der Wert steht immer daneben als Zahl,
-     der Balken ist darum für den Screenreader verborgen. Ein neuer Anteil
-     am stehenden Balken gleitet (bausteine.css, --ds-ease-value). */
+  /* Balken: .ds-meter von Dashboard-Style (4 px, die Füllung ist beim
+     Anteil beschnitten, nie gestaucht: das runde Ende bleibt rund). Der
+     Wert steht immer daneben als Zahl, der Balken ist darum für den
+     Screenreader verborgen. Ein neuer Anteil am stehenden Balken gleitet
+     (--ds-share, --ds-ease-value); beim ersten Zeigen füllt er sich
+     (Bewegung.auftritt). ton: 'warnung' | 'gefahr' | 'still' (neutral). */
+  const BALKEN_TOENE = { warnung: "ds-meter--warning", gefahr: "ds-meter--error", still: "ds-meter--neutral" };
+
   function balken(anteil, ton) {
-    const b = el("div", "balken" + (ton === "still" ? " still" : (ton ? " ton-" + ton : "")));
+    const b = el("span", "ds-meter" + (BALKEN_TOENE[ton] ? " " + BALKEN_TOENE[ton] : ""));
     b.setAttribute("aria-hidden", "true");
-    const f = el("span", "balken-fuell");
-    b.appendChild(f);
-    b.setzen = function (neu) { f.style.setProperty("--anteil", String(anteilBegrenzen(neu))); return b; };
+    b.setzen = function (neu) { b.style.setProperty("--ds-share", String(anteilBegrenzen(neu))); return b; };
     b.setzen(anteil);
     return b;
   }
 
-  /* Mini-Verteilung: werte = Zahlen oder { wert, titel, hervorgehoben }.
-     Höhen relativ zum grössten Wert (oder optionen.max). */
+  /* Mini-Verteilung: .ds-columns--mini von Dashboard-Style (32 px, eine
+     Säule hervorgehoben, die übrigen neutral). werte = Zahlen oder
+     { wert, titel, hervorgehoben }; Höhen relativ zum grössten Wert (oder
+     optionen.max). Die Figur ist role=img mit label als Zusammenfassung;
+     ein titel ist der Tooltip seiner Säule. */
   function saeulen(werte, optionen) {
     const o = optionen || {};
     const liste = (werte || []).map(function (w) { return istOptionen(w) ? w : { wert: w }; });
     const max = o.max || Math.max.apply(null, liste.map(function (w) { return Number(w.wert) || 0; }).concat([0])) || 1;
-    const s = el("div", "saeulen" + (o.klasse ? " " + o.klasse : ""));
+    const s = el("figure", "ds-columns ds-columns--mini" + (o.klasse ? " " + o.klasse : ""));
     s.setAttribute("role", "img");
     if (o.label) s.setAttribute("aria-label", o.label);
+    const plot = el("ol", "ds-columns__plot");
+    plot.setAttribute("aria-hidden", "true");
     liste.forEach(function (w, i) {
-      const saeule = el("div", "saeule" + ((w.hervorgehoben || o.hervorheben === i) ? " hervorgehoben" : ""));
+      const saeule = el("li", "ds-columns__col" + ((w.hervorgehoben || o.hervorheben === i) ? " ds-columns__col--highlight" : ""));
       if (w.titel) saeule.setAttribute("data-tip", w.titel);
-      const f = el("span", "saeule-fuell");
-      f.style.setProperty("--anteil", String(anteilBegrenzen((Number(w.wert) || 0) / max)));
-      saeule.appendChild(f);
-      s.appendChild(saeule);
+      saeule.style.setProperty("--ds-share", String(anteilBegrenzen((Number(w.wert) || 0) / max)));
+      saeule.appendChild(el("span", "ds-columns__fill"));
+      plot.appendChild(saeule);
     });
+    s.appendChild(plot);
     return s;
   }
 
-  /* Verteilung: Zeilen mit Name, Zahl und Balken.
-     eintraege: [{ text, zahl, anteil?, titel?, beiKlick?, href?, fokus? }];
-     der Anteil ist sonst zahl / grösste Zahl (oder optionen.max). Der Name
-     steht einzeilig; der ganze Name erscheint als Tooltip, solange er
-     gekürzt ist (ein titel immer). Die Balken wachsen beim ersten Zeigen
-     (Bewegung.auftritt); .setzen an einem stehenden Balken gleitet. */
+  /* Verteilung: .ds-kv-list--bars von Dashboard-Style – Name (einzeilig,
+     «…»; der ganze Name im Tooltip, solange er gekürzt ist), Zahl rechts,
+     darunter ein .ds-meter. Mit Ziel (href, beiKlick) eine klickbare Zeile
+     (.ds-kv-list--interactive, .ds-kv-list__row: Zustandsebene, Welle,
+     Fokusring); eine Null steht leise. eintraege: [{ text, zahl, anteil?,
+     titel?, beiKlick?, href?, fokus? }]; der Anteil ist sonst zahl /
+     grösste Zahl (oder optionen.max). Die Balken füllen sich beim ersten
+     Zeigen (Bewegung.auftritt); .setzen an einem stehenden gleitet. */
   function verteilung(eintraege, optionen) {
     const o = optionen || {};
     const liste = (eintraege || []).filter(Boolean);
     const groesste = o.max || Math.max.apply(null, liste.map(function (e) { return Number(e.zahl) || 0; }).concat([0])) || 1;
     const klickbar = liste.some(function (e) { return e.beiKlick || e.href; });
-    const ul = el("ul", "verteilung" + (klickbar ? " verteilung-klickbar" : "") + (o.klasse ? " " + o.klasse : ""));
+    const ul = el("ul", "ds-kv-list ds-kv-list--bars verteilung" + (klickbar ? " ds-kv-list--interactive" : "")
+      + (o.klasse ? " " + o.klasse : ""));
     for (const e of liste) {
       const li = el("li");
-      const tag = e.href ? "a" : (e.beiKlick ? "button" : "div");
-      const z = el(tag, "verteilung-zeile");
-      if (tag === "a") z.href = e.href;
-      if (tag === "button") z.type = "button";
-      if (tag !== "div") z.setAttribute("data-ds-ripple", "");
-      if (e.beiKlick) z.addEventListener("click", e.beiKlick);
-      if (tag !== "div") fokusSetzen(z, e.fokus);
-      if (e.titel) z.setAttribute("data-tip", e.titel);
-      else z.setAttribute("data-tip", text(e.text));
-      z.appendChild(el("span", "verteilung-name", e.text));
-      z.appendChild(el("span", "verteilung-zahl", zahlFormat(Number(e.zahl) || 0)));
-      z.appendChild(balken(e.anteil !== undefined ? e.anteil : (Number(e.zahl) || 0) / groesste));
-      li.appendChild(z);
+      const tag = e.href ? "a" : (e.beiKlick ? "button" : null);
+      const z = tag ? kennwertZeile(e, tag) : li;
+      const name = el("span", null, e.text);
+      if (!e.titel) name.setAttribute("data-tip", text(e.text));
+      const zahl = Number(e.zahl) || 0;
+      anhaengen(z, [name, el("strong", zahl ? null : "ds-muted", zahlFormat(zahl)),
+        balken(e.anteil !== undefined ? e.anteil : zahl / groesste)]);
+      if (tag) li.appendChild(z);
+      else if (e.titel) { li.setAttribute("data-tip", e.titel); li.tabIndex = 0; }
       ul.appendChild(li);
     }
     return ul;
@@ -2680,23 +2623,23 @@ const UI = (function () {
     const detail = el("p", "ds-progress__detail");
     anhaengen(g, [spur, textKnoten, detail]);
 
+    /* Anteil und ARIA setzt DS.dom.progress in einem Zug (--ds-progress,
+       aria-valuenow bzw. ohne bekannten Anteil aria-valuetext mit dem
+       Text, der sagt, was läuft). */
+    const stand = { anteil: 0, unbestimmt: false, wartet: false };
     g.setzen = function (o) {
       o = o || {};
       if (o.label !== undefined) spur.setAttribute("aria-label", o.label);
-      if (o.unbestimmt !== undefined) g.classList.toggle("ds-progress--indeterminate", !!o.unbestimmt);
-      if (o.wartet !== undefined) g.classList.toggle("ds-progress--waiting", !!o.wartet);
       if (o.flach !== undefined) g.classList.toggle("ds-progress--flat", !!o.flach);
       if (o.text !== undefined) textSetzen(textKnoten, o.text);
       if (o.detail !== undefined) textSetzen(detail, o.detail);
-      if (o.anteil !== undefined) g.style.setProperty("--ds-progress", String(anteilBegrenzen(o.anteil)));
-      // Ohne bekannten Anteil sagt der Text, was läuft (aria-valuetext).
-      if (g.classList.contains("ds-progress--indeterminate") || g.classList.contains("ds-progress--waiting")) {
-        spur.removeAttribute("aria-valuenow");
-        spur.setAttribute("aria-valuetext", textKnoten.textContent || "Wird geladen …");
+      if (o.unbestimmt !== undefined) stand.unbestimmt = !!o.unbestimmt;
+      if (o.wartet !== undefined) stand.wartet = !!o.wartet;
+      if (o.anteil !== undefined) stand.anteil = anteilBegrenzen(o.anteil);
+      if (stand.unbestimmt || stand.wartet) {
+        DS.dom.progress(g, null, { valueText: textKnoten.textContent || "Wird geladen …", waiting: stand.wartet });
       } else {
-        spur.removeAttribute("aria-valuetext");
-        const a = anteilBegrenzen(g.style.getPropertyValue("--ds-progress"));
-        spur.setAttribute("aria-valuenow", String(Math.round(a * 100)));
+        DS.dom.progress(g, stand.anteil);
       }
       return g;
     };
@@ -2739,7 +2682,7 @@ const UI = (function () {
     // Suche, Schalter
     suchfeld: suchfeld, schalter: schalter, schalterZeile: schalterZeile,
     // Tabellen
-    tabelle: tabelle, tabellenKopf: tabellenKopf, tabellenRahmen: tabellenRahmen, rollKanten: rollKanten,
+    tabelle: tabelle, tabellenKopf: tabellenKopf, tabellenRahmen: tabellenRahmen,
     // Listen
     hinweisZeile: hinweisZeile, hinweise: hinweise, listenZeile: listenZeile, zeilenliste: zeilenliste,
     zahlmarke: zahlmarke, zeitachse: zeitachse,

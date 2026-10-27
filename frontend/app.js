@@ -2562,30 +2562,42 @@ function gjKurz(jahr) { return String(jahr).replace(/\/(\d\d)(\d\d)$/, "/$2"); }
 
 function geraeteText(n) { return UI.zahlText(n) + (n === 1 ? " Gerät" : " Geräte"); }
 
-/* Eine Säule: als Knopf, wenn Geräte dahinterstehen (Sprung in die Liste
-   mit dem Jahr als Filter), sonst nur Platzhalter. Die Höhe ist ein
-   scaleY über --anteil (.saeule-fuell): beim ersten Zeigen wächst sie
-   (Bewegung.aufziehen), danach gleitet sie zum neuen Wert (styles.css).
-   Druck mit Welle und Zustandsebene im Druckmodell von Dashboard-Style
-   (data-ds-ripple). */
+/* Eine Säule (.ds-columns__col von Dashboard-Style): als Knopf, wenn
+   Geräte dahinterstehen (Sprung in die Liste mit dem Jahr als Filter),
+   sonst nur Platzhalter. Ihr Anteil ist --ds-share: beim ersten Zeigen
+   füllt sie sich (Bewegung.aufziehen), danach gleitet sie zum neuen Wert.
+   Zustandsebene, Fokusring und Welle kommen von Dashboard-Style.
+   Überfällig trägt zusätzlich ein Sinnbild, das auf der Säule reitet. */
+const SAEULEN_ART = { beschafft: "", ersatz: " ds-columns__col--s2", faellig: " ds-columns__col--warning",
+  ueberfaellig: " ds-columns__col--error" };
+
 function zeitstrahlSaeule(tab, jahr, anzahl, hoechste, art, feld, beschreibung) {
-  const s = el(anzahl ? "button" : "div", "zeitstrahl-saeule " + art);
-  s.style.setProperty("--anteil", String(anzahl / hoechste));
-  s.appendChild(el("span", "saeule-fuell"));
+  const li = el("li");
+  const s = el(anzahl ? "button" : "span", "ds-columns__col" + SAEULEN_ART[art]);
+  s.style.setProperty("--ds-share", String(anzahl / hoechste));
+  const fuell = el("span", "ds-columns__fill");
+  fuell.setAttribute("aria-hidden", "true");
+  s.appendChild(fuell);
+  li.appendChild(s);
   if (!anzahl) {
-    s.setAttribute("aria-hidden", "true");
-    return s;
+    li.setAttribute("aria-hidden", "true");
+    return li;
   }
   s.type = "button";
-  s.setAttribute("data-ds-ripple", "");
   if (art === "ueberfaellig") s.appendChild(UI.sinnbild("achtung", 16, "zeitstrahl-marke"));
   s.setAttribute("aria-label", beschreibung + ". In der Liste zeigen.");
   s.setAttribute("data-fokus", "zs-" + tab + "-" + jahr + "-" + feld);
   UI.tipp(s, beschreibung);
   s.addEventListener("click", function () { springeMitFilter(tab, z => facetteSetzen(z, feld, jahr)); });
-  return s;
+  return li;
 }
 
+/* Der Zeitstrahl ist .ds-columns--grouped von Dashboard-Style: je
+   Geschäftsjahr eine Gruppe aus zwei Säulen (beschafft, Ersatz geplant),
+   das laufende auf einer ruhigen Fläche (.ds-columns__group--current, ein
+   Wort für den Screenreader). Er rollt in der Karte seitlich (.ds-scroll-x
+   mit Blenden an den Enden, wo es weitergeht; DS.dom.scrollEdges meldet
+   sie auch ohne rollgebundene Animationen), nie die Seite. */
 function zeitstrahl(tab) {
   /* Geplant wird nur für Clients im Einsatz: ein archiviertes Gerät
      braucht keinen Ersatz mehr. */
@@ -2614,50 +2626,51 @@ function zeitstrahl(tab) {
   for (const j of jahre) hoechste = Math.max(hoechste, beschafft.get(j) || 0, ersatz.get(j) || 0);
 
   const titel = Rahmen.zielText(tab);
-  const roller = el("div", "zeitstrahl");
+  const figur = el("figure", "ds-columns ds-columns--grouped zeitstrahl");
+  figur.appendChild(el("figcaption", "ds-sr", titel + ": beschaffte Geräte und geplanter Ersatz je Geschäftsjahr"));
+  const roller = el("div", "ds-scroll-x");
   roller.setAttribute("data-rolle", "zeitstrahl-" + tab);
   roller.setAttribute("role", "group");
   roller.setAttribute("aria-label", titel + ": beschaffte Geräte und geplanter Ersatz je Geschäftsjahr");
-  const achse = el("div", "zeitstrahl-achse");
+  const gruppen = el("ol", "ds-columns__groups");
 
   for (const jahr of jahre) {
     const nB = beschafft.get(jahr) || 0;
     const nE = ersatz.get(jahr) || 0;
     const v = Modell.gjVergleich(jahr, heute);
-    const spalteJahr = el("div", "zeitstrahl-jahr" + (v === 0 ? " aktuell" : ""));
-    spalteJahr.setAttribute("data-ds-key", "gj-" + jahr);
-    const saeulen = el("div", "zeitstrahl-saeulen");
+    const gruppe = el("li", "ds-columns__group" + (v === 0 ? " ds-columns__group--current" : ""));
+    gruppe.setAttribute("data-ds-key", "gj-" + jahr);
+    const plot = el("ol", "ds-columns__plot");
     const ersatzArt = v < 0 ? "ueberfaellig" : (v === 0 ? "faellig" : "ersatz");
-    anhaengen(saeulen, [
+    anhaengen(plot, [
       zeitstrahlSaeule(tab, jahr, nB, hoechste, "beschafft", "Beschaffungsjahr",
         geraeteText(nB) + " im Geschäftsjahr " + jahr + " beschafft"),
       zeitstrahlSaeule(tab, jahr, nE, hoechste, ersatzArt, "ErsatzGeplant",
         "Ersatz für " + geraeteText(nE) + " im " + (v === 0 ? "laufenden " : "") + "Geschäftsjahr " + jahr + " geplant"
           + (v < 0 ? " – überfällig" : ""))
     ]);
-    const label = el("span", "zeitstrahl-label", gjKurz(jahr));
+    const label = el("span", "ds-columns__label", gjKurz(jahr));
     if (v === 0) label.appendChild(el("span", "ds-sr", " (laufendes Geschäftsjahr)"));
-    anhaengen(spalteJahr, [saeulen, label]);
-    achse.appendChild(spalteJahr);
+    anhaengen(gruppe, [plot, label]);
+    gruppen.appendChild(gruppe);
   }
-  roller.appendChild(achse);
-  // Links blendet er aus, sobald er gerollt ist (data-gerollt-x), rechts,
-  // solange es dort weitergeht (data-mehr-rechts; beides UI.rollKanten).
-  UI.rollKanten(roller);
-  return roller;
+  roller.appendChild(gruppen);
+  figur.appendChild(roller);
+  return figur;
 }
 
-/* Legende unter einer Haarlinie: dieselben Klassen wie die Säulen, damit
-   Farbe und Bedeutung nie auseinanderlaufen. */
+/* Legende (.ds-legend): dieselben Serien und Töne wie die Säulen, damit
+   Farbe und Bedeutung nie auseinanderlaufen; «überfällig» zusätzlich mit
+   dem Sinnbild der Säule. */
 function zeitstrahlLegende() {
-  const ul = el("ul", "zeitstrahl-legende");
-  for (const [art, text] of [["beschafft", "Beschafft"], ["ersatz", "Ersatz geplant"],
-    ["faellig", "Ersatz in diesem Geschäftsjahr"], ["ueberfaellig", "Ersatz überfällig"]]) {
+  const ul = el("ul", "ds-legend zeitstrahl-legende");
+  for (const [schluessel, text] of [["", "Beschafft"], ["ds-legend__key--s2", "Ersatz geplant"],
+    ["ds-legend__key--warning", "Ersatz in diesem Geschäftsjahr"], ["ds-legend__key--error", "Ersatz überfällig"]]) {
     const li = el("li");
-    const marke = el("span", "legende-marke " + art);
+    const marke = el("span", "ds-legend__key" + (schluessel ? " " + schluessel : ""));
     marke.setAttribute("aria-hidden", "true");
     li.appendChild(marke);
-    if (art === "ueberfaellig") li.appendChild(UI.sinnbild("achtung", 16, "t-gefahr"));
+    if (schluessel === "ds-legend__key--error") li.appendChild(UI.sinnbild("achtung", 16, "t-gefahr"));
     li.appendChild(el("span", null, text));
     ul.appendChild(li);
   }
@@ -2678,8 +2691,8 @@ function planungKarte(tab) {
    dass es in der Mitte steht – vergangene und kommende Jahre gleich weit.
    Nur, solange niemand selbst gerollt hat. */
 function zeitstrahlAusrichten() {
-  for (const r of document.querySelectorAll(UEBERSICHTEN.map(m => "#ansicht-" + m + " .zeitstrahl").join(", "))) {
-    const aktuell = r.querySelector(".zeitstrahl-jahr.aktuell");
+  for (const r of document.querySelectorAll(UEBERSICHTEN.map(m => "#ansicht-" + m + " .zeitstrahl > .ds-scroll-x").join(", "))) {
+    const aktuell = r.querySelector(".ds-columns__group--current");
     if (aktuell && r.scrollLeft === 0 && r.scrollWidth > r.clientWidth) {
       const rechts = aktuell.offsetLeft + aktuell.offsetWidth;
       if (rechts > r.clientWidth - 2 * aktuell.offsetWidth) {
@@ -2833,7 +2846,7 @@ function zahlenNachfuehren(wurzel, vorher) {
     gezeigteZahlen.set(schluessel, wert);
     const n = da.get(schluessel);
     if (alt === undefined || alt === wert || !n || !vorher.has(n)) continue;
-    const zahl = n.querySelector(".ds-tile__value, .verteilung-zahl");
+    const zahl = n.querySelector(".ds-tile__value, .ds-kv-list__row > strong");
     if (zahl) Bewegung.hochzaehlen(zahl, wert, { von: alt });
   }
   neueZahlen = new Map();
@@ -2866,9 +2879,9 @@ function zeichneUebersicht(modul, art) {
   const vorher = new Set(ansicht.querySelectorAll("[data-ds-key]"));
   zeigen(ansicht, neu, art === "umordnen" ? undefined : art, ".aufgaben > .ds-card, .verteilung > li");
   zahlenNachfuehren(ansicht, vorher);
-  // Ein behaltener Zeitstrahl trägt nach dem Abgleich die Attribute seiner
-  // losgelösten Vorlage, also keine Rollkanten: neu prüfen.
-  for (const r of ansicht.querySelectorAll(".zeitstrahl")) UI.rollKanten(r);
+  // Die Rollkanten des Zeitstrahls (einmal je Roller; was DS.dom.scrollEdges
+  // schreibt, behält auch der Abgleich).
+  for (const r of ansicht.querySelectorAll(".zeitstrahl > .ds-scroll-x")) DS.dom.scrollEdges(r);
   if (!ansicht.hidden) zeitstrahlAusrichten();
 }
 
