@@ -658,7 +658,7 @@ function statusHinweisSetzen(hinweis, warnOrt, mitBewegung) {
     UI.textSetzen(hinweis, s === "Archiviert"
       ? "Ausser Betrieb. In der Liste und den Kennzahlen standardmässig ausgeblendet."
       : (s === "Lager" ? "Einsatzbereit, aber niemandem zugeteilt. Bleibt in der Liste." : ""));
-    // Ohne Text (Normalfall «Aktiv») fällt auch die Hülle .datenzeile-hinweis
+    // Ohne Text (Normalfall «Aktiv») fällt auch die Hülle .ds-field__hint
     // weg: ihr :empty greift nicht, solange der leere span darin steht.
     if (hinweis.parentNode) hinweis.parentNode.hidden = !hinweis.textContent;
   }
@@ -2317,7 +2317,7 @@ function inhaberWaehlenDialog(ausgabe, person) {
     // Stehen schon Treffer, gleiten nur die Zeilen; sonst wechselt die Art.
     const bestand = liste.querySelector(":scope > .zeilenliste");
     if (bestand && ausEingabe) {
-      Bewegung.umordnen(bestand, function (o) { UI.abgleichen(bestand, zeilen, o); }, { eintraege: ":scope > .listen-zeile" });
+      Bewegung.umordnen(bestand, function (o) { UI.abgleichen(bestand, zeilen, o); }, { eintraege: ":scope > .ds-list__item" });
     } else if (bestand) {
       UI.abgleichen(bestand, zeilen);
     } else {

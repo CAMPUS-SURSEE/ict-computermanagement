@@ -36,13 +36,13 @@
    3. Raster (.karten .karte-breit .karte-inhalt .karte-kopf-aktionen)
    4. Knopf, der ein Blatt öffnet; Gesichter mit Sinnbild
    5. Chips als Knöpfe, Reihe, Zähler (.chip .chip-* .chip-zeile .zaehler)
-   6. Datenzeilen (.datenzeilen .datenzeile* .schloss .geaendert)
-   7. Hinweisliste (.hinweise .hinweis-zeile*)
-   8. Formulare (.eingabe-schmal .mit-sinnbild .hinweis-platz .mehrfach)
+   6. Datenzeilen (.datenzeile-neben .datenzeile-zeile)
+   7. Hinweisliste (.hinweise)
+   8. Formulare (.eingabe-schmal .hinweis-platz .mehrfach)
    9. Schalter: Sperre und Zeile (.schalter-gesperrt .schalter-zeile .schalter-*)
   10. Liste über die ganze Seite (.tabelle-rahmen .tabelle-kopf-text .name-link)
-  11. Listenzeilen und Zahlmarke (.zeilenliste .listen-zeile* .zahlmarke .karte-marke)
-  12. Zeitachse (.zeitachse*)
+  11. Zahlmarke (.zahlmarke .karte-marke)
+  12. Zeitachse (.zeitachse-still)
   13. Balken, Säulen, Verteilung (.balken* .saeule* .verteilung* .kennwert*)
    ------------------------------------------------------------------ */
 
@@ -103,12 +103,6 @@
 
 .ds-tile__value.leer { color: var(--ds-text-2); }
 
-/* Kennwerte: oft der letzte Block einer Karte, darum auch unten ohne
-   Polster; lange Namen brechen, ein leerer Wert steht leise. */
-.ds-kv-list > li:last-child { padding-bottom: 0; }
-.ds-kv-list > li > span { min-width: 0; overflow-wrap: anywhere; }
-.ds-kv-list > li > strong.leer { color: var(--ds-text-2); }
-
 /* Banner mit mehreren Knöpfen (UI.banner({ knopf: [ … ] })): die Gruppe
    ragt wie ein einzelner kompakter Knopf (32 px) über und unter die
    20-px-Textzeile; ihre Knöpfe stehen darin ohne eigenen Rand (die Regel
@@ -157,9 +151,6 @@
   .ds-input[type="date"] { padding-inline: var(--ds-space-3); }
 }
 
-/* Einträge einer Liste blenden beim ersten Zeigen kürzer ein als Karten
-   (Hook von .ds-enter auf dem bewegten Element; Bewegung.auftritt). */
-.zeilenliste > * { --ds-enter-duration: var(--ds-dur-fast); }
 
 
 /* ==================================================================
@@ -506,58 +497,18 @@
 
 /* ==================================================================
    6. Datenzeilen
-   Name links (leise), Wert in der zweiten Spalte, Haarlinien dazwischen.
-   Die erste Zeile ohne Linie und Polster oben, die letzte ohne Polster
-   unten (die Liste endet oft eine Karte).
+   Lesen ist .ds-facts--rows, Bearbeiten .ds-form--rows von Dashboard-
+   Style (UI.datenzeilen, UI.feldZeile, UI.formZeile). Hier nur, was ICT
+   dazu legt.
    ================================================================== */
 
-.datenzeilen { padding: 0; }
-
-.datenzeile {
-  display: grid;
-  grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--ds-space-4);
-  padding: var(--ds-space-3) 0;
-  border-top: 1px solid var(--ds-line);
-  font: var(--ds-font-body);
-}
-
-.datenzeile:first-child { padding-top: 0; border-top: 0; }
-.datenzeile:last-child { padding-bottom: 0; }
-
-.datenzeile-name {
-  min-width: 0;
-  color: var(--ds-text-2);
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
-.datenzeile-wert {
-  min-width: 0;
-  color: var(--ds-text);
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
-}
-
-.datenzeile-wert.leer { color: var(--ds-text-3); }
-
-/* Klein und leise daneben («vor 3 Tagen»). */
+/* Klein und leise neben dem Wert («vor 3 Tagen»). */
 .datenzeile-neben {
   margin-left: var(--ds-space-2);
   color: var(--ds-text-2);
   font: var(--ds-font-meta);
   font-variant-numeric: tabular-nums;
 }
-
-.datenzeile-hinweis {
-  margin-top: var(--ds-space-1);
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  text-wrap: pretty;
-}
-
-.datenzeile-hinweis:empty { display: none; }
 
 /* Knopfzeile unter einem Feld («Vorschlag übernehmen»); ein Text-Knopf am
    Zeilenanfang fluchtet mit dem Feld darüber. */
@@ -566,93 +517,18 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ds-space-2);
-  margin-top: var(--ds-space-2);
+  margin-top: var(--ds-space-1);
 }
 
 .datenzeile-zeile > .ds-btn--text:first-child { margin-left: calc(-1 * var(--ds-space-3)); }
 
-/* Ein Kästchen als Wert ragt (40-px-Ziel) über die 20-px-Zeile hinaus. */
-.datenzeile-wert > .ds-check:only-child { margin-block: calc((20px - 40px) / 2); }
-
-/* Schloss: der Wert kommt aus dem Abgleich (der Tooltip nennt die Quelle). */
-.schloss {
-  display: inline-flex;
-  margin-left: var(--ds-space-1);
-  color: var(--ds-text-2);
-  vertical-align: -3px;
-}
-
-/* Bearbeiten: Beschriftung 12/16 500 oben, Feld darunter (höchstens 560 px). */
-.datenzeile-form {
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: var(--ds-space-1);
-}
-
-.datenzeile-form > .datenzeile-name {
-  color: var(--ds-text-2);
-  font: var(--ds-font-caption);
-}
-
-.datenzeile-form > .datenzeile-wert { max-width: 560px; }
-
-/* Geändert: 6-px-Punkt hinter der Beschriftung und «(geändert)» für den
-   Screenreader – nie Farbe allein, dazu die Zahl in der Speicherleiste.
-   Der Punkt blendet per Übergang ein: eine Zeile, die schon geändert neu
-   gezeichnet wird, zeigt ihn ohne Bewegung. */
-.datenzeile-form > .datenzeile-name::after,
-.datenzeile.geaendert > .datenzeile-name::after {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-left: var(--ds-space-2);
-  border-radius: var(--ds-radius-action);
-  background: var(--ds-primary);
-  vertical-align: middle;
-  opacity: 0;
-  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-.datenzeile.geaendert > .datenzeile-name::after { opacity: 1; }
-.datenzeile:not(.geaendert) .geaendert-text { display: none; }
-
 
 /* ==================================================================
-   7. Hinweisliste (UI.hinweise)
-   Sinnbild 20 + Titel 500 + Text, Haarlinien dazwischen. Der Ton färbt
-   nur das Sinnbild, der Text bleibt ruhig.
+   7. Hinweisliste (UI.hinweise): Befunde als .ds-alert--plain von
+      Dashboard-Style untereinander, ohne Lücke (die Haarlinien trennen).
    ================================================================== */
 
-.hinweise {
-  display: grid;
-  padding: 0;
-  list-style: none;
-}
-
-.hinweis-zeile {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ds-space-3);
-  padding: var(--ds-space-3) 0;
-  border-top: 1px solid var(--ds-line);
-  font: var(--ds-font-body);
-}
-
-.hinweis-zeile:first-child { padding-top: 0; border-top: 0; }
-.hinweis-zeile:last-child { padding-bottom: 0; }
-
-.hinweis-zeile,
-.hinweis-zeile:is(.t-gefahr, .t-warnung, .t-info, .t-erfolg) { color: var(--ds-text); }
-
-.hinweis-zeile > svg { flex-shrink: 0; color: var(--ds-primary); }
-.hinweis-zeile.t-gefahr > svg { color: var(--ds-error); }
-.hinweis-zeile.t-warnung > svg { color: var(--ds-warning); }
-.hinweis-zeile.t-erfolg > svg { color: var(--ds-success); }
-
-.hinweis-zeile-text { display: grid; gap: 2px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.hinweis-zeile-titel { color: var(--ds-text); font: var(--ds-font-label); }
-.hinweis-zeile-inhalt { color: var(--ds-text-2); }
+.hinweise { display: grid; }
 
 
 /* ==================================================================
@@ -661,17 +537,9 @@
 
 .eingabe-schmal { width: min(100%, 200px); }
 
-/* Hinweis mit Sinnbild vor dem Text (UI.feldHinweis: Live-Prüfung «in
-   Ordnung»). Der Ton färbt nur das Sinnbild (.t-erfolg …). */
-:is(.ds-field__hint, .datenzeile-hinweis).mit-sinnbild {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ds-space-1);
-}
-
 /* Platz für einen Hinweis, der am Getippten hängt (UI.hinweisPlatz): ohne
    Inhalt verborgen (hidden, .ds-base), sonst 8 px unter Feld und Hinweis. */
-:is(.datenzeile-wert, .ds-field) > .hinweis-platz { margin-top: var(--ds-space-2); }
+.ds-field > .hinweis-platz { margin-top: var(--ds-space-2); }
 
 /* Mehrfachauswahl (Filter): umrandete Liste von Kästchen mit Zahl rechts,
    Haarlinien, eigener dünner Rollbalken. Hover, Druck und Fokus zeigt der
@@ -865,123 +733,11 @@
 
 
 /* ==================================================================
-   11. Listenzeilen (UI.listenZeile), Zahlmarke (UI.zahlmarke) und
-       Karte mit Zahlmarke (UI.karte({ marke }))
-   Eine umrandete Liste mit Haarlinien; Zeilen als Link oder Knopf mit
-   der Ebene der grossen Ziele (6 %), Welle (data-ds-ripple) und einem
-   Pfeil, der beim Hover dunkler wird (Hover bewegt nichts).
+   11. Zahlmarke (UI.zahlmarke) und Karte mit Zahlmarke (UI.karte({ marke }))
+   Die Zeilenliste (UI.listenZeile, UI.zeilenliste) ist .ds-list von
+   Dashboard-Style; die aktuelle Zeile tönt --ds-list-current-bg
+   (thema.css).
    ================================================================== */
-
-.zeilenliste {
-  display: grid;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-surface);
-  list-style: none;
-}
-
-.zeilenliste:empty { display: none; }
-
-.listen-zeile {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-3);
-  width: 100%;
-  margin: 0;
-  padding: var(--ds-space-4) var(--ds-space-5);
-  border: 0;
-  background: transparent;
-  color: var(--ds-text);
-  font: var(--ds-font-body);
-  text-align: left;
-  text-decoration: none;
-}
-
-/* Haarlinie zwischen den Zeilen. */
-.zeilenliste > * + * { border-top: 1px solid var(--ds-line); }
-
-/* In der beschnittenen Liste liegt der Fokusring innen: er ruht auf der
-   Kante und rastet nach innen ein. */
-:is(a, button).listen-zeile {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  outline-offset: 0;
-  transition: outline-offset var(--ds-dur-fast) var(--ds-ease-out);
-}
-
-:is(a, button).listen-zeile::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: -1;
-  background: currentColor;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-@media (hover: hover) {
-  :is(a, button).listen-zeile:hover::before { opacity: var(--ds-state-hover-lg); }
-}
-
-:is(a, button).listen-zeile:focus-visible {
-  outline: var(--ds-focus-outline);
-  outline-offset: calc(-1 * var(--ds-focus-width));
-}
-
-:is(a, button).listen-zeile:focus-visible::before {
-  opacity: var(--ds-state-focus);
-  transition-duration: 0s;
-}
-
-:is(a, button).listen-zeile:is(:active, .ds-pressed)::before {
-  opacity: var(--ds-state-pressed);
-  transition-duration: var(--ds-dur-micro);
-}
-
-/* Mit Welle (DS.ripple) trägt sie den Druck; die Ebene bleibt beim Hover. */
-.ds-ripples :is(a, button).listen-zeile:is(:active, .ds-pressed)::before { opacity: 0; }
-
-@media (hover: hover) {
-  .ds-ripples :is(a, button).listen-zeile:is(:active, .ds-pressed)::before { opacity: var(--ds-state-hover-lg); }
-}
-
-.ds-ripples :is(a, button).listen-zeile:focus-visible:is(:active, .ds-pressed)::before { opacity: var(--ds-state-focus); }
-
-/* Die aktuelle Zeile («dieses Gerät», «Inhaber») ruhig getönt. */
-.listen-zeile.aktuell { background: var(--ds-surface-low); }
-
-.listen-zeile-text { display: grid; flex: 1; gap: 2px; min-width: 0; }
-
-.listen-zeile-titel {
-  color: var(--ds-text);
-  font: var(--ds-font-label);
-  overflow-wrap: break-word;
-}
-
-.listen-zeile-unter {
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: break-word;
-}
-
-.listen-zeile-aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--ds-space-1);
-  margin-right: calc(-1 * var(--ds-space-2));
-}
-
-.listen-zeile > .ds-status { flex-shrink: 0; }
 
 /* Zahlmarke: 32 px rund, 500 tabellarisch, tonal nach Dringlichkeit. Die
    Dringlichkeit steht zusätzlich als Wort in der Zeile. */
@@ -1024,123 +780,20 @@
 .karte-marke .karte-kopf-aktionen { grid-column: 3; grid-row: 1 / span 2; }
 .karte-marke > .ds-muted { grid-column: 2; grid-row: 2; margin-top: 0; }
 
-.listen-zeile-pfeil {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--ds-text-2);
-  transition: color var(--ds-dur-fast) var(--ds-ease-in-out);
-}
-
-@media (hover: hover) {
-  :is(a, button).listen-zeile:hover .listen-zeile-pfeil { color: var(--ds-text); }
-}
-
-/* Handy: Aktionen rutschen unter den Text. */
-@media (max-width: 600px) {
-  .listen-zeile:has(> .listen-zeile-aktionen) { flex-wrap: wrap; }
-  .listen-zeile:has(> .listen-zeile-aktionen) > .listen-zeile-text { flex-basis: 100%; }
-  .listen-zeile > .listen-zeile-aktionen { justify-content: flex-start; margin: 0 0 0 calc(-1 * var(--ds-space-3)); }
-}
-
 
 /* ==================================================================
-   12. Zeitachse (UI.zeitachse)
-   2-px-Linie, 10-px-Punkte in Primärgrün (automatische Einträge grau),
-   Haarlinien zwischen den Einträgen ab der Textkante.
+   12. Zeitachse (UI.zeitachse): .ds-timeline von Dashboard-Style.
+   Abgleich-Einträge und alte Zeitstempel tragen einen grauen statt eines
+   grünen Punkts (der Hook auf dem Eintrag; das Wort steht im Eintrag
+   bzw. im Kartentext).
    ================================================================== */
 
-.zeitachse {
-  padding: 0;
-  list-style: none;
-}
+.zeitachse-still { --ds-timeline-dot-color: var(--ds-line-2); }
 
-.zeitachse-eintrag {
-  position: relative;
-  display: grid;
-  gap: var(--ds-space-1);
-  padding: var(--ds-space-3) 0 var(--ds-space-3) var(--ds-space-6);
-}
-
-.zeitachse-eintrag:first-child { padding-top: 0; }
-.zeitachse-eintrag:last-child { padding-bottom: 0; }
-
-/* Haarlinie ab der Textkante, damit sie die Linie nicht kreuzt. */
-.zeitachse-eintrag + .zeitachse-eintrag {
-  background: linear-gradient(var(--ds-line), var(--ds-line)) var(--ds-space-6) 0 / calc(100% - var(--ds-space-6)) 1px no-repeat;
-}
-
-/* Die Linie verbindet den ersten mit dem letzten Punkt. */
-.zeitachse-eintrag::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 4px;
-  width: 2px;
-  background: var(--ds-line);
-}
-
-.zeitachse-eintrag:first-child::before { top: 10px; }
-.zeitachse-eintrag:last-child::before { bottom: auto; height: calc(var(--ds-space-3) + 10px); }
-.zeitachse-eintrag:only-child::before { display: none; }
-
-/* Punkt mittig auf der ersten 20-px-Zeile. */
-.zeitachse-eintrag::after {
-  content: '';
-  position: absolute;
-  top: calc(var(--ds-space-3) + 5px);
-  left: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--ds-radius-action);
-  background: var(--ds-primary);
-}
-
-.zeitachse-eintrag:first-child::after { top: 5px; }
-.zeitachse-eintrag.still::after { background: var(--ds-line-2); }
-
-.zeitachse-kopf {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ds-space-1) var(--ds-space-2);
-}
-
-.zeitachse-titel {
-  color: var(--ds-text);
-  font: var(--ds-font-label);
-  font-variant-numeric: tabular-nums;
-}
-
-.zeitachse-zeit {
-  color: var(--ds-text-2);
-  font: var(--ds-font-meta);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Meta-Zeile mit Sinnbild davor (Abgleich: «sync»). */
-.zeitachse-zeit:has(> .icon) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ds-space-1);
-}
-
-.zeitachse-zeit > .icon { flex-shrink: 0; }
-
-.zeitachse-text {
-  color: var(--ds-text);
-  overflow-wrap: anywhere;
-  white-space: pre-line;
-}
-
-.zeitachse-text:empty { display: none; }
-
-/* Text-Knöpfe eines Eintrags hängen ihr Polster in den Rand. */
-.zeitachse-aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ds-space-1);
-  margin-left: calc(-1 * var(--ds-space-3));
+/* Sinnbild vor der Meta-Zeile (Abgleich: «sync»). */
+.ds-timeline__meta > .icon {
+  margin-right: var(--ds-space-1);
+  vertical-align: -3px;
 }
 
 

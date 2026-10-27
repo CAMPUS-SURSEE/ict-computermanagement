@@ -102,7 +102,7 @@
                 Wert steht, z. B. {InDomaene: true}; ein Boolean ist sonst nie gleich «leer»;
                 neu: true|fn – Neu-Modus, F.feld zeigt dann keinen Punkt «geändert»)
      F.feld(feld, {beschriftung, art='text', hinweis, zusatz, eingabe:{…UI.eingabe}, beiEingabe(w, k),
-                entwurf, neu}) → div.datenzeile-form (.feld = Steuerelement)
+                entwurf, neu}) → div.ds-field (UI.formZeile; .feld = Steuerelement)
                 Feld am Entwurf: id «<p>-eingabe-<Feld>», Wert aus dem Entwurf, jede Eingabe
                 hinein, Punkt «geändert» an Ort und Stelle (im Neu-Modus keiner)
                 art 'ankreuzen': Kontrollkästchen (UI.ankreuzen, eingabe:{text, …}), Entwurf mit
@@ -650,7 +650,7 @@ const Fenster = (function () {
 
     function feldZeileMarkieren(eintrag) {
       const an = !feldNeu(eintrag) && eintrag.entwurf.istGeaendert(eintrag.feld);
-      if (eintrag.zeile.classList.contains("geaendert") !== an) eintrag.zeile.classList.toggle("geaendert", an);
+      UI.formZeileGeaendert(eintrag.zeile, an);
     }
 
     /* An Ort und Stelle, nach jeder Änderung im Entwurf (auch einer, die
@@ -671,7 +671,7 @@ const Fenster = (function () {
              beiEingabe(wert, feldKnoten) nach dem Eintrag in den Entwurf,
              entwurf (Standard: der zuletzt erstellte), neu (true|fn; Standard:
              Option «neu» des Entwurfs) }
-       → div.datenzeile-form mit .feld (das Steuerelement; nur bis zum
+       → div.ds-field (UI.formZeile) mit .feld (das Steuerelement; nur bis zum
        nächsten Abgleich das gezeigte, danach UI.$(id)).
        Ein Zahlenfeld mit unlesbarer Eingabe («1e», «-») meldet "" – das
        heisst nicht «leer»: der Entwurf behält dann den letzten lesbaren

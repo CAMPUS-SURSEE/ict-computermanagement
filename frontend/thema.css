@@ -74,6 +74,12 @@
   --ds-inverse-primary:  #a1d73b;   /* Erfolgs-Sinnbild in der Meldung */
   --ds-link-underline:   rgba(26, 60, 37, .4);
 
+  /* Bausteine von Dashboard-Style (Hooks): die aktuelle Zeile einer
+     Zeilenliste («dieses Gerät», «Inhaber») ruhig getönt statt im Pastell,
+     das die Navigation und die Auswahl tragen; Felder in Zeilen bis 560 px. */
+  --ds-list-current-bg:  var(--ds-surface-low);
+  --ds-form-rows-control-max: 560px;
+
   /* --- Nur ICT-Inventar --- */
 
   /* Der Punkt der Wortmarke: nur Dekoration, nie Text. */

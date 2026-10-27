@@ -665,7 +665,7 @@
     const bemerkung = UI.formZeile("Bemerkung",
       UI.eingabe({ art: "textbereich", wert: "Akku schwach, Ersatz bestellt.", zeilen: 3 }), { geaendert: true });
     const ort = UI.formZeile("Gebäude / Stock", UI.eingabe({ wert: "Haus C / UG",
-      vorschlaege: ORTE, beiEingabe: function () { ort.classList.add("geaendert"); } }));
+      vorschlaege: ORTE, beiEingabe: function () { UI.formZeileGeaendert(ort, true); } }));
     const inventar = UI.eingabe({ wert: "CAMPUS-912" });
     const inventarZeile = UI.formZeile("PC-Name", inventar, { hinweis: "In Grossbuchstaben, ohne Leerzeichen." });
     UI.feldFehler(inventar, "Diesen Namen gibt es schon (ADMIN-Client 12).");
@@ -683,7 +683,7 @@
     } });
     // Feldhinweis mit Sinnbild (UI.feldHinweis): Live-Prüfung «in Ordnung».
     const REGEL = "Nur A–Z, a–z und 0–9, beginnend mit einem Buchstaben.";
-    const idHinweis = el("div", "datenzeile-hinweis");
+    const idHinweis = el("p", "ds-field__hint");
     const programmId = UI.eingabe({ platzhalter: "AdobeAcrobatPro", beiEingabe: function (w) {
       const id = w.trim();
       const gut = /^[A-Za-z][A-Za-z0-9]*$/.test(id);
@@ -1203,7 +1203,6 @@
           beiKlick: function () {
             gewaehlt = p;
             for (const andere of zeilen) {
-              andere.classList.toggle("aktuell", andere === z);
               if (andere === z) andere.setAttribute("aria-current", "true"); else andere.removeAttribute("aria-current");
             }
             uebernehmen.disabled = false;

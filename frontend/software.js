@@ -333,7 +333,7 @@ function idZeile() {
       hinweis: "Interner Spaltenname in der Benutzer-Liste, nach dem Anlegen nicht mehr änderbar."
     });
   }
-  const hinweis = el("div", "datenzeile-hinweis");
+  const hinweis = el("p", "ds-field__hint");
   hinweis.id = "sw-id-pruefung";
   hinweis.setAttribute("aria-live", "polite");
   const z = feldZeile("Title", {
@@ -351,7 +351,7 @@ function idZeile() {
 
 function vergabeKarte() {
   const k = UI.karte({ titel: "Vergabe" });
-  const vorschau = el("div", "datenzeile-hinweis");
+  const vorschau = el("p", "ds-field__hint");
   vorschau.id = "sw-gruppen-vorschau";
   k.inhalt.appendChild(UI.datenzeilen([
     feldZeile("AdGruppen", {
@@ -508,7 +508,7 @@ function alleZeigen(stufe, mehr) {
   Bewegung.umordnen(karte, function (o) {
     UI.abgleichen(liste, alle.map(function (b) { return personZeile(b, stufe); }), o);
     mehr.remove();
-  }, { eintraege: ".listen-zeile" });
+  }, { eintraege: ".ds-list__item" });
   const erste = alle[PERSONEN_ANFANG];
   const neu = erste ? liste.querySelector('[data-ds-key="sw-person-' + stufe + "-" + erste.id + '"]') : null;
   if (neu) neu.focus();

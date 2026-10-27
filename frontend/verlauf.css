@@ -2,9 +2,10 @@
    benutzer.html, telefon.html, kamera.html und kamerarolle.html.
 
    Das Aussehen kommt ganz aus Dashboard-Style und bausteine.css: Karte und
-   gefüllter Block (.ds-card, .ds-card--filled), Zeitachse (.zeitachse,
-   ICT-eigen: 2-px-Linie, Punkte in Primärgrün, Abgleich grau, Sync-
-   Sinnbild in der Meta-Zeile), Status-Chip, Felder und Knöpfe; die
+   gefüllter Block (.ds-card, .ds-card--filled), Zeitachse (.ds-timeline,
+   Abgleich mit grauem Punkt und Sync-Sinnbild in der Meta-Zeile; das
+   Formular beim Bearbeiten in .ds-timeline__body), Status-Chip, Felder
+   und Knöpfe; die
    Bewegung (Formular, neue und gelöschte Einträge) von DS.motion. Hier
    steht nur, wie die Teile im Verlauf zueinander liegen – nur Tokens.
 
@@ -18,12 +19,6 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--ds-space-4);
   min-width: 0;
-}
-
-/* Der Eintragstext bewahrt Zeilenumbrüche (pre-line); das Formular, das
-   beim Bearbeiten an seiner Stelle steht, fliesst normal. */
-.vl .zeitachse-text:has(> .vl-formular) {
-  white-space: normal;
 }
 
 /* Die Zahl der Einträge steht in der Kopfzeile vor «Neuer Eintrag» und

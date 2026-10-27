@@ -601,7 +601,7 @@ function trefferZeichnen(behaelter) {
     return;
   }
   Bewegung.umordnen(ziel, function (o) { UI.abgleichen(ziel, kinder, o); },
-    { eintraege: ".listen-zeile, .ds-empty" });
+    { eintraege: ".ds-list__item, .ds-empty" });
 }
 
 function trefferKinder() {
@@ -666,7 +666,7 @@ function trefferZeile(gewaehlt, c) {
     fokus: istAktuell ? "treffer-" + c.id : "treffer-link-" + c.id
   });
   if (!istAktuell) {
-    const link = z.querySelector(".listen-zeile-titel a");
+    const link = z.querySelector(".ds-list__action");
     if (link) UI.tipp(link, tipp);
   }
   return geschluesselt(z, "treffer-" + c.id);

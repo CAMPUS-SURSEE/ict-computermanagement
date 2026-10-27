@@ -165,21 +165,25 @@
      UI.kacheln([kachel, …]) → div.ds-tiles
 
    Datenzeilen
-     UI.datenzeilen([zeile, …]) → div.datenzeilen
-     UI.feldZeile(name, wert, { neben, gesperrt, hinweis }) → div.datenzeile
-       wert: Text oder Knoten; leer → «–». gesperrt: Schloss + Tooltip
-       (hinweis oder Standardtext).
-     UI.feldGesperrt(name, wert, hinweis?)   → Schloss-Zeile
+     UI.datenzeilen([zeile, …]) → dl.ds-facts.ds-facts--rows (nur Lesezeilen) bzw.
+       div.ds-form.ds-form--rows (sobald ein Feld darin steht; Lesezeilen
+       werden dort Felder mit .ds-field__value)
+     UI.feldZeile(name, wert, { neben, gesperrt, hinweis }) → div > dt + dd
+       wert: Text oder Knoten; leer → «–» (.ds-muted). gesperrt: .ds-lock
+       nach dem Wert, mit Tooltip (hinweis oder Standardtext).
+     UI.feldGesperrt(name, wert, hinweis?)   → Zeile mit Schloss
+     UI.schloss(hinweis?) → span.ds-lock (role=img, Grund als Name und Tooltip)
      UI.formZeile(beschriftung, feldKnoten, { geaendert, hinweis, zusatz })
-       → div.datenzeile.datenzeile-form; die Beschriftung ist ein <label>
-       für das (erste) Feld; «(geändert)» für den Screenreader steckt im
-       Label und erscheint nur mit .geaendert (Seiten schalten die Klasse
-       an der Zeile um, wie bisher).
-     UI.kennwerte([[name, wert], …]) → ul.ds-kv-list   (Wert rechts, leer «–»)
+       → div.ds-field; die Beschriftung ist ein <label> für das (erste) Feld
+       (bei einem Kästchen benennt sie die Gruppe); «(geändert)» für den
+       Screenreader und der Punkt erscheinen nur mit .ds-field--changed.
+     UI.formZeileGeaendert(zeile, an) → zeile   Punkt «geändert» an Ort und Stelle
+     UI.kennwerte([[name, wert], …]) → ul.ds-kv-list   (Wert rechts, leer «–» leise)
      UI.kennwerte([{ name, wert, href, beiKlick, ton, titel, fokus }, …])
-       → klickbare Kennwerte (Bestandskarte der Übersicht): Zeilen als
-       Link/Knopf mit Zustandsebene und Welle, Null leise, ton
-       'warnung'|'gefahr' als Sinnbild vor dem Namen (nie Farbe auf der Zahl).
+       → ul.ds-kv-list--interactive (Bestandskarte der Übersicht): Zeilen als
+       Link/Knopf (.ds-kv-list__row) mit Zustandsebene und Welle, Null leise,
+       ton 'warnung'|'gefahr' als .ds-kv-list__icon vor dem Wert, mit Wort für
+       den Screenreader (nie Farbe auf der Zahl).
      UI.fakten([[name, wert|Knoten], …]) → dl.ds-facts
 
    Chips, Zähler
@@ -297,16 +301,18 @@
 
    Listen
      UI.hinweisZeile({ ton: 'gefahr'|'warnung'|'info'|'erfolg', titel, text, sinnbild })
+       → div.ds-alert.ds-alert--plain (ein Befund in einer Karte)
      UI.hinweise([zeile, …]) → div.hinweise
      UI.listenZeile({ titel, unter: Text|[Teile]|Knoten, href, beiKlick, aktionen: [Knöpfe],
                       status: Knoten|[Knoten], aktuell, sinnbild, titelTipp, fokus, klasse })
-       → a | button | div.listen-zeile (ganze Zeile klickbar mit Pfeil und
-       Welle, solange keine Aktionen; sonst wird der Titel zum Link).
-     UI.zeilenliste([zeile, …]) → div.zeilenliste
+       → li.ds-list__item; mit href/beiKlick ist der Titel .ds-list__action
+       (die ganze Zeile öffnet, mit Welle; Aktionen bleiben bedienbar).
+     UI.zeilenliste([zeile, …]) → ul.ds-list (.ds-list--interactive, sobald eine
+       Zeile öffnet)
      UI.zahlmarke(zahl, ton?: 'warnung'|'gefahr') → span.zahlmarke (32-px-Pille vor
        dem Titel einer Karte: UI.karte({ marke: UI.zahlmarke(3, 'gefahr') }))
      UI.zeitachse([{ titel, zeit: Text|Knoten, zeitSinnbild, text, still, zusatz: [Knoten],
-                     aktionen: [Knöpfe], klasse }]) → ol.zeitachse
+                     aktionen: [Knöpfe], klasse }]) → ol.ds-timeline
        (zeitSinnbild: 16-px-Sinnbild vor der Meta-Zeile, z. B. 'sync' beim Abgleich)
 
    Diagramme
@@ -1342,15 +1348,20 @@ const UI = (function () {
 
   /* ==================================================================
      Datenzeilen
+     Lesen: .ds-facts--rows von Dashboard-Style (Name in einer Spalte von
+     36 %, Wert daneben, Haarlinien; unter 520 px Inhalt der Name über dem
+     Wert). Bearbeiten: .ds-form--rows (Beschriftung über dem Feld, der
+     Punkt «geändert» über .ds-field--changed). Ein Wert aus dem Abgleich
+     trägt das Schloss .ds-lock.
      ================================================================== */
 
   const SCHLOSS_TEXT = "Vom Abgleich gesetzt.";
 
-  /* Schloss mit Tooltip; role=img + aria-label, damit der Grund auch ohne
-     Zeiger gelesen wird. */
+  /* Schloss (.ds-lock): role=img mit dem Grund als Name und Tooltip; kein
+     Tabstopp (ein Antippen zeigt den Tooltip). */
   function schloss(hinweisText) {
-    const s = el("span", "schloss");
     const t = hinweisText || SCHLOSS_TEXT;
+    const s = el("span", "ds-lock");
     s.setAttribute("role", "img");
     s.setAttribute("aria-label", "Gesperrt: " + t);
     s.setAttribute("data-tip", t);
@@ -1358,26 +1369,38 @@ const UI = (function () {
     return s;
   }
 
-  function datenzeilen(zeilen) { return anhaengen(el("div", "datenzeilen"), zeilen || []); }
+  /* Der Wert einer Lesezeile, leer «–» (leise). */
+  function wertFuellen(behaelter, wert, o) {
+    if (wert && (wert.nodeType || Array.isArray(wert))) anhaengen(behaelter, wert);
+    else if (istLeer(wert)) behaelter.appendChild(el("span", "ds-muted", "–"));
+    else behaelter.appendChild(document.createTextNode(String(wert)));
+    if (!istLeer(o.neben)) behaelter.appendChild(el("span", "datenzeile-neben", o.neben));
+    if (o.gesperrt) behaelter.appendChild(schloss(o.hinweis));
+    return behaelter;
+  }
 
+  /* Eine Lesezeile ist zunächst ein Fakt (div > dt + dd). Steht sie in
+     einer Liste mit Feldern (UI.datenzeilen), wird sie dort zum Feld mit
+     .ds-field__value (role=group, die Beschriftung benennt es). */
   function feldZeile(name, wert, optionen) {
     const o = optionen || {};
     const z = el("div", "datenzeile");
-    const n = el("div", "datenzeile-name", name);
-    if (o.gesperrt) n.appendChild(schloss(o.hinweis));
-    z.appendChild(n);
-
-    const w = el("div", "datenzeile-wert");
-    if (wert && (wert.nodeType || Array.isArray(wert))) {
-      anhaengen(w, wert);
-    } else if (istLeer(wert)) {
-      w.classList.add("leer");
-      w.textContent = "–";
-    } else {
-      w.textContent = String(wert);
-    }
-    if (!istLeer(o.neben)) w.appendChild(el("span", "datenzeile-neben", o.neben));
-    z.appendChild(w);
+    const dt = el("dt", null, name);
+    const dd = wertFuellen(el("dd"), wert, o);
+    anhaengen(z, [dt, dd]);
+    z.alsFeld = function () {
+      const f = el("div", "ds-field datenzeile");
+      const nameId = id("ui-wert");
+      const beschriftung = el("span", "ds-field__label", name);
+      beschriftung.id = nameId;
+      f.setAttribute("role", "group");
+      f.setAttribute("aria-labelledby", nameId);
+      const w = el("span", "ds-field__value");
+      while (dd.firstChild) w.appendChild(dd.firstChild);
+      anhaengen(f, [beschriftung, w]);
+      for (const k of Array.from(z.attributes)) if (k.name !== "class") f.setAttribute(k.name, k.value);
+      return f;
+    };
     return z;
   }
 
@@ -1385,42 +1408,73 @@ const UI = (function () {
     return feldZeile(name, wert, { gesperrt: true, hinweis: hinweisText });
   }
 
+  /* Liste der Zeilen: nur Lesezeilen → dl.ds-facts.ds-facts--rows; sobald
+     ein Feld (UI.formZeile, F.feld) darin steht → div.ds-form.ds-form--rows,
+     Lesezeilen darin als Feld mit Wert. */
+  function datenzeilen(zeilen) {
+    const liste = (zeilen || []).filter(Boolean);
+    const formular = liste.some(function (z) { return z.classList && z.classList.contains("ds-field"); });
+    if (!formular) return anhaengen(el("dl", "ds-facts ds-facts--rows datenzeilen"), liste);
+    return anhaengen(el("div", "ds-form ds-form--rows datenzeilen"), liste.map(function (z) {
+      return typeof z.alsFeld === "function" ? z.alsFeld() : z;
+    }));
+  }
+
+  /* Ein Feld zum Bearbeiten (.ds-field in .ds-form--rows): Beschriftung
+     (<label> für das erste Steuerelement) mit dem Punkt «geändert» und
+     «(geändert)» für den Screenreader (.ds-field__changed, nur mit
+     .ds-field--changed), darunter das Feld, der Hinweis (.ds-field__hint,
+     aria-describedby) und ein Zusatz. Seiten schalten «geändert» mit
+     UI.formZeileGeaendert(zeile, an). */
   function formZeile(beschriftung, feld, optionen) {
     const o = optionen || {};
-    const z = el("div", "datenzeile datenzeile-form");
+    const z = el("div", "ds-field datenzeile");
 
     // Die Beschriftung ist das Label des (ersten) Felds.
     const steuer = feld && feld.matches
       ? (feld.matches("input, select, textarea") ? feld : feld.querySelector("input, select, textarea"))
       : null;
-    const name = el(steuer ? "label" : "div", "datenzeile-name", beschriftung);
+    const name = el(steuer && !steuer.closest(".ds-check") ? "label" : "span", "ds-field__label", beschriftung);
     if (steuer) {
       if (!steuer.id) steuer.id = teilId(steuer, "feld");
-      name.htmlFor = steuer.id;
+      if (name.tagName === "LABEL") name.htmlFor = steuer.id;
+      else {
+        name.id = teilId(steuer, "beschriftung");
+        z.setAttribute("role", "group");
+        z.setAttribute("aria-labelledby", name.id);
+      }
     }
-    name.appendChild(el("span", "geaendert-text ds-sr", " (geändert)"));
+    name.appendChild(el("span", "ds-field__changed ds-sr", " (geändert)"));
     z.appendChild(name);
 
-    const wert = el("div", "datenzeile-wert");
-    if (feld) wert.appendChild(feld);
-    if (o.hinweis && o.hinweis.nodeType) wert.appendChild(anhaengen(el("div", "datenzeile-hinweis"), o.hinweis));
-    else if (!istLeer(o.hinweis)) wert.appendChild(el("div", "datenzeile-hinweis", o.hinweis));
-    if (o.zusatz) wert.appendChild(o.zusatz);
-    z.appendChild(wert);
-
-    z.classList.toggle("geaendert", !!o.geaendert);
+    if (feld) z.appendChild(feld);
+    if (o.hinweis && o.hinweis.nodeType || !istLeer(o.hinweis)) {
+      const h = el("p", "ds-field__hint");
+      if (o.hinweis.nodeType) h.appendChild(o.hinweis);
+      else h.textContent = String(o.hinweis);
+      h.id = steuer ? teilId(steuer, "hinweis") : id("ui-hinweis");
+      if (steuer) beschreibungHinzu(steuer, h.id);
+      z.appendChild(h);
+    }
+    if (o.zusatz) z.appendChild(o.zusatz);
+    formZeileGeaendert(z, !!o.geaendert);
     return z;
   }
 
-  /* Kennwerte: [[name, wert], …] → ul.ds-kv-list (Wert rechts, leer «–»).
-     Mit Objekten [{ name, wert, href, beiKlick, ton, titel, fokus }] die
-     klickbare Fassung der Bestandskarte (Übersicht): Zeilen mit Ziel
-     sind Links bzw. Knöpfe mit Zustandsebene, Welle und Fokusring
-     (dieselben Klassen wie UI.verteilung, ohne Balken), der Wert steht rechts (500,
-     tabellarisch), eine Null leise. ton ('warnung'|'gefahr') setzt ein
-     Sinnbild vor den Namen und sagt dem Screenreader «(zu prüfen)» bzw.
-     «(dringend)» – die Zahl wird nie gefärbt. titel = Tooltip; eine Zeile
-     ohne Ziel wird damit ein Tabstopp. */
+  function formZeileGeaendert(zeile, an) {
+    if (zeile && zeile.classList.contains("ds-field--changed") !== !!an) zeile.classList.toggle("ds-field--changed", !!an);
+    return zeile;
+  }
+
+  /* Kennwerte: [[name, wert], …] → ul.ds-kv-list (Wert rechts, leer «–»
+     leise: strong.ds-muted). Mit Objekten [{ name, wert, href, beiKlick,
+     ton, titel, fokus }] die klickbare Fassung der Bestandskarte
+     (Übersicht): .ds-kv-list--interactive, Zeilen mit Ziel sind Links bzw.
+     Knöpfe (.ds-kv-list__row) mit Zustandsebene, Welle und Fokusring, der
+     Wert steht rechts, eine Null leise. ton ('warnung'|'gefahr') setzt
+     .ds-kv-list__icon vor den Wert und sagt dem Screenreader «zu prüfen»
+     bzw. «dringend» – die Zahl wird nie gefärbt. titel = Tooltip; eine
+     Zeile ohne Ziel wird damit ein Tabstopp. */
   function kennwerte(paare) {
     if ((paare || []).some(istOptionen)) return kennwerteKlickbar(paare);
     const liste = el("ul", "ds-kv-list");
@@ -1428,7 +1482,7 @@ const UI = (function () {
       const li = el("li");
       li.appendChild(el("span", null, p[0]));
       const leer = istLeer(p[1]) && !(p[1] && p[1].nodeType);
-      const w = el("strong", leer ? "leer" : null);
+      const w = el("strong", leer ? "ds-muted" : null);
       if (p[1] && p[1].nodeType) w.appendChild(p[1]);
       else w.textContent = leer ? "–" : String(p[1]);
       li.appendChild(w);
@@ -1437,34 +1491,37 @@ const UI = (function () {
     return liste;
   }
 
+  const KENNWERT_TOENE = { warnung: ["warning", "achtung", "zu prüfen"], gefahr: ["error", "achtung", "dringend"] };
+
+  function kennwertZeile(e, tag) {
+    const z = el(tag, "ds-kv-list__row");
+    if (tag === "a") z.href = e.href;
+    if (tag === "button") z.type = "button";
+    if (e.beiKlick) z.addEventListener("click", e.beiKlick);
+    fokusSetzen(z, e.fokus);
+    if (e.titel) {
+      z.setAttribute("data-tip", e.titel);
+      if (tag === "div") z.tabIndex = 0;
+    }
+    return z;
+  }
+
   function kennwerteKlickbar(eintraege) {
-    const ul = el("ul", "verteilung verteilung-klickbar kennwerte-klickbar");
+    const ul = el("ul", "ds-kv-list ds-kv-list--interactive");
     for (const e of eintraege) {
       if (!e) continue;
       const li = el("li");
-      const tag = e.href ? "a" : (e.beiKlick ? "button" : "div");
-      const z = el(tag, "verteilung-zeile");
-      if (tag === "a") z.href = e.href;
-      if (tag === "button") z.type = "button";
-      if (tag !== "div") z.setAttribute("data-ds-ripple", "");
-      if (e.beiKlick) z.addEventListener("click", e.beiKlick);
-      fokusSetzen(z, e.fokus);
-      if (e.titel) {
-        z.setAttribute("data-tip", e.titel);
-        if (tag === "div") z.tabIndex = 0;
-      }
-      const name = el("span", "verteilung-name");
-      if (e.ton === "warnung" || e.ton === "gefahr") {
-        name.appendChild(sinnbild("achtung", 16, "kennwert-ton t-" + e.ton));
-        name.appendChild(document.createTextNode(text(e.name)));
-        name.appendChild(el("span", "ds-sr", e.ton === "gefahr" ? " (dringend)" : " (zu prüfen)"));
-      } else {
-        name.textContent = text(e.name);
-      }
+      const z = kennwertZeile(e, e.href ? "a" : (e.beiKlick ? "button" : "div"));
       const leer = istLeer(e.wert);
       const still = leer || e.wert === 0 || e.wert === "0";
-      const wert = leer ? "–" : (typeof e.wert === "number" ? zahlFormat(e.wert) : String(e.wert));
-      anhaengen(z, [name, el("span", "verteilung-zahl" + (still ? " leer" : ""), wert)]);
+      const wert = el("strong", still ? "ds-muted" : null);
+      const ton = KENNWERT_TOENE[e.ton];
+      if (ton) {
+        wert.appendChild(sinnbild(ton[1], 16, "ds-kv-list__icon ds-kv-list__icon--" + ton[0]));
+        wert.appendChild(el("span", "ds-sr", ton[2] + ": "));
+      }
+      wert.appendChild(document.createTextNode(leer ? "–" : (typeof e.wert === "number" ? zahlFormat(e.wert) : String(e.wert))));
+      anhaengen(z, [el("span", null, text(e.name)), wert]);
       li.appendChild(z);
       ul.appendChild(li);
     }
@@ -1810,15 +1867,18 @@ const UI = (function () {
 
   /* Feldhinweis mit Sinnbild an Ort und Stelle (Live-Prüfung «in
      Ordnung»): schreibt Text und Sinnbild in einen vorhandenen Hinweis
-     (.ds-field__hint oder .datenzeile-hinweis, z. B. aus UI.feld/UI.formZeile)
-     und verbirgt ihn ohne Text. Den Fehlerfall zeigt UI.feldFehler. Der
-     Ton färbt nur das Sinnbild; der Text bleibt leise. */
+     (.ds-field__hint, z. B. aus UI.feld/UI.formZeile) und verbirgt ihn
+     ohne Text. Ein Sinnbild vorne legt Dashboard-Style neben die erste
+     Zeile; ton 'erfolg' ist .ds-field__hint--success (Sinnbild in
+     --ds-success, Text leise), ein anderer Ton färbt nur das Sinnbild. Den
+     Fehlerfall zeigt UI.feldFehler. */
   function feldHinweis(knoten, inhalt, optionen) {
     if (!knoten) return knoten;
     const o = optionen || {};
     leeren(knoten);
-    knoten.classList.toggle("mit-sinnbild", !!o.sinnbild);
-    if (o.sinnbild) knoten.appendChild(sinnbild(o.sinnbild, 16, o.ton ? "t-" + o.ton : ""));
+    const erfolg = !!o.sinnbild && o.ton === "erfolg";
+    knoten.classList.toggle("ds-field__hint--success", erfolg);
+    if (o.sinnbild) knoten.appendChild(sinnbild(o.sinnbild, 16, o.ton && !erfolg ? "t-" + o.ton : ""));
     if (!istLeer(inhalt)) knoten.appendChild(el("span", null, inhalt));
     knoten.hidden = istLeer(inhalt);
     return knoten;
@@ -2413,73 +2473,75 @@ const UI = (function () {
      ================================================================== */
 
   const HINWEIS_SINNBILDER = { gefahr: "achtungKreis", warnung: "achtung", erfolg: "checkKreis", info: "info" };
+  const HINWEIS_KLASSEN = { gefahr: "ds-alert--error", warnung: "ds-alert--warning", erfolg: "ds-alert--success" };
 
+  /* Ein Befund in einer Karte: .ds-alert--plain von Dashboard-Style (auf
+     der Fläche der Karte, ohne Füllung; das Sinnbild in der Farbe der Art,
+     der Text ruhig; Haarlinien zwischen aufeinanderfolgenden). Statisch,
+     darum ohne Live-Rolle. */
   function hinweisZeile(optionen) {
     const o = optionen || {};
     const ton = HINWEIS_SINNBILDER[o.ton] ? o.ton : "info";
-    const z = el("div", "hinweis-zeile t-" + ton);
+    const z = el("div", "ds-alert ds-alert--plain" + (HINWEIS_KLASSEN[ton] ? " " + HINWEIS_KLASSEN[ton] : ""));
     z.appendChild(sinnbild(o.sinnbild || HINWEIS_SINNBILDER[ton], 20));
-    const t = el("div", "hinweis-zeile-text");
-    if (!istLeer(o.titel)) t.appendChild(el("span", "hinweis-zeile-titel", o.titel));
-    if (o.text && o.text.nodeType) t.appendChild(anhaengen(el("span", "hinweis-zeile-inhalt"), o.text));
-    else if (!istLeer(o.text)) t.appendChild(el("span", "hinweis-zeile-inhalt", o.text));
+    const t = el("div", "ds-alert__text");
+    if (!istLeer(o.titel)) t.appendChild(el("p", "ds-alert__title", o.titel));
+    if (o.text && o.text.nodeType) t.appendChild(anhaengen(el("p"), o.text));
+    else if (!istLeer(o.text)) t.appendChild(el("p", null, o.text));
     z.appendChild(t);
     return z;
   }
 
   function hinweise(zeilen) { return anhaengen(el("div", "hinweise"), zeilen || []); }
 
-  /* Zeile einer umrandeten Liste: Titel 500 + Unterzeile. Ohne Aktionen
-     ist die ganze Zeile der Link (href) oder Knopf (beiKlick) mit Pfeil,
-     Zustandsebene und Welle; mit Aktionen ist sie ein div, der Titel wird
-     zum Link. */
+  /* Zeile einer Zeilenliste (.ds-list__item von Dashboard-Style): Titel
+     (.ds-list__title) + Unterzeile (.ds-list__meta). Mit href oder
+     beiKlick ist der Titel der Link bzw. Knopf der Zeile (.ds-list__action):
+     seine Fläche spannt sich über die Zeile, Zustandsebene, Welle und
+     Fokusring kommen von Dashboard-Style, ein Winkel zeigt das Ziel;
+     Aktionen (.ds-list__actions) und Status bleiben darüber bedienbar.
+     aktuell: aria-current (getönt über --ds-list-current-bg, thema.css). */
   function listenZeile(optionen) {
     const o = optionen || {};
     const aktionen = (o.aktionen || []).filter(Boolean);
-    const ganz = !aktionen.length && (o.href || o.beiKlick);
-    const tag = ganz ? (o.href ? "a" : "button") : "div";
-    const z = el(tag, "listen-zeile" + (o.aktuell ? " aktuell" : "") + (o.klasse ? " " + o.klasse : ""));
-    if (tag === "a") z.href = o.href;
-    if (tag === "button") z.type = "button";
-    if (ganz) z.setAttribute("data-ds-ripple", "");
-    if (ganz && o.beiKlick) z.addEventListener("click", o.beiKlick);
+    const offen = !!(o.href || o.beiKlick);
+    const z = el("li", "ds-list__item" + (o.klasse ? " " + o.klasse : ""));
     if (o.aktuell) z.setAttribute("aria-current", "true");
-    if (o.titelTipp) z.setAttribute("data-tip", o.titelTipp);
-    if (ganz) fokusSetzen(z, o.fokus);
 
-    // Vorne ein Sinnbild.
-    if (o.sinnbild) z.appendChild(sinnbild(o.sinnbild, 20, "t-leise"));
-    const t = el("span", "listen-zeile-text");
-    const titel = el("span", "listen-zeile-titel");
-    if (!ganz && o.href) {
-      const a = el("a", "name-link", o.titel);
-      a.href = o.href;
-      if (o.beiKlick) a.addEventListener("click", o.beiKlick);
-      fokusSetzen(a, o.fokus);
-      titel.appendChild(a);
+    if (o.sinnbild) z.appendChild(sinnbild(o.sinnbild, 20, "ds-list__icon"));
+    const t = el("span", "ds-list__text");
+    const titel = el("span", "ds-list__title");
+    if (offen) {
+      const ziel = el(o.href ? "a" : "button", "ds-list__action", o.titel);
+      if (o.href) ziel.href = o.href;
+      else ziel.type = "button";
+      if (o.beiKlick) ziel.addEventListener("click", o.beiKlick);
+      if (o.titelTipp) ziel.setAttribute("data-tip", o.titelTipp);
+      fokusSetzen(ziel, o.fokus);
+      titel.appendChild(ziel);
     } else {
       titel.textContent = text(o.titel);
+      if (o.titelTipp) z.setAttribute("data-tip", o.titelTipp);
     }
     t.appendChild(titel);
-    if (Array.isArray(o.unter)) t.appendChild(anhaengen(el("span", "listen-zeile-unter"), [teile(o.unter)]));
-    else if (o.unter && o.unter.nodeType) t.appendChild(anhaengen(el("span", "listen-zeile-unter"), o.unter));
-    else if (!istLeer(o.unter)) t.appendChild(el("span", "listen-zeile-unter", o.unter));
+    if (Array.isArray(o.unter)) t.appendChild(anhaengen(el("span", "ds-list__meta"), [teile(o.unter)]));
+    else if (o.unter && o.unter.nodeType) t.appendChild(anhaengen(el("span", "ds-list__meta"), o.unter));
+    else if (!istLeer(o.unter)) t.appendChild(el("span", "ds-list__meta", o.unter));
     z.appendChild(t);
 
     anhaengen(z, Array.isArray(o.status) ? o.status : (o.status ? [o.status] : []));
-    // In einem Link oder Knopf kein Bedienelement im Bedienelement.
-    if (ganz) for (const st of Array.from(z.querySelectorAll(".ds-status[tabindex]"))) st.removeAttribute("tabindex");
-    if (aktionen.length) z.appendChild(anhaengen(el("div", "listen-zeile-aktionen"), aktionen));
-    if (ganz) {
-      const pfeil = el("span", "listen-zeile-pfeil");
-      pfeil.setAttribute("aria-hidden", "true");
-      pfeil.appendChild(sinnbild("pfeilRechts", 16));
-      z.appendChild(pfeil);
-    }
+    if (aktionen.length) z.appendChild(anhaengen(el("span", "ds-list__actions"), aktionen));
+    if (offen && !aktionen.length) z.appendChild(sinnbild("chevronRechts", 20, "ds-list__chevron"));
     return z;
   }
 
-  function zeilenliste(zeilen) { return anhaengen(el("div", "zeilenliste"), zeilen || []); }
+  /* Die umrandete Liste (.ds-list); klickbar (.ds-list--interactive),
+     sobald eine Zeile einen Link oder Knopf trägt. Ohne Zeile ohne Platz. */
+  function zeilenliste(zeilen) {
+    const liste = (zeilen || []).filter(Boolean);
+    const klickbar = liste.some(function (z) { return !!z.querySelector && !!z.querySelector(".ds-list__action"); });
+    return anhaengen(el("ul", "ds-list zeilenliste" + (klickbar ? " ds-list--interactive" : "")), liste);
+  }
 
   /* Zahlmarke (Handlungsbedarf): 32-px-Pille mit der Zahl vor dem Titel
      einer Karte (UI.karte({ marke })), tonal nach Dringlichkeit ('warnung' | 'gefahr', sonst
@@ -2490,30 +2552,34 @@ const UI = (function () {
     return el("span", "zahlmarke" + t, typeof zahl === "number" ? zahlFormat(zahl) : text(zahl));
   }
 
-  /* Zeitachse: [{ titel, zeit, text, still, zusatz: [Knoten], aktionen: [Knoten] }]. */
+  /* Zeitachse: .ds-timeline von Dashboard-Style (Punkte auf einer Linie,
+     Haarlinien ab der Textkante). [{ titel, zeit: Text|Knoten, zeitSinnbild,
+     text: Text|Knoten, still, zusatz: [Knoten], aktionen: [Knoten], klasse }]:
+     Kopf mit Titel und Zusatz (Status-Chips), Meta-Zeile (zeit, ein
+     Sinnbild davor), Text (behält Zeilenumbrüche) bzw. ein Knoten an seiner
+     Stelle (.ds-timeline__body: das Formular beim Bearbeiten), Text-Knöpfe.
+     still: ein grauer Punkt (Abgleich, alte Zeitstempel; das Wort steht in
+     der Zeile bzw. im Kartentext) über den Hook --ds-timeline-dot-color. */
   function zeitachse(eintraege) {
-    const liste = el("ol", "zeitachse");
+    const liste = el("ol", "ds-timeline zeitachse");
+    liste.setAttribute("role", "list");
     for (const e of eintraege || []) {
-      const li = el("li", "zeitachse-eintrag" + (e.still ? " still" : "") + (e.klasse ? " " + e.klasse : ""));
-      const kopf = el("div", "zeitachse-kopf");
-      if (!istLeer(e.titel)) kopf.appendChild(el("span", "zeitachse-titel", e.titel));
-      const zeitKnoten = !!e.zeit && (!!e.zeit.nodeType || Array.isArray(e.zeit));
-      if (zeitKnoten || !istLeer(e.zeit) || e.zeitSinnbild) {
-        // Meta-Zeile; ein Sinnbild davor (Abgleich: «sync»).
-        const zeit = el("span", "zeitachse-zeit");
-        if (e.zeitSinnbild) zeit.appendChild(sinnbild(e.zeitSinnbild, 16));
-        if (zeitKnoten) anhaengen(zeit, e.zeit);
-        else if (!istLeer(e.zeit)) {
-          if (e.zeitSinnbild) zeit.appendChild(el("span", null, e.zeit));
-          else zeit.textContent = String(e.zeit);
-        }
-        kopf.appendChild(zeit);
-      }
+      const li = el("li", "ds-timeline__item" + (e.still ? " zeitachse-still" : "") + (e.klasse ? " " + e.klasse : ""));
+      const kopf = el("div", "ds-timeline__head");
+      if (!istLeer(e.titel)) kopf.appendChild(el("p", "ds-timeline__title", e.titel));
       anhaengen(kopf, e.zusatz || []);
       li.appendChild(kopf);
-      if (e.text && e.text.nodeType) li.appendChild(anhaengen(el("div", "zeitachse-text"), e.text));
-      else if (!istLeer(e.text)) li.appendChild(el("div", "zeitachse-text", e.text));
-      if (e.aktionen && e.aktionen.length) li.appendChild(anhaengen(el("div", "zeitachse-aktionen"), e.aktionen));
+      const zeitKnoten = !!e.zeit && (!!e.zeit.nodeType || Array.isArray(e.zeit));
+      if (zeitKnoten || !istLeer(e.zeit) || e.zeitSinnbild) {
+        const zeit = el("p", "ds-timeline__meta");
+        if (e.zeitSinnbild) zeit.appendChild(sinnbild(e.zeitSinnbild, 16));
+        if (zeitKnoten) anhaengen(zeit, e.zeit);
+        else if (!istLeer(e.zeit)) zeit.appendChild(document.createTextNode(String(e.zeit)));
+        li.appendChild(zeit);
+      }
+      if (e.text && e.text.nodeType) li.appendChild(anhaengen(el("div", "ds-timeline__body"), e.text));
+      else if (!istLeer(e.text)) li.appendChild(el("p", "ds-timeline__text", e.text));
+      if (e.aktionen && e.aktionen.length) li.appendChild(anhaengen(el("div", "ds-timeline__actions"), e.aktionen));
       liste.appendChild(li);
     }
     return liste;
@@ -2663,7 +2729,7 @@ const UI = (function () {
     karte: karte, kachel: kachel, kacheln: kacheln,
     // Datenzeilen
     datenzeilen: datenzeilen, feldZeile: feldZeile, feldGesperrt: feldGesperrt,
-    formZeile: formZeile, kennwerte: kennwerte, fakten: fakten,
+    formZeile: formZeile, formZeileGeaendert: formZeileGeaendert, kennwerte: kennwerte, fakten: fakten, schloss: schloss,
     // Chips, Zähler
     chip: chip, chips: chips, zaehler: zaehler,
     // Formulare
