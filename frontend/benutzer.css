@@ -12,36 +12,9 @@
    mit einer einfachen Klasse. Klassen dieser Seite beginnen mit «b-».
 
    Klassen ohne eigene Regel (Haken für benutzer.js und die Prüfskripte):
-   .b-programme (Karten der Berechtigungen), .b-verlauf (Hülle des Verlaufs).
-   Mit eigener Regel: .b-kennzahlen (Kacheln der Übersicht), .b-rechte-leiste
-   (Werkzeugleiste der Berechtigungen). */
-
-
-/* Die drei Kennzahlen der Übersicht füllen die Zeile, statt drei von vier
-   Spalten (bzw. unter 1100 px zwei von zwei mit einer allein darunter) zu
-   belegen. Auf dem Handy zwei Spalten wie überall; die dritte Kachel nimmt
-   dann die ganze Breite, statt allein halb zu stehen. */
-.b-kennzahlen {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 600px) {
-  .b-kennzahlen {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .b-kennzahlen > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Berechtigungen: auf schmaler Bahn nimmt die Suche eine eigene Zeile,
-   darunter «Nur aktive» und die Zahl – sonst schnitte der Platzhalter
-   «Programm oder AD-Gruppe» ab (wie die Werkzeugleiste der Hauptseite,
-   styles.css). */
-@container ds-content (max-width: 600px) {
-  .b-rechte-leiste > .ds-search {
-    flex-basis: 100%;
-    max-width: none;
-  }
-}
+   .b-programme (Karten der Berechtigungen), .b-verlauf (Hülle des Verlaufs),
+   .b-rechte-leiste (Werkzeugleiste der Berechtigungen). Die drei
+   Kennzahlen der Übersicht füllen ihre Zeile mit .ds-tiles--3, und auf
+   schmaler Bahn nimmt die Suche der Werkzeugleiste eine eigene Zeile:
+   beides kann Dashboard-Style 2.0 selbst, darum hat diese Seite keine
+   eigene Regel mehr. */

@@ -365,22 +365,24 @@ const Fenster = (function () {
        gezeigten abgeglichen: ein Knopf, der bleibt, behält Fokus, Tooltip
        und Zustandsebene; seine Sperre mit Grund (aria-disabled, data-tip)
        gleicht UI.abgleichen an, den beiKlick übernimmt er vom neuen
-       (UI.knopfUebernehmen). Ein Knopf ohne beiKlick wird ersetzt. Ging der
-       Fokus mit einem Knopf, geht er zur ersten freien Aktion, sonst zum
-       Titel. */
+       (UI.knopfUebernehmen im onKeep von Dashboard-Style, das jeden
+       bleibenden Knopf mit seinem neu gebauten Gegenstück meldet). Ein
+       Knopf ohne beiKlick wird ersetzt. Ging der Fokus mit einem Knopf,
+       geht er zur ersten freien Aktion, sonst zum Titel. */
     function aktionenAbgleichen(behaelter, neue) {
       const liste = (neue || []).filter(Boolean);
       for (const k of liste) if (!k.hasAttribute("data-ds-key")) k.setAttribute("data-ds-key", aktionsSchluessel(k));
       const aktiv = document.activeElement;
       const fokusDrin = !!aktiv && aktiv !== behaelter && behaelter.contains(aktiv);
-      UI.abgleichen(behaelter, liste);
-      Array.from(behaelter.children).forEach(function (gezeigt, i) {
-        const neu = liste[i];
-        if (!neu || gezeigt === neu || UI.knopfUebernehmen(gezeigt, neu)) return;
+      const ersetzen = [];
+      UI.abgleichen(behaelter, liste, { beiBehalten: function (gezeigt, neu) {
+        if (gezeigt.parentNode === behaelter && !UI.knopfUebernehmen(gezeigt, neu)) ersetzen.push([gezeigt, neu]);
+      } });
+      for (const [gezeigt, neu] of ersetzen) {
         const hatteFokus = gezeigt === document.activeElement;
         gezeigt.replaceWith(neu);
         if (hatteFokus) neu.focus({ preventScroll: true });
-      });
+      }
       sperrenAnwenden();
       if (fokusDrin && !behaelter.contains(document.activeElement)) {
         const nachfolger = Array.from(behaelter.children).filter(function (k) { return !k.disabled; })[0];

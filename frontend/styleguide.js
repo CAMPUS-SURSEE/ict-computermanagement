@@ -497,8 +497,8 @@
         ]),
         karte({ titel: "Filter-Chips", unter: "Umschalter sind Chips von Dashboard-Style auf einem Kästchen: der Haken "
           + "zeichnet sich, der Platz dafür öffnet sich. Eine Gruppe steht in einem fieldset mit Legende; mit "
-          + "art: 'radio' ist genau einer gewählt (Status). Eine Reihe ohne Filter-Chip (Status-Chips, Links) ist "
-          + "keine Filtergruppe (UI.chips: .chip-zeile)." }, [
+          + "art: 'radio' ist genau einer gewählt (Status). Aktive Filter und Aktions-Chips sind Knöpfe in einer "
+          + "Reihe mit role=group (UI.chips: .ds-chips)." }, [
           chipsZeile,
           aktive,
           reihe([zuruecksetzen, UI.chip({ text: "Nur meine Geräte", href: "#status", sinnbild: "benutzer" })]),
@@ -599,7 +599,7 @@
             unterabschnitt
           ])
         ]),
-        karte({ titel: "Kennzahlen", unter: "Vier Kacheln (≤ 1100 px zwei). Beim ersten Zeigen zählen die Zahlen hoch; "
+        karte({ titel: "Kennzahlen", unter: "Höchstens vier Kacheln je Zeile, so viele, wie 176 px breit Platz haben; jede Zeile gefüllt. Beim ersten Zeigen zählen die Zahlen hoch; "
           + "neue Daten zählen vom gezeigten Wert aus, nie wieder von null.", breit: true, aktionen: [neueDaten] }, [kacheln, kachelnKlick])
       ]);
   }
@@ -763,8 +763,7 @@
       UI.schalter({ an: false, deaktiviert: true, label: "Deaktiviert", titel: "Nur für Mitarbeitende mit Telefonnummer." }),
       beschriftung("aus · an · gesperrt (Schloss im Griff) · deaktiviert")
     ]);
-    const schalter = el("div");
-    anhaengen(schalter, [
+    const schalter = UI.schalterListe([
       UI.schalterZeile({ name: "Microsoft 365", unter: "Lizenzgruppe M365-A3", wort: true, an: true,
         zusatz: [UI.status("3 Geräte", "neutral", { sinnbild: "laptop" })] }),
       UI.schalterZeile({ name: "KeePass", wort: true, an: false }),
@@ -1298,7 +1297,7 @@
     } });
 
     const detailBlatt = knopf({ text: "Details (720 px)", beiKlick: function () {
-      const roh = el("pre", "code-block", JSON.stringify({ Title: "CAMPUS-907", SCCM_Found: "Ja", Modell: "Latitude 7440",
+      const roh = el("pre", "ds-code-block ds-code-block--wrap", JSON.stringify({ Title: "CAMPUS-907", SCCM_Found: "Ja", Modell: "Latitude 7440",
         FreierSpeicherGB: 211, LetzteAnmeldung: "2026-10-10T07:12:00Z" }, null, 2));
       roh.tabIndex = 0;
       roh.setAttribute("aria-label", "Rohdaten");

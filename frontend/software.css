@@ -8,7 +8,7 @@
    Hier stehen nur Breiten, keine Schrift: Feldtext und seine Grösse
    (16 px auf dem Telefon) gibt Dashboard-Style vor. Der
    Hinweis mit Sinnbild unter der Programm-ID ist UI.feldHinweis
-   (bausteine.css .mit-sinnbild). Eigene Klassen beginnen mit «sw-». */
+   (.ds-field__hint mit Sinnbild vorne, Dashboard-Style). Eigene Klassen beginnen mit «sw-». */
 
 
 /* Die Programm-ID ist der interne Spaltenname: kurz und technisch. */

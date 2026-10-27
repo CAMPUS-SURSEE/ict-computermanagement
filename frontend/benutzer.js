@@ -325,7 +325,8 @@ function bereichUebersicht(ziel) {
     kachel("kachel-manuell", zahlen.manuell, { text: "Von Hand gesetzt", unter: "umschaltbar" }),
     kachel("kachel-ad", zahlen.ausAd, { text: "Aus AD-Gruppen", unter: "gesperrt" })
   ]);
-  kacheln.classList.add("b-kennzahlen");
+  // Drei Kennzahlen füllen die Zeile (.ds-tiles--3 von Dashboard-Style).
+  kacheln.classList.add("ds-tiles--3");
   stapel.appendChild(kacheln);
 
   /* Was zu klären ist, steht hier nur als Hinweis (alle Gründe in einem
@@ -713,7 +714,7 @@ function bereichBerechtigungen(ziel) {
   });
   const anzahl = UI.el("p", "anzahl");
   anzahl.id = "b-rechte-anzahl";
-  // b-rechte-leiste: auf schmaler Bahn nimmt die Suche eine eigene Zeile (benutzer.css).
+  // Auf schmaler Bahn nimmt die Suche eine eigene Zeile (Dashboard-Style, .ds-action-bar).
   ziel.appendChild(UI.anhaengen(UI.el("div", "ds-action-bar b-rechte-leiste"), [suche, nurAktiveChip, anzahl]));
 
   // Nach Kategorie gruppiert, Reihenfolge aus der Spalte «Reihenfolge».
@@ -725,7 +726,7 @@ function bereichBerechtigungen(ziel) {
     const aktiv = inKategorie.filter(s => programmStufe(s.i) > 0).length;
     const k = geschluesselt(UI.karte({ titel: kategorie, unter: aktiv + " von " + inKategorie.length + " aktiv" }),
       "kategorie-" + kategorie);
-    const liste = UI.el("div", "b-programme");
+    const liste = UI.el("div", "ds-switch-list b-programme");
     k.inhalt.appendChild(liste);
     karten.push({ karte: k, liste: liste, spalten: inKategorie, zeilen: inKategorie.map(programmZeile) });
     stapel.appendChild(k);

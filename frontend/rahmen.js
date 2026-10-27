@@ -1887,7 +1887,7 @@ const Rahmen = (function () {
      ================================================================== */
 
   // Einmal je Seite, mit und ohne Rahmen: die Druckwelle auf allen
-  // Bedienelementen von Dashboard-Style (und data-ds-ripple), die Tooltips.
+  // Bedienelementen von Dashboard-Style, die Tooltips.
   // attach() stellt auch die Wache von DS.motion.guard auf: ein gesperrter
   // (aria-disabled), beschäftigter oder gerade erfolgreicher Knopf nimmt
   // weder Klick noch Enter, Leertaste oder Formularabsenden an.

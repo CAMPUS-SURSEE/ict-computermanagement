@@ -27,10 +27,11 @@
        sichtbaren Text wiederholt (gekürzte Namen, Chips), zeigt
        Dashboard-Style nur, solange der Text wirklich abgeschnitten ist.
        Nie ein Browser-title.
-     - Drückbare ICT-Bausteine (Chip mit ×, Listenzeile, Verteilungszeile,
-       klickbare Kennwerte) tragen data-ds-ripple: DS.ripple (von rahmen.js
-       einmal je Seite gestartet) gibt ihnen die Welle und .ds-pressed,
-       bausteine.css die Zustandsebene im Druckmodell von Dashboard-Style.
+     - Drückbares (Chips, Listenzeilen, klickbare Kennwerte und
+       Verteilungen, Säulen) sind Teile von Dashboard-Style 2.0 mit Welle,
+       Zustandsebene und Druckmodell (DS.ripple, von rahmen.js einmal je
+       Seite gestartet); ICT baut keine eigene Zustandsebene mehr. Ein
+       eigenes drückbares Element bekäme .ds-pressable.
 
    ------------------------------------------------------------------
    API
@@ -47,12 +48,16 @@
      UI.textSetzen(knoten, text)      → knoten (schreibt nur, wenn anders)
      UI.id(praefix = 'ui')            → eindeutige id («ui-feld-3»)
      UI.abgleichen(behaelter, [knoten…], { ersetzen, reihenfolgeHalten,
-                   beiEinfuegen(knoten), beiEntfernen(knoten) → Promise? }) → behaelter
+                   beiEinfuegen(knoten), beiEntfernen(knoten) → Promise?,
+                   beiBehalten(gezeigt, neu) }) → behaelter
                                         = DS.dom.morphChildren: die Kinder werden den neu
                                         gebauten Knoten angeglichen, bleibende Knoten an Ort
                                         und Stelle gepatcht (Fokus, Laufzeitklassen und
                                         Zuhörer bleiben; darum Zuhörer am Behälter oder
-                                        data-ds-replace). Schlüssel: data-ds-key, sonst id.
+                                        data-ds-replace; beiBehalten = onKeep: nach dem
+                                        Patchen eines bleibenden Knotens mit seinem neu
+                                        gebauten Gegenstück, etwa für UI.knopfUebernehmen).
+                                        Schlüssel: data-ds-key, sonst id.
                                         Nimmt auch das Optionsobjekt von Bewegung.umordnen
                                         unverändert (holdOrder, onInsert, onRemove).
      UI.kinderAbgleichen(behaelter, [knoten…]) → behaelter
@@ -123,10 +128,10 @@
        Sinnbild gleiten (status.css), ein laufender Spinner dreht weiter.
      UI.banner({ titel, text, ton, knopf: Knoten|Knoten[], rolle, sinnbild }) → div.ds-alert
        ton: 'info' (Standard, neutral) | 'erfolg' | 'warnung' | 'gefahr'.
-       titel wird als <strong> vorangestellt. .textKnoten = div.ds-alert__text.
+       titel wird als <strong> im Fliesstext vorangestellt. .textKnoten = div.ds-alert__text.
        rolle: Standard 'alert' für gefahr, sonst 'status'; null = keine
        (ein Hinweis, der mit der Seite steht und nicht angesagt werden soll).
-       Knöpfe werden kompakt (.ds-btn--sm). Kommen und Gehen eines Banners
+       Knöpfe werden kompakt (.ds-btn--sm) und stehen in .ds-alert__actions. Kommen und Gehen eines Banners
        über Bewegung.umordnen (flip) auf seinem Stapel.
      UI.leerzustand({ sinnbild = 'info', titel, text, aktion: { text, beiKlick, href,
                       variante = 'tonal', sinnbild, fokus } | Knoten, rolle })  → div.ds-empty
@@ -196,19 +201,17 @@
        art: 'radio' = genau einer der Gruppe ist gewählt (input[type=radio]
        mit name und wert; beiKlick nur am neu gewählten). id, fokus und
        deaktiviert gelten dem Kästchen; .eingabe = das Kästchen.
-       entfernen = aktiver Filter mit × (button.chip, aria-label «Filter «…»
-       entfernen»); sonst Aktions-Chip (button|a.chip). Beide ICT-eigen
-       (Dashboard-Style hat nur Chips auf Kästchen), mit Welle und dem
-       Druckmodell von Dashboard-Style; höchstens so breit wie ihre Zeile,
-       ein langer Text endet mit «…» und der Tooltip zeigt ihn dann ganz.
-       Alle: .setzen(gewaehlt), .istGewaehlt().
-     UI.chips([chip, …], { legende }) → Reihe von Filter-Chips: mit legende
-       eine Gruppe (fieldset.ds-chips von Dashboard-Style mit legend.ds-sr),
-       sonst div.ds-chips, sobald ein Umschalt-Chip oder eine Gruppe darin
-       steht. Jede andere Reihe (Status-Chips, Chips mit ×, Links) ist
-       div.chip-zeile (ICT); ohne Chip nimmt sie keinen Platz.
-     UI.zaehler(zahl, still?) → span.zaehler (.setzen(zahl))
-       leer (null/"") = verborgen; .setzen von leer auf eine Zahl ploppt
+       entfernen = aktiver Filter, der sich entfernt (Eingabe-Chip
+       button.ds-chip.ds-chip--input mit ×, aria-label «Filter «…»
+       entfernen»); sonst Aktions-Chip (button|a.ds-chip). Welle und
+       Druckmodell von Dashboard-Style; ein langer Text endet mit «…» und der
+       Tooltip zeigt ihn dann ganz. Alle: .setzen(gewaehlt), .istGewaehlt().
+     UI.chips([chip, …], { legende }) → .ds-chips (ohne Chip ohne Platz): mit
+       Umschalt-Chips und legende eine Gruppe (fieldset mit legend.ds-sr);
+       mit Chip-Knöpfen div[role=group] (aria-label legende); sonst eine
+       schlichte Reihe (Status-Chips, Links).
+     UI.zaehler(zahl, still?) → span.ds-badge (still: .ds-badge--neutral; .setzen(zahl))
+       leer (null/"") ohne Platz; .setzen von leer auf eine Zahl ploppt
        einmal, Wert → Wert ohne Bewegung.
 
    Formulare
@@ -240,7 +243,7 @@
                     art: 'checkbox'|'radio', gesperrt, klein, fokus }) → label.ds-check (.eingabe)
      UI.mehrfach({ legende, eintraege: [{ wert, text, zahl, an, gesperrt, fokus }], name,
                    fokus (Präfix: data-fokus «<fokus>-<wert>» je Kästchen),
-                   beiAenderung(wert, an, gewaehlte) }) → fieldset.ds-field mit .mehrfach;
+                   beiAenderung(wert, an, gewaehlte) }) → fieldset.ds-field mit .ds-check-list;
        .gewaehlt() → [werte], .setzen([werte]), .zahlenSetzen({ wert: zahl })
        (an Ort und Stelle, der Fokus bleibt).
      UI.zahlText(n, nachkomma?) → «1’284», «7.5» (de-CH; ohne nachkomma höchstens
@@ -261,17 +264,18 @@
        ihm). Ein Klick schaltet an Ort und Stelle um (der Griff gleitet);
        beiWechsel → false oder Promise(false)/Fehler setzt zurück.
        .setzen(an, gesperrt?, titel?), .sperren(bool), .istAn(),
-       .istGesperrt(). Gesperrt = an + Schloss im Griff + aria-disabled
-       (fokussierbar, Tooltip nennt den Grund; ICT-eigen, .schalter-gesperrt);
+       .istGesperrt(). Gesperrt = an + Schloss im Griff (.ds-switch--locked)
+       + aria-disabled (fokussierbar, der Tooltip am Kästchen nennt den Grund);
        deaktiviert = aria-disabled im gesperrten Aussehen von Dashboard-
        Style, ebenfalls fokussierbar. Feuert «schalterwechsel».
      UI.schalterZeile({ schalter | an/gesperrt/titel/beiWechsel, name, unter,
-                        wort: true | { an, aus, gesperrt }, zusatz: [Knoten], kompakt })
-       → div.schalter-zeile (kompakt: der Schalter selbst mit .schalter-feld);
-       Name = .ds-switch__label (benennt das Kästchen), Zustandswort
-       «Aktiv»/«Inaktiv» als .ds-switch__state mit beiden Wörtern
-       (Dashboard-Style blendet über; gesperrt ebenfalls «Aktiv», das
-       Schloss im Griff zeigt die Sperre). .schalter, .zusatz.
+                        wort: true | { an, aus, gesperrt }, zusatz: [Knoten], kompakt, klasse })
+       → der Schalter selbst mit Name (.ds-switch__label, benennt das Kästchen),
+       Unterzeile (.ds-switch__hint, beschreibt es), Zusatz (.ds-switch__meta)
+       und Zustandswort «Aktiv»/«Inaktiv» (.ds-switch__state mit beiden Wörtern;
+       gesperrt ebenfalls «Aktiv», das Schloss im Griff zeigt die Sperre);
+       Klasse .schalter-zeile (kompakt: .schalter-feld). .schalter, .zusatz.
+     UI.schalterListe([zeile, …], { klasse }) → div.ds-switch-list
 
    Tabellen
      UI.tabelle(kopfzeilen, datenzeilen, { beschriftung, klasse }) → div.ds-table-wrap
@@ -380,10 +384,12 @@
      Bewegung.ladeAbwarten(start, { element, verzoegerung, mindestens }) → Promise
                                                                          = DS.motion.settleLoader
        (mit element liest Dashboard-Style die Zeiten aus dessen Tokens)
-     Bewegung.umordnen(behaelter, aendern(optionen), { eintraege, live, max, halten }) → Promise
+     Bewegung.umordnen(behaelter, aendern(optionen), { eintraege, live, max, halten, fokusErsatz }) → Promise
                                                                          = DS.motion.flip
        Einträge gleiten an ihren neuen Platz, neue blenden ein, entfernte
-       aus. aendern bekommt das Optionsobjekt von Dashboard-Style; es geht
+       aus. Geht der Eintrag mit dem Fokus, bekommt ihn derselbe Teil des
+       nächsten (sonst des vorigen) Eintrags, ohne Nachbarn fokusErsatz
+       (Element oder Funktion; refocus von Dashboard-Style). aendern bekommt das Optionsobjekt von Dashboard-Style; es geht
        unverändert an UI.abgleichen: Bewegung.umordnen(liste, o => UI.abgleichen(liste, neu, o)).
        live: true hält eine Umordnung aus Abfragedaten an, solange Zeiger
        oder Fokus in der Liste sind (höchstens halten ms).
@@ -582,15 +588,17 @@ const Bewegung = (function () {
   }
 
   function ladeAbwarten(start, o) {
-    // Früher (start, jetzt): eine Zahl als zweites Argument gilt weiter.
-    if (typeof o === "number") return M.settleLoader(start, o);
+    // Früher (start, jetzt): eine Zahl als zweites Argument gilt weiter, als
+    // { now } von Dashboard-Style 2.0 (die Zahl dort ist veraltet).
+    if (typeof o === "number") return M.settleLoader(start, { now: o });
     const w = o || {};
     return M.settleLoader(start, optionen({ element: w.element, delay: w.verzoegerung, minVisible: w.mindestens }));
   }
 
   function umordnen(behaelter, aendern, o) {
     const w = o || {};
-    return M.flip(behaelter, aendern, optionen({ items: w.eintraege, live: w.live, max: w.max, hold: w.halten }));
+    return M.flip(behaelter, aendern, optionen({ items: w.eintraege, live: w.live, max: w.max, hold: w.halten,
+      refocus: w.fokusErsatz }));
   }
 
   function wechseln(aktualisieren, o) {
@@ -753,10 +761,12 @@ const UI = (function () {
     const holdOrder = w.reihenfolgeHalten !== undefined ? w.reihenfolgeHalten : w.holdOrder;
     const onInsert = w.beiEinfuegen || w.onInsert;
     const onRemove = w.beiEntfernen || w.onRemove;
+    const onKeep = w.beiBehalten || w.onKeep;
     if (replace !== undefined) ds.replace = !!replace;
     if (holdOrder !== undefined) ds.holdOrder = !!holdOrder;
     if (onInsert) ds.onInsert = onInsert;
     if (onRemove) ds.onRemove = onRemove;
+    if (onKeep) ds.onKeep = onKeep;
     const liste = (knoten && knoten.nodeType ? [knoten] : Array.from(knoten || []))
       .filter(function (k) { return k !== null && k !== undefined && k !== false && k !== ""; })
       .map(function (k) { return typeof k === "string" ? document.createTextNode(k) : k; });
@@ -958,13 +968,13 @@ const UI = (function () {
   function knopfText(k, neuerText) {
     if (!k) return k;
     const ziel = ruheGesicht(k) || k;
-    const span = ziel.querySelector(":scope > span:not(.ds-sr, .zaehler, .ds-spinner, .ds-btn__faces, .ds-press-ripple)");
+    const span = ziel.querySelector(":scope > span:not(.ds-sr, .ds-badge, .ds-spinner, .ds-btn__faces, .ds-press-ripple)");
     if (span) textSetzen(span, neuerText);
-    else if (!ziel.querySelector(":scope > svg, :scope > .zaehler")) textSetzen(ziel, neuerText);
+    else if (!ziel.querySelector(":scope > svg, :scope > .ds-badge")) textSetzen(ziel, neuerText);
     else {
       for (const n of Array.from(ziel.childNodes)) if (n.nodeType === 3) n.remove();
       const neu = el("span", null, neuerText);
-      const zaehlerKnoten = ziel.querySelector(":scope > .zaehler");
+      const zaehlerKnoten = ziel.querySelector(":scope > .ds-badge");
       ziel.insertBefore(neu, zaehlerKnoten || ziel.querySelector(":scope > svg:last-child:not(:first-child)") || null);
     }
     return k;
@@ -1119,9 +1129,10 @@ const UI = (function () {
   const BANNER_SINNBILDER = { info: "info", erfolg: "checkKreis", warnung: "achtung", gefahr: "achtungKreis" };
 
   /* Banner (.ds-alert): role=alert für Fehler, sonst status (alert.css);
-     rolle: null lässt die Rolle weg. Die Aktion ist ein kompakter Knopf
-     (.ds-btn--sm), den Dashboard-Style über und unter die Textzeile ragen
-     lässt; mehrere stehen in .banner-knoepfe. */
+     rolle: null lässt die Rolle weg. Der Titel steht fett vorn im
+     Fliesstext. Aktionen sind kompakte Knöpfe (.ds-btn--sm) in
+     .ds-alert__actions: Dashboard-Style stellt sie neben den Text und, wird
+     er schmaler als --ds-alert-text-basis, darunter. */
   function banner(optionen) {
     const o = optionen || {};
     const t = BANNER_TOENE[o.ton] || "info";
@@ -1132,6 +1143,8 @@ const UI = (function () {
 
     const textKnoten = el("div", "ds-alert__text");
     if (!istLeer(o.titel)) {
+      // Fett vorn im Fliesstext (kein .ds-alert__title: der stünde als
+      // eigene Zeile über dem Text).
       textKnoten.appendChild(el("strong", null, o.titel));
       if (o.text) textKnoten.appendChild(document.createTextNode(" "));
     }
@@ -1141,11 +1154,7 @@ const UI = (function () {
 
     const knoepfe = (Array.isArray(o.knopf) ? o.knopf : [o.knopf]).filter(Boolean);
     for (const k of knoepfe) if (k.classList && k.classList.contains("ds-btn")) k.classList.add("ds-btn--sm");
-    if (Array.isArray(o.knopf)) {
-      if (knoepfe.length) b.appendChild(anhaengen(el("div", "banner-knoepfe"), knoepfe));
-    } else if (o.knopf) {
-      b.appendChild(o.knopf);
-    }
+    if (knoepfe.length) b.appendChild(anhaengen(el("div", "ds-alert__actions"), knoepfe));
     b.textKnoten = textKnoten;
     return b;
   }
@@ -1327,7 +1336,8 @@ const UI = (function () {
     k.appendChild(beschriftung);
 
     const leer = istLeer(o.wert);
-    const wert = el("span", "ds-tile__value" + (leer ? " leer" : ""), leer ? "–" : String(o.wert));
+    // Ohne Wert «–» leise in der Schrift der Zahl (.ds-tile__value--empty).
+    const wert = el("span", "ds-tile__value" + (leer ? " ds-tile__value--empty" : ""), leer ? "–" : String(o.wert));
     // Der Rohwert fürs Hochzählen (Bewegung.auftritt beim ersten Zeigen,
     // Bewegung.kennzahlenStill danach); «88 %» zählt 88 und behält « %».
     if (!leer && typeof o.zahl === "number" && isFinite(o.zahl)) {
@@ -1547,29 +1557,31 @@ const UI = (function () {
   /* Filter-Chip. Mit «gewaehlt» ein Umschalter: der Chip von Dashboard-
      Style auf einem Kästchen (label.ds-chip > input.ds-chip__input +
      .ds-chip__body mit dem Haken, der sich zeichnet, und dem Platz, der
-     sich öffnet). Mit «entfernen» ein aktiver Filter mit ×, ohne beides
-     ein Aktions-Chip: beide sind Knöpfe bzw. Links (button|a.chip), die
-     es in Dashboard-Style nicht gibt. */
+     sich öffnet). Mit «entfernen» ein aktiver Filter, der sich selbst
+     entfernt (Eingabe-Chip .ds-chip--input mit ×), ohne beides ein
+     Aktions-Chip (button.ds-chip bzw. a.ds-chip): Knöpfe von Dashboard-
+     Style mit Welle, Druckmodell und gesperrtem Aussehen. Ein langer Text
+     endet mit «…»; der Tooltip zeigt ihn dann ganz (data-tip, Dashboard-
+     Style zeigt ihn nur, solange er gekürzt ist). */
   function chip(a) {
     const o = istOptionen(a) ? a : { text: a };
     if (typeof o.entfernen !== "function" && o.gewaehlt !== undefined) return umschaltChip(o);
     const entfernbar = typeof o.entfernen === "function";
-    const c = el(o.href ? "a" : "button", "chip" + (entfernbar ? " chip-entfernbar" : "") + (o.klasse ? " " + o.klasse : ""));
+    const c = el(o.href ? "a" : "button", "ds-chip" + (entfernbar ? " ds-chip--input" : "") + (o.klasse ? " " + o.klasse : ""));
     if (o.href) c.href = o.href;
     else c.type = "button";
     if (o.id) c.id = o.id;
-    c.setAttribute("data-ds-ripple", "");
-    if (o.sinnbild) c.appendChild(sinnbild(o.sinnbild, 18));
-    c.appendChild(el("span", "chip-text", o.text));
+    const koerper = el("span", "ds-chip__body");
+    if (o.sinnbild) koerper.appendChild(sinnbild(o.sinnbild, 18, "ds-chip__icon"));
+    koerper.appendChild(el("span", "ds-chip__label", o.text));
     if (entfernbar) {
-      c.appendChild(sinnbild("schliessen", 18, "chip-x"));
+      koerper.appendChild(sinnbild("schliessen", 18, "ds-chip__trailing"));
       c.setAttribute("aria-label", o.label || ("Filter «" + text(o.text) + "» entfernen"));
       c.addEventListener("click", o.entfernen);
     } else if (o.label) {
       c.setAttribute("aria-label", o.label);
     }
-    // Ein titel ist immer ein Tooltip; ohne titel zeigt der Chip seinen
-    // eigenen Text nur, solange er mit «…» gekürzt ist.
+    c.appendChild(koerper);
     if (o.titel) c.setAttribute("data-tip", o.titel);
     else if (!istLeer(o.text)) c.setAttribute("data-tip", text(o.text));
     fokusSetzen(c, o.fokus);
@@ -1610,29 +1622,36 @@ const UI = (function () {
     return c;
   }
 
-  /* Eine Reihe von Filter-Chips ist .ds-chips von Dashboard-Style (DS.ripple
-     lässt ihre Chips beim Umschalten gleiten): mit legende eine benannte
-     Gruppe (fieldset mit legend.ds-sr), sonst div.ds-chips, sobald ein
-     Umschalt-Chip (.ds-chip) oder eine Gruppe darin steht. Jede andere
-     Reihe (Status-Chips, Links) ist keine Filtergruppe: div.chip-zeile
-     (bausteine.css). */
+  /* Eine Reihe von Chips ist .ds-chips von Dashboard-Style (ohne Chip
+     ohne Platz): mit legende eine benannte Gruppe von Filter-Chips
+     (fieldset mit legend.ds-sr), eine Reihe aus Chip-Knöpfen (entfernen,
+     Aktionen) ist role=group (benannt mit legende); sonst schlicht
+     (Status-Chips, Links). */
   function chips(liste, o) {
     const w = o || {};
-    const filter = (liste || []).some(function (k) {
-      return !!k && !!k.classList && (k.classList.contains("ds-chip") || k.classList.contains("ds-chips"));
-    });
-    if (istLeer(w.legende)) return anhaengen(el("div", filter ? "ds-chips" : "chip-zeile"), liste || []);
-    const gruppe = el("fieldset", "ds-chips");
-    gruppe.appendChild(el("legend", "ds-sr", w.legende));
-    return anhaengen(gruppe, liste || []);
+    const knoepfe = (liste || []).some(function (k) { return !!k && !!k.matches && k.matches("button.ds-chip, a.ds-chip"); });
+    const umschalter = (liste || []).some(function (k) { return !!k && !!k.matches && k.matches("label.ds-chip"); });
+    if (umschalter && !istLeer(w.legende)) {
+      const gruppe = el("fieldset", "ds-chips");
+      gruppe.appendChild(el("legend", "ds-sr", w.legende));
+      return anhaengen(gruppe, liste || []);
+    }
+    const reihe = el("div", "ds-chips");
+    if (knoepfe) {
+      reihe.setAttribute("role", "group");
+      if (!istLeer(w.legende)) reihe.setAttribute("aria-label", w.legende);
+    }
+    return anhaengen(reihe, liste || []);
   }
 
-  /* Zahl-Plakette (Zähler an «Filter» und «Spalten»). Leer (null, "") ist
-     sie verborgen. Erscheint sie (.setzen von leer auf eine Zahl), ploppt
-     sie einmal (.6 → 1); ein neuer Wert ändert sich ohne Bewegung. Beim
-     Bauen bleibt sie ruhig, weil ein Bauer auch beim Neuzeichnen läuft. */
+  /* Zahl-Plakette (Zähler an «Filter» und «Spalten»): .ds-badge von
+     Dashboard-Style, getönt (Anzahl Filter) oder neutral (Anzahl Spalten);
+     auf einem getönten Knopf wird sie dunkel. Leer (null, "") nimmt sie
+     keinen Platz. Erscheint sie (.setzen von leer auf eine Zahl), ploppt
+     sie einmal; ein neuer Wert ändert sich ohne Bewegung. Beim Bauen
+     bleibt sie ruhig, weil ein Bauer auch beim Neuzeichnen läuft. */
   function zaehler(zahl, still) {
-    const z = el("span", "zaehler" + (still ? " zaehler-still" : ""), zahl);
+    const z = el("span", "ds-badge" + (still ? " ds-badge--neutral" : ""), zahl);
     z.setzen = function (n) {
       const warLeer = z.textContent === "";
       textSetzen(z, n);
@@ -1960,14 +1979,16 @@ const UI = (function () {
   }
 
   /* Mehrfachauswahl als fieldset mit legend (eine Gruppe von Kästchen hat
-     so einen Namen); die Zahlen lassen sich an Ort und Stelle ändern, ohne
-     dass der Fokus verloren geht. fokus: Präfix für data-fokus der
+     so einen Namen) und .ds-check-list von Dashboard-Style (umrandet,
+     Haarlinien, rollt über --ds-check-list-max-height, ein gewähltes
+     Kästchen in 500, die Zahl .ds-check__count am Ende); die Zahlen lassen
+     sich an Ort und Stelle ändern, ohne dass der Fokus verloren geht. fokus: Präfix für data-fokus der
      Kästchen («<fokus>-<wert>»; ein Eintrag kann mit e.fokus abweichen). */
   function mehrfach(optionen) {
     const o = optionen || {};
     const gruppe = el("fieldset", "ds-field" + (o.klasse ? " " + o.klasse : ""));
     if (!istLeer(o.legende)) gruppe.appendChild(el("legend", "ds-field__label", o.legende));
-    const liste = el("div", "mehrfach");
+    const liste = el("div", "ds-check-list");
     const name = o.name || id("ui-mehrfach");
     const zahlen = Object.create(null);
     const kaestchen = [];
@@ -1976,7 +1997,7 @@ const UI = (function () {
       const zeile = ankreuzen({ text: e.text === undefined ? wert : e.text, an: e.an, name: name, wert: wert,
         gesperrt: e.gesperrt, fokus: e.fokus || (o.fokus ? o.fokus + "-" + wert : undefined) });
       if (e.zahl !== undefined) {
-        const z = el("span", "anzahl", zahlFormat(e.zahl));
+        const z = el("span", "ds-check__count", zahlFormat(e.zahl));
         zeile.appendChild(z);
         zahlen[wert] = z;
       }
@@ -2070,7 +2091,9 @@ const UI = (function () {
     f.setAttribute("aria-label", o.label || o.platzhalter || "Suchen");
     huelle.appendChild(f);
     if (o.kuerzel) {
-      const k = el("kbd", "kuerzel", o.kuerzel);
+      // Das Kürzel (.ds-kbd.ds-search__key): steht, solange die Suche leer
+      // ruht; mit Fokus, Wert oder auf Touch-Geräten weicht es.
+      const k = el("kbd", "ds-kbd ds-search__key", o.kuerzel);
       k.setAttribute("aria-hidden", "true");
       huelle.appendChild(k);
       f.setAttribute("aria-keyshortcuts", o.kuerzel);
@@ -2124,16 +2147,16 @@ const UI = (function () {
 
   /* Schalter von Dashboard-Style (label.ds-switch > input[role=switch] +
      .ds-switch__track): der Griff gleitet und wächst auf der Feder, Halo
-     und Fokusring kommen von dort. Ein Klick schaltet an Ort und Stelle
-     um, dann kommt beiWechsel(an, schalter). Gibt beiWechsel false zurück
-     oder ein Promise, das false liefert oder scheitert, springt der
-     Schalter zurück.
-     ICT-eigen ist nur die Sperre: gesperrt = an + Schloss im Griff +
-     aria-disabled (fokussierbar, der Tooltip nennt den Grund: ein Wert aus
-     dem Abgleich), deaktiviert = aria-disabled im gesperrten Aussehen.
-     Beide bleiben fokussierbar (disabled verlöre Fokus und Tooltip); ihre
-     Klick, Leertaste und Klick aufs Label sperrt die Wache von Dashboard-
-     Style (DS.motion.guard) für aria-disabled. */
+     und Fokusring kommen von dort; das Kästchen deckt die Spur ab (der
+     Tooltip hängt an ihm). Ein Klick schaltet an Ort und Stelle um, dann
+     kommt beiWechsel(an, schalter). Gibt beiWechsel false zurück oder ein
+     Promise, das false liefert oder scheitert, springt der Schalter zurück.
+     gesperrt = an, ein Wert aus dem Abgleich: .ds-switch--locked mit dem
+     Schloss im Griff (.ds-switch__icon) und aria-disabled, der Tooltip
+     nennt den Grund; deaktiviert = aria-disabled im gesperrten Aussehen.
+     Beide bleiben fokussierbar (disabled verlöre Fokus und Tooltip); Klick,
+     Leertaste und Klick aufs Label sperrt die Wache von Dashboard-Style
+     (DS.motion.guard) für aria-disabled. */
   function schalter(optionen) {
     const o = optionen || {};
     const s = el("label", "ds-switch" + (o.klasse ? " " + o.klasse : ""));
@@ -2145,27 +2168,24 @@ const UI = (function () {
     if (o.label) k.setAttribute("aria-label", o.label);
     const spur = el("span", "ds-switch__track");
     spur.setAttribute("aria-hidden", "true");
-    const schlossKnoten = sinnbild("schloss", 12, "schalter-schloss");
-    spur.appendChild(schlossKnoten);
+    spur.appendChild(sinnbild("schloss", 16, "ds-switch__icon"));
     anhaengen(s, [k, spur]);
 
-    /* Der Zustand steht im DOM (data-an, .schalter-gesperrt, data-
+    /* Der Zustand steht im DOM (data-an, .ds-switch--locked, data-
        deaktiviert, data-tip), nicht in dieser Funktion: ein Schalter, den
        UI.abgleichen stehen lässt, übernimmt ihn so mit den Attributen aus
        dem neuen Bau, und seine Methoden lesen den gezeigten Stand. */
     const istAnRoh = function () { return s.getAttribute("data-an") === "true"; };
-    const istGesperrt = function () { return s.classList.contains("schalter-gesperrt"); };
+    const istGesperrt = function () { return s.classList.contains("ds-switch--locked"); };
     const istDeaktiviert = function () { return s.hasAttribute("data-deaktiviert"); };
 
     function zeigen(an, gesperrt, deaktiviert, tipp) {
       s.setAttribute("data-an", an ? "true" : "false");
-      s.classList.toggle("schalter-gesperrt", gesperrt);
+      s.classList.toggle("ds-switch--locked", gesperrt);
       s.toggleAttribute("data-deaktiviert", deaktiviert);
       k.checked = an || gesperrt;
       if (gesperrt || deaktiviert) k.setAttribute("aria-disabled", "true");
       else k.removeAttribute("aria-disabled");
-      // Der Tooltip hängt am Kästchen: es deckt die Spur ab (Dashboard-Style
-      // 2.0), Zeiger und Tastatur treffen also beide dasselbe Element.
       if (tipp) k.setAttribute("data-tip", tipp);
       else k.removeAttribute("data-tip");
       s.dispatchEvent(new CustomEvent("schalterwechsel", { detail: { an: an || gesperrt, gesperrt: gesperrt } }));
@@ -2201,31 +2221,36 @@ const UI = (function () {
     return s;
   }
 
-  /* Zeile mit Schalter, Name (+ Unterzeile), Zustandswort und Zusatz
-     (Chips). Name und Wort gehören in das Label des Schalters
-     (.ds-switch__label, .ds-switch__state mit beiden Wörtern: Dashboard-
-     Style blendet sie über). In der vollen Zeile ordnet .schalter-zeile
-     die Teile neu (das Label hat dort keinen eigenen Kasten): das Wort
-     ganz rechts, der Zusatz links davon. Der Name benennt das Kästchen
-     (aria-labelledby), die Unterzeile beschreibt es. */
+  /* Ein Schalter als Zeile: Name (.ds-switch__label, benennt das
+     Kästchen über aria-labelledby), Unterzeile (.ds-switch__hint,
+     beschreibt es), Zusatz (.ds-switch__meta: Chips wie «Geändert») und
+     das Zustandswort «Aktiv»/«Inaktiv» (.ds-switch__state mit beiden
+     Wörtern; Dashboard-Style blendet über; gesperrt ebenfalls «Aktiv», das
+     Schloss im Griff zeigt die Sperre). Mehrere Zeilen stehen in
+     UI.schalterListe (.ds-switch-list: ein Raster, Haarlinien, das Wort
+     rechtsbündig; schmal rutscht der Zusatz unter den Namen). kompakt: der
+     Schalter in einer Kopfzeile, ohne Liste. Klicks auf Name und Wort
+     schalten weiter (sie stecken im Label). */
   function schalterZeile(optionen) {
     const o = optionen || {};
     const s = o.schalter || schalter({ an: o.an, gesperrt: o.gesperrt, titel: o.titel, beiWechsel: o.beiWechsel });
     const k = s.eingabe;
 
-    const textKnoten = el("span", "ds-switch__label schalter-text");
-    const name = el("span", "schalter-name", o.name);
+    const name = el("span", "ds-switch__label", o.name);
     name.id = teilId(k, "name");
-    textKnoten.appendChild(name);
+    s.appendChild(name);
     if (k && !k.hasAttribute("aria-label")) k.setAttribute("aria-labelledby", name.id);
-    const unter = o.unter && o.unter.nodeType ? anhaengen(el("span", "schalter-unter"), o.unter)
-      : (!istLeer(o.unter) ? el("span", "schalter-unter", o.unter) : null);
+    const unter = o.unter && o.unter.nodeType ? anhaengen(el("small", "ds-switch__hint"), o.unter)
+      : (!istLeer(o.unter) ? el("small", "ds-switch__hint", o.unter) : null);
     if (unter) {
       unter.id = teilId(k, "unter");
-      textKnoten.appendChild(unter);
+      s.appendChild(unter);
       if (k) beschreibungHinzu(k, unter.id);
     }
-    s.appendChild(textKnoten);
+
+    const zusatz = el("span", "ds-switch__meta");
+    anhaengen(zusatz, o.zusatz || []);
+    if (zusatz.firstChild) s.appendChild(zusatz);
 
     if (o.wort) {
       const woerter = Object.assign({}, SCHALTER_WOERTER, istOptionen(o.wort) ? o.wort : {});
@@ -2242,26 +2267,17 @@ const UI = (function () {
       s.appendChild(wort);
     }
 
-    const zusatz = el("div", "schalter-zusatz");
-    anhaengen(zusatz, o.zusatz || []);
-    let z;
-    if (o.kompakt) {
-      // Kompakt in einer Kopfzeile («ICT-Ablage  Aktiv»): der Schalter selbst.
-      s.classList.add("schalter-feld");
-      if (o.klasse) s.classList.add.apply(s.classList, String(o.klasse).split(/\s+/).filter(Boolean));
-      z = s;
-      if (zusatz.firstChild) {
-        z = el("div", "schalter-feld-huelle");
-        anhaengen(z, [s, zusatz]);
-      }
-    } else {
-      z = el("div", "schalter-zeile" + (o.klasse ? " " + o.klasse : ""));
-      z.appendChild(s);
-      if (zusatz.firstChild) z.appendChild(zusatz);
-    }
-    z.schalter = s;
-    z.zusatz = zusatz;
-    return z;
+    s.classList.add(o.kompakt ? "schalter-feld" : "schalter-zeile");
+    if (o.klasse) s.classList.add.apply(s.classList, String(o.klasse).split(/\s+/).filter(Boolean));
+    s.schalter = s;
+    s.zusatz = zusatz;
+    return s;
+  }
+
+  /* Die Liste der Schalterzeilen (.ds-switch-list von Dashboard-Style). */
+  function schalterListe(zeilen, optionen) {
+    const o = optionen || {};
+    return anhaengen(el("div", "ds-switch-list" + (o.klasse ? " " + o.klasse : "")), zeilen || []);
   }
 
 
@@ -2421,9 +2437,11 @@ const UI = (function () {
     const z = el("div", "ds-alert ds-alert--plain" + (HINWEIS_KLASSEN[ton] ? " " + HINWEIS_KLASSEN[ton] : ""));
     z.appendChild(sinnbild(o.sinnbild || HINWEIS_SINNBILDER[ton], 20));
     const t = el("div", "ds-alert__text");
-    if (!istLeer(o.titel)) t.appendChild(el("p", "ds-alert__title", o.titel));
-    if (o.text && o.text.nodeType) t.appendChild(anhaengen(el("p"), o.text));
-    else if (!istLeer(o.text)) t.appendChild(el("p", null, o.text));
+    // Titel (.ds-alert__title, eine eigene Zeile) und Text direkt darunter,
+    // ohne den Absatzabstand zweier <p>.
+    if (!istLeer(o.titel)) t.appendChild(el("strong", "ds-alert__title", o.titel));
+    if (o.text && o.text.nodeType) t.appendChild(anhaengen(el("span"), o.text));
+    else if (!istLeer(o.text)) t.appendChild(el("span", null, o.text));
     z.appendChild(t);
     return z;
   }
@@ -2680,7 +2698,7 @@ const UI = (function () {
     ankreuzen: ankreuzen, mehrfach: mehrfach,
     zahlText: zahlFormat, zeitText: zeitText,
     // Suche, Schalter
-    suchfeld: suchfeld, schalter: schalter, schalterZeile: schalterZeile,
+    suchfeld: suchfeld, schalter: schalter, schalterZeile: schalterZeile, schalterListe: schalterListe,
     // Tabellen
     tabelle: tabelle, tabellenKopf: tabellenKopf, tabellenRahmen: tabellenRahmen,
     // Listen

@@ -58,15 +58,8 @@
 /* Vorlagen im Spaltenblatt: Text-Knöpfe hängen ihr Polster in den Rand. */
 .blatt-vorlagen { margin-left: calc(-1 * var(--ds-space-3)); }
 
-/* Schmale Bahn: die Suche nimmt eine eigene Zeile, darunter die Knöpfe;
-   Zahl und «Neu» bleiben rechts. Nur Anordnung des DS-Bausteins in
-   .ds-action-bar, nicht sein Aussehen. */
-@container ds-content (max-width: 600px) {
-  .ds-action-bar > .ds-search {
-    flex-basis: 100%;
-    max-width: none;
-  }
-}
+/* Schmale Bahn: die Suche nimmt eine eigene Zeile, darunter die Knöpfe
+   (Dashboard-Style 2.0, .ds-action-bar); Zahl und «Neu» bleiben rechts. */
 
 
 /* ==================================================================
@@ -149,9 +142,8 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
 }
 
-/* Der Programmname ist ein Link; ein langer Name bricht um (Umbruch im
-   DS-Kartentitel, nur Anordnung). */
-.software-karte .ds-card__title { overflow-wrap: anywhere; }
+/* Der Programmname ist ein Link; ein langer Name bricht um (das kann der
+   Kartentitel von Dashboard-Style 2.0 selbst). */
 
 /* Kamerarechte: dieselben Karten wie die Software; der Hinweis zum Stand
    des Abgleichs nimmt keinen Platz, solange er fehlt. */

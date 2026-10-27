@@ -1275,11 +1275,13 @@ function tabellenGeruest(tab) {
   const leiste = anhaengen(el("div", "ds-action-bar"),
     [suchfeld, filterKnopf, spaltenKnopf, csvKnopf, leistenEnde(anzahl, neuKnopf(tab))]);
 
-  // Aktive Filter als Chips mit × (ICT) und «Alle Filter entfernen»: keine
-  // Filtergruppe von Dashboard-Style, darum .chip-zeile (UI.chips, §4.2);
-  // ohne Filter leer und ohne Platz.
-  const chips = el("div", "chip-zeile");
+  // Aktive Filter als Eingabe-Chips (.ds-chip--input, entfernen sich
+  // selbst) und «Alle Filter entfernen» in einer Reihe .ds-chips mit
+  // role=group; ohne Filter leer und ohne Platz.
+  const chips = el("div", "ds-chips");
   chips.id = tab + "-chips";
+  chips.setAttribute("role", "group");
+  chips.setAttribute("aria-label", "Aktive Filter");
 
   /* Jede Zeile öffnet ihren Datensatz (Dashboard-Style
      .ds-table--interactive: Zeiger, Zustands- und Fokusebene, Fokusring
@@ -1908,18 +1910,17 @@ function zeichneChips(tab, art) {
         nachFilter(tab);
       } }));
   }
-  zeigen(k.chips, schluesselSetzen(liste), art);
+  /* Geht ein Chip mit dem Fokus, gibt DS.motion.flip ihn an den nächsten
+     Chip (sonst den vorigen, sonst den Filterknopf) weiter. */
+  schluesselSetzen(liste);
+  if (!art) UI.abgleichen(k.chips, liste);
+  else Bewegung.umordnen(k.chips, function (o) { UI.abgleichen(k.chips, liste, o); },
+    { live: art === "live", fokusErsatz: k.filterKnopf });
 }
 
 /* Der Schlüssel eines Chips nennt Filter und Wert: ein behaltener Chip
    entfernt darum immer genau seinen Filter. */
 function chipEntfernen(tab, chip, entfernen) {
-  const k = knoten[tab];
-  if (document.activeElement === chip) {
-    const alle = Array.from(k.chips.querySelectorAll(".chip:not([data-ds-leaving])"));
-    const i = alle.indexOf(chip);
-    (alle[i + 1] || alle[i - 1] || k.filterKnopf).focus({ preventScroll: true });
-  }
   entfernen();
   nachFilter(tab);
 }
